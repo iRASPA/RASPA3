@@ -89,13 +89,16 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
   if (!framework.has_value()) return energySum;
   if (moleculeAtoms.empty()) return energySum;
 
-  prefetchGridCells(forceField, interpolationGrids, moleculeAtoms, 0, gridPrefetchDistance);
+  // a grid holds the framework as it was built: a framework with mobile atoms is evaluated by pairs, as the
+  // gradient does
+  const bool gridsApply = !framework->hasMobileAtoms();
+  if (gridsApply) prefetchGridCells(forceField, interpolationGrids, moleculeAtoms, 0, gridPrefetchDistance);
   for (std::size_t index = 0; index < moleculeAtoms.size(); ++index)
   {
     const Atom& moleculeAtom = moleculeAtoms[index];
     std::size_t typeB = static_cast<std::size_t>(moleculeAtom.type);
 
-    if (interpolationGrids[typeB].has_value() && moleculeAtom.isFullyCoupled() &&
+    if (gridsApply && interpolationGrids[typeB].has_value() && moleculeAtom.isFullyCoupled() &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       prefetchGridCell(forceField, interpolationGrids, moleculeAtoms, index + gridPrefetchDistance);
@@ -293,6 +296,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
   const double overlapCriteria = forceField.energyOverlapCriteria;
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+  // a framework with mobile atoms is evaluated by pairs (the grids hold it as it was built)
+  const bool gridsApply = !framework->hasMobileAtoms();
 
   for (auto& atom : newatoms)
   {
@@ -303,7 +308,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
     double scalingCoulombB = atom.scalingCoulomb;
     double chargeB = atom.charge;
 
-    if (interpolationGrids[typeB].has_value() && atom.isFullyCoupled() &&
+    if (gridsApply && interpolationGrids[typeB].has_value() && atom.isFullyCoupled() &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       const auto [energyVDW, energyCoulomb] = gridEnergies(forceField, interpolationGrids, atom);
@@ -361,7 +366,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
     double scalingCoulombB = atom.scalingCoulomb;
     double chargeB = atom.charge;
 
-    if (interpolationGrids[typeB].has_value() && atom.isFullyCoupled() &&
+    if (gridsApply && interpolationGrids[typeB].has_value() && atom.isFullyCoupled() &&
         forceField.chargeMethod == ForceField::ChargeMethod::Ewald)
     {
       const auto [energyVDW, energyCoulomb] = gridEnergies(forceField, interpolationGrids, atom);
@@ -422,9 +427,10 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
 
   // The atoms read from a grid are settled here; the others go through the gathered neighbourhood (same grid
   // rule as the brute-force loop above).
+  const bool gridsApply = !(framework.has_value() && framework->hasMobileAtoms());
   auto readsGrid = [&](const Atom& atom)
   {
-    return interpolationGrids[static_cast<std::size_t>(atom.type)].has_value() && atom.isFullyCoupled() &&
+    return gridsApply && interpolationGrids[static_cast<std::size_t>(atom.type)].has_value() && atom.isFullyCoupled() &&
            forceField.chargeMethod == ForceField::ChargeMethod::Ewald;
   };
   thread_local std::vector<Atom> pairNew{};
@@ -432,8 +438,11 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyAggregated(
   pairNew.clear();
   pairOld.clear();
   // the grid cells of both sets are fetched up front: a move touches a handful of atoms, each a memory wait
-  prefetchGridCells(forceField, interpolationGrids, newatoms, 0, newatoms.size());
-  prefetchGridCells(forceField, interpolationGrids, oldatoms, 0, oldatoms.size());
+  if (gridsApply)
+  {
+    prefetchGridCells(forceField, interpolationGrids, newatoms, 0, newatoms.size());
+    prefetchGridCells(forceField, interpolationGrids, oldatoms, 0, oldatoms.size());
+  }
   for (const Atom& atom : newatoms)
   {
     if (!readsGrid(atom))

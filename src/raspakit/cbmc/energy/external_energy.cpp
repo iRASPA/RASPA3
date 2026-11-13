@@ -203,8 +203,11 @@ bool accumulateFrameworkPair(const ForceField &forceField, const SimulationBox &
 /// (Interactions::computeFrameworkMoleculeEnergy), which read no grid under another charge method although the
 /// grids are built all the same.
 inline bool readsGrid(const ForceField& forceField,
-                      const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids, const Atom& atom)
+                      const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+                      const std::optional<Framework>& framework, const Atom& atom)
 {
+  // a grid holds the framework as it was built: with mobile framework atoms the pairs are evaluated, as everywhere
+  if (framework.has_value() && framework->hasMobileAtoms()) return false;
   const std::size_t type = static_cast<std::size_t>(atom.type);
   return type < interpolationGrids.size() && interpolationGrids[type].has_value() && atom.isFullyCoupled() &&
          forceField.chargeMethod == ForceField::ChargeMethod::Ewald;
@@ -237,29 +240,30 @@ bool accumulateGridEnergy(const ForceField &forceField,
 /// the cache instead of each waiting for memory in turn.
 void prefetchGridEnergies(const ForceField& forceField,
                           const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
-                          std::span<const Atom> atoms)
+                          const std::optional<Framework>& framework, std::span<const Atom> atoms)
 {
   for (const Atom& atom : atoms)
   {
-    if (!readsGrid(forceField, interpolationGrids, atom)) continue;
+    if (!readsGrid(forceField, interpolationGrids, framework, atom)) continue;
     interpolationGrids[static_cast<std::size_t>(atom.type)]->prefetch(atom.position);
     if (forceField.useCharge) interpolationGrids.back()->prefetch(atom.position);
   }
 }
 
 [[nodiscard]] std::optional<RunningEnergy> computeFrameworkSerial(
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids, std::span<const Atom> frameworkAtoms,
-    double cutOffVDW, double cutOffCoulomb, std::span<const Atom> atoms) noexcept
+    const ForceField& forceField, const SimulationBox& simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+    const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms, double cutOffVDW,
+    double cutOffCoulomb, std::span<const Atom> atoms) noexcept
 {
   const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
   const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
 
   RunningEnergy energySum;
-  prefetchGridEnergies(forceField, interpolationGrids, atoms);
+  prefetchGridEnergies(forceField, interpolationGrids, framework, atoms);
   for (const Atom &atom : atoms)
   {
-    if (readsGrid(forceField, interpolationGrids, atom))
+    if (readsGrid(forceField, interpolationGrids, framework, atom))
     {
       if (!accumulateGridEnergy(forceField, interpolationGrids, atom, energySum)) return std::nullopt;
       continue;
@@ -337,10 +341,10 @@ void prefetchGridEnergies(const ForceField& forceField,
 }  // namespace
 
 [[nodiscard]] std::optional<RunningEnergy> CBMC::computeFrameworkMoleculeEnergy(
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    [[maybe_unused]] const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    double cutOffVDW, double cutOffCoulomb, std::span<const Atom> atoms) noexcept
+    const ForceField& forceField, const SimulationBox& simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+    const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms, double cutOffVDW,
+    double cutOffCoulomb, std::span<const Atom> atoms) noexcept
 {
   // No framework, no framework energy. Checked before the grids are touched, so an isolated-molecule
   // context ('System::makeIdealGasGrowContext') may pass an empty grid vector.
@@ -351,7 +355,7 @@ void prefetchGridEnergies(const ForceField& forceField,
   {
     default:
     case ThreadPool::ThreadingType::Serial:
-      return computeFrameworkSerial(forceField, simulationBox, interpolationGrids, frameworkAtoms, cutOffVDW,
+      return computeFrameworkSerial(forceField, simulationBox, interpolationGrids, framework, frameworkAtoms, cutOffVDW,
                                     cutOffCoulomb, atoms);
     case ThreadPool::ThreadingType::ThreadPool:
     {
@@ -359,12 +363,12 @@ void prefetchGridEnergies(const ForceField& forceField,
       // grid (one exists for its type and the atom is fully coupled) has to get the grid value, as in the full
       // evaluation and in the moves; dispatching it to the pair kernel, as was done, gave CBMC a different
       // framework energy than the rest of the code under the thread pool, and the running energies drifted.
-      const bool anyGridAtom =
-          std::ranges::any_of(atoms, [&](const Atom& atom) { return readsGrid(forceField, interpolationGrids, atom); });
+      const bool anyGridAtom = std::ranges::any_of(
+          atoms, [&](const Atom& atom) { return readsGrid(forceField, interpolationGrids, framework, atom); });
       if (anyGridAtom)
       {
-        return computeFrameworkSerial(forceField, simulationBox, interpolationGrids, frameworkAtoms, cutOffVDW,
-                                      cutOffCoulomb, atoms);
+        return computeFrameworkSerial(forceField, simulationBox, interpolationGrids, framework, frameworkAtoms,
+                                      cutOffVDW, cutOffCoulomb, atoms);
       }
       return computeFrameworkThreaded(forceField, simulationBox, frameworkAtoms, cutOffVDW, cutOffCoulomb, atoms);
     }
@@ -375,7 +379,7 @@ namespace
 {
 inline bool readsFrameworkGrid(const CBMC::GrowContext& context, const Atom& atom)
 {
-  return readsGrid(context.forceField, context.interpolationGrids, atom);
+  return readsGrid(context.forceField, context.interpolationGrids, context.framework, atom);
 }
 
 /// The trial atoms of the sets that are evaluated by framework pairs (not from a grid), in 'pairAtoms'; false
@@ -418,7 +422,7 @@ inline double frameworkGatherCutOff(const CBMC::GrowContext& context)
   RunningEnergy energySum{};
   thread_local std::vector<Atom> pairAtoms{};
   pairAtoms.clear();
-  prefetchGridEnergies(context.forceField, context.interpolationGrids, atoms);
+  prefetchGridEnergies(context.forceField, context.interpolationGrids, context.framework, atoms);
   for (const Atom& atom : atoms)
   {
     if (!readsFrameworkGrid(context, atom))
@@ -446,9 +450,9 @@ inline double frameworkGatherCutOff(const CBMC::GrowContext& context)
     const bool usableList = list.enabled && list.valid && list.numberOfAtoms == context.frameworkAtoms.size();
     if (!usableList && pairAtoms.size() < 2)
     {
-      pairEnergy =
-          computeFrameworkSerial(context.forceField, context.simulationBox, context.interpolationGrids,
-                                 context.frameworkAtoms, context.cutOffFrameworkVDW, context.cutOffCoulomb, pairAtoms);
+      pairEnergy = computeFrameworkSerial(context.forceField, context.simulationBox, context.interpolationGrids,
+                                          context.framework, context.frameworkAtoms, context.cutOffFrameworkVDW,
+                                          context.cutOffCoulomb, pairAtoms);
     }
     else if (pairAtoms.size() == 1)
     {
@@ -667,7 +671,7 @@ void CBMC::gatherNeighbourhood(const GrowContext& context, Interactions::Neighbo
   // per-trial evaluations do not each wait for memory.
   if (!context.frameworkAtoms.empty())
   {
-    prefetchGridEnergies(context.forceField, context.interpolationGrids, trialPositions);
+    prefetchGridEnergies(context.forceField, context.interpolationGrids, context.framework, trialPositions);
   }
 
   for (const Atom &trialPosition : trialPositions)

@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include "../test_support.hpp"
+
 import std;
 
 import int3;
@@ -8,6 +10,7 @@ import double3;
 import atom;
 import forcefield;
 import framework;
+import interpolation_energy_grid;
 import component;
 import system;
 import running_energy;
@@ -122,4 +125,61 @@ TEST(CBMC_THREAD_POOL_GRIDS, no_grid_is_read_under_a_charge_method_other_than_ew
                   1e-6 * std::abs(expected.frameworkMoleculeCharge) + 1e-8);
     }
   }
+}
+
+// A framework interpolation grid holds the framework as it was built. A flexible framework moves (hybrid MC, MD), and
+// the gradient evaluates its pairs then; the energies and the energy differences read the frozen grid instead, so
+// the energy of a moved framework was that of the original one. With mobile framework atoms no routine reads a grid.
+TEST(CBMC_THREAD_POOL_GRIDS, no_grid_is_read_for_a_framework_with_mobile_atoms)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  const std::size_t methaneType = *forceField.findPseudoAtom("CH4");
+  forceField.settings.gridPseudoAtomIndices = {methaneType};
+  forceField.settings.numberOfVDWGridPoints = uint3(16, 16, 16);
+  forceField.settings.numberOfCoulombGridPoints = uint3(16, 16, 16);
+  forceField.settings.numberOfGridTestPoints = 10;
+  Framework framework = Framework::makeFAU(forceField, int3(1, 1, 1));
+  TemporaryFile definition("raspa3-fau-flexible-grid.json", R"({"Type": "Flexible"})");
+  framework.readFrameworkDefinition(forceField, definition.path().string());
+  ASSERT_TRUE(framework.hasMobileAtoms());
+  const Component methane = Component(
+      forceField, "methane", 190.564, 4599200, 0.01142,
+      {Atom({0, 0, 0}, 0.0, 1.0, 0, static_cast<std::uint16_t>(methaneType), 0, false, false)}, {}, {}, 5, 21);
+  System system(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {framework}, {methane}, {}, {0}, 5);
+  std::ostringstream log;
+  system.createFrameworkInterpolationGrids(log);
+  ASSERT_TRUE(system.interpolationGrids[methaneType].has_value());
+  const std::vector<std::optional<InterpolationEnergyGrid>> noGrids(system.interpolationGrids.size(), std::nullopt);
+
+  const Atom probe(double3(3.1, 7.4, 11.9), 0.0, 1.0, 0, static_cast<std::uint16_t>(methaneType), 0, false, false);
+  const std::span<const Atom> probeSpan(&probe, 1);
+  auto withGrids = [&]
+  {
+    return Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox,
+                                                        system.interpolationGrids, system.framework,
+                                                        system.spanOfFrameworkAtoms(), probeSpan);
+  };
+  auto byPairs = [&]
+  {
+    return Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, noGrids,
+                                                        system.framework, system.spanOfFrameworkAtoms(), probeSpan);
+  };
+  const double before = byPairs().frameworkMoleculeVDW;
+
+  // the framework moves: every atom by 0.3 A along x
+  for (Atom& atom : system.spanOfFrameworkAtoms()) atom.position.x += 0.3;
+  const double moved = byPairs().frameworkMoleculeVDW;
+  ASSERT_GT(std::abs(moved - before), 1e-3 * std::abs(before));
+  EXPECT_NEAR(withGrids().frameworkMoleculeVDW, moved, 1e-10 * std::abs(moved));
+
+  // the energy differences and the CBMC growth see the moved framework as well
+  const std::optional<RunningEnergy> difference = Interactions::computeFrameworkMoleculeEnergyDifference(
+      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+      system.spanOfFrameworkAtoms(), probeSpan, {});
+  ASSERT_TRUE(difference.has_value());
+  EXPECT_NEAR(difference->frameworkMoleculeVDW, moved, 1e-10 * std::abs(moved));
+  CBMC::GrowContext context = system.makeGrowContext();
+  const std::optional<RunningEnergy> grown = CBMC::computeFrameworkMoleculeEnergy(context, probeSpan);
+  ASSERT_TRUE(grown.has_value());
+  EXPECT_NEAR(grown->frameworkMoleculeVDW, moved, 1e-10 * std::abs(moved));
 }
