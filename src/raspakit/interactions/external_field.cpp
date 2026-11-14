@@ -83,6 +83,10 @@ ExternalFieldValue externalFieldValue(const ForceField& forceField, const Simula
   }
 
   const double fieldEnergy = Interactions::analyticExternalFieldEnergy(forceField, posA);
+  // the confining geometry is periodic: test the position wrapped into the unit cell, so that a molecule that
+  // drifted out of the cell, or a bead of a chain overhanging its edge, is tested against its own image of the
+  // channel (as the interpolation grid does) and not against the channel of the home cell
+  const double3 wrappedA = simulationBox.cell * double3::fract(simulationBox.inverseCell * posA);
   switch (forceField.potentialEnergySurfaceType)
   {
     case ForceField::PotentialEnergySurfaceType::None:
@@ -92,30 +96,30 @@ ExternalFieldValue externalFieldValue(const ForceField& forceField, const Simula
       // reader: 'GridFile' requires 'UseExternalFieldGrid').
       break;
     case ForceField::PotentialEnergySurfaceType::CylinderX:
-      value.inside = insideCylinder(posA, simulationBox.cell * double3{0.0, 0.5, 0.5},
+      value.inside = insideCylinder(wrappedA, simulationBox.cell * double3{0.0, 0.5, 0.5},
                                     simulationBox.cell * double3{1.0, 0.5, 0.5}, externalFieldGeometryParameters.x);
       break;
     case ForceField::PotentialEnergySurfaceType::CylinderY:
-      value.inside = insideCylinder(posA, simulationBox.cell * double3{0.5, 0.0, 0.5},
+      value.inside = insideCylinder(wrappedA, simulationBox.cell * double3{0.5, 0.0, 0.5},
                                     simulationBox.cell * double3{0.5, 1.0, 0.5}, externalFieldGeometryParameters.x);
       break;
     case ForceField::PotentialEnergySurfaceType::CylinderZ:
-      value.inside = insideCylinder(posA, simulationBox.cell * double3{0.5, 0.5, 0.0},
+      value.inside = insideCylinder(wrappedA, simulationBox.cell * double3{0.5, 0.5, 0.0},
                                     simulationBox.cell * double3{0.5, 0.5, 1.0}, externalFieldGeometryParameters.x);
       break;
     case ForceField::PotentialEnergySurfaceType::RectangleX:
       value.inside =
-          insideRectangle(posA, simulationBox.cell * double3{0.0, 0.5, 0.5},
+          insideRectangle(wrappedA, simulationBox.cell * double3{0.0, 0.5, 0.5},
                           simulationBox.cell * double3{1.0, 0.5, 0.5}, 1, 2, externalFieldGeometryParameters);
       break;
     case ForceField::PotentialEnergySurfaceType::RectangleY:
       value.inside =
-          insideRectangle(posA, simulationBox.cell * double3{0.5, 0.0, 0.5},
+          insideRectangle(wrappedA, simulationBox.cell * double3{0.5, 0.0, 0.5},
                           simulationBox.cell * double3{0.5, 1.0, 0.5}, 2, 0, externalFieldGeometryParameters);
       break;
     case ForceField::PotentialEnergySurfaceType::RectangleZ:
       value.inside =
-          insideRectangle(posA, simulationBox.cell * double3{0.5, 0.5, 0.0},
+          insideRectangle(wrappedA, simulationBox.cell * double3{0.5, 0.5, 0.0},
                           simulationBox.cell * double3{0.5, 0.5, 1.0}, 0, 1, externalFieldGeometryParameters);
       break;
     default:

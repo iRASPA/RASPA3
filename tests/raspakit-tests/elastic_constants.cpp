@@ -44,7 +44,8 @@ System makeHarmonicDimer(double pressure = 0.0)
   return system;
 }
 
-System makeHarmonicTetrahedron()
+// a rest length other than the edge leaves the tetrahedron under stress
+System makeHarmonicTetrahedron(std::optional<double> restLength = std::nullopt)
 {
   ForceField forceField = ForceField::makeZeoliteForceField(10.0, true, false, true);
   const SimulationBox box(12.0, 12.0, 12.0);
@@ -65,7 +66,8 @@ System makeHarmonicTetrahedron()
       std::array<std::size_t, 2>{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}};
   for (const auto& pair : pairs)
   {
-    framework.intraMolecularPotentials.bonds.emplace_back(pair, BondType::Harmonic, std::vector<double>{2000.0, edge});
+    framework.intraMolecularPotentials.bonds.emplace_back(pair, BondType::Harmonic,
+                                                          std::vector<double>{2000.0, restLength.value_or(edge)});
     framework.intraMolecularImageShifts.bonds.push_back({int3(0, 0, 0), int3(0, 0, 0)});
   }
 
@@ -118,7 +120,10 @@ TEST(elastic_constants, relaxed_harmonic_dimer_removes_clamped_axial_stiffness)
   }
 }
 
-TEST(elastic_constants, applies_raspa2_hydrostatic_pressure_correction_once)
+// The Barron-Klein stress-strain coefficients at the hydrostatic stress -P from the infinitesimal-strain tensor: +P
+// between different normal strains, nothing on the normal diagonal and -P/2 on the shear diagonal (the RASPA2
+// correction put -P on the normal diagonal and nothing off it, leaving every normal entry P too low).
+TEST(elastic_constants, applies_the_barron_klein_pressure_correction_once)
 {
   constexpr double pressurePa = 2.0e5;
   System zeroPressureSystem = makeHarmonicDimer();
@@ -127,9 +132,12 @@ TEST(elastic_constants, applies_raspa2_hydrostatic_pressure_correction_once)
   const ElasticConstantsResult pressured = computeElasticConstants(pressuredSystem);
   const double pressureInternal = pressuredSystem.pressure;
 
-  for (std::size_t direction = 0; direction < 3; ++direction)
+  for (std::size_t row = 0; row < 3; ++row)
   {
-    EXPECT_DOUBLE_EQ(pressured.pressureCorrection[direction * 6 + direction], -pressureInternal);
+    for (std::size_t column = 0; column < 3; ++column)
+    {
+      EXPECT_DOUBLE_EQ(pressured.pressureCorrection[row * 6 + column], row == column ? 0.0 : pressureInternal);
+    }
   }
   for (std::size_t shear = 3; shear < 6; ++shear)
   {
@@ -344,4 +352,56 @@ TEST(elastic_constants, mixed_framework_is_rejected)
   const System system = makeMixedFrameworkSystem();
   expectUnsupportedMixedFramework([&] { (void)computeElasticConstants(system, 1.0e-8); });
   expectUnsupportedMixedFramework([&] { (void)computeAffineBornTensor(system); });
+}
+
+// The Green-Lagrange Born term of the stress-fluctuation formula is the second derivative of the energy in the strain
+// eta = (F^T F - I) / 2 (here F = diag(sqrt(1 + 2 eta))); under stress it differs from the infinitesimal-strain term.
+TEST(elastic_constants, green_lagrange_born_matches_energy_finite_differences)
+{
+  const System system = makeHarmonicTetrahedron(1.35);
+  const std::array<double, 36> greenLagrange = computeGreenLagrangeBornTensor(system);
+  const std::array<double, 36> infinitesimal = computeAffineBornTensor(system);
+  ASSERT_GT(std::abs(greenLagrange[0] - infinitesimal[0]), 1.0e-3 * std::abs(infinitesimal[0]));
+
+  const double volume = system.simulationBox.volume;
+  const auto energyAt = [&](double etaX, double etaY)
+  {
+    std::array<double, 6> logStrain{};
+    logStrain[0] = 0.5 * std::log(1.0 + 2.0 * etaX);  // regular coordinate of xx
+    logStrain[3] = 0.5 * std::log(1.0 + 2.0 * etaY);  // regular coordinate of yy
+    return energyAtLogarithmicStrain(system, logStrain);
+  };
+  constexpr double delta = 1.0e-4;
+  const double xx =
+      (energyAt(delta, 0.0) - 2.0 * energyAt(0.0, 0.0) + energyAt(-delta, 0.0)) / (delta * delta * volume);
+  const double xy =
+      (energyAt(delta, delta) - energyAt(delta, -delta) - energyAt(-delta, delta) + energyAt(-delta, -delta)) /
+      (4.0 * delta * delta * volume);
+  EXPECT_NEAR(greenLagrange[0], xx, 1.0e-4 * std::max(1.0, std::abs(xx)));
+  EXPECT_NEAR(greenLagrange[1], xy, 1.0e-4 * std::max(1.0, std::abs(xy)));
+}
+
+// An ideal gas: no Born or fluctuation term, the kinetic Green-Lagrange term 2P on the normal and P on the shear
+// diagonal, and the Barron-Klein coefficients P on every normal entry and no shear stiffness -- bulk modulus P,
+// shear modulus zero (the former correction gave P/3 and P/2).
+TEST(elastic_constants_fluctuation, ideal_gas_has_bulk_modulus_p_and_no_shear_stiffness)
+{
+  constexpr double beta = 2.0;
+  constexpr double volume = 3.0;
+  constexpr double entities = 4.0;
+  const double pressure = entities / (beta * volume);
+  const std::array<double, 6> kineticStress = {pressure, pressure, pressure, 0.0, 0.0, 0.0};
+  const ElasticFluctuationTerms terms({}, kineticStress, {}, beta, volume, entities);
+  const ElasticFluctuationData result = terms.compositeProperty();
+  for (std::size_t row = 0; row < 3; ++row)
+  {
+    for (std::size_t column = 0; column < 3; ++column)
+    {
+      EXPECT_NEAR(result.tangentStiffness[row * 6 + column], pressure, 1.0e-14) << row << " " << column;
+    }
+  }
+  for (std::size_t shear = 3; shear < 6; ++shear)
+  {
+    EXPECT_NEAR(result.tangentStiffness[shear * 6 + shear], 0.0, 1.0e-14) << shear;
+  }
 }

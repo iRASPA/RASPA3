@@ -1334,8 +1334,8 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
             static_cast<double>(system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint) /
             3.0;
         const ElasticFluctuationTerms terms(stressVoigt(atomicStress), stressVoigt(kineticPressure),
-                                            computeAffineBornTensor(system), system.beta, system.simulationBox.volume,
-                                            effectiveKineticEntities);
+                                            computeGreenLagrangeBornTensor(system), system.beta,
+                                            system.simulationBox.volume, effectiveKineticEntities);
         system.propertyElasticConstantsFluctuation->addSample(estimation.currentBin, terms, 1.0);
       }
     }

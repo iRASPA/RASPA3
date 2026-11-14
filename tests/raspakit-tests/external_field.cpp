@@ -119,6 +119,36 @@ TEST(external_field, molecule_outside_a_cylinder_can_move_back_in)
   EXPECT_FALSE(cbmcEnergy(forceField, box, noGrid, outside).has_value());
 }
 
+// The confining geometry is periodic: an atom one cell (or several) away from the home cell, as a molecule that
+// drifted or a chain bead overhanging the edge of the cell, sits in its own image of the channel. The total energy,
+// the move difference and the CBMC energy tested the unwrapped position against the channel of the home cell and
+// reported a hard-wall overlap.
+TEST(external_field, confining_geometry_is_periodic)
+{
+  const SimulationBox box(20.0, 20.0, 20.0);
+  const std::optional<InterpolationEnergyGrid> noGrid = std::nullopt;
+  for (const ForceField::PotentialEnergySurfaceType type :
+       {ForceField::PotentialEnergySurfaceType::CylinderZ, ForceField::PotentialEnergySurfaceType::RectangleX})
+  {
+    ForceField forceField = makeForceField(type);
+    forceField.externalFieldGeometryParameters.x = 4.0;
+    forceField.externalFieldGeometryParameters.y = 4.0;
+    for (const double3& position :
+         {double3(31.0, 10.5, 12.0), double3(-9.0, 9.0, -11.0), double3(11.0, 50.0, 30.5), double3(-30.0, -29.5, 9.0)})
+    {
+      const std::vector<Atom> atom{makeAtom(position)};
+      EXPECT_DOUBLE_EQ(totalEnergy(forceField, box, noGrid, atom), 0.0) << position.x << " " << position.y;
+      EXPECT_TRUE(
+          Interactions::computeExternalFieldEnergyDifference(true, forceField, box, noGrid, atom, {}).has_value());
+      EXPECT_TRUE(cbmcEnergy(forceField, box, noGrid, atom).has_value());
+    }
+    // and an image of a position outside the channel is outside as well
+    const std::vector<Atom> outside{makeAtom(double3(36.5, 36.5, 30.0))};
+    EXPECT_GT(totalEnergy(forceField, box, noGrid, outside), 0.0);
+    EXPECT_FALSE(cbmcEnergy(forceField, box, noGrid, outside).has_value());
+  }
+}
+
 // A tabulated field couples linearly to the fractional molecules, U = scalingVDW * U_ext, in the total energy,
 // the move difference, and the CBMC trial energy alike, and all three report dU/d(scalingVDW) = U_ext for the
 // dU/dlambda estimators (which used to be zero, and the old position used to be read unscaled).

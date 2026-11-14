@@ -1121,8 +1121,8 @@ void System::computeTotalElectrostaticPotential() noexcept
       forceField, simulationBox, moleculeElectrostaticPotential, frameworkAtomPositions, moleculeAtomPositions);
 
   Interactions::computeEwaldFourierElectrostaticPotential(
-      eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, moleculeElectrostaticPotential, forceField,
-      simulationBox, components, numberOfMoleculesPerComponent, moleculeAtomPositions);
+      eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, moleculeElectrostaticPotential, forceField, simulationBox,
+      components, moleculeAtomPositions, netChargeFramework, framework, frameworkAtomPositions);
 }
 
 void System::computeTotalElectricField() noexcept

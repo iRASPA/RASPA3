@@ -165,10 +165,19 @@ ElasticFluctuationData ElasticFluctuationTerms::compositeProperty() const
   const double meanPressure = (configurationalStress[0] + kineticStress[0] + configurationalStress[1] +
                                kineticStress[1] + configurationalStress[2] + kineticStress[2]) /
                               3.0;
-  for (std::size_t normal = 0; normal < 3; ++normal)
-    elasticAt(result.pressureCorrection, normal, normal) = -meanPressure;
+  // Barron-Klein stress-strain coefficients from the Green-Lagrange stiffness at the hydrostatic stress -P:
+  // B = C + P (delta_ij delta_kl - delta_ik delta_jl - delta_il delta_jk), in Voigt notation -P on the normal diagonal,
+  // +P between different normal strains and -P on the shear diagonal. An ideal gas then has B = P on every normal entry
+  // and no shear stiffness (bulk modulus P); the former correction gave it P/3 and a shear modulus P/2.
+  for (std::size_t row = 0; row < 3; ++row)
+  {
+    for (std::size_t column = 0; column < 3; ++column)
+    {
+      elasticAt(result.pressureCorrection, row, column) = row == column ? -meanPressure : meanPressure;
+    }
+  }
   for (std::size_t shear = 3; shear < elasticVoigtSize; ++shear)
-    elasticAt(result.pressureCorrection, shear, shear) = -0.5 * meanPressure;
+    elasticAt(result.pressureCorrection, shear, shear) = -meanPressure;
   for (std::size_t index = 0; index < result.tangentStiffness.size(); ++index)
     result.tangentStiffness[index] = result.stiffness[index] + result.pressureCorrection[index];
   return result;

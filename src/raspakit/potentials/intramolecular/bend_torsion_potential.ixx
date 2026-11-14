@@ -114,6 +114,9 @@ export struct BendTorsionPotential
       {"SMOOTHED_CFF_BEND_TORSION_CROSS", BendTorsionType::SmoothedCFF3},
       {"CVFF", BendTorsionType::CVFF}};
 
+  /// True when a smoothed term vanishes with its derivatives (a bend at 180 degrees), where the dihedral is undefined.
+  static bool smoothingVanishes(BendTorsionType type, double theta1, double theta2);
+
   double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posc, const double3 &posD) const;
 
   std::tuple<double, std::array<double3, 4>, double3x3> potentialEnergyGradientStrain(const double3 &posA,

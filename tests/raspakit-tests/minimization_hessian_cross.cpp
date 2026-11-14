@@ -164,7 +164,12 @@ void compareStrainToFiniteDifference(std::span<Atom> atoms, std::size_t numAtoms
 }
 
 // A bent 4-atom chain with non-degenerate bond, bend, and dihedral geometry.
-System makeChainSystem(const ForceField &forceField, const Potentials::IntraMolecularPotentials &intraMolecularPotentials)
+const std::array<double3, 4> bentChain{double3(-0.5, 1.4, 0.3), double3(0.0, 0.0, 0.0), double3(1.54, 0.0, 0.0),
+                                       double3(2.1, 1.2, 1.0)};
+
+System makeChainSystem(const ForceField& forceField,
+                       const Potentials::IntraMolecularPotentials& intraMolecularPotentials,
+                       const std::array<double3, 4>& positions = bentChain)
 {
   ConnectivityTable connectivityTable(4);
   connectivityTable[0, 1] = true;
@@ -174,27 +179,54 @@ System makeChainSystem(const ForceField &forceField, const Potentials::IntraMole
   connectivityTable[2, 3] = true;
   connectivityTable[3, 2] = true;
 
-  Component component = Component(forceField, "chain", 425.125, 3796000.0, 0.201,
-                                  {Atom({-0.5, 1.4, 0.3}, 0.0, 1.0, 0, 1, 0, false, false),
-                                   Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 2, 0, false, false),
-                                   Atom({1.54, 0.0, 0.0}, 0.0, 1.0, 0, 2, 0, false, false),
-                                   Atom({2.1, 1.2, 1.0}, 0.0, 1.0, 0, 1, 0, false, false)},
-                                  connectivityTable, intraMolecularPotentials, 5, 21);
+  Component component = Component(
+      forceField, "chain", 425.125, 3796000.0, 0.201,
+      {Atom(bentChain[0], 0.0, 1.0, 0, 1, 0, false, false), Atom(bentChain[1], 0.0, 1.0, 0, 2, 0, false, false),
+       Atom(bentChain[2], 0.0, 1.0, 0, 2, 0, false, false), Atom(bentChain[3], 0.0, 1.0, 0, 1, 0, false, false)},
+      connectivityTable, intraMolecularPotentials, 5, 21);
   component.rigid = false;
 
-  return System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {component}, {}, {1}, 5);
+  System system(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {component}, {}, {1}, 5);
+  // set the geometry after construction: growing the initial molecule from a degenerate template can stall
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  for (std::size_t i = 0; i < 4; ++i) atoms[i].position = positions[i];
+  return system;
 }
 
-void runCrossTest(const Potentials::IntraMolecularPotentials &intraMolecularPotentials,
-                  const std::function<void(std::span<const Molecule>, std::span<Atom>, std::span<const Component>,
-                                           const MinimizationDofLayout &, GeneralizedHessian &,
-                                           std::span<AtomDynamics>)> &computeFunction,
-                  const std::function<double(std::span<const Atom>, const Potentials::IntraMolecularPotentials &)> &
-                      energyEvaluator,
-                  double delta = 1e-4, double relativeTolerance = 5e-3)
+// Every entry of the analytic Hessian (and the accumulated gradient) is finite.
+void expectFiniteHessian(const Potentials::IntraMolecularPotentials& intraMolecularPotentials,
+                         const std::function<void(std::span<const Molecule>, std::span<Atom>,
+                                                  std::span<const Component>, const MinimizationDofLayout&,
+                                                  GeneralizedHessian&, std::span<AtomDynamics>)>& computeFunction,
+                         const std::array<double3, 4>& positions)
 {
   ForceField forceField = makeTestForceField();
-  System system = makeChainSystem(forceField, intraMolecularPotentials);
+  System system = makeChainSystem(forceField, intraMolecularPotentials, positions);
+  const MinimizationDofLayout layout = buildMinimizationDofLayout(system.moleculeData, system.components);
+  GeneralizedHessian hessian(layout.numDofs(), 1);
+  computeFunction(system.moleculeData, system.spanOfMoleculeAtoms(), system.components, layout, hessian,
+                  system.spanOfMoleculeDynamics());
+
+  // fast-math folds std::isnan away; the printed form still says nan
+  const auto finite = [](double x)
+  { return std::to_string(x).find("nan") == std::string::npos && std::abs(x) < 1e300; };
+  for (std::size_t row = 0; row < layout.numDofs(); ++row)
+    for (std::size_t col = 0; col < layout.numDofs(); ++col)
+      EXPECT_TRUE(finite(hessian(row, col))) << "row=" << row << " col=" << col << " " << hessian(row, col);
+  for (const AtomDynamics& d : system.spanOfMoleculeDynamics())
+    EXPECT_TRUE(finite(d.gradient.x) && finite(d.gradient.y) && finite(d.gradient.z));
+}
+
+void runCrossTest(
+    const Potentials::IntraMolecularPotentials& intraMolecularPotentials,
+    const std::function<void(std::span<const Molecule>, std::span<Atom>, std::span<const Component>,
+                             const MinimizationDofLayout&, GeneralizedHessian&, std::span<AtomDynamics>)>&
+        computeFunction,
+    const std::function<double(std::span<const Atom>, const Potentials::IntraMolecularPotentials&)>& energyEvaluator,
+    double delta = 1e-4, double relativeTolerance = 5e-3, const std::array<double3, 4>& positions = bentChain)
+{
+  ForceField forceField = makeTestForceField();
+  System system = makeChainSystem(forceField, intraMolecularPotentials, positions);
 
   const MinimizationDofLayout layout = buildMinimizationDofLayout(system.moleculeData, system.components);
   ASSERT_EQ(layout.numDofs(), 12u);
@@ -585,4 +617,64 @@ TEST(minimization_hessian_cross, out_of_plane_bend_harmonic)
                                       atoms[t.identifiers[2]].position, atoms[t.identifiers[3]].position);
         return energy;
       });
+}
+
+// Smoothed bend-torsion at a straight bend A-B-C: the smoothing vanishes and so do the energy, the gradient and the
+// Hessian, while the dihedral (and the normalized arm the energy used) is undefined. Before, the zero arm was
+// normalized into NaN and 0 * NaN poisoned all three.
+TEST(minimization_hessian_cross, smoothed_bend_torsion_vanishes_at_a_straight_bend)
+{
+  const std::array<double3, 4> straight{double3(-1.5, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(1.54, 0.0, 0.0),
+                                        double3(2.1, 1.2, 1.0)};
+  for (BendTorsionType type :
+       {BendTorsionType::Smoothed, BendTorsionType::SmoothedThreeCosine, BendTorsionType::SmoothedCFF,
+        BendTorsionType::SmoothedCFF2, BendTorsionType::SmoothedCFF3, BendTorsionType::Nicholas})
+  {
+    const BendTorsionPotential term({0, 1, 2, 3}, type, {1000.0, 109.5, 109.5});
+    const double energy = term.calculateEnergy(straight[0], straight[1], straight[2], straight[3]);
+    const auto [energyGradient, gradient, strain] =
+        term.potentialEnergyGradientStrain(straight[0], straight[1], straight[2], straight[3]);
+    EXPECT_EQ(std::to_string(energy), std::to_string(0.0)) << static_cast<int>(type);
+    EXPECT_EQ(std::to_string(energyGradient), std::to_string(0.0)) << static_cast<int>(type);
+    for (const double3& g : gradient) EXPECT_EQ(std::to_string(g.x + g.y + g.z), std::to_string(0.0));
+
+    Potentials::IntraMolecularPotentials potentials{};
+    potentials.bendTorsions = {term};
+    expectFiniteHessian(potentials, &Interactions::computeIntraMolecularBendTorsionHessian, straight);
+  }
+}
+
+// Inversion bend at (and next to) a planar centre: chi = 0 made acos(cos chi) singular in the hyper-dual Hessian
+// (an infinite first and a NaN second derivative of acos at 1); the Hessian now uses asin(sin chi).
+TEST(minimization_hessian_cross, inversion_bend_hessian_at_a_planar_centre)
+{
+  const std::array<double3, 4> planar{double3(-0.5, 1.4, 0.0), double3(0.0, 0.0, 0.0), double3(1.54, 0.0, 0.0),
+                                      double3(-0.6, -1.2, 0.0)};
+  for (const auto& [type, parameters] :
+       std::vector<std::pair<InversionBendType, std::vector<double>>>{{InversionBendType::Harmonic, {60000.0, 25.0}},
+                                                                      {InversionBendType::Harmonic2, {60000.0, 25.0}},
+                                                                      {InversionBendType::MM3, {0.5, 25.0}}})
+  {
+    Potentials::IntraMolecularPotentials potentials{};
+    potentials.inversionBends = {InversionBendPotential({0, 1, 2, 3}, type, parameters)};
+    expectFiniteHessian(potentials, &Interactions::computeIntraMolecularInversionBendHessian, planar);
+  }
+
+  // one degree out of the plane: the energy is smooth there (it has a kink in the plane itself, chi = |chi|); the step
+  // stays at 1e-4 because the reference energy takes acos near cos(chi) = 1, whose round-off swamps smaller steps
+  const std::array<double3, 4> nearPlanar{double3(-0.5, 1.4, 0.0), double3(0.0, 0.0, 0.0), double3(1.54, 0.0, 0.0),
+                                          double3(-0.6, -1.2, 0.0236)};
+  Potentials::IntraMolecularPotentials potentials{};
+  potentials.inversionBends = {InversionBendPotential({0, 1, 2, 3}, InversionBendType::Harmonic, {60000.0, 25.0})};
+  runCrossTest(
+      potentials, &Interactions::computeIntraMolecularInversionBendHessian,
+      [](std::span<const Atom> atoms, const Potentials::IntraMolecularPotentials& p)
+      {
+        double energy = 0.0;
+        for (const InversionBendPotential& t : p.inversionBends)
+          energy += t.calculateEnergy(atoms[t.identifiers[0]].position, atoms[t.identifiers[1]].position,
+                                      atoms[t.identifiers[2]].position, atoms[t.identifiers[3]].position);
+        return energy;
+      },
+      1e-4, 5e-3, nearPlanar);
 }

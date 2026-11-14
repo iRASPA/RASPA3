@@ -1354,6 +1354,39 @@ TEST(MC_CROSS_LINKS, two_links_sharing_a_neighbour_of_their_sites_equal_four_mem
   EXPECT_NEAR(tetherEnergy.potentialEnergy(), total.potentialEnergy(), 1e-8);
 }
 
+// The shifted-Coulomb completion q_i q_j (V(r) - 1/r) of a pair excluded by a link does not depend on whether the
+// pair sum counted the pair: a regrowth that left the excluded pairs out of the external energy (above the overlap
+// criterion, EwaldOnly) took the pair-sum correction off but also the completion, so the tether energy missed it under
+// Wolf / DSF / modified-shifted-force / zero-dipole.
+TEST(MC_CROSS_LINKS, tether_keeps_the_shifted_coulomb_completion_of_pairs_above_the_overlap_criterion)
+{
+  for (const ForceField::ChargeMethod method :
+       {ForceField::ChargeMethod::Wolf, ForceField::ChargeMethod::DampedShiftedForce})
+  {
+    ForceField forceField = makeForceField(100.0, 0.4, -0.4, true);
+    forceField.chargeMethod = method;
+    forceField.omitEwaldFourier = true;
+    forceField.EwaldAlpha = 0.25;
+    forceField.energyOverlapCriteria = -1e300;  // every excluded pair is above it: the tethers hold EwaldOnly terms
+    Component dimer = makeComponent(forceField, 0, "xl-completion", dimerBAJson(kBondK, kBondLength));
+    System linked = makeSystem(
+        forceField, {dimer},
+        {{double3(10.0, 10.0, 10.0), double3(11.5, 10.2, 10.1), double3(14.4, 10.7, 10.8), double3(13.1, 11.4, 10.3)}});
+    linked.crossLinks.bondTypes.push_back(harmonicBondType("X", "X", kBondK, kBondLength, 6.0));
+    linked.crossLinks.addLink(CrossLink{site(0, 0, 1), site(0, 1, 1), 0});
+
+    const std::vector<CrossLinkTether> tethers = linked.crossLinkTethers(0, 0);
+    ASSERT_EQ(tethers.size(), 1uz);
+    const std::array<std::size_t, 1> all{0};
+    // the system's force field: its copy holds the shift constants of the charge method
+    const RunningEnergy tetherEnergy = Interactions::computeCrossLinkTetherEnergy(
+        linked.forceField, linked.simulationBox, linked.components[0], linked.spanOfMolecule(0, 0), tethers, all);
+    const RunningEnergy total = linked.computeCrossLinkEnergy(linked.simulationBox, linked.spanOfMoleculeAtoms());
+    EXPECT_GT(std::abs(total.ewald_exclusion), 1.0);
+    EXPECT_NEAR(tetherEnergy.ewald_exclusion, total.ewald_exclusion, 1e-8) << static_cast<int>(method);
+  }
+}
+
 TEST(MC_CROSS_LINKS, shared_exclusions_gradient_strain_difference_and_tethers_are_consistent)
 {
   // the tethers are compared with the total energy below: no excluded pair may be above the overlap criterion

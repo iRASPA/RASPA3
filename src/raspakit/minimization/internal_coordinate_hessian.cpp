@@ -5,6 +5,7 @@ module minimization_internal_coordinate_hessian;
 import std;
 
 import double3;
+import dihedral_derivatives;
 
 namespace
 {
@@ -301,29 +302,26 @@ Minimization::InternalCoordinate Minimization::dihedralInternalCoordinate(const 
 Minimization::InternalCoordinate Minimization::dihedralAngleInternalCoordinate(const double3 &posA, const double3 &posB,
                                                                                const double3 &posC, const double3 &posD)
 {
-  // Reuse the cos(phi) coordinate and apply the phi = f(cos(phi)) chain rule.
-  InternalCoordinate cosine = dihedralInternalCoordinate(posA, posB, posC, posD);
+  // The exact derivatives of phi: the phi = f(cos(phi)) chain rule divides by sin(phi), which vanishes at cis and
+  // trans while the derivatives of phi do not (it zeroed the gradient and spiked the Hessian there).
+  const Potentials::DihedralDerivatives dihedral = Potentials::dihedralAngleDerivatives(posA, posB, posC, posD, true);
 
   InternalCoordinate coordinate{};
-  coordinate.numAtoms = cosine.numAtoms;
-  coordinate.value = cosine.phi;
-  coordinate.phi = cosine.phi;
-  coordinate.sinPhi = cosine.sinPhi;
-
-  const double firstFactor = -1.0 / cosine.sinPhi;
-  const double secondFactor = -cosine.value / (cosine.sinPhi * cosine.sinPhi * cosine.sinPhi);
+  coordinate.numAtoms = 4;
+  coordinate.value = dihedral.phi;
+  coordinate.phi = dihedral.phi;
+  const double sinPhi = std::sin(dihedral.phi);
+  coordinate.sinPhi = std::copysign(std::max(1.0e-8, std::fabs(sinPhi)), sinPhi);
   for (std::size_t i = 0; i < 4; ++i)
   {
-    coordinate.gradient[i] = firstFactor * cosine.gradient[i];
+    coordinate.gradient[i] = dihedral.gradient[i];
     for (std::size_t j = 0; j < 4; ++j)
     {
       for (std::size_t a = 0; a < 3; ++a)
       {
         for (std::size_t b = 0; b < 3; ++b)
         {
-          coordinate.hessian[i][j][a][b] = firstFactor * cosine.hessian[i][j][a][b] +
-                                           secondFactor * component(cosine.gradient[i], a) *
-                                               component(cosine.gradient[j], b);
+          coordinate.hessian[i][j][a][b] = dihedral.hessian[3 * i + a][3 * j + b];
         }
       }
     }

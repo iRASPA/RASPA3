@@ -93,6 +93,28 @@ struct PrecomputedReciprocal
 
 // Enumerates the Ewald wave vectors and precomputes S(k) once; the per-field-point loops then only
 // evaluate their own phase against the cached structure factor.
+// The framework atoms whose Ewald reciprocal field the derivatives include, as 'computeEwaldFourierElectricField'
+// builds it: every atom of a framework without mobile atoms (the stored structure factor), the lab-fixed atoms of
+// one with mobile atoms (the mobile ones are live hosts there). The derivatives of a field that moves with the mobile
+// hosts are not implemented: a charged mobile framework atom is refused (it was dropped together with the fixed ones,
+// leaving the polarization energy without its reciprocal field, inconsistent with the total energy).
+std::span<const Atom> reciprocalHostAtoms(const System& system, std::span<const Atom> frameworkAtoms)
+{
+  if (!system.framework.has_value() || frameworkAtoms.empty()) return {};
+  if (!system.framework->hasMobileAtoms()) return frameworkAtoms;
+  const std::size_t numberOfFixedAtoms = system.framework->numberOfFixedAtoms();
+  for (const Atom& atom : frameworkAtoms.subspan(numberOfFixedAtoms))
+  {
+    if (atom.scalingCoulomb * atom.charge != 0.0)
+    {
+      throw std::runtime_error(
+          "[Polarization]: the derivatives of the Ewald reciprocal field of charged mobile framework atoms are not "
+          "implemented; use a rigid framework, uncharged mobile atoms, or a real-space charge method\n");
+    }
+  }
+  return frameworkAtoms.first(numberOfFixedAtoms);
+}
+
 std::vector<PrecomputedReciprocal> precomputeFixedFrameworkReciprocal(const ForceField& forceField,
                                                                       const SimulationBox& box,
                                                                       std::span<const Atom> frameworkAtoms)
@@ -267,8 +289,9 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
 
   // Fixed-framework reciprocal structure factor sources (rigid framework only, matching the model's
   // computeEwaldFourierElectricField which uses the fixed framework structure factor).
-  const bool useReciprocal = forceField.usesEwaldFourier() && system.framework.has_value() &&
-                             system.framework->rigid && numberOfFrameworkAtoms > 0;
+  const std::span<const Atom> reciprocalHosts =
+      forceField.usesEwaldFourier() ? reciprocalHostAtoms(system, frameworkAtoms) : std::span<const Atom>{};
+  const bool useReciprocal = !reciprocalHosts.empty();
 
   const double alpha = forceField.EwaldAlpha;
   const double alphaSquared = alpha * alpha;
@@ -287,7 +310,7 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
   };
 
   const std::vector<PrecomputedReciprocal> precomputedReciprocal =
-      useReciprocal ? precomputeFixedFrameworkReciprocal(forceField, box, frameworkAtoms)
+      useReciprocal ? precomputeFixedFrameworkReciprocal(forceField, box, reciprocalHosts)
                     : std::vector<PrecomputedReciprocal>{};
 
   std::vector<RealSource> sources;
@@ -724,7 +747,6 @@ std::pair<double, double3x3> Interactions::computePolarizationMolecularPressureS
   const SimulationBox& box = system.simulationBox;
   const std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   const std::span<const Atom> moleculeAtoms = system.spanOfMoleculeAtoms();
-  const std::size_t numberOfFrameworkAtoms = frameworkAtoms.size();
   const std::size_t numberOfMoleculeAtoms = moleculeAtoms.size();
 
   double energy = 0.0;
@@ -738,13 +760,13 @@ std::pair<double, double3x3> Interactions::computePolarizationMolecularPressureS
   // Ewald reciprocal field of the rigid fixed framework (matching computeEwaldFourierElectricField and the
   // reciprocal part of computePolarizationDerivatives). The real-space contributions were already gathered
   // by the Coulomb strain loops.
-  const bool useReciprocal = forceField.usesEwaldFourier() && system.framework.has_value() &&
-                             system.framework->rigid && numberOfFrameworkAtoms > 0;
-  if (useReciprocal)
+  const std::span<const Atom> reciprocalHosts =
+      forceField.usesEwaldFourier() ? reciprocalHostAtoms(system, frameworkAtoms) : std::span<const Atom>{};
+  if (!reciprocalHosts.empty())
   {
     const double alphaSquared = forceField.EwaldAlpha * forceField.EwaldAlpha;
     const std::vector<PrecomputedReciprocal> precomputedReciprocal =
-        precomputeFixedFrameworkReciprocal(forceField, box, frameworkAtoms);
+        precomputeFixedFrameworkReciprocal(forceField, box, reciprocalHosts);
 
     for (std::size_t a = 0; a < numberOfMoleculeAtoms; ++a)
     {

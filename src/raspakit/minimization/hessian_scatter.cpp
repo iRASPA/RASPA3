@@ -498,6 +498,19 @@ void Minimization::scatterTorsionHessian(GeneralizedHessian& hessian, const Mini
 void Minimization::scatterTorsionHessianByDof(GeneralizedHessian& hessian, const std::array<std::size_t, 4>& bases,
                                               const TorsionHessianGeometry& geometry)
 {
+  if (geometry.cartesianHessian.has_value())
+  {
+    const std::array<std::array<double, 12>, 12>& cartesian = geometry.cartesianHessian.value();
+    for (std::size_t i = 0; i < 12; ++i)
+    {
+      for (std::size_t j = 0; j < 12; ++j)
+      {
+        hessian.add(bases[i / 3] + i % 3, bases[j / 3] + j % 3, cartesian[i][j]);
+      }
+    }
+    return;
+  }
+
   const std::optional<std::size_t> baseA = bases[0];
   const std::optional<std::size_t> baseB = bases[1];
   const std::optional<std::size_t> baseC = bases[2];

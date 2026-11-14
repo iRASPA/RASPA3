@@ -474,6 +474,10 @@ RunningEnergy Interactions::computeIntraMolecularBendTorsionHessian(
       const InternalCoordinate theta2 =
           Minimization::angleInternalCoordinate(atom_span[B].position, atom_span[C].position, atom_span[D].position);
 
+      // a smoothed term vanishes with all its derivatives at a straight bend, where the dihedral (and its Wilson
+      // vectors) is undefined
+      if (BendTorsionPotential::smoothingVanishes(term.type, theta1.value, theta2.value)) continue;
+
       // Smoothed uses the signed angle phi; all other types are polynomials in cos(phi).
       const bool usesPhi = (term.type == BendTorsionType::Smoothed);
       const InternalCoordinate torsion =
@@ -630,6 +634,11 @@ RunningEnergy Interactions::computeIntraMolecularInversionBendHessian(
       const Dual<12> rab2 = dotDual(Rab, Rab);
       const Dual<12> e = dotDual(Rab, crossDual(Rbd, Rbc));
       const Dual<12> cosChi = sqrtDual(rab2 - (e * e) / c) / sqrtDual(rab2);
+      // chi from its sine e / (|r_ab| sqrt(c)), mirrored to |chi|: acos(cos chi) has an infinite derivative at a
+      // planar centre (cos chi = 1 exactly), which made the gradient and Hessian NaN there, while the signed sine
+      // passes through zero with a finite slope; mirrored, the powers of chi - chi_0 are exact for chi_0 = 0
+      const Dual<12> sinChi = e / sqrtDual(rab2 * c);
+      const Dual<12> chi = sinChi.v < 0.0 ? -1.0 * asinDual(sinChi) : asinDual(sinChi);
 
       const auto& p = term.parameters;
       Dual<12> U{};
@@ -638,7 +647,7 @@ RunningEnergy Interactions::computeIntraMolecularInversionBendHessian(
         case InversionBendType::Harmonic:
         case InversionBendType::Harmonic2:
         {
-          const Dual<12> t = acosDual(cosChi) - p[1];
+          const Dual<12> t = chi - p[1];
           U = 0.5 * p[0] * t * t;
           break;
         }
@@ -655,7 +664,7 @@ RunningEnergy Interactions::computeIntraMolecularInversionBendHessian(
           break;
         case InversionBendType::MM3:
         {
-          const Dual<12> t = (acosDual(cosChi) - p[1]) * Units::RadiansToDegrees;
+          const Dual<12> t = (chi - p[1]) * Units::RadiansToDegrees;
           const Dual<12> t2 = t * t;
           U = p[0] * t2 * (1.0 - 0.014 * t + 5.6e-5 * t2 - 7.0e-7 * (t * t2) + 2.2e-8 * (t2 * t2));
           break;

@@ -8,6 +8,7 @@ import double3;
 import double3x3;
 import torsion_potential;
 import minimization_torsion_hessian_geometry;
+import dihedral_derivatives;
 
 std::tuple<double, std::array<double3, 4>, double3x3, Minimization::TorsionHessianGeometry>
 Potentials::Internal::torsionPotentialEnergyGradientHessianStrain(
@@ -35,19 +36,14 @@ Potentials::Internal::torsionPotentialEnergyGradientHessianStrain(
   double cos_phi = std::clamp(double3::dot(dr, ds), -1.0, 1.0);
   const double cos_phi2 = cos_phi * cos_phi;
 
-  auto signed_phi = [&]() -> double
-  {
-    const double3 Pb = double3::cross(Dab, Dcb);
-    const double3 Pc = double3::cross(Dcb, Ddc);
-    // IUPAC sign: positive when, looking from B to C, A turns clockwise onto D (sign of b1 . (b2 x b3), with
-    // b1 = B - A, b2 = C - B, b3 = D - C); as AMBER, CHARMM and LAMMPS. The dot product below is minus that.
-    const double sign = -double3::dot(Dcb, double3::cross(Pb, Pc));
-    return std::copysign(std::acos(cos_phi), sign);
-  };
 
   double U{};
   double DF{};
   double DDF{};
+  // a potential written in phi: dU/dphi and d2U/dphi2, taken with the exact derivatives of phi (see below)
+  std::optional<std::pair<double, double>> phiDerivatives{};
+  const auto exactPhi = [&]() { return Potentials::dihedralAngleDerivatives(posA, posB, posC, posD, true); };
+  std::optional<Potentials::DihedralDerivatives> dihedral{};
 
   switch (type)
   {
@@ -56,15 +52,12 @@ Potentials::Internal::torsionPotentialEnergyGradientHessianStrain(
       break;
     case TorsionType::Harmonic:
     {
-      // (1/2)*p_0*(phi-p_1)^2; defined in terms of phi, contains a sin(phi) singularity
-      double phi = signed_phi();
-      const double sin_phi_raw = std::sin(phi);
-      const double sin_phi = std::copysign(std::max(1.0e-8, std::fabs(sin_phi_raw)), sin_phi_raw);
-      phi -= parameters[1];
+      // (1/2)*p_0*(phi-p_1)^2
+      dihedral = exactPhi();
+      double phi = dihedral->phi - parameters[1];
       phi -= std::rint(phi / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
       U = 0.5 * parameters[0] * phi * phi;
-      DF = -parameters[0] * phi / sin_phi;
-      DDF = -parameters[0] * (phi * cos_phi - sin_phi) / (sin_phi * sin_phi * sin_phi);
+      phiDerivatives = std::pair{parameters[0] * phi, parameters[0]};
       break;
     }
     case TorsionType::HarmonicCosine:
@@ -110,44 +103,28 @@ Potentials::Internal::torsionPotentialEnergyGradientHessianStrain(
     case TorsionType::ModifiedTraPPE:
     {
       // p_0+p_1*(1+cos(phi-p_4))+p_2*(1-cos(2*(phi-p_4)))+p_3*(1+cos(3*(phi-p_4)))
-      double phi = signed_phi();
-      const double sin_phi_raw = std::sin(phi);
-      const double sin_phi = std::copysign(std::max(1.0e-8, std::fabs(sin_phi_raw)), sin_phi_raw);
-      phi -= parameters[4];
+      dihedral = exactPhi();
+      double phi = dihedral->phi - parameters[4];
       phi -= std::rint(phi / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
       const double shifted_cos_phi = std::cos(phi);
-      const double shifted_sin_phi = std::sin(phi);
       const double shifted_cos_phi2 = shifted_cos_phi * shifted_cos_phi;
       U = parameters[0] + parameters[1] + 2.0 * parameters[2] + parameters[3] +
           (parameters[1] - 3.0 * parameters[3]) * shifted_cos_phi - 2.0 * parameters[2] * shifted_cos_phi2 +
           4.0 * parameters[3] * shifted_cos_phi * shifted_cos_phi2;
-      DF = ((parameters[1] - 3.0 * parameters[3]) * shifted_sin_phi -
-            4.0 * parameters[2] * shifted_cos_phi * shifted_sin_phi +
-            12.0 * parameters[3] * shifted_cos_phi2 * shifted_sin_phi) /
-           sin_phi;
-      DDF = -(parameters[1] - 3.0 * parameters[3]) * std::sin(parameters[4]) / (sin_phi * sin_phi * sin_phi) +
-            4.0 * parameters[2] *
-                (shifted_cos_phi2 - shifted_cos_phi * shifted_sin_phi * cos_phi / sin_phi -
-                 shifted_sin_phi * shifted_sin_phi) /
-                (sin_phi * sin_phi) +
-            12.0 * parameters[3] * shifted_cos_phi *
-                (-shifted_cos_phi2 + shifted_cos_phi * shifted_sin_phi * cos_phi / sin_phi +
-                 2.0 * shifted_sin_phi * shifted_sin_phi) /
-                (sin_phi * sin_phi);
+      phiDerivatives = std::pair{-parameters[1] * std::sin(phi) + 2.0 * parameters[2] * std::sin(2.0 * phi) -
+                                     3.0 * parameters[3] * std::sin(3.0 * phi),
+                                 -parameters[1] * std::cos(phi) + 4.0 * parameters[2] * std::cos(2.0 * phi) -
+                                     9.0 * parameters[3] * std::cos(3.0 * phi)};
       break;
     }
     case TorsionType::CVFF:
     {
-      // p_0*(1+cos(p_1*phi-p_2)); defined in terms of phi, contains a sin(phi) singularity
-      const double phi = signed_phi();
-      const double sin_phi_raw = std::sin(phi);
-      const double sin_phi = std::copysign(std::max(1.0e-8, std::fabs(sin_phi_raw)), sin_phi_raw);
-      const double argument = parameters[1] * phi - parameters[2];
+      // p_0*(1+cos(p_1*phi-p_2))
+      dihedral = exactPhi();
+      const double argument = parameters[1] * dihedral->phi - parameters[2];
       U = parameters[0] * (1.0 + std::cos(argument));
-      DF = parameters[0] * parameters[1] * std::sin(argument) / sin_phi;
-      DDF = -(sin_phi * parameters[0] * parameters[1] * parameters[1] * std::cos(argument) -
-              parameters[0] * parameters[1] * std::sin(argument) * cos_phi) /
-            (sin_phi * sin_phi * sin_phi);
+      phiDerivatives = std::pair{-parameters[0] * parameters[1] * std::sin(argument),
+                                 -parameters[0] * parameters[1] * parameters[1] * std::cos(argument)};
       break;
     }
     case TorsionType::CFF:
@@ -228,10 +205,31 @@ Potentials::Internal::torsionPotentialEnergyGradientHessianStrain(
   const double3 dtB = dtA * (d - 1.0) + e * dtD;
   const double3 dtC = -dtD * (e + 1.0) - d * dtA;
 
-  const double3 du_da = DF * dtA;
-  const double3 du_db = DF * dtB;
-  const double3 du_dc = DF * dtC;
-  const double3 du_dd = DF * dtD;
+  double3 du_da = DF * dtA;
+  double3 du_db = DF * dtB;
+  double3 du_dc = DF * dtC;
+  double3 du_dd = DF * dtD;
+  std::optional<std::array<std::array<double, 12>, 12>> cartesianHessian{};
+  if (phiDerivatives.has_value())
+  {
+    // gradient U' grad(phi), Hessian U'' grad(phi) grad(phi)^T + U' Hess(phi): finite at cis and trans
+    const auto [firstDerivative, secondDerivative] = phiDerivatives.value();
+    du_da = firstDerivative * dihedral->gradient[0];
+    du_db = firstDerivative * dihedral->gradient[1];
+    du_dc = firstDerivative * dihedral->gradient[2];
+    du_dd = firstDerivative * dihedral->gradient[3];
+    std::array<std::array<double, 12>, 12> cartesian{};
+    for (std::size_t i = 0; i < 12; ++i)
+    {
+      const double gradientI = (&dihedral->gradient[i / 3].x)[i % 3];
+      for (std::size_t j = 0; j < 12; ++j)
+      {
+        const double gradientJ = (&dihedral->gradient[j / 3].x)[j % 3];
+        cartesian[i][j] = secondDerivative * gradientI * gradientJ + firstDerivative * dihedral->hessian[i][j];
+      }
+    }
+    cartesianHessian = cartesian;
+  }
 
   // Note: Dcb was normalized, so its contribution is scaled back by rbc.
   double3x3 strain_derivative{};
@@ -263,6 +261,7 @@ Potentials::Internal::torsionPotentialEnergyGradientHessianStrain(
   geometry.d = d;
   geometry.e = e;
   geometry.cosPhi = cos_phi;
+  geometry.cartesianHessian = cartesianHessian;
 
   return {U, {du_da, du_db, du_dc, du_dd}, strain_derivative, geometry};
 }

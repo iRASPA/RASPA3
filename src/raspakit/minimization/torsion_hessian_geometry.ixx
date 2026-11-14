@@ -2,6 +2,8 @@ module;
 
 export module minimization_torsion_hessian_geometry;
 
+import std;
+
 import double3;
 
 export namespace Minimization
@@ -31,5 +33,8 @@ struct TorsionHessianGeometry
   double d{};
   double e{};
   double cosPhi{};
+  /// The Cartesian Hessian itself (coordinates A.x .. D.z), for a potential written in phi rather than cos(phi):
+  /// the cos(phi) chain rule (DF, DDF) is singular at cis and trans. When set, it replaces the DF/DDF assembly.
+  std::optional<std::array<std::array<double, 12>, 12>> cartesianHessian{};
 };
 }  // namespace Minimization

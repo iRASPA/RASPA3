@@ -49,9 +49,16 @@ export ElasticConstantsResult computeElasticConstants(const System& system,
 /**
  * Compute the instantaneous affine (Born) tensor at the current configuration.
  *
- * No internal-coordinate relaxation or external-pressure correction is applied.
+ * No internal-coordinate relaxation or external-pressure correction is applied. This is the infinitesimal-strain
+ * (F = I + epsilon) tensor, the Born term of 'computeElasticConstants'.
  */
 export std::array<double, 36> computeAffineBornTensor(const System& system);
+
+/**
+ * The same in the Green-Lagrange strain eta = (F^T F - I) / 2: the Born term of the stress-fluctuation formula, whose
+ * kinetic and fluctuation terms are Green-Lagrange as well.
+ */
+export std::array<double, 36> computeGreenLagrangeBornTensor(const System& system);
 
 /// Elastic constants need cell derivatives, which mixed frameworks do not have; the drivers call this before a run.
 export void throwIfMixedFramework(const System& system);

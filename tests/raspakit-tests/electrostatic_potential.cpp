@@ -539,3 +539,60 @@ TEST(electrostatic_potential, four_ions_with_the_default_polarization_flags)
   EXPECT_NEAR(potential[2] / Units::CoulombicConversionFactor, 0.789214, 1e-5);
   EXPECT_NEAR(potential[3] / Units::CoulombicConversionFactor, 1.03921, 1e-5);
 }
+
+// The potential at an atom is the derivative of the charge energy with respect to its charge, phi_i = dU / dq_i, so a
+// finite difference of the total energy in q_i checks every term at once. A net-charged system with a rigid charged
+// diatomic (an excluded pair): before, the Ewald potential missed the net-charge correction (neutralizing background
+// and the net charge's own images), and the Wolf / damped-shifted-force potential missed the self term and the
+// completion of the shifted pair sum of the excluded pair.
+TEST(electrostatic_potential, potential_is_the_charge_derivative_of_the_energy)
+{
+  for (const ForceField::ChargeMethod method :
+       {ForceField::ChargeMethod::Ewald, ForceField::ChargeMethod::Wolf, ForceField::ChargeMethod::DampedShiftedForce})
+  {
+    ForceField forceField =
+        ForceField({PseudoAtom("a", false, 1.0, 0.0, 0.0, 1, false), PseudoAtom("b", false, 1.0, 0.0, 0.0, 1, false)},
+                   {VDWParameters(0.0, 1.0), VDWParameters(0.0, 1.0)}, ForceField::MixingRule::Lorentz_Berthelot, 12.0,
+                   12.0, 12.0, true, false, true);
+    forceField.chargeMethod = method;
+    if (method != ForceField::ChargeMethod::Ewald)
+    {
+      forceField.omitEwaldFourier = true;
+      forceField.EwaldAlpha = 0.2;
+    }
+
+    Component ion = Component(forceField, "ion", 0.0, 0.0, 0.0,
+                              {Atom(double3(0.0, 0.0, 0.0), 1.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21);
+    Component diatomic = Component(forceField, "diatomic", 0.0, 0.0, 0.0,
+                                   {Atom(double3(0.0, 0.0, 0.0), 0.6, 1.0, 0, 1, 1, false, false),
+                                    Atom(double3(1.2, 0.0, 0.0), -0.3, 1.0, 0, 0, 1, false, false)},
+                                   {}, {}, 5, 21);
+    System system =
+        System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {ion, diatomic}, {}, {2, 1}, 5);
+
+    std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+    ASSERT_EQ(atoms.size(), 4uz);
+    atoms[0].position = double3(3.0, 4.0, 5.0);
+    atoms[1].position = double3(9.5, 6.0, 4.0);
+    atoms[2].position = double3(6.0, 9.0, 8.0);
+    atoms[3].position = double3(7.1, 9.4, 8.3);
+    atoms[1].charge = 0.5;  // net charge 1.8
+
+    system.computeTotalElectrostaticPotential();
+    const std::vector<double> potential(system.spanOfMoleculeElectrostaticPotential().begin(),
+                                        system.spanOfMoleculeElectrostaticPotential().end());
+
+    const double delta = 1e-5;
+    for (std::size_t i = 0; i < atoms.size(); ++i)
+    {
+      atoms[i].charge += delta;
+      const double plus = system.computeTotalEnergies().potentialEnergy();
+      atoms[i].charge -= 2.0 * delta;
+      const double minus = system.computeTotalEnergies().potentialEnergy();
+      atoms[i].charge += delta;
+      const double numerical = (plus - minus) / (2.0 * delta);
+      EXPECT_NEAR(potential[i], numerical, 1e-6 * std::max(1.0, std::abs(numerical)))
+          << "method=" << static_cast<int>(method) << " atom=" << i;
+    }
+  }
+}

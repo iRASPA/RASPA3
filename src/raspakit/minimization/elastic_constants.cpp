@@ -76,7 +76,13 @@ void throwIfMixedFramework(const System& system)
   }
 }
 
-std::array<double, 36> computeAffineBornTensor(const System& system)
+namespace
+{
+// The affine Born tensor from the Hessian H of the energy in the log strain L (F = exp(L)) and its gradient g:
+// subtracting 'geometricFactor' times g : d2F/dL2 gives the infinitesimal-strain tensor C~ = (H - g) / V for a factor
+// of one (F = I + epsilon) and the Green-Lagrange tensor C^eta = (H - 2 g) / V for two (eta = (F^T F - I) / 2): in one
+// dimension d2U/dL2 = U'' + U', d2U/deps2 = U'' and d2U/deta2 = U'' - U' at the reference state.
+std::array<double, 36> affineBornTensor(const System& system, double geometricFactor)
 {
   if (system.hasExternalField) throw std::runtime_error("Elastic constants do not support an external field");
   throwIfMixedFramework(system);
@@ -113,12 +119,17 @@ std::array<double, 36> computeAffineBornTensor(const System& system)
       double geometricTerm = 0.0;
       for (std::size_t coordinate = 0; coordinate < elasticVoigtSize; ++coordinate)
         geometricTerm += secondCoordinates[coordinate] * gradient[*layout.cellDof(coordinate)];
-      elasticAt(born, row, column) = (logStrainHessian - geometricTerm) * inverseVolume;
+      elasticAt(born, row, column) = (logStrainHessian - geometricFactor * geometricTerm) * inverseVolume;
     }
   }
   symmetrizeElasticTensor(born);
   return born;
 }
+}  // namespace
+
+std::array<double, 36> computeAffineBornTensor(const System& system) { return affineBornTensor(system, 1.0); }
+
+std::array<double, 36> computeGreenLagrangeBornTensor(const System& system) { return affineBornTensor(system, 2.0); }
 
 MoleculeCenterOfMass moleculeCenterOfMass(const System& system, const Molecule& molecule, std::size_t groupIndex)
 {
@@ -457,11 +468,17 @@ ElasticConstantsResult computeElasticConstants(const System& system, double rela
   symmetrizeElasticTensor(result.born);
   symmetrizeElasticTensor(result.relaxation);
 
-  for (std::size_t direction = 0; direction < 3; ++direction)
+  // Barron-Klein stress-strain coefficients at the hydrostatic stress -P from the infinitesimal-strain tensor C~:
+  // B = C~ + P delta_ij delta_kl - P/2 (delta_ik delta_jl + delta_il delta_jk), in Voigt notation +P between different
+  // normal strains, 0 on the normal diagonal and -P/2 on the shear diagonal. (The RASPA2 correction, -P on the normal
+  // and -P/2 on the shear diagonal, left every normal entry P too low: an ideal gas came out with bulk modulus zero.)
+  for (std::size_t row = 0; row < 3; ++row)
   {
-    elasticAt(result.pressureCorrection, direction, direction) = -externalPressure;
+    for (std::size_t column = 0; column < 3; ++column)
+    {
+      if (row != column) elasticAt(result.pressureCorrection, row, column) = externalPressure;
+    }
   }
-  // Born-Klein hydrostatic correction in engineering-shear Voigt notation.
   for (std::size_t shear = 3; shear < elasticVoigtSize; ++shear)
   {
     elasticAt(result.pressureCorrection, shear, shear) = -0.5 * externalPressure;

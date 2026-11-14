@@ -970,10 +970,11 @@ void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, con
 {
   if (rigid || cutOffFrameworkVDW <= 0.0 || atoms.empty()) return;
 
-  // Only frameworks whose construction generated a nonbonded van der Waals pair list are replicated.
-  // An empty list means the framework has no nonbonded van der Waals interactions (e.g. a purely bonded
-  // model or a programmatically assembled framework), so there is nothing to extend over replica cells.
-  if (intraMolecularPotentials.vanDerWaals.empty()) return;
+  // Only frameworks whose construction generated the nonbonded van der Waals pair list (and with it the connectivity
+  // table) are replicated; a programmatically assembled framework has neither. An empty generated list is not such a
+  // case: in a small primitive cell every home-cell pair can be bonded (1-2 or 1-3) while the periodic images of the
+  // same pairs, and of each atom with itself, are within the cutoff (returning on an empty list dropped them all).
+  if (connectivityTable.table.empty() && intraMolecularPotentials.vanDerWaals.empty()) return;
 
   const double3 widths = box.perpendicularWidths();
   const double smallestWidth = std::min({widths.x, widths.y, widths.z});

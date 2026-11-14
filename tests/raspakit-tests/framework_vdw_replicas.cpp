@@ -236,3 +236,63 @@ TEST(framework_vdw_replicas, replicas_respect_fixed_and_rigid_groups)
   }
   EXPECT_GT(std::abs(replicaEnergy(rotated) - replicaEnergy(positions)), 1e-3);
 }
+
+// One atom per small cell: the generated home-cell pair list is empty (no pairs), but the atom interacts with its own
+// periodic images within the cutoff. The regeneration returned on the empty list and dropped them all; it now returns
+// only for a framework whose list was never generated (no connectivity table either).
+TEST(framework_vdw_replicas, empty_generated_list_still_gets_the_periodic_images)
+{
+  const double cutOff = 10.0;
+  ForceField forceField({{"C", false, 12.0, 0.0, 0.0, 6, false}}, {{100.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, cutOff, cutOff, cutOff, false, false, false);
+  const SimulationBox box(4.0, 4.5, 5.0);
+  const std::vector<Atom> atoms{Atom({0.1, 0.2, 0.3}, 0.0, 1.0, 0, 0, 0, 0, true)};
+  Framework framework(forceField, "single-atom", box, 1, atoms, atoms, int3(1, 1, 1));
+  framework.rigid = false;
+  framework.generateIntraMolecularPotentials(forceField);
+  ASSERT_TRUE(framework.intraMolecularPotentials.vanDerWaals.empty());
+
+  framework.regenerateVanDerWaalsImageList(forceField, box, cutOff);
+  const double replicaEnergy =
+      Interactions::computeFrameworkIntraMolecularEnergy(forceField, framework, box, framework.atoms).intraVDW;
+  const double referenceEnergy = bruteForceLatticeVanDerWaals(framework.atoms, forceField, box, cutOff, 4);
+  EXPECT_LT(referenceEnergy, -1.0);
+  EXPECT_NEAR(replicaEnergy, referenceEnergy, 1.0e-6 * (1.0 + std::abs(referenceEnergy)));
+}
+
+// A framework 1-4 pair takes the 1-4 parameters of the force field (as the 1-4 pairs of a molecule do), also with a
+// 1-4 scaling of one (as in CHARMM); before, it used the regular table, and the 1-4 pair was recognized by a scaling
+// other than one only.
+TEST(framework_vdw_replicas, framework_one_four_pairs_use_the_one_four_parameters)
+{
+  ForceField forceField({{"C", false, 12.0, 0.0, 0.0, 6, false}}, {{100.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
+  forceField.setPair14SelfInteraction(0, VDWParameters(40.0, 3.4));
+  forceField.preComputeCutOffDependentParameters();
+
+  // a trans-planar butane-like chain, far from its periodic images: one 1-4 pair (0, 3), all others 1-2 or 1-3
+  const SimulationBox box(30.0, 30.0, 30.0);
+  const std::array<double3, 4> positions{double3(10.0, 10.0, 10.0), double3(11.26, 10.89, 10.0),
+                                         double3(12.52, 10.0, 10.0), double3(13.78, 10.89, 10.0)};
+  std::vector<Atom> atoms;
+  for (const double3& position : positions) atoms.emplace_back(box.inverseCell * position, 0.0, 1.0, 0, 0, 0, 0, true);
+
+  for (const double scaling : {1.0, 0.5})
+  {
+    Framework framework(forceField, "chain", box, 1, atoms, atoms, int3(1, 1, 1));
+    framework.rigid = false;
+    framework.intra14VanDerWaalsScaling = scaling;
+    framework.generateIntraMolecularPotentials(forceField);
+    ASSERT_EQ(framework.intraMolecularPotentials.vanDerWaals.size(), 1uz);
+
+    const double3 dr = framework.atoms[0].position - framework.atoms[3].position;
+    const double expected =
+        scaling * Potentials::potentialVDW<0>(forceField.pair14(0, 0), 1.0, 1.0, double3::dot(dr, dr)).energy;
+    const double energy =
+        Interactions::computeFrameworkIntraMolecularEnergy(forceField, framework, box, framework.atoms).intraVDW;
+    EXPECT_NEAR(energy, expected, 1e-10 * std::abs(expected)) << "scaling " << scaling;
+    EXPECT_GT(std::abs(expected -
+                       scaling * Potentials::potentialVDW<0>(forceField, 1.0, 1.0, double3::dot(dr, dr), 0, 0).energy),
+              1.0);
+  }
+}

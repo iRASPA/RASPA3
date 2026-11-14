@@ -21,6 +21,7 @@ import minimization_dof_layout;
 import minimization_generalized_coordinates;
 import minimization;
 import sample_movies;
+import cross_links;
 
 namespace
 {
@@ -273,6 +274,90 @@ TEST(minimization_driver, flexible_methane_pair_reaches_local_minimum)
   EXPECT_TRUE(minimization.results[0].converged);
   EXPECT_LT(minimization.results[0].finalEnergy, minimization.results[0].initialEnergy);
   EXPECT_EQ(minimization.results[0].negativeModes, 0u);
+}
+
+// The phonon primitive-cell reduction keyed the symmetry species on the pseudo-atom type alone: a CsCl-like cell of one
+// type with charges +0.5 and -0.5 reduced to a one-atom cell (the body centre looked like a lattice translation) with
+// the charge of the first atom. With (type, charge) species the two atoms stay inequivalent with their own charges.
+TEST(minimization_driver, primitive_reduction_keeps_atoms_of_one_type_with_distinct_charges)
+{
+  ForceField forceField({{"C", false, 12.0, 0.0, 0.0, 6, false}}, {{100.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 10.0, 10.0, 10.0, false, false, false);
+  const SimulationBox box(6.0, 6.0, 6.0);
+  const Atom atomA({0.0, 0.0, 0.0}, 0.5, 1.0, 0, 0, 0, 0, true);
+  const Atom atomB({0.5, 0.5, 0.5}, -0.5, 1.0, 0, 0, 0, 0, true);
+  Framework framework(forceField, "cscl", box, 1, {atomA, atomB}, {atomA, atomB}, int3(1, 1, 1));
+  framework.rigid = false;
+  framework.frameworkDefinitionName = "cscl";
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, {framework}, {}, {}, {}, 5);
+
+  MinimizationOptions options{};
+  options.maximumNumberOfSteps = 20;
+  options.printEvery = 100;
+  options.computePhononDispersion = true;
+  options.phononDispersionPointsPerSegment = 2;
+  Minimization minimization(options, {system}, false);
+  ASSERT_NO_THROW(minimization.run());
+  ASSERT_TRUE(minimization.results[0].converged);
+
+  const std::span<const Atom> atoms = minimization.systems[0].spanOfFrameworkAtoms();
+  ASSERT_EQ(atoms.size(), 2u);
+  EXPECT_NEAR(atoms[0].charge + atoms[1].charge, 0.0, 1e-12);
+  EXPECT_NEAR(std::abs(atoms[0].charge - atoms[1].charge), 1.0, 1e-12);
+}
+
+// Minimization has no cross-link or polymer-link terms and refuses them instead of pulling linked atoms apart.
+TEST(minimization_driver, minimization_refuses_cross_links)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component methane = Component::makeMethane(forceField, 0);
+  System system =
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {2}, 5);
+  system.crossLinks.bondTypes.push_back(CrossLinkBondType{});
+  system.crossLinks.bondTypes.back().bond = BondPotential({0, 0}, BondType::Harmonic, {1000.0, 3.0});
+  system.crossLinks.links.push_back(CrossLink{{0, 0, 0}, {0, 1, 0}, 0});
+  system.crossLinks.rebuildIndex();
+  MinimizationOptions options{};
+  options.printEvery = 100;
+  Minimization minimization(options, {system}, false);
+  EXPECT_THROW(minimization.run(), std::runtime_error);
+}
+
+// Three methanes on a line are a symmetric saddle of a fixed-cell minimization: the gradient lies along the line, the
+// bending mode is negative with no gradient along it, and the rational-function step shrinks to zero there. The
+// negative-mode escape (before: only for a variable cell) bends the chain off the hilltop into a minimum.
+TEST(minimization_driver, fixed_cell_minimization_escapes_a_symmetric_saddle)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component methane = Component::makeMethane(forceField, 0);
+  System system =
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {3}, 5);
+  for (std::size_t i = 0; i < 3; ++i)
+  {
+    system.moleculeData[i].centerOfMassPosition = double3(8.3 + 4.2 * static_cast<double>(i), 12.5, 12.5);
+    setRigidMoleculePositions(system, i);
+  }
+
+  MinimizationOptions options{};
+  options.maximumNumberOfSteps = 500;
+  options.maximumStepLength = 0.2;
+  options.convergenceFactor = 0.0;
+  options.rmsGradientTolerance = 1e-7;
+  options.maxGradientTolerance = 1e-6;
+  options.printEvery = 500;
+  Minimization minimization(options, {system}, false);
+  ASSERT_NO_THROW(minimization.run());
+
+  ASSERT_EQ(minimization.results.size(), 1u);
+  EXPECT_TRUE(minimization.results[0].converged);
+  EXPECT_EQ(minimization.results[0].negativeModes, 0u);
+
+  // off the line: the middle methane left the axis through the outer two
+  const std::span<const Molecule> molecules = minimization.systems[0].moleculeData;
+  const double3 axis = molecules[2].centerOfMassPosition - molecules[0].centerOfMassPosition;
+  const double3 middle = molecules[1].centerOfMassPosition - molecules[0].centerOfMassPosition;
+  const double3 offAxis = middle - (double3::dot(middle, axis) / double3::dot(axis, axis)) * axis;
+  EXPECT_GT(std::sqrt(double3::dot(offAxis, offAxis)), 0.5);
 }
 
 // The derivative evaluation has no external-field term, so a minimization with an external field is refused for a

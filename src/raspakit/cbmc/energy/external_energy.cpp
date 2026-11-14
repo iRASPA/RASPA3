@@ -112,6 +112,9 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
     else
     {
       energyFactor.dUdlambda = Interactions::analyticExternalFieldEnergy(forceField, posA);
+      // the confining geometry is periodic: test the position wrapped into the unit cell (as the interpolation
+      // grid does), not the unwrapped one against the channel of the home cell
+      const double3 wrappedA = simulationBox.cell * double3::fract(simulationBox.inverseCell * posA);
       switch (forceField.potentialEnergySurfaceType)
       {
         case ForceField::PotentialEnergySurfaceType::None:
@@ -120,32 +123,32 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
           // only available through the interpolation grid ('GridFile' requires 'UseExternalFieldGrid')
           break;
         case ForceField::PotentialEnergySurfaceType::CylinderX:
-          if (!insideCylinder(posA, simulationBox.cell * double3{0.0, 0.5, 0.5},
+          if (!insideCylinder(wrappedA, simulationBox.cell * double3{0.0, 0.5, 0.5},
                               simulationBox.cell * double3{1.0, 0.5, 0.5}))
             return std::nullopt;
           break;
         case ForceField::PotentialEnergySurfaceType::CylinderY:
-          if (!insideCylinder(posA, simulationBox.cell * double3{0.5, 0.0, 0.5},
+          if (!insideCylinder(wrappedA, simulationBox.cell * double3{0.5, 0.0, 0.5},
                               simulationBox.cell * double3{0.5, 1.0, 0.5}))
             return std::nullopt;
           break;
         case ForceField::PotentialEnergySurfaceType::CylinderZ:
-          if (!insideCylinder(posA, simulationBox.cell * double3{0.5, 0.5, 0.0},
+          if (!insideCylinder(wrappedA, simulationBox.cell * double3{0.5, 0.5, 0.0},
                               simulationBox.cell * double3{0.5, 0.5, 1.0}))
             return std::nullopt;
           break;
         case ForceField::PotentialEnergySurfaceType::RectangleX:
-          if (!insideRectangle(posA, simulationBox.cell * double3{0.0, 0.5, 0.5},
+          if (!insideRectangle(wrappedA, simulationBox.cell * double3{0.0, 0.5, 0.5},
                                simulationBox.cell * double3{1.0, 0.5, 0.5}, 1, 2))
             return std::nullopt;
           break;
         case ForceField::PotentialEnergySurfaceType::RectangleY:
-          if (!insideRectangle(posA, simulationBox.cell * double3{0.5, 0.0, 0.5},
+          if (!insideRectangle(wrappedA, simulationBox.cell * double3{0.5, 0.0, 0.5},
                                simulationBox.cell * double3{0.5, 1.0, 0.5}, 2, 0))
             return std::nullopt;
           break;
         case ForceField::PotentialEnergySurfaceType::RectangleZ:
-          if (!insideRectangle(posA, simulationBox.cell * double3{0.5, 0.5, 0.0},
+          if (!insideRectangle(wrappedA, simulationBox.cell * double3{0.5, 0.5, 0.0},
                                simulationBox.cell * double3{0.5, 0.5, 1.0}, 0, 1))
             return std::nullopt;
           break;

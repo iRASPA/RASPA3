@@ -93,10 +93,12 @@ void excludePair(const ForceField &forceField, const SimulationBox &simulationBo
     energy.ewald_exclusion -= scaling * prefactor * exclusion.potential;
     if constexpr (Order >= 1) accumulate(-scaling * prefactor * exclusion.firstDerivativeFactor * dr);
   }
-  else if (forceField.usesRealSpaceChargeCorrections() && !forceField.omitInterInteractions && pairCounted &&
+  else if (forceField.usesRealSpaceChargeCorrections() && !forceField.omitInterInteractions &&
            rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
   {
-    // Completion of the shifted pair sum for the finite-cutoff charge methods: q_i q_j (V(r) - 1/r).
+    // Completion of the shifted pair sum for the finite-cutoff charge methods: q_i q_j (V(r) - 1/r). Like the Ewald
+    // exclusion above (and the intramolecular one) it does not depend on whether the pair sum counted the pair: a
+    // regrowth that left an above-overlap pair out of the external energy (EwaldOnly) still takes it.
     const Potentials::CoulombRealSpaceFactors factors = Potentials::coulombRealSpaceFactors(forceField, r);
     energy.ewald_exclusion += scaling * prefactor * (factors.potential - 1.0 / r);
     if constexpr (Order >= 1)

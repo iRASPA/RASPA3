@@ -401,10 +401,10 @@ void acceptEwaldMove(const ForceField& forceField, EwaldStructureFactor& storedE
 void computeEwaldFourierElectrostaticPotential(
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
-    EwaldStructureFactor& fixedFrameworkStoredEik, [[maybe_unused]] EwaldStructureFactor& storedEik,
-    std::span<double> electricPotentialMolecules, const ForceField& forceField, const SimulationBox& simulationBox,
-    const std::vector<Component>& components, const std::vector<std::size_t>& numberOfMoleculesPerComponent,
-    std::span<const Atom> moleculeAtomPositions);
+    EwaldStructureFactor& fixedFrameworkStoredEik, std::span<double> electricPotentialMolecules,
+    const ForceField& forceField, const SimulationBox& simulationBox, const std::vector<Component>& components,
+    std::span<const Atom> moleculeAtomPositions, double netChargeFramework, const std::optional<Framework>& framework,
+    std::span<const Atom> frameworkAtoms);
 
 /**
  * \brief Computes the electric field at molecule positions using the Ewald Fourier summation.

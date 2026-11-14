@@ -9,6 +9,7 @@ import randomnumbers;
 import double3;
 import double3x3;
 import units;
+import dihedral_derivatives;
 
 TorsionPotential::TorsionPotential(std::array<std::size_t, 4> identifiers, TorsionType type,
                                    std::vector<double> vector_parameters)
@@ -466,7 +467,7 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
                                          const double3 &posD) const
 {
   double cos_phi, cos_phi2, phi;
-  double temp, temp2, sign;
+  double temp, temp2;
   double shifted_cos_phi, shifted_cos_phi2;
 
   double3 Dab = posA - posB;
@@ -498,9 +499,8 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // ===============================================
       // p_0/k_B [K/rad^2]
       // p_1     [degrees]
-      // IUPAC sign (as AMBER, CHARMM and LAMMPS): minus this dot product
-      sign = -double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
-      phi = std::copysign(std::acos(cos_phi), sign);
+      // IUPAC sign (as AMBER, CHARMM and LAMMPS), from atan2: exact at cis and trans
+      phi = Potentials::dihedralAngle(posA, posB, posC, posD);
       temp = phi - parameters[1];
       temp -= std::rint(temp / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
       temp2 = temp * temp;
@@ -560,9 +560,8 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       add phase in cos function:
       p_0+p_1*(1+cos(phi-p_4))+p_2*(1-cos(2*(phi-p_4)))+p_3*(1+cos(3*(phi-p_4)))
      */
-      // IUPAC sign (as AMBER, CHARMM and LAMMPS): minus this dot product
-      sign = -double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
-      phi = std::copysign(std::acos(cos_phi), sign);
+      // IUPAC sign (as AMBER, CHARMM and LAMMPS), from atan2: exact at cis and trans
+      phi = Potentials::dihedralAngle(posA, posB, posC, posD);
       phi -= parameters[4];  // shift Phi as Phi+parameters[4]
       phi -= std::rint(phi / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
       shifted_cos_phi = std::cos(phi);
@@ -577,10 +576,8 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // p_1     [-]
       // p_2     [degrees]
       // potential defined in terms of 'phi' and therefore contains a singularity
-      // the sign of the angle-phi is the IUPAC one (as AMBER, CHARMM and LAMMPS): positive if (Rab x Rbc) x
-      // (Rbc x Rcd) points against Rbc, negative otherwise
-      sign = -double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
-      phi = std::copysign(std::acos(cos_phi), sign);
+      // the sign of the angle-phi is the IUPAC one (as AMBER, CHARMM and LAMMPS)
+      phi = Potentials::dihedralAngle(posA, posB, posC, posD);
       return parameters[0] * (1.0 + std::cos(parameters[1] * phi - parameters[2]));
     case TorsionType::CFF:
       // p_0*(1-cos(phi))+p_1*(1-cos(2*phi))+p_2*(1-cos(3*phi))
@@ -668,9 +665,13 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
 std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentialEnergyGradientStrain(
     const double3 &posA, const double3 &posB, const double3 &posC, const double3 &posD) const
 {
-  double cos_phi, cos_phi2, phi, sign;
+  double cos_phi, cos_phi2, phi;
   double temp, temp2, shifted_cos_phi, shifted_cos_phi2;
   double U{}, DF{};
+  // a potential written in phi: dU/dphi with the exact gradient of phi (the cos(phi) chain rule divides by
+  // sin(phi), which vanishes at cis and trans while the gradient of phi does not)
+  std::optional<double> dUdPhi{};
+  std::optional<Potentials::DihedralDerivatives> dihedral{};
   double3 du_da, du_db, du_dc, du_dd;
   double3x3 strain_derivative{};
 
@@ -695,15 +696,6 @@ std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentia
   cos_phi = std::clamp(cos_phi, -1.0, 1.0);
   cos_phi2 = cos_phi * cos_phi;
 
-  auto signed_phi = [&]() -> double
-  {
-    double3 Pb = double3::cross(Dab, Dcb_unit);
-    double3 Pc = double3::cross(Dcb_unit, Ddc);
-    // IUPAC sign: positive when, looking from B to C, A turns clockwise onto D (sign of b1 . (b2 x b3), with
-    // b1 = B - A, b2 = C - B, b3 = D - C); as AMBER, CHARMM and LAMMPS. The dot product below is minus that.
-    sign = -double3::dot(Dcb_unit, double3::cross(Pb, Pc));
-    return std::copysign(std::acos(cos_phi), sign);
-  };
 
   switch (type)
   {
@@ -713,12 +705,11 @@ std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentia
       break;
     case TorsionType::Harmonic:
     {
-      phi = signed_phi();
-      const double sin_phi = std::copysign(std::max(1.0e-8, std::fabs(std::sin(phi))), std::sin(phi));
-      phi -= parameters[1];
+      dihedral = Potentials::dihedralAngleDerivatives(posA, posB, posC, posD, false);
+      phi = dihedral->phi - parameters[1];
       phi -= std::rint(phi / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
       U = 0.5 * parameters[0] * phi * phi;
-      DF = -parameters[0] * phi / sin_phi;
+      dUdPhi = parameters[0] * phi;
       break;
     }
     case TorsionType::HarmonicCosine:
@@ -751,29 +742,24 @@ std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentia
       break;
     case TorsionType::ModifiedTraPPE:
     {
-      phi = signed_phi();
-      const double sin_phi = std::copysign(std::max(1.0e-8, std::fabs(std::sin(phi))), std::sin(phi));
-      phi -= parameters[4];
+      dihedral = Potentials::dihedralAngleDerivatives(posA, posB, posC, posD, false);
+      phi = dihedral->phi - parameters[4];
       phi -= std::rint(phi / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
       shifted_cos_phi = std::cos(phi);
-      const double shifted_sin_phi = std::sin(phi);
       shifted_cos_phi2 = shifted_cos_phi * shifted_cos_phi;
       U = parameters[0] + parameters[1] + 2.0 * parameters[2] + parameters[3] +
           (parameters[1] - 3.0 * parameters[3]) * shifted_cos_phi - 2.0 * parameters[2] * shifted_cos_phi2 +
           4.0 * parameters[3] * shifted_cos_phi * shifted_cos_phi2;
-      DF = ((parameters[1] - 3.0 * parameters[3]) * shifted_sin_phi -
-            4.0 * parameters[2] * shifted_cos_phi * shifted_sin_phi +
-            12.0 * parameters[3] * shifted_cos_phi2 * shifted_sin_phi) /
-           sin_phi;
+      dUdPhi = -parameters[1] * std::sin(phi) + 2.0 * parameters[2] * std::sin(2.0 * phi) -
+               3.0 * parameters[3] * std::sin(3.0 * phi);
       break;
     }
     case TorsionType::CVFF:
     {
-      phi = signed_phi();
-      const double sin_phi = std::copysign(std::max(1.0e-8, std::fabs(std::sin(phi))), std::sin(phi));
-      temp = parameters[1] * phi - parameters[2];
+      dihedral = Potentials::dihedralAngleDerivatives(posA, posB, posC, posD, false);
+      temp = parameters[1] * dihedral->phi - parameters[2];
       U = parameters[0] * (1.0 + std::cos(temp));
-      DF = parameters[0] * parameters[1] * std::sin(temp) / sin_phi;
+      dUdPhi = -parameters[0] * parameters[1] * std::sin(temp);
       break;
     }
     case TorsionType::CFF:
@@ -852,6 +838,13 @@ std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentia
   du_db = DF * dtB;
   du_dc = DF * dtC;
   du_dd = DF * dtD;
+  if (dUdPhi.has_value())
+  {
+    du_da = dUdPhi.value() * dihedral->gradient[0];
+    du_db = dUdPhi.value() * dihedral->gradient[1];
+    du_dc = dUdPhi.value() * dihedral->gradient[2];
+    du_dd = dUdPhi.value() * dihedral->gradient[3];
+  }
 
   strain_derivative.ax += Dab.x * du_da.x + Dcb.x * (du_dc.x + du_dd.x) + Ddc.x * du_dd.x;
   strain_derivative.bx += Dab.y * du_da.x + Dcb.y * (du_dc.x + du_dd.x) + Ddc.y * du_dd.x;

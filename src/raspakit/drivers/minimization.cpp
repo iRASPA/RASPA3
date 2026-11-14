@@ -184,13 +184,25 @@ bool reduceSystemToPrimitiveFramework(System& system, double symmetryPrecision)
   const std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   if (frameworkAtoms.empty()) return false;
 
+  // The symmetry species is the pair (type, charge): atoms of one pseudo-atom type with distinct partial charges (as
+  // from REPEAT, DDEC or EQeq) are symmetry-inequivalent, and keying on the type alone merged them and gave all the
+  // charge of the first one.
+  struct Species
+  {
+    std::size_t type;
+    double charge;
+  };
+  std::vector<Species> species;
+  std::map<std::pair<std::size_t, std::int64_t>, std::size_t> speciesForTypeAndCharge;
   std::vector<std::tuple<double3, std::size_t, double>> atoms;
   atoms.reserve(frameworkAtoms.size());
-  std::unordered_map<std::size_t, double> chargeForType;
   for (const Atom& atom : frameworkAtoms)
   {
-    atoms.emplace_back(box.inverseCell * atom.position, static_cast<std::size_t>(atom.type), 1.0);
-    chargeForType.try_emplace(static_cast<std::size_t>(atom.type), atom.charge);
+    const std::size_t type = static_cast<std::size_t>(atom.type);
+    const std::int64_t chargeKey = std::llround(atom.charge * 1.0e6);
+    const auto [entry, inserted] = speciesForTypeAndCharge.try_emplace({type, chargeKey}, species.size());
+    if (inserted) species.push_back({type, atom.charge});
+    atoms.emplace_back(box.inverseCell * atom.position, entry->second, 1.0);
   }
 
   std::optional<SKSpaceGroup::FoundPrimitiveCellInfo> primitive =
@@ -202,11 +214,12 @@ bool reduceSystemToPrimitiveFramework(System& system, double symmetryPrecision)
 
   std::vector<Atom> primitiveFractionalAtoms;
   primitiveFractionalAtoms.reserve(primitive->atoms.size());
-  for (const auto& [fractional, type, occupancy] : primitive->atoms)
+  for (const auto& [fractional, speciesIndex, occupancy] : primitive->atoms)
   {
-    const auto charge = chargeForType.find(type);
-    primitiveFractionalAtoms.emplace_back(fractional, charge != chargeForType.end() ? charge->second : 0.0, 1.0, 0,
-                                          static_cast<std::uint16_t>(type), 0, 0, static_cast<std::uint8_t>(true));
+    const Species& atomSpecies = species.at(speciesIndex);
+    primitiveFractionalAtoms.emplace_back(fractional, atomSpecies.charge, 1.0, 0,
+                                          static_cast<std::uint16_t>(atomSpecies.type), 0, 0,
+                                          static_cast<std::uint8_t>(true));
   }
 
   try
@@ -658,6 +671,13 @@ void Minimization::runPhase()
           "Minimization does not support an external field: the derivative evaluation has no "
           "external-field term");
     }
+    // nor cross-link or polymer-link terms: the linked atoms would be pushed apart by their full non-bonded repulsion
+    if (!system.crossLinks.empty() || !system.polymerLinks.empty())
+    {
+      throw std::runtime_error(
+          "Minimization does not support cross-links or polymer links: the derivative evaluation has no link "
+          "bonded terms or link exclusions");
+    }
     if (options.computeElasticConstants) throwIfMixedFramework(system);
     const MinimizationDofLayout layout = buildMinimizationDofLayout(
         system.moleculeData, system.components, numberOfFrameworkAtoms, cellLayout.size(), frameworkPtr);
@@ -682,9 +702,10 @@ void Minimization::runPhase()
       {
         throw std::runtime_error(std::format("Minimization system {} produced a non-finite energy", systemIndex));
       }
-      bool negativeModeEscape = false;
       BakerStep step = computeBakerStep(hessian.positionPosition(), gradient, options);
-      negativeModeEscape = !cellLayout.empty() && useNegativeModeEscape(step, gradient, options);
+      // also for a fixed cell: at a symmetric saddle the gradient has no component along the negative mode, the
+      // rational-function step vanishes, and the minimization sat on the hilltop until the step limit
+      const bool negativeModeEscape = useNegativeModeEscape(step, gradient, options);
       clipCellStep(step, layout, cellLayout, options.maximumCellStepLength);
       if (iteration == 0)
       {

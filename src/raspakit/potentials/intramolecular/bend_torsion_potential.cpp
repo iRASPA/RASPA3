@@ -137,6 +137,27 @@ static double smoothing(double theta)
   return (off - theta) * (off - theta) * (off + 2.0 * theta - 3.0 * on) / ((off - on) * (off - on) * (off - on));
 }
 
+bool BendTorsionPotential::smoothingVanishes(BendTorsionType type, double theta1, double theta2)
+{
+  // S ~ 98 (pi - theta)^2 near 180 degrees: below this the bend is straight to ~1e-11 rad, the dihedral arm is zero or
+  // pure round-off, and the term with its derivatives is zero to machine precision
+  constexpr double negligibleSmoothing = 1.0e-20;
+
+  switch (type)
+  {
+    case BendTorsionType::Smoothed:
+    case BendTorsionType::SmoothedThreeCosine:
+    case BendTorsionType::SmoothedCFF:
+    case BendTorsionType::SmoothedCFF2:
+    case BendTorsionType::SmoothedCFF3:
+      return smoothing(theta1) < negligibleSmoothing || smoothing(theta2) < negligibleSmoothing;
+    case BendTorsionType::Nicholas:
+      return smoothing(theta1) < negligibleSmoothing;
+    default:
+      return false;
+  }
+}
+
 double BendTorsionPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC,
                                              const double3 &posD) const
 {
@@ -159,6 +180,9 @@ double BendTorsionPotential::calculateEnergy(const double3 &posA, const double3 
   double dot_cd = double3::dot(Dcd, Dbc);
   double cos_theta2 = std::clamp(-dot_cd / r_cd, -1.0, 1.0);
   double theta2 = std::acos(cos_theta2);
+
+  // a smoothed term vanishes at a straight bend, where the dihedral is undefined (normalizing a zero arm gave NaN)
+  if (smoothingVanishes(type, theta1, theta2)) return 0.0;
 
   double3 dr = (Dab - dot_ab * Dbc).normalized();
   double3 ds = (Dcd - dot_cd * Dbc).normalized();
@@ -273,6 +297,10 @@ std::tuple<double, std::array<double3, 4>, double3x3> BendTorsionPotential::pote
   double cos_theta2 = std::clamp(-dot_cd / rcd, -1.0, 1.0);
   double theta2 = std::acos(cos_theta2);
   double sin_theta2 = std::max(1.0e-8, std::sqrt(1.0 - cos_theta2 * cos_theta2));
+
+  // a smoothed term vanishes with its gradient at a straight bend, where the dihedral is undefined (normalizing a zero
+  // arm gave NaN, and 0 times NaN poisoned the energy and the gradient)
+  if (smoothingVanishes(type, theta1, theta2)) return {0.0, {}, double3x3{}};
 
   double3 dr = (Dab_vec - dot_ab * Dbc).normalized();
   double3 ds = (Dcd_vec - dot_cd * Dbc).normalized();

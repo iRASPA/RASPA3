@@ -105,12 +105,19 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const ForceFiel
     const double3 dr =
         shiftedPosition(A, images.vanDerWaals[index][0]) - shiftedPosition(B, images.vanDerWaals[index][1]);
     const double rr = double3::dot(dr, dr);
-    const bool isScaled14 =
-        pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0;
-    if (isScaled14 || rr < forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW)
+    // the 1-4 pair (at its bonded, minimum image; whatever its scaling) takes the 1-4 parameters of the force field,
+    // and like every pair (and the 1-4 pairs of a molecule) it ends at the cutoff
+    bool is14 = pairs14.contains({std::min(A, B), std::max(A, B)});
+    if (is14)
+    {
+      const double3 minimumImage = simulationBox.applyPeriodicBoundaryConditions(dr);
+      is14 = rr <= double3::dot(minimumImage, minimumImage) * (1.0 + 1.0e-10);
+    }
+    if (rr < forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW)
     {
       const Potentials::PairDerivatives<0> factor = Potentials::potentialVDW<0>(
-          forceField, 1.0, 1.0, rr, static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type));
+          forceField.pair(static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type), is14), 1.0,
+          1.0, rr);
       energy.intraVDW += potential.scaling * factor.energy;
     }
   }
@@ -240,12 +247,19 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
     const double3 dr =
         shiftedPosition(A, images.vanDerWaals[index][0]) - shiftedPosition(B, images.vanDerWaals[index][1]);
     const double rr = double3::dot(dr, dr);
-    const bool isScaled14 =
-        pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0;
-    if (isScaled14 || rr < forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW)
+    // the 1-4 pair (at its bonded, minimum image; whatever its scaling) takes the 1-4 parameters of the force field,
+    // and like every pair (and the 1-4 pairs of a molecule) it ends at the cutoff
+    bool is14 = pairs14.contains({std::min(A, B), std::max(A, B)});
+    if (is14)
+    {
+      const double3 minimumImage = simulationBox.applyPeriodicBoundaryConditions(dr);
+      is14 = rr <= double3::dot(minimumImage, minimumImage) * (1.0 + 1.0e-10);
+    }
+    if (rr < forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW)
     {
       const Potentials::PairDerivatives<1> factor = Potentials::potentialVDW<1>(
-          forceField, 1.0, 1.0, rr, static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type));
+          forceField.pair(static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type), is14), 1.0,
+          1.0, rr);
       accumulateRadial(A, B, dr, factor, potential.scaling, energy.intraVDW);
     }
   }
@@ -384,11 +398,19 @@ std::pair<RunningEnergy, double3x3> Interactions::computeFrameworkIntraMolecular
     const double3 dr =
         shiftedPosition(A, images.vanDerWaals[index][0]) - shiftedPosition(B, images.vanDerWaals[index][1]);
     const double rr = double3::dot(dr, dr);
-    const bool isScaled14 = pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0;
-    if (isScaled14 || rr < forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW)
+    // the 1-4 pair (at its bonded, minimum image; whatever its scaling) takes the 1-4 parameters of the force field,
+    // and like every pair (and the 1-4 pairs of a molecule) it ends at the cutoff
+    bool is14 = pairs14.contains({std::min(A, B), std::max(A, B)});
+    if (is14)
+    {
+      const double3 minimumImage = simulationBox.applyPeriodicBoundaryConditions(dr);
+      is14 = rr <= double3::dot(minimumImage, minimumImage) * (1.0 + 1.0e-10);
+    }
+    if (rr < forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW)
     {
       const Potentials::PairDerivatives<1> factor = Potentials::potentialVDW<1>(
-          forceField, 1.0, 1.0, rr, static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type));
+          forceField.pair(static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type), is14), 1.0,
+          1.0, rr);
       energy.intraVDW += potential.scaling * factor.energy;
       const double3 gradient = potential.scaling * factor.firstDerivativeFactor * dr;
       addMobileGradient(A, gradient);

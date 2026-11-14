@@ -183,6 +183,15 @@ Dual<N> sqrtDual(const Dual<N>& u)
 }
 
 template <std::size_t N>
+Dual<N> asinDual(const Dual<N>& u)
+{
+  const double x = u.v;
+  const double oneMinus = 1.0 - x * x;
+  const double root = std::sqrt(oneMinus);
+  return applyUnary(u, std::asin(x), 1.0 / root, x / (oneMinus * root));
+}
+
+template <std::size_t N>
 Dual<N> acosDual(const Dual<N>& u)
 {
   const double x = u.v;
