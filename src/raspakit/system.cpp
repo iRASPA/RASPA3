@@ -653,8 +653,13 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
   loadings = LoadingData(components.size(), numberOfIntegerMoleculesPerComponent, simulationBox);
   averageLoadings.addSample(currentBlock, loadings, w);
 
-  EnthalpyOfAdsorptionTerms enthalpyTerms = EnthalpyOfAdsorptionTerms(
-      swappableComponents, numberOfIntegerMoleculesPerComponent, runningEnergies.potentialEnergy(), temperature);
+  // in an isobaric open ensemble (muPT) the volume fluctuates with N: the enthalpy is U + P V
+  const bool isobaric = thermobarostat.has_value() ||
+                        mc_moves_probabilities.getProbability(Move::Types::VolumeChange) > 0.0 ||
+                        mc_moves_probabilities.getProbability(Move::Types::AnisotropicVolumeChange) > 0.0;
+  const double enthalpy = runningEnergies.potentialEnergy() + (isobaric ? pressure * simulationBox.volume : 0.0);
+  EnthalpyOfAdsorptionTerms enthalpyTerms =
+      EnthalpyOfAdsorptionTerms(swappableComponents, numberOfIntegerMoleculesPerComponent, enthalpy, temperature);
   averageEnthalpiesOfAdsorption.addSample(currentBlock, enthalpyTerms, w);
 
   PartialMolarPropertiesTerms partialMolarTerms =
@@ -662,9 +667,8 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
                                   runningEnergies.potentialEnergy(), simulationBox.volume);
   averagePartialMolarProperties.addSample(currentBlock, partialMolarTerms, w);
 
-  std::size_t numberOfMolecules =
-      std::accumulate(numberOfIntegerMoleculesPerComponent.begin(), numberOfIntegerMoleculesPerComponent.end(), 0uz);
-  double currentIdealPressure = static_cast<double>(numberOfMolecules) / (beta * simulationBox.volume);
+  // the mobile framework points count with the molecules (an empty flexible framework reported only its virial)
+  double currentIdealPressure = static_cast<double>(numberOfIdealGasPressurePoints()) / (beta * simulationBox.volume);
 
   averagePressure.addSample(currentBlock, currentIdealPressure, currentExcessPressureTensor, w);
 
@@ -866,6 +870,14 @@ bool System::conservesCenterOfMassMomentum() const noexcept
   {
     if (!framework->hasMobileAtoms() || framework->numberOfFixedAtoms() > 0) return false;
     return numberOfFrameworkAtoms + spanOfMoleculeAtoms().size() > 1uz;
+  }
+  // A single flexible (or semi-flexible) molecule of several atoms conserves its centre-of-mass momentum as well: its
+  // translational degrees of freedom are 3 N - 3 (the drift is removed), not 3 N. A single rigid molecule keeps its
+  // three, as before.
+  if (numberOfMolecules() == 1uz)
+  {
+    const Molecule& molecule = moleculeData.front();
+    return molecule.numberOfAtoms > 1uz && !components[molecule.componentId].rigid;
   }
   return numberOfMolecules() > 1uz;
 }
@@ -1649,9 +1661,63 @@ bool System::forceBasedRDFSampleDue(std::size_t currentCycle) const
 void System::sampleForceBasedRDFFromCurrentGradients(std::size_t currentCycle, std::size_t currentBlock)
 {
   if (!propertyRadialDistributionFunction.has_value()) return;
-  propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), spanOfFrameworkDynamics(),
-                                             moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
-                                             currentCycle, currentBlock);
+
+  // the force-based estimator needs the force along the free displacement of each site: a site of a rigid molecule,
+  // fragment or framework group moves with its body and carries the total force of the body (the constraint forces
+  // cancel in the sum), and a fixed framework site does not move at all
+  std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
+  std::span<const AtomDynamics> moleculeDynamics = spanOfMoleculeDynamics();
+  std::vector<double3> moleculeGradients(moleculeAtoms.size());
+  for (const Molecule& molecule : moleculeData)
+  {
+    const Component& component = components[molecule.componentId];
+    std::vector<double3> bodyGradients(component.rigid ? 1uz : component.fragmentGraph.fragments.size());
+    std::vector<std::optional<std::size_t>> bodyOfAtom(molecule.numberOfAtoms);
+    for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+    {
+      bodyOfAtom[i] = component.rigid ? std::optional<std::size_t>(0uz) : component.rigidFragmentContaining(i);
+      if (bodyOfAtom[i].has_value()) bodyGradients[*bodyOfAtom[i]] += moleculeDynamics[molecule.atomIndex + i].gradient;
+    }
+    for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+    {
+      moleculeGradients[molecule.atomIndex + i] =
+          bodyOfAtom[i].has_value() ? bodyGradients[*bodyOfAtom[i]] : moleculeDynamics[molecule.atomIndex + i].gradient;
+    }
+  }
+
+  std::span<const Atom> frameworkAtoms = spanOfFrameworkAtoms();
+  std::span<const AtomDynamics> frameworkDynamics = spanOfFrameworkDynamics();
+  std::vector<double3> frameworkGradients(frameworkAtoms.size());
+  std::vector<std::uint8_t> frameworkMobile(frameworkAtoms.size());
+  if (framework.has_value() && frameworkDynamics.size() == frameworkAtoms.size())
+  {
+    std::vector<double3> groupGradients(framework->groups.size());
+    for (std::size_t i = 0; i != frameworkAtoms.size(); ++i)
+    {
+      if (framework->isMixed() && i < framework->atomGroupIds.size() &&
+          framework->groups[framework->atomGroupIds[i]].isRigidBody())
+      {
+        groupGradients[framework->atomGroupIds[i]] += frameworkDynamics[i].gradient;
+      }
+    }
+    for (std::size_t i = 0; i != frameworkAtoms.size(); ++i)
+    {
+      if (framework->isFlexibleAtom(i))
+      {
+        frameworkGradients[i] = frameworkDynamics[i].gradient;
+        frameworkMobile[i] = 1;
+      }
+      else if (framework->isMixed() && !framework->isFixedAtom(i) && i < framework->atomGroupIds.size() &&
+               framework->groups[framework->atomGroupIds[i]].isRigidBody())
+      {
+        frameworkGradients[i] = groupGradients[framework->atomGroupIds[i]];
+        frameworkMobile[i] = 1;
+      }
+    }
+  }
+
+  propertyRadialDistributionFunction->sample(simulationBox, beta, frameworkAtoms, frameworkGradients, frameworkMobile,
+                                             moleculeAtoms, moleculeGradients, currentCycle, currentBlock);
 }
 
 void System::sampleForceBasedRDFWithFullGradients(std::size_t currentCycle, std::size_t currentBlock)

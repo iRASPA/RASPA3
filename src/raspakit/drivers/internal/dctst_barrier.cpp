@@ -95,9 +95,10 @@ double3 DcTSTBarrier::randomPointOnPlane(RandomNumber& random, const SimulationB
 
 double3 DcTSTBarrier::projectOntoPlane(const SimulationBox& simulationBox, double3 r, double offset) const
 {
+  // onto the plane of this barrier (q = offset), not onto the nearest of its periodic images q = k lambda + offset:
+  // the cages of the other molecules are counted from q = 0
   const double q = projection(simulationBox, r);
-  const double reduced = reducedCoordinate(q);
-  return r + (offset - reduced) * normal;
+  return r + (offset - q) * normal;
 }
 
 // =================================================================================================

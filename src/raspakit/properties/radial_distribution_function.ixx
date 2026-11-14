@@ -6,6 +6,7 @@ import std;
 
 import archive;
 import atom;
+import double3;
 import atom_dynamics;
 import molecule;
 import simulationbox;
@@ -34,7 +35,7 @@ export struct PropertyRadialDistributionFunction
   {
   }
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   /// Channel index of an ordered pseudo-atom pair.
   std::size_t channel(std::size_t atomTypeA, std::size_t atomTypeB) const
@@ -51,20 +52,11 @@ export struct PropertyRadialDistributionFunction
   {
     return histogram.averaged(channel(atomTypeA, atomTypeB));
   }
-  /// g(r) and its error. Each bin holds the force sum S(r) of the pairs beyond r (Borgis et al.), which vanishes at
-  /// the end of the range and is largest at contact: anchored by g(0) = 0, g(r) = 1 - S(r) / S(0) whatever the sign
-  /// of S (the raw sums were returned, and the output divided by |S(0)|, which put g(0) at 2 when S(0) > 0).
-  /// Without a force signal (every bin zero) g(r) = 1.
+  /// g(r) and its error. Each bin holds, per sample, the force integral of the pairs closer than r (Borgis et al.)
+  /// with its absolute normalisation, integrated from g(0) = 0: no assumption on g at the end of the range.
   std::pair<std::vector<double>, std::vector<double>> result(std::size_t atomTypeA, std::size_t atomTypeB) const
   {
-    auto [average, error] = histogram.average(channel(atomTypeA, atomTypeB));
-    const double anchor = average.empty() ? 0.0 : average[0];
-    for (std::size_t bin = 0; bin < average.size(); ++bin)
-    {
-      average[bin] = anchor != 0.0 ? 1.0 - average[bin] / anchor : 1.0;
-      error[bin] = anchor != 0.0 ? error[bin] / std::abs(anchor) : 0.0;
-    }
-    return {average, error};
+    return histogram.average(channel(atomTypeA, atomTypeB));
   }
 
   std::size_t numberOfPseudoAtoms{};
@@ -76,9 +68,12 @@ export struct PropertyRadialDistributionFunction
   BlockHistogram<double> histogram;
   std::vector<std::size_t> pairCount;
 
-  void sample(const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
-              std::span<const AtomDynamics> frameworkDynamics, const std::vector<Molecule> &molecules,
-              std::span<const Atom> moleculeAtoms, std::span<const AtomDynamics> moleculeDynamics,
+  /// 'frameworkGradients' and 'moleculeGradients' are the gradients of the bodies the sites move with (the atom
+  /// itself, or its rigid molecule, fragment or group); a framework site whose 'frameworkMobile' entry is zero does
+  /// not move and contributes the force on its partner only.
+  void sample(const SimulationBox &simulationBox, double beta, std::span<const Atom> frameworkAtoms,
+              std::span<const double3> frameworkGradients, std::span<const std::uint8_t> frameworkMobile,
+              std::span<const Atom> moleculeAtoms, std::span<const double3> moleculeGradients,
               std::size_t currentCycle, std::size_t block);
   void writeOutput(const ForceField &forceField, std::size_t systemId, double volume,
                    std::vector<std::size_t> &numberOfPseudoAtomsType, std::size_t currentCycle);

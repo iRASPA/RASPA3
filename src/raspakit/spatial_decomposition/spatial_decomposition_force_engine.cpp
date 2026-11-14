@@ -936,6 +936,8 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
         system.thermostat->NoseHooverNVT(residentKinetic.translational, residentKinetic.rotational);
     scaling.translational *= factor.first;
     scaling.rotational *= factor.second;
+    // the barostat kick follows the particle chain: it takes the kinetic virial of the scaled velocities
+    residentKinetic.virialTrace *= factor.first * factor.first;
   }
   if (barostat != nullptr)
   {
@@ -1038,10 +1040,10 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
   {
     const double mtkFactor =
         1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat->translationalDegreesOfFreedom));
-    const double scalarForce =
-        3.0 *
-        (pressureTensor.trace() + mtkFactor * kinetic.virialTrace - 3.0 * barostat->pressure * box.volume) /
-        barostat->logVolumeMass;
+    const double scalarForce = 3.0 *
+                               (pressureTensor.trace() + mtkFactor * kinetic.virialTrace +
+                                barostat->centerOfMassConstraintForce() - 3.0 * barostat->pressure * box.volume) /
+                               barostat->logVolumeMass;
     barostat->logVolumeVelocity += 0.5 * dt * scalarForce;
     const double finalScale = barostat->chainStep(barostat->barostatKineticEnergy());
     barostat->logVolumeVelocity *= finalScale;
@@ -1072,10 +1074,11 @@ DeviceResident::Coupling SpatialDecompositionForceEngine::residentBarostatFirstH
   const double dt = system.timeStep;
   const double mtkFactor =
       1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
-  const double scalarForce = 3.0 *
-                             (pressureVirialTrace + mtkFactor * residentKinetic.virialTrace -
-                              3.0 * barostat.pressure * system.simulationBox.volume) /
-                             barostat.logVolumeMass;
+  const double scalarForce =
+      3.0 *
+      (pressureVirialTrace + mtkFactor * residentKinetic.virialTrace + barostat.centerOfMassConstraintForce() -
+       3.0 * barostat.pressure * system.simulationBox.volume) /
+      barostat.logVolumeMass;
   barostat.logVolumeVelocity += 0.5 * dt * scalarForce;
   const double rate = barostat.logVolumeVelocity / 3.0;
   const double3x3 cellRate(rate, rate, rate);

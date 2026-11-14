@@ -55,7 +55,7 @@ export struct PropertyDensityGrid
   {
   }
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   std::size_t numberOfFrameworks;
   std::size_t numberOfComponents;
@@ -71,6 +71,7 @@ export struct PropertyDensityGrid
   Normalization normType{Normalization::Max};
   Binning binningMode{Binning::Standard};
   std::size_t numberOfSamples{0};
+  double volumeSum{0.0};  ///< Sum of the box volumes of the samples (the number density uses their average).
 
   void sample(const std::optional<Framework> &frameworks, const SimulationBox &simulationBox,
               std::span<const Atom> moleculeAtoms, std::size_t currentCycle);

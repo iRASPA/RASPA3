@@ -147,17 +147,24 @@ void ParallelThermodynamicIntegration::setup()
 #ifdef VERSION
 #define QUOTE(str) #str
 #define EXPAND_AND_QUOTE(str) QUOTE(str)
-  outputJson["version"] = EXPAND_AND_QUOTE(VERSION);
 #endif
-  outputJson["seed"] = random.seed;
-  outputJson["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
-  outputJson["initialization"]["units"] = Units::jsonStatus();
-  outputJson["initialization"]["initialConditions"] = front.jsonSystemStatus();
-  outputJson["initialization"]["forceField"] = front.forceField.jsonForceFieldStatus();
-  outputJson["initialization"]["forceField"]["pseudoAtoms"] = front.forceField.jsonPseudoAtomStatus();
-  outputJson["initialization"]["components"] = front.jsonComponentStatus();
-  outputJson["initialization"]["numberOfLambdaBins"] = numberOfLambdaBins;
-  outputJson["initialization"]["lambdaExchangeEvery"] = lambdaExchangeEvery;
+  // the header and the initial conditions of the run are those of its start: a resumed run has them from the
+  // binary restart (they used to be written again from the state the restart was taken in)
+  if (!resumedFromBinaryRestart)
+  {
+#ifdef VERSION
+    outputJson["version"] = EXPAND_AND_QUOTE(VERSION);
+#endif
+    outputJson["seed"] = random.seed;
+    outputJson["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
+    outputJson["initialization"]["units"] = Units::jsonStatus();
+    outputJson["initialization"]["initialConditions"] = front.jsonSystemStatus();
+    outputJson["initialization"]["forceField"] = front.forceField.jsonForceFieldStatus();
+    outputJson["initialization"]["forceField"]["pseudoAtoms"] = front.forceField.jsonPseudoAtomStatus();
+    outputJson["initialization"]["components"] = front.jsonComponentStatus();
+    outputJson["initialization"]["numberOfLambdaBins"] = numberOfLambdaBins;
+    outputJson["initialization"]["lambdaExchangeEvery"] = lambdaExchangeEvery;
+  }
 
   std::ofstream json(outputJsonFileName);
   json << outputJson.dump(4);
@@ -191,14 +198,17 @@ void ParallelThermodynamicIntegration::setup()
       std::print(replicaStream, "{}", system.writeNumberOfPseudoAtoms());
     }
 
+    if (!resumedFromBinaryRestart)
+    {
 #ifdef VERSION
-    replicaJsons[replicaId]["version"] = EXPAND_AND_QUOTE(VERSION);
+      replicaJsons[replicaId]["version"] = EXPAND_AND_QUOTE(VERSION);
 #endif
-    replicaJsons[replicaId]["seed"] = randoms[replicaId].seed;
-    replicaJsons[replicaId]["replicaId"] = replicaId;
-    replicaJsons[replicaId]["startingLambdaBin"] = replicaId;
-    replicaJsons[replicaId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
-    replicaJsons[replicaId]["initialization"]["components"] = system.jsonComponentStatus();
+      replicaJsons[replicaId]["seed"] = randoms[replicaId].seed;
+      replicaJsons[replicaId]["replicaId"] = replicaId;
+      replicaJsons[replicaId]["startingLambdaBin"] = replicaId;
+      replicaJsons[replicaId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
+      replicaJsons[replicaId]["initialization"]["components"] = system.jsonComponentStatus();
+    }
 
     std::ofstream replicaJson(replicaJsonFileNames[replicaId]);
     replicaJson << replicaJsons[replicaId].dump(4);
@@ -492,7 +502,10 @@ void ParallelThermodynamicIntegration::runStage(SimulationStage stage, std::size
               const bool binaryRestartDue =
                   writeBinaryRestartEvery != 0uz &&
                   ((cycle + 1uz) % writeBinaryRestartEvery == 0uz || cycle + 1uz == numberOfCycles);
-              if (exchangeDue || binaryRestartDue)
+              // and a regular check for a shutdown signal (without it a run without exchanges and binary
+              // restarts ignored the signal for the whole stage)
+              const bool shutdownCheckDue = (cycle + 1uz) % GracefulShutdown::checkEvery == 0uz;
+              if (exchangeDue || binaryRestartDue || shutdownCheckDue)
               {
                 if (replicaId == 0uz)
                 {
@@ -1080,6 +1093,13 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
   archive << pti.totalEquilibrationSimulationTime;
   archive << pti.totalProductionSimulationTime;
   archive << pti.totalSimulationTime;
+  // the JSON output of the run (its header and initial conditions)
+  archive << pti.outputJson.dump();
+  {
+    std::vector<std::string> jsons;
+    for (const nlohmann::json& json : pti.replicaJsons) jsons.push_back(json.dump());
+    archive << jsons;
+  }
 
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
@@ -1132,6 +1152,15 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTher
   archive >> pti.totalEquilibrationSimulationTime;
   archive >> pti.totalProductionSimulationTime;
   archive >> pti.totalSimulationTime;
+  {
+    std::string json;
+    archive >> json;
+    pti.outputJson = nlohmann::json::parse(json);
+    std::vector<std::string> jsons;
+    archive >> jsons;
+    pti.replicaJsons.clear();
+    for (const std::string& replicaJson : jsons) pti.replicaJsons.push_back(nlohmann::json::parse(replicaJson));
+  }
 
   std::uint64_t magicNumber;
   archive >> magicNumber;

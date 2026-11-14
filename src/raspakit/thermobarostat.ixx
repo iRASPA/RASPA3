@@ -32,7 +32,7 @@ export std::string barostatCouplingName(BarostatCoupling coupling);
 
 export struct Thermobarostat
 {
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
   MolecularDynamicsEnsemble ensemble{MolecularDynamicsEnsemble::NVE};
   CellMinimizationType cellType{CellMinimizationType::Isotropic};
   MonoclinicAngleType monoclinicAngle{MonoclinicAngleType::Beta};
@@ -42,6 +42,8 @@ export struct Thermobarostat
   double timeStep{0.0005};
   double timeScaleParameterBarostat{1.0};
   std::size_t translationalDegreesOfFreedom{};
+  // the degrees of freedom taken by the zero centre-of-mass-momentum constraint (3, or 0 without it)
+  std::size_t centerOfMassConstraint{};
   std::size_t cellDegreesOfFreedom{1};
   std::size_t chainLength{5};
   std::size_t numberOfRespaSteps{5};
@@ -71,10 +73,18 @@ export struct Thermobarostat
                  std::size_t numberOfYoshidaSuzukiSteps = 5, double timeScaleParameterBarostat = 1.0);
 
   void initialize(RandomNumber& random);
-  void refreshDegreesOfFreedom(std::size_t translationalDegreesOfFreedom, double volume);
+  void refreshDegreesOfFreedom(std::size_t translationalDegreesOfFreedom, std::size_t centerOfMassConstraint,
+                               double volume);
   double chainStep(double kineticEnergy);
   // kinetic energy of the barostat (isotropic: of x=ln(V) with mass W/9; flexible: of the cell-rate matrix)
   double barostatKineticEnergy() const;
+  // Tuckerman et al., J. Phys. A 39, 5629 (2006): with the centre-of-mass momentum constrained to zero the MTK drive
+  // samples V^(N-1) exp(-beta (U + P V)); the force d k_B T on the trace of the strain (and the potential
+  // -k_B T ln V in the conserved energy) restores V^N
+  double centerOfMassConstraintForce() const
+  {
+    return static_cast<double>(centerOfMassConstraint) * Units::KB * temperature;
+  }
   double energy(double volume) const;
   void reverseMomenta();
 

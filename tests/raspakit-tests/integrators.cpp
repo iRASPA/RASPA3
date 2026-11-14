@@ -345,7 +345,7 @@ TEST(thermobarostat, refreshing_degrees_of_freedom_keeps_the_live_cell_momentum)
   state.logVolumeVelocity = 0.25;
   const std::vector<double> chainVelocity = state.chainVelocity;
 
-  state.refreshDegreesOfFreedom(24, 8000.0);
+  state.refreshDegreesOfFreedom(24, 0, 8000.0);
 
   EXPECT_EQ(state.translationalDegreesOfFreedom, 24u);
   EXPECT_NEAR(state.logVolumeMass, 27.0 * Units::KB * 300.0 * 0.25, 1.0e-12);

@@ -17,8 +17,9 @@ import skelement;
 SampleMovie::SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictToBox, std::optional<std::string> tag) : 
                          sampleEvery(sampleEvery), restrictToBox(restrictToBox), tag(tag)
 {
+  // the file is started afresh with the first frame (see 'update'), not here: a run resumed from a binary restart
+  // constructs the writer before the restart is read, and truncating here wiped the frames recorded so far
   std::filesystem::create_directory("movies");
-  std::ofstream stream(std::format("movies/movie{}.s{}.pdb", tag.value_or(""), systemId));
 }
 
 void SampleMovie::update(const ForceField &forceField, std::size_t systemId, const SimulationBox simulationBox,
@@ -30,7 +31,9 @@ void SampleMovie::update(const ForceField &forceField, std::size_t systemId, con
   {
     std::filesystem::create_directory("movies");
 
-    std::ofstream stream(std::format("movies/movie{}.s{}.pdb", tag.value_or(""), systemId), std::ios_base::app);
+    // the first frame of a run starts the file; a resumed run (modelNumber restored) appends to it
+    std::ofstream stream(std::format("movies/movie{}.s{}.pdb", tag.value_or(""), systemId),
+                         modelNumber == 1 ? std::ios_base::trunc : std::ios_base::app);
 
     std::print(stream, "MODEL {:>4}\n", modelNumber);
     std::print(stream, "CRYST1{:9.3f}{:9.3f}{:9.3f}{:7.2f}{:7.2f}{:7.2f}\n", simulationBox.lengthA,

@@ -1,5 +1,6 @@
 add_executable(unit_tests_raspakit
   latent_api_fixes.cpp
+  driver_property_fixes.cpp
   energy_zero_epsilon.cpp
   energy_molecular_cutoff.cpp
   energy_legacy_void_fraction.cpp

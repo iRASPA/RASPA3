@@ -340,6 +340,34 @@ DynamicallyCorrectedTST::DynamicallyCorrectedTST(InputReader& reader)
   barrier = DcTSTBarrier(templateSystem.simulationBox, settings.barrierPosition, settings.barrierNormal,
                          settings.latticeDistance);
 
+  // the constrained ensemble moves the guests with the single-molecule moves below only (any other move type would
+  // silently run as a translation), and a polyatomic tagged molecule changes its orientation and conformation only
+  // through its reinsertion
+  for (const Component& component : templateSystem.components)
+  {
+    for (std::size_t type = 0; type != component.mc_moves_probabilities.probabilities.size(); ++type)
+    {
+      const Move::Types move = static_cast<Move::Types>(type);
+      if (component.mc_moves_probabilities.probabilities[type] > 0.0 && move != Move::Types::Translation &&
+          move != Move::Types::RandomTranslation && move != Move::Types::Rotation &&
+          move != Move::Types::RandomRotation && move != Move::Types::ReinsertionCBMC &&
+          move != Move::Types::PartialReinsertionCBMC)
+      {
+        throw std::runtime_error(std::format(
+            "dcTST: component '{}' uses the '{}' move; the constrained ensemble supports translation, random "
+            "translation, rotation, random rotation, reinsertion and partial reinsertion only\n",
+            component.name, Move::moveNames[type]));
+      }
+    }
+  }
+  if (templateSystem.components[settings.taggedComponent].atoms.size() > 1uz &&
+      !(settings.reinsertionInPlaneProbability > 0.0))
+  {
+    throw std::runtime_error(
+        "dcTST: 'ReinsertionInPlaneProbability' must be positive for a polyatomic tagged molecule (its orientation and "
+        "conformation are otherwise frozen)\n");
+  }
+
   // the cage lattice of the occupancy-resolved and event-terminated modes: one cage per unit cell. Its origin
   // is 'CageCenter' (unit-cell fractional) when given; otherwise the barrier point shifted half a lattice
   // distance along the normal (the center of cage B), which is only correct when the in-plane position of
@@ -450,8 +478,13 @@ void DynamicallyCorrectedTST::run()
   loadFreeEnergyInput();
   loadOccupancyRates();
   runStage(SimulationStage::Initialization, numberOfInitializationCycles);
-  runStage(SimulationStage::Transmission,
-           settings.numberOfConstrainedEquilibrationCycles + settings.numberOfTransmissionCycles);
+  // a termination signal during the initialization skips the transmission stage (its constrained equilibration
+  // and the set-up of the barrier states included); the analysis of what was completed is still written
+  if (!GracefulShutdown::requested())
+  {
+    runStage(SimulationStage::Transmission,
+             settings.numberOfConstrainedEquilibrationCycles + settings.numberOfTransmissionCycles);
+  }
   output();
 }
 

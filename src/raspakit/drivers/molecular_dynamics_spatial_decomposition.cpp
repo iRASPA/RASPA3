@@ -399,7 +399,7 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, ForceEngine& en
                  }
                  if (thermostat) w.kinetic[r] = rangeKineticEnergies(system, range);
                });
-  const double3x3 kineticBefore = molecular ? w.totalVirial() : computeMolecularKineticVirial(system, coupling);
+  const double3x3 kineticUnscaled = molecular ? w.totalVirial() : computeMolecularKineticVirial(system, coupling);
 
   const double barostatKinetic = barostat.barostatKineticEnergy();
   const double chainScale = barostat.chainStep(barostatKinetic);
@@ -413,6 +413,9 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, ForceEngine& en
     const auto [translational, rotational] = w.totalKinetic();
     scaling = system.thermostat->NoseHooverNVT(translational, rotational);
   }
+  // the barostat kick follows the particle chain (the mirror image of the closing half-step): it takes the kinetic
+  // virial of the scaled velocities
+  const double3x3 kineticBefore = kineticUnscaled * (scaling.first * scaling.first);
 
   double3x3 cellRate{};
   if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
@@ -420,10 +423,11 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, ForceEngine& en
     const double mtkFactor =
         1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
     // x = ln(V) = 3 epsilon: xddot = 3 G_epsilon / W with G_epsilon = virial + alpha 2K - 3 P V (MTK)
-    const double scalarForce = 3.0 *
-                               (pressureBefore.trace() + mtkFactor * kineticBefore.trace() -
-                                3.0 * barostat.pressure * system.simulationBox.volume) /
-                               barostat.logVolumeMass;
+    const double scalarForce =
+        3.0 *
+        (pressureBefore.trace() + mtkFactor * kineticBefore.trace() + barostat.centerOfMassConstraintForce() -
+         3.0 * barostat.pressure * system.simulationBox.volume) /
+        barostat.logVolumeMass;
     barostat.logVolumeVelocity += 0.5 * system.timeStep * scalarForce;
     cellRate =
         double3x3(barostat.logVolumeVelocity / 3.0, barostat.logVolumeVelocity / 3.0, barostat.logVolumeVelocity / 3.0);
@@ -432,7 +436,8 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, ForceEngine& en
   {
     double3x3 correctedKinetic = kineticBefore;
     const double mtkCorrection =
-        kineticBefore.trace() / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
+        kineticBefore.trace() / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom)) +
+        barostat.centerOfMassConstraintForce() / 3.0;
     correctedKinetic.ax += mtkCorrection;
     correctedKinetic.by += mtkCorrection;
     correctedKinetic.cz += mtkCorrection;
@@ -509,17 +514,19 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, ForceEngine& en
     const double mtkFactor =
         1.0 + 3.0 / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
     // x = ln(V) = 3 epsilon: xddot = 3 G_epsilon / W with G_epsilon = virial + alpha 2K - 3 P V (MTK)
-    const double scalarForce = 3.0 *
-                               (pressureAfter.trace() + mtkFactor * kineticAfter.trace() -
-                                3.0 * barostat.pressure * system.simulationBox.volume) /
-                               barostat.logVolumeMass;
+    const double scalarForce =
+        3.0 *
+        (pressureAfter.trace() + mtkFactor * kineticAfter.trace() + barostat.centerOfMassConstraintForce() -
+         3.0 * barostat.pressure * system.simulationBox.volume) /
+        barostat.logVolumeMass;
     barostat.logVolumeVelocity += 0.5 * system.timeStep * scalarForce;
   }
   else
   {
     double3x3 correctedKinetic = kineticAfter;
     const double mtkCorrection =
-        kineticAfter.trace() / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom));
+        kineticAfter.trace() / static_cast<double>(std::max<std::size_t>(1, barostat.translationalDegreesOfFreedom)) +
+        barostat.centerOfMassConstraintForce() / 3.0;
     correctedKinetic.ax += mtkCorrection;
     correctedKinetic.by += mtkCorrection;
     correctedKinetic.cz += mtkCorrection;
@@ -1057,13 +1064,13 @@ void MolecularDynamicsSpatialDecomposition::updateReportedPressure(std::size_t s
   }
 
   // The reported pressure is the estimator the barostat drives to the external pressure. 'sampleProperties' adds
-  // the molecular ideal-gas part N_molecules k T / V to the excess tensor, so the excess tensor stored here is the
-  // barostat tensor minus that part: with molecular coupling simply the molecular virial over the volume, with
-  // atomic coupling the atomic virial plus the ideal-gas part of the extra coupled atoms.
+  // the ideal-gas part (System::numberOfIdealGasPressurePoints) k T / V to the excess tensor, so the excess tensor
+  // stored here is the barostat tensor minus that part: with molecular coupling simply the molecular virial over the
+  // volume, with atomic coupling the atomic virial plus the ideal-gas part of the extra coupled atoms.
   const Thermobarostat& barostat = *system.thermobarostat;
   const double3x3 pressure = barostatPressureTensor(system, engine.molecularPressureTensor(), barostat.coupling,
                                                     barostat.translationalDegreesOfFreedom);
-  const double molecularIdeal = static_cast<double>(system.numberOfMolecules()) / (system.beta * volume);
+  const double molecularIdeal = static_cast<double>(system.numberOfIdealGasPressurePoints()) / (system.beta * volume);
   system.currentExcessPressureTensor = pressure;
   system.currentExcessPressureTensor.ax -= molecularIdeal;
   system.currentExcessPressureTensor.by -= molecularIdeal;
@@ -1180,6 +1187,7 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
     {
       system.thermobarostat->translationalDegreesOfFreedom =
           barostatTranslationalDegreesOfFreedom(system, system.thermobarostat->coupling);
+      system.thermobarostat->centerOfMassConstraint = system.translationalCenterOfMassConstraint;
       system.thermobarostat->logVolumePosition = std::log(system.simulationBox.volume);
       system.thermobarostat->initialize(random);
     }
@@ -1624,6 +1632,12 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Molecu
   archive << md.estimation;
   archive << md.totalSimulationTime;
   archive << integratorsCPUTime;
+  // the JSON output written at the start of the run (its header and initial conditions), as MonteCarlo keeps it
+  {
+    std::vector<std::string> jsons;
+    for (const nlohmann::json& json : md.outputJsons) jsons.push_back(json.dump());
+    archive << jsons;
+  }
 
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
@@ -1672,6 +1686,12 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MolecularDyn
   archive >> md.estimation;
   archive >> md.totalSimulationTime;
   archive >> integratorsCPUTime;
+  {
+    std::vector<std::string> jsons;
+    archive >> jsons;
+    md.outputJsons.clear();
+    for (const std::string& json : jsons) md.outputJsons.push_back(nlohmann::json::parse(json));
+  }
 
   std::uint64_t magicNumber;
   archive >> magicNumber;

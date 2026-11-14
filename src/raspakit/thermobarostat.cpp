@@ -209,10 +209,12 @@ Thermobarostat::Thermobarostat(MolecularDynamicsEnsemble ensemble, CellMinimizat
 // Particle exchanges change the number of coupled degrees of freedom and therefore the barostat masses.
 // The cell momentum is a dynamical variable of the live trajectory and is deliberately left untouched here;
 // only 'initialize' draws it from the canonical distribution.
-void Thermobarostat::refreshDegreesOfFreedom(std::size_t newTranslationalDegreesOfFreedom, double volume)
+void Thermobarostat::refreshDegreesOfFreedom(std::size_t newTranslationalDegreesOfFreedom,
+                                             std::size_t newCenterOfMassConstraint, double volume)
 {
   if (!(volume > 0.0) || !std::isfinite(volume)) throw std::runtime_error("Thermobarostat requires positive volume");
   translationalDegreesOfFreedom = newTranslationalDegreesOfFreedom;
+  centerOfMassConstraint = newCenterOfMassConstraint;
 
   const double particleScale = static_cast<double>(translationalDegreesOfFreedom + 3) * Units::KB * temperature;
   logVolumeMass = particleScale * timeScaleParameterBarostat * timeScaleParameterBarostat;
@@ -224,7 +226,7 @@ void Thermobarostat::initialize(RandomNumber& random)
 {
   if (chainLength == 0) throw std::runtime_error("BarostatChainLength must be positive");
   if (numberOfRespaSteps == 0) throw std::runtime_error("NumberOfRespaSteps must be positive");
-  refreshDegreesOfFreedom(translationalDegreesOfFreedom, std::exp(logVolumePosition));
+  refreshDegreesOfFreedom(translationalDegreesOfFreedom, centerOfMassConstraint, std::exp(logVolumePosition));
   if (molecularDynamicsUsesIsotropicBarostat(ensemble))
     logVolumeVelocity = random.Gaussian() * std::sqrt(Units::KB * temperature / (logVolumeMass / 9.0));
   if (molecularDynamicsUsesFlexibleBarostat(ensemble))
@@ -305,7 +307,8 @@ double Thermobarostat::barostatKineticEnergy() const
 
 double Thermobarostat::energy(double volume) const
 {
-  double result = pressure * volume + barostatKineticEnergy();
+  double result = pressure * volume + barostatKineticEnergy() -
+                  static_cast<double>(centerOfMassConstraint) / 3.0 * Units::KB * temperature * std::log(volume);
   for (std::size_t i = 0; i != chainLength; ++i)
     result += 0.5 * chainMass[i] * chainVelocity[i] * chainVelocity[i] +
               chainDegreesOfFreedom[i] * chainPosition[i];
@@ -443,7 +446,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Thermo
   archive << static_cast<std::uint8_t>(value.monoclinicAngle);
   archive << static_cast<std::uint8_t>(value.coupling);
   archive << value.temperature << value.pressure << value.timeStep << value.timeScaleParameterBarostat;
-  archive << value.translationalDegreesOfFreedom << value.cellDegreesOfFreedom << value.chainLength;
+  archive << value.translationalDegreesOfFreedom << value.centerOfMassConstraint << value.cellDegreesOfFreedom
+          << value.chainLength;
   archive << value.numberOfRespaSteps << value.numberOfYoshidaSuzukiSteps;
   archive << value.logVolumePosition << value.logVolumeVelocity << value.logVolumeMass;
   archive << value.cellVelocity << value.cellMass;
@@ -468,7 +472,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Thermobarost
     throw std::runtime_error("Invalid Thermobarostat coupling in restart");
   value.coupling = static_cast<BarostatCoupling>(coupling);
   archive >> value.temperature >> value.pressure >> value.timeStep >> value.timeScaleParameterBarostat;
-  archive >> value.translationalDegreesOfFreedom >> value.cellDegreesOfFreedom >> value.chainLength;
+  archive >> value.translationalDegreesOfFreedom;
+  if (version >= 2) archive >> value.centerOfMassConstraint;
+  archive >> value.cellDegreesOfFreedom >> value.chainLength;
   archive >> value.numberOfRespaSteps >> value.numberOfYoshidaSuzukiSteps;
   archive >> value.logVolumePosition >> value.logVolumeVelocity >> value.logVolumeMass;
   archive >> value.cellVelocity >> value.cellMass;

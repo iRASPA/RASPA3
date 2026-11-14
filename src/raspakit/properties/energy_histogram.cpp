@@ -97,7 +97,9 @@ std::string PropertyEnergyHistogram::printSettings() const
     std::print(stream, "    write every: {}\n", writeEvery.value());
   }
   std::print(stream, "    number of bins: {}\n", numberOfBins);
-  std::print(stream, "    valueRange: ({}) - ({})\n", valueRange.first, valueRange.second);
+  // the range is held in internal energy units, like the sampled energies
+  std::print(stream, "    valueRange: ({}) - ({}) [{}]\n", valueRange.first * Units::EnergyToKelvin,
+             valueRange.second * Units::EnergyToKelvin, Units::displayedUnitOfEnergyString);
   std::print(stream, "\n");
 
   return stream.str();

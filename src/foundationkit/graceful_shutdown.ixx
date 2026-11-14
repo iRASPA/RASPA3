@@ -25,6 +25,10 @@ extern "C" void gracefulShutdownSignalHandler(int)
 
 export namespace GracefulShutdown
 {
+/// The cycles between the checks for a shutdown signal of the multi-threaded drivers whose threads otherwise meet only
+/// at the (possibly disabled) periodic exchanges and checkpoints: they all meet that often to look for one.
+inline constexpr std::size_t checkEvery{100};
+
 /**
  * \brief Installs the shutdown signal handlers; called once from main.
  */

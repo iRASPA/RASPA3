@@ -453,7 +453,8 @@ void rebuildMolecularDynamicsState(System& system, double velocityScaling)
     // molecule-based degrees of freedom it couples to are re-derived from the post-swap state, as the
     // molecular-dynamics driver does when it (re)starts from a configuration
     system.thermobarostat->refreshDegreesOfFreedom(
-        barostatTranslationalDegreesOfFreedom(system, system.thermobarostat->coupling), system.simulationBox.volume);
+        barostatTranslationalDegreesOfFreedom(system, system.thermobarostat->coupling),
+        system.translationalCenterOfMassConstraint, system.simulationBox.volume);
     system.runningEnergies.thermobarostatEnergy = system.thermobarostat->energy(system.simulationBox.volume);
   }
 
@@ -495,6 +496,17 @@ std::optional<std::string> MC_Moves::parallelTemperingUnsupportedReason(const Sy
         "an 'IdealGasRosenbluthWeight' is the intramolecular partition function at one temperature and one "
         "Hamiltonian: copied to every replica of a temperature or solute-tempering ladder it is wrong at the "
         "others, and the insertions and the swaps then sample the wrong chemical potentials");
+  }
+  // the insertions of a flexible molecule draw (or grow) its conformation from the intramolecular Boltzmann
+  // distribution, so a replica samples the activity beta f / Z_intra(beta); the swap knows beta f only and the
+  // ratio Z_intra(beta_B) / Z_intra(beta_A) per molecule exchanged is missing from its acceptance
+  if (std::ranges::any_of(system.components, [](const Component& component)
+                          { return component.swappable && !component.rigid && component.atoms.size() > 1uz; }))
+  {
+    return std::string(
+        "an open ensemble with a flexible molecule is not supported: a replica samples the activity beta f over "
+        "the intramolecular partition function at its own temperature, which the swap of configurations with "
+        "different molecule counts does not know");
   }
   if (soluteTempering && system.forceField.computePolarization)
   {

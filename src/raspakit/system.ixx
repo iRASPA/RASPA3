@@ -918,6 +918,37 @@ export struct System
   const std::span<const double3> spanElectricFieldOld(std::size_t selectedComponent,
                                                       std::size_t selectedMolecule) const;
 
+  /// Why a thermobarostat cannot deform the cell of this system (nullopt when it can): a lab-frozen framework keeps
+  /// its atoms in place while its periodic images move with the cell, and the framework interpolation grids tabulate
+  /// the framework of the initial cell.
+  std::optional<std::string> thermobarostatUnsupportedReason() const
+  {
+    if (!thermobarostat.has_value() || !framework.has_value()) return std::nullopt;
+    if (framework->rigid && !framework->isMixed())
+      return "a barostat with a rigid framework (its atoms do not follow the cell); make the framework flexible";
+    if (!forceField.settings.gridPseudoAtomIndices.empty())
+      return "a barostat with framework interpolation grids (tabulated for the initial cell); switch off "
+             "'UseInterpolationGrids'";
+    return std::nullopt;
+  }
+
+  /// The points the ideal-gas pressure counts: the integer molecules and the mobile framework points (each flexible
+  /// framework atom, and each rigid framework group as one), whose virial the excess pressure tensor holds as well.
+  std::size_t numberOfIdealGasPressurePoints() const
+  {
+    std::size_t points =
+        std::accumulate(numberOfIntegerMoleculesPerComponent.begin(), numberOfIntegerMoleculesPerComponent.end(), 0uz);
+    if (framework.has_value() && framework->hasMobileAtoms())
+    {
+      for (std::size_t i = 0; i < numberOfFrameworkAtoms; ++i)
+      {
+        if (framework->isFlexibleAtom(i)) ++points;
+      }
+      points += framework->numberOfRigidGroups();
+    }
+    return points;
+  }
+
   std::size_t numberOfMolecules() const
   {
     return std::accumulate(numberOfMoleculesPerComponent.begin(), numberOfMoleculesPerComponent.end(), std::size_t(0),

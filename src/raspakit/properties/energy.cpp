@@ -37,7 +37,7 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       {
         double prefactor = Units::EnergyToKelvin;
         std::print(stream, "    ExternalField-molecule energy{} {}-{} [{}-{}]:\n",
-                   Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
+                   Units::displayedUnitOfEnergyConversionString, k, l, "external field", components[l].name);
         std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
         for (std::size_t i = 0; i < numberOfBlocks; ++i)
         {
@@ -64,7 +64,7 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       {
         double prefactor = Units::EnergyToKelvin;
         std::print(stream, "    Van der Waals energy{} {}-{} [{}-{}]:\n", Units::displayedUnitOfEnergyConversionString,
-                   k, l, components[k].name, components[l].name);
+                   k, l, "external field", components[l].name);
         std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
         for (std::size_t i = 0; i < numberOfBlocks; ++i)
         {
@@ -87,7 +87,7 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       {
         double prefactor = Units::EnergyToKelvin;
         std::print(stream, "    VDW Tail-Correction energy{} {}-{} [{}-{}]:\n",
-                   Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
+                   Units::displayedUnitOfEnergyConversionString, k, l, "external field", components[l].name);
         std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
         for (std::size_t i = 0; i < numberOfBlocks; ++i)
         {
@@ -111,7 +111,7 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       {
         double prefactor = Units::EnergyToKelvin;
         std::print(stream, "    Coulomb Real energy{} {}-{} [{}-{}]:\n", Units::displayedUnitOfEnergyConversionString,
-                   k, l, components[k].name, components[l].name);
+                   k, l, "external field", components[l].name);
         std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
         for (std::size_t i = 0; i < numberOfBlocks; ++i)
         {
@@ -134,7 +134,7 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       {
         double prefactor = Units::EnergyToKelvin;
         std::print(stream, "    Coulomb Fourier energy{} {}-{} [{}-{}]:\n",
-                   Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
+                   Units::displayedUnitOfEnergyConversionString, k, l, "external field", components[l].name);
         std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
         for (std::size_t i = 0; i < numberOfBlocks; ++i)
         {

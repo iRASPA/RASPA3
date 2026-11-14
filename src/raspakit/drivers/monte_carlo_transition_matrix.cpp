@@ -364,7 +364,8 @@ void MonteCarloTransitionMatrix::performCycle()
 
         // Wang-Landau biasing of the CFCMC lambda moves. Off when the transition matrix is of the (N, lambda)
         // chain and flattens lambda itself: a second bias on lambda would bias the endpoint jumps twice.
-        if (!selectedSystem.tmmc.lambdaChain())
+        // (only of the TMMC component: a CFCMC co-adsorbate keeps its own Wang-Landau bias)
+        if (!(selectedSystem.tmmc.lambdaChain() && selectedComponent == selectedSystem.tmmcComponent()))
         {
           selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
               PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
@@ -379,7 +380,7 @@ void MonteCarloTransitionMatrix::performCycle()
         selectedSystem.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         if (hasSecondSystem)
         {
-          if (!selectedSecondSystem.tmmc.lambdaChain())
+          if (!(selectedSecondSystem.tmmc.lambdaChain() && selectedComponent == selectedSecondSystem.tmmcComponent()))
           {
             selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
                 PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
@@ -627,9 +628,10 @@ void MonteCarloTransitionMatrix::equilibrate()
     {
       for (System& system : systems)
       {
-        for (Component& component : system.components)
+        for (std::size_t componentId = 0; Component& component : system.components)
         {
-          if (!system.tmmc.lambdaChain())
+          // the (N, lambda) chain flattens the lambda of the TMMC component only
+          if (!(system.tmmc.lambdaChain() && componentId == system.tmmcComponent()))
           {
             component.lambdaGC.WangLandauIteration(
                 PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
@@ -640,6 +642,7 @@ void MonteCarloTransitionMatrix::equilibrate()
             component.lambdaGibbs.WangLandauIteration(
                 PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, true);
           }
+          ++componentId;
         }
 
         system.pairSwapLambdaWangLandauIteration(

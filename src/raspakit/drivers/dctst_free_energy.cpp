@@ -38,6 +38,7 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import json;
+import graceful_shutdown;
 import dctst_free_energy_settings;
 import dctst_barrier;
 import dctst_wham;
@@ -276,6 +277,34 @@ DynamicallyCorrectedTSTFreeEnergy::DynamicallyCorrectedTSTFreeEnergy(System temp
   barrier = DcTSTBarrier(templateSystem.simulationBox, settings.barrierPosition, settings.barrierNormal,
                          settings.latticeDistance);
 
+  // the constrained ensemble moves the guests with the single-molecule moves below only (any other move type would
+  // silently run as a translation), and a polyatomic tagged molecule changes its orientation and conformation only
+  // through its reinsertion
+  for (const Component& component : templateSystem.components)
+  {
+    for (std::size_t type = 0; type != component.mc_moves_probabilities.probabilities.size(); ++type)
+    {
+      const Move::Types move = static_cast<Move::Types>(type);
+      if (component.mc_moves_probabilities.probabilities[type] > 0.0 && move != Move::Types::Translation &&
+          move != Move::Types::RandomTranslation && move != Move::Types::Rotation &&
+          move != Move::Types::RandomRotation && move != Move::Types::ReinsertionCBMC &&
+          move != Move::Types::PartialReinsertionCBMC)
+      {
+        throw std::runtime_error(std::format(
+            "dcTST: component '{}' uses the '{}' move; the constrained ensemble supports translation, random "
+            "translation, rotation, random rotation, reinsertion and partial reinsertion only\n",
+            component.name, Move::moveNames[type]));
+      }
+    }
+  }
+  if (templateSystem.components[settings.taggedComponent].atoms.size() > 1uz &&
+      !(settings.reinsertionTaggedProbability > 0.0))
+  {
+    throw std::runtime_error(
+        "dcTST: 'ReinsertionTaggedProbability' must be positive for a polyatomic tagged molecule (its orientation and "
+        "conformation are otherwise frozen)\n");
+  }
+
   double3 lattice_origin = barrier.point + 0.5 * barrier.lambda * barrier.normal;
   if (settings.cageCenter.has_value())
   {
@@ -340,11 +369,17 @@ DynamicallyCorrectedTSTFreeEnergy::DynamicallyCorrectedTSTFreeEnergy(System temp
 
 void DynamicallyCorrectedTSTFreeEnergy::run()
 {
+  // A termination signal stops the run at the next cycle boundary; this driver has no binary restart, so the phases
+  // after it are skipped (the signal handler replaced the default action: without these checks the run ignored the
+  // scheduler's warning and was killed).
   setup();
   runInitialization();
+  if (GracefulShutdown::requested()) return;
   runPilot();
+  if (GracefulShutdown::requested()) return;
   buildWindows();
   runWindows();
+  if (GracefulShutdown::requested()) return;
   output();
 }
 
@@ -561,6 +596,7 @@ void DynamicallyCorrectedTSTFreeEnergy::runInitialization()
                        system.runningEnergies.printMC("Recomputed from scratch"));
             for (std::size_t cycle = 0; cycle != numberOfInitializationCycles; ++cycle)
             {
+              if (GracefulShutdown::requested()) break;
               performUnconstrainedCycle(replicaId, SimulationStage::Initialization);
               if (cycle % optimizeMCMovesEvery == 0uz) system.optimizeMCMoves();
               if (cycle % printEvery == 0uz)
@@ -610,6 +646,7 @@ void DynamicallyCorrectedTSTFreeEnergy::runPilot()
             BlockErrorEstimation estimation(numberOfBlocks, std::max(1uz, numberOfCycles));
             for (std::size_t cycle = 0; cycle != numberOfCycles; ++cycle)
             {
+              if (GracefulShutdown::requested()) break;
               estimation.setCurrentSample(cycle);
               performUnconstrainedCycle(replicaId, SimulationStage::Pilot);
               if (cycle % settings.sampleEvery == 0uz) samplePilot(replicaId, estimation.currentBin);
@@ -834,6 +871,7 @@ void DynamicallyCorrectedTSTFreeEnergy::runWindows()
               BlockErrorEstimation estimation(numberOfBlocks, std::max(1uz, production));
               for (std::size_t cycle = 0; cycle != total; ++cycle)
               {
+                if (GracefulShutdown::requested()) break;
                 const bool inProduction = cycle >= equilibration;
                 if (inProduction) estimation.setCurrentSample(cycle - equilibration);
                 performWindowCycle(replicaId, windowIndex);

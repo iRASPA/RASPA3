@@ -12,90 +12,99 @@ import simulationbox;
 import forcefield;
 import averages;
 
-void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationBox,
+void PropertyRadialDistributionFunction::sample(const SimulationBox& simulationBox, double beta,
                                                 std::span<const Atom> frameworkAtoms,
-                                                std::span<const AtomDynamics> frameworkDynamics,
-                                                [[maybe_unused]] const std::vector<Molecule> &molecules,
+                                                std::span<const double3> frameworkGradients,
+                                                std::span<const std::uint8_t> frameworkMobile,
                                                 std::span<const Atom> moleculeAtoms,
-                                                std::span<const AtomDynamics> moleculeDynamics,
-                                                std::size_t currentCycle, std::size_t block)
+                                                std::span<const double3> moleculeGradients, std::size_t currentCycle,
+                                                std::size_t block)
 {
-  double3 dr, posA, posB;
-  double3 gradientA, gradientB;
-  double rr, r;
-
   if (currentCycle % sampleEvery != 0uz) return;
 
   if (moleculeAtoms.empty()) return;
 
-  // Site forces must already be present in frameworkDynamics / moleculeDynamics (MD integrator, or
+  // Site forces must already be present in the gradients (MD integrator, or
   // System::sampleForceBasedRDFWithFullGradients for MC). This sampler does not evaluate forces.
+  //
+  // Borgis et al., Mol. Phys. 111, 3486 (2013): integrating the Yvon-Born-Green relation from g(0) = 0,
+  //
+  //   g_AB(r) = beta V / (8 pi P_AB) < sum_{i in A, j in B} H(r - r_ij) (F_i - F_j) . r_ij / r_ij^3 >
+  //
+  // over the ordered pairs, with P_AB their number (the normalisation of the conventional RDF). A fixed site i does
+  // not move: its force is replaced by -F_j, the one-body relation of the site j around it.
+  const std::size_t numberOfChannels = numberOfPseudoAtoms * numberOfPseudoAtoms;
+  std::vector<double> sums(numberOfChannels * numberOfBins);
+  std::vector<std::size_t> pairs(numberOfChannels);
 
-  auto accumulatePair = [&](std::size_t typeA, std::size_t typeB, const double3 &gradA, const double3 &gradB,
-                            const double3 &separation)
+  auto accumulatePair =
+      [&](std::size_t typeA, std::size_t typeB, const double3& gradA, const double3& gradB, const double3& separation)
   {
-    pairCount[channel(typeA, typeB)]++;
-    pairCount[channel(typeB, typeA)]++;
+    pairs[channel(typeA, typeB)]++;
+    pairs[channel(typeB, typeA)]++;
 
-    dr = simulationBox.applyPeriodicBoundaryConditions(separation);
-    rr = double3::dot(dr, dr);
-    r = std::sqrt(rr);
+    const double3 dr = simulationBox.applyPeriodicBoundaryConditions(separation);
+    const double rr = double3::dot(dr, dr);
+    const double r = std::sqrt(rr);
     if (!(r < range) || r < 1.0e-12) return;
 
-    // Borgis estimator: (∇U_A - ∇U_B)·(r_A - r_B) / r^3 accumulated for all bins with r_bin < r.
-    const double value = double3::dot(gradA - gradB, dr) / (rr * r);
-    for (std::size_t i = 0; i < numberOfBins; ++i)
+    // (F_A - F_B) . r_AB / r^3 with F = -gradient, added to every bin beyond the pair distance
+    const double value = double3::dot(gradB - gradA, dr) / (rr * r);
+    const std::size_t first = static_cast<std::size_t>(std::max(0.0, std::ceil(r / deltaR - 0.5)));
+    for (std::size_t i = first; i < numberOfBins; ++i)
     {
-      if ((static_cast<double>(i) + 0.5) * deltaR < r)
-      {
-        histogram(block, channel(typeA, typeB), i) += value;
-        histogram(block, channel(typeB, typeA), i) += value;
-      }
+      sums[channel(typeA, typeB) * numberOfBins + i] += value;
+      sums[channel(typeB, typeA) * numberOfBins + i] += value;
     }
   };
 
   for (std::size_t ia = 0; ia < frameworkAtoms.size(); ++ia)
   {
-    posA = frameworkAtoms[ia].position;
-      gradientA = ia < frameworkDynamics.size() ? frameworkDynamics[ia].gradient : double3();
-    std::size_t typeA = static_cast<std::size_t>(frameworkAtoms[ia].type);
+    const double3 posA = frameworkAtoms[ia].position;
+    const bool mobile = ia < frameworkMobile.size() && frameworkMobile[ia] != 0;
+    const std::size_t typeA = static_cast<std::size_t>(frameworkAtoms[ia].type);
     for (std::size_t ib = 0; ib < moleculeAtoms.size(); ++ib)
     {
       // the distribution of the integer molecules: a fractional molecule is no member of the ensemble
       if (moleculeAtoms[ib].isFractional) continue;
-      posB = moleculeAtoms[ib].position;
-      gradientB = moleculeDynamics[ib].gradient;
-      std::size_t typeB = static_cast<std::size_t>(moleculeAtoms[ib].type);
-      accumulatePair(typeA, typeB, gradientA, gradientB, posA - posB);
+      const double3 gradientB = moleculeGradients[ib];
+      const double3 gradientA = mobile ? frameworkGradients[ia] : -gradientB;
+      const std::size_t typeB = static_cast<std::size_t>(moleculeAtoms[ib].type);
+      accumulatePair(typeA, typeB, gradientA, gradientB, posA - moleculeAtoms[ib].position);
     }
   }
 
   for (std::size_t ia = 0; ia + 1 < moleculeAtoms.size(); ++ia)
   {
     if (moleculeAtoms[ia].isFractional) continue;
-    posA = moleculeAtoms[ia].position;
-    gradientA = moleculeDynamics[ia].gradient;
-    std::size_t molA = static_cast<std::size_t>(moleculeAtoms[ia].moleculeId);
-    std::size_t compA = static_cast<std::size_t>(moleculeAtoms[ia].componentId);
-    std::size_t typeA = static_cast<std::size_t>(moleculeAtoms[ia].type);
+    const double3 posA = moleculeAtoms[ia].position;
+    const std::size_t molA = static_cast<std::size_t>(moleculeAtoms[ia].moleculeId);
+    const std::size_t compA = static_cast<std::size_t>(moleculeAtoms[ia].componentId);
+    const std::size_t typeA = static_cast<std::size_t>(moleculeAtoms[ia].type);
 
     for (std::size_t ib = ia + 1; ib < moleculeAtoms.size(); ++ib)
     {
       if (moleculeAtoms[ib].isFractional) continue;
-      std::size_t molB = static_cast<std::size_t>(moleculeAtoms[ib].moleculeId);
-      std::size_t compB = static_cast<std::size_t>(moleculeAtoms[ib].componentId);
+      const std::size_t molB = static_cast<std::size_t>(moleculeAtoms[ib].moleculeId);
+      const std::size_t compB = static_cast<std::size_t>(moleculeAtoms[ib].componentId);
 
       // skip interactions within the same molecule
       if ((compA == compB) && (molA == molB)) continue;
 
-      posB = moleculeAtoms[ib].position;
-      gradientB = moleculeDynamics[ib].gradient;
-      std::size_t typeB = static_cast<std::size_t>(moleculeAtoms[ib].type);
-      accumulatePair(typeA, typeB, gradientA, gradientB, posA - posB);
+      const std::size_t typeB = static_cast<std::size_t>(moleculeAtoms[ib].type);
+      accumulatePair(typeA, typeB, moleculeGradients[ia], moleculeGradients[ib], posA - moleculeAtoms[ib].position);
     }
   }
 
-  histogram.addCount(block, 2.0);
+  for (std::size_t c = 0; c != numberOfChannels; ++c)
+  {
+    pairCount[c] += pairs[c];
+    if (pairs[c] == 0uz) continue;
+    const double normalization = beta * simulationBox.volume / (8.0 * std::numbers::pi * static_cast<double>(pairs[c]));
+    for (std::size_t i = 0; i != numberOfBins; ++i)
+      histogram(block, c, i) += normalization * sums[c * numberOfBins + i];
+  }
+  histogram.addCount(block, 1.0);
 }
 
 void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceField, std::size_t systemId,
@@ -128,7 +137,6 @@ void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceFiel
         [[maybe_unused]] double avg_n_pairs =
             static_cast<double>(pairCount[channel(atomTypeA, atomTypeB)] + pairCount[channel(atomTypeB, atomTypeA)]) /
             histogram.totalNumberOfCounts;
-        // result() normalises: g(0) = 0, g(range) = 1
         for (std::size_t bin = 0; bin != numberOfBins; ++bin)
         {
           stream_rdf_output << std::format("{} {} {}\n", (static_cast<double>(bin) + 0.5) * deltaR, average[bin],

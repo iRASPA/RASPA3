@@ -147,7 +147,11 @@ void PropertyDensityGrid::sample(const std::optional<Framework> &framework, cons
 
     if (framework.has_value())
     {
-      const double3 t = (framework->simulationBox.inverseCell * pos).fract();
+      // the unit cell of the current (possibly deformed) box: the supercell fraction times the number of cells
+      const double3 t = double3(s.x * static_cast<double>(framework->numberOfUnitCells.x),
+                                s.y * static_cast<double>(framework->numberOfUnitCells.y),
+                                s.z * static_cast<double>(framework->numberOfUnitCells.z))
+                            .fract();
       if (binningMode == Binning::Standard)
       {
         data_unitcell[comp, channel, static_cast<std::size_t>(t.x * gridSize.x), static_cast<std::size_t>(t.y * gridSize.y),
@@ -161,6 +165,7 @@ void PropertyDensityGrid::sample(const std::optional<Framework> &framework, cons
   }
 
   numberOfSamples++;
+  volumeSum += simulationBox.volume;
 }
 
 void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] const SimulationBox &simulationBox,
@@ -236,8 +241,10 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
       }
       case Normalization::NumberDensity:
       {
-        normalization =
-            (gridSize.x * gridSize.y * gridSize.z) / (cell.determinant() * static_cast<double>(numberOfSamples));
+        // the average volume of the samples: the current volume differs from it in a variable-cell run
+        const double averageVolume =
+            volumeSum > 0.0 ? volumeSum / static_cast<double>(numberOfSamples) : cell.determinant();
+        normalization = (gridSize.x * gridSize.y * gridSize.z) / (averageVolume * static_cast<double>(numberOfSamples));
         break;
       }
     }
@@ -310,10 +317,12 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
       }
         case Normalization::NumberDensity:
         {
-          double3 numberOfUnitCells = simulationBox.lengths() / framework->simulationBox.lengths();
-          normalization = (gridSize.x * gridSize.y * gridSize.z) /
-                          (unitCell.determinant() * static_cast<double>(numberOfSamples) * numberOfUnitCells.x *
-                           numberOfUnitCells.y * numberOfUnitCells.z);
+          // every unit cell of the box folds onto the grid: the average unit-cell volume times the number of cells
+          // is the average volume of the box
+          const double averageVolume =
+              volumeSum > 0.0 ? volumeSum / static_cast<double>(numberOfSamples) : simulationBox.volume;
+          normalization =
+              (gridSize.x * gridSize.y * gridSize.z) / (averageVolume * static_cast<double>(numberOfSamples));
           break;
         }
       }
@@ -347,6 +356,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << temp.normType;
   archive << temp.binningMode;
   archive << temp.numberOfSamples;
+  archive << temp.volumeSum;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -385,8 +395,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyDens
   archive >> temp.normType;
   archive >> temp.binningMode;
   archive >> temp.numberOfSamples;
+  if (versionNumber >= 2) archive >> temp.volumeSum;
 
-  #if DEBUG_ARCHIVE
+#if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))

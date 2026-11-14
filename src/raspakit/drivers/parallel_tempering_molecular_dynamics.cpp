@@ -211,6 +211,8 @@ void ParallelTemperingMolecularDynamics::setup()
       throw std::runtime_error(
           "ParallelTemperingMolecularDynamics does not support polarization: the integrator "
           "evaluates no polarization forces");
+    if (const std::optional<std::string> reason = system.thermobarostatUnsupportedReason())
+      throw std::runtime_error(std::format("ParallelTemperingMolecularDynamics does not support {}\n", reason.value()));
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
 
@@ -404,6 +406,7 @@ void ParallelTemperingMolecularDynamics::prepareReplicaMolecularDynamicsStage(st
       system.thermobarostat->temperature = system.temperature;
       system.thermobarostat->translationalDegreesOfFreedom =
           barostatTranslationalDegreesOfFreedom(system, system.thermobarostat->coupling);
+      system.thermobarostat->centerOfMassConstraint = system.translationalCenterOfMassConstraint;
       system.thermobarostat->logVolumePosition = std::log(system.simulationBox.volume);
       system.thermobarostat->initialize(rng);
     }

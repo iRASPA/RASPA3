@@ -493,9 +493,7 @@ TEST(MOLECULE_SHAPE, rdf_samplers_skip_the_fractional_atoms)
     return result;
   };
   std::vector<Atom> framework{atom(1.0, 0, false)};
-  std::vector<AtomDynamics> frameworkDynamics(1);
   std::vector<Atom> molecules{atom(2.0, 0, false), atom(3.0, 1, true), atom(5.0, 2, false)};
-  std::vector<AtomDynamics> moleculeDynamics(3);
   // the channel holds framework-molecule (2 integer atoms, each order) and molecule-molecule (1 pair, each order)
   const std::size_t expected = 2 * 2 + 2;
 
@@ -504,7 +502,7 @@ TEST(MOLECULE_SHAPE, rdf_samplers_skip_the_fractional_atoms)
   EXPECT_EQ(conventional.pairCount[0], expected);
 
   PropertyRadialDistributionFunction forceBased(1, 1, 20, 10.0, 1, 1);
-  forceBased.sample(box, framework, frameworkDynamics, {}, molecules, moleculeDynamics, 0, 0);
+  forceBased.sample(box, 1.0, framework, std::vector<double3>(1), {}, molecules, std::vector<double3>(3), 0, 0);
   EXPECT_EQ(forceBased.pairCount[0], expected);
 }
 

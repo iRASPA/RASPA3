@@ -500,6 +500,8 @@ void ParallelTMMC::initializeWalkers(System templateSystem)
       system.equationOfState =
           EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MixingRules::VanDerWaals, T,
                           referencePressure, system.simulationBox, system.heliumVoidFraction, system.components);
+      // and the species partition functions follow the temperature, as in the (hyper) parallel-tempering drivers
+      for (Component& component : system.components) component.updateLnPartitionFunction(T);
 
       // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature
       system.buildConformationReservoirs();
@@ -884,7 +886,10 @@ void ParallelTMMC::performWalkerCycle(std::size_t walkerId, SimulationStage stag
                                             static_cast<double>(widomWeightSums[walkerId].size())));
           if (atDecoupledLambda && currentN >= minMacrostate && currentN - minMacrostate < sampledMacrostates)
           {
+            // a probe of the driver, not a move of the component: its trials stay out of the move statistics
+            const MCMoveStatistics statistics = system.components[0].mc_moves_statistics;
             const double weight = MC_Moves::WidomMove(rng, system, 0uz);
+            system.components[0].mc_moves_statistics = statistics;
             const std::size_t index = currentN - minMacrostate;
             widomWeightSums[walkerId][index] += weight;
             widomWeightSquaredSums[walkerId][index] += weight * weight;
@@ -1064,12 +1069,16 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
   // binary-restart checkpoint (every walker runs the same cycle count, so they all agree on when
   // a checkpoint is due). The completion runs while all worker threads are parked, so the full
   // driver state is consistent. With 'writeBinaryRestartEvery' disabled the barrier is never used.
-  auto onAllArrived = [this]() noexcept
+  auto onAllArrived = [this, numberOfCycles]() noexcept
   {
-    writeBinaryRestartFile(checkpointCycle.load(std::memory_order_relaxed));
+    const std::size_t completedCycles = checkpointCycle.load(std::memory_order_relaxed);
+    const bool stopRequested = GracefulShutdown::requested();
+    const bool binaryRestartDue = writeBinaryRestartEvery != 0uz && (completedCycles % writeBinaryRestartEvery == 0uz ||
+                                                                     completedCycles == numberOfCycles);
+    if (binaryRestartDue || stopRequested) writeBinaryRestartFile(completedCycles);
     // all worker threads are parked on this barrier, so the checkpoint just written is a
     // consistent snapshot: safe to exit here on a shutdown signal
-    if (GracefulShutdown::requested())
+    if (stopRequested)
     {
       // std::exit skips stack unwinding: flush the text output streams explicitly
       std::flush(stream);
@@ -1242,9 +1251,13 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
               }
 
               // the only synchronization point between the threads: the periodic binary-restart
-              // checkpoint, written by the barrier completion while all threads are parked
-              if (writeBinaryRestartEvery != 0uz &&
-                  ((cycle + 1uz) % writeBinaryRestartEvery == 0uz || cycle + 1uz == numberOfCycles))
+              // checkpoint, written by the barrier completion while all threads are parked, and a regular
+              // check for a shutdown signal (without it a run without binary restarts ignored the signal)
+              const bool binaryRestartDue =
+                  writeBinaryRestartEvery != 0uz &&
+                  ((cycle + 1uz) % writeBinaryRestartEvery == 0uz || cycle + 1uz == numberOfCycles);
+              const bool shutdownCheckDue = (cycle + 1uz) % GracefulShutdown::checkEvery == 0uz;
+              if (binaryRestartDue || shutdownCheckDue)
               {
                 if (walkerId == 0uz)
                 {
