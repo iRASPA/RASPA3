@@ -320,3 +320,14 @@ TEST(unit_cell, the_image_is_the_shortest_in_cells_nobody_would_choose)
   }
   EXPECT_GT(cells, 200uz);
 }
+
+// A cut-off of nought needs no images, but still the cell itself: a count of nought was divided by in the grid
+// builders.
+TEST(unit_cell, a_zero_cutoff_still_takes_one_cell)
+{
+  const UnitCell cell(10.0, 12.0, 14.0);
+  const int3 replicas = cell.smallestNumberOfUnitCellsForMinimumImagesConvention(0.0);
+  EXPECT_EQ(replicas.x, 1);
+  EXPECT_EQ(replicas.y, 1);
+  EXPECT_EQ(replicas.z, 1);
+}

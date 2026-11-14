@@ -25,6 +25,12 @@ BruteForceSurfaceArea BruteForceSurfaceArea::compute(const BruteForceStructure &
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
+  // the area of an atom is its sphere times the exposed fraction of its samples
+  if (samplesPerAtom == 0)
+  {
+    throw std::invalid_argument("BruteForceSurfaceArea: the number of samples per atom must be at least one\n");
+  }
+
   BruteForceSurfaceArea self;
   self.samplesPerAtom = samplesPerAtom;
 

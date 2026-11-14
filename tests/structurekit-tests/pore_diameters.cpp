@@ -175,3 +175,31 @@ TEST(pore_diameters, a_piece_tied_at_the_bottleneck_that_does_not_run_through_is
   ASSERT_TRUE(path.percolates);
   EXPECT_EQ(path.componentNodes, (std::vector<std::size_t>{0, 1}));
 }
+
+// A closed cage: its node is joined to its own images only through edges buried in the atoms (negative clearance,
+// the network keeps them). No sphere gets through, so the structure does not percolate: Df and Dif are nought, and
+// not a negative Df and the cage's own diameter.
+TEST(pore_diameters, a_cage_joined_only_through_buried_edges_does_not_percolate)
+{
+  VoronoiNetwork network;
+  network.unitCell = UnitCell(10.0, 10.0, 10.0);
+  VoronoiNode cage;
+  cage.position = double3(5.0, 5.0, 5.0);
+  cage.fractional = double3(0.5, 0.5, 0.5);
+  cage.radius = 3.0;
+  cage.maximalRadius = 3.0;
+  cage.maximalPosition = cage.position;
+  network.nodes.push_back(cage);
+  for (const int3 delta : {int3(1, 0, 0), int3(0, 1, 0), int3(0, 0, 1)})
+  {
+    network.edges.push_back(VoronoiEdge{0, 0, delta, -0.4, 10.0});
+    network.edges.push_back(VoronoiEdge{0, 0, int3(0, 0, 0) - delta, -0.4, 10.0});
+  }
+
+  const std::vector<std::size_t> nodes{0};
+  EXPECT_FALSE(widestPercolatingPath(network, nodes).percolates);
+  const PoreDiameters diameters = PoreDiameters::compute(network);
+  EXPECT_NEAR(diameters.includedSphereDiameter, 6.0, 1e-12);
+  EXPECT_EQ(diameters.freeSphereDiameter, 0.0);
+  EXPECT_EQ(diameters.includedAlongFreePathDiameter, 0.0);
+}

@@ -98,7 +98,13 @@ void NLDFTIsotherm::run(const EnergyBackend &backend, const PairInteractions &in
       else if (std::abs(self.sizeParameter - options.attractiveSigma) > 1.0e-8 ||
                std::abs(self.strengthParameter * Units::EnergyToKelvin - options.attractiveEpsilon) > 1.0e-8)
       {
-        continue;
+        // The site functional has one Lennard-Jones site type. A probe of unlike dispersing sites (CO2, NO) was
+        // modelled by the sites like the first only, silently: the carbon of CO2 was left out.
+        throw std::invalid_argument(std::format(
+            "NLDFT: the dispersing sites of probe '{}' differ (sigma {} and {} A, epsilon {} and {} K); the molecular "
+            "functional takes one site type, use one orientation for the spherical model\n",
+            probe.name, options.attractiveSigma, self.sizeParameter, options.attractiveEpsilon,
+            self.strengthParameter * Units::EnergyToKelvin));
       }
       options.attractiveSiteOffsets.push_back(site.offset);
     }
@@ -268,7 +274,7 @@ void NLDFTIsotherm::run(const EnergyBackend &backend, const PairInteractions &in
   std::print(myfile, "# Predicted nitrogen isotherm by classical density functional theory on the energy grid\n");
   std::print(myfile, "# Crystal: {}\n", framework.name);
   std::print(myfile, "# Space-group HM-symbol: {}\n",
-             SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).HMString());
   std::print(myfile, "# Number of framework atoms: {}\n", framework.atoms.size());
   std::print(myfile, "# Crystal volume: {} [Å³]\n", framework.unitCell.volume);
   std::print(myfile, "# Crystal mass: {} [g/mol]\n", framework.mass);

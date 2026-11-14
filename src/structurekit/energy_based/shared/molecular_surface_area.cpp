@@ -114,7 +114,7 @@ void MolecularSurfaceArea::run(const EnergyBackend &backend, const PairInteracti
   std::print(myfile, "# Energy-based surface area for a rigid linear molecule\n");
   std::print(myfile, "# Crystal: {}\n", framework.name);
   std::print(myfile, "# Space-group HM-symbol: {}\n",
-             SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).HMString());
   std::print(myfile, "# Number of framework atoms: {}\n", framework.atoms.size());
   std::print(myfile, "# Crystal volume: {} [Å³]\n", framework.unitCell.volume);
   std::print(myfile, "# Crystal mass: {} [g/mol]\n", framework.mass);

@@ -1191,6 +1191,21 @@ __kernel void WellField(__global float *energyOut,
   (void)invRow0; (void)invRow1; (void)invRow2;
 }
 
+// The energy of a ray sample: the blocked ramp inside a blocking sphere, so that a refined vertex does not slide
+// across a sphere's surface into the cage it blocks.
+static df blockedOrEnergy(df energy, float4 point, float4 shiftFractional, __global const float4 *spheres,
+                          int numberOfSpheres, float4 cellRow0, float4 cellRow1, float4 cellRow2, float4 obtuseA,
+                          float4 obtuseB, float4 obtuseC, float4 obtuseInv0, float4 obtuseInv1, float4 obtuseInv2,
+                          float blockedEnergyPerAngstrom, float ceiling)
+{
+  if(numberOfSpheres == 0) return energy;
+  float3 moved = wrapUnit((point + shiftFractional).xyz);
+  float pocket = blockingPocket((float4)(moved.x, moved.y, moved.z, 0.0f), spheres, numberOfSpheres, cellRow0, cellRow1,
+                                cellRow2, obtuseA, obtuseB, obtuseC, obtuseInv0, obtuseInv1, obtuseInv2);
+  if(pocket < 0.0f) return (df)(fmin(-pocket * blockedEnergyPerAngstrom, ceiling), 0.0f);
+  return energy;
+}
+
 static df energyAtShift(__global const float4 *position,
                            __global const float *epsilonTimesFour,
                            __global const float *sigmaSquared,
@@ -1328,6 +1343,15 @@ __kernel void RefineWellVertices(__global float4 *corners,
   float3 q = quantizeFractional(wrapUnit(raw.xyz));
   float4 point = (float4)(q.x, q.y, q.z, 0.0f);
 
+  // a vertex in a blocking sphere has the blocked ramp's energy, as on the field
+  float pocket = blockingPocket(point, spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2, obtuseA, obtuseB,
+                                obtuseC, obtuseInv0, obtuseInv1, obtuseInv2);
+  if(pocket < 0.0f)
+  {
+    energies[vertex] = fmin(-pocket * blockedEnergyPerAngstrom, ceiling);
+    return;
+  }
+
   df energyHereDf = energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct,
                                   siteOffset, siteCharge, siteDispersion, screenedTable, smoothPotential, point,
                                   (float4)(0.0f), (float4)(0.0f), potentialGridSize, numberOfAtoms, numberOfSites,
@@ -1337,9 +1361,6 @@ __kernel void RefineWellVertices(__global float4 *corners,
   float energyHere = df_hi(energyHereDf);
   energies[vertex] = energyHere;
   if(energyHere > iso - 0.02f * fabs(iso)) return;
-
-  float pocket = blockingPocket(point, spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2, obtuseA, obtuseB,
-                                obtuseC, obtuseInv0, obtuseInv1, obtuseInv2);
 
   df energiesO[MAX_ORIENT];
   float clearancesO[MAX_ORIENT];
@@ -1429,12 +1450,13 @@ __kernel void RefineWellVertices(__global float4 *corners,
   for(int i = -COARSE_STEPS; i <= COARSE_STEPS; i++)
   {
     float s = span * (float)(i) / (float)(COARSE_STEPS);
-    df u = energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct, siteOffset,
+    df u = blockedOrEnergy(energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct, siteOffset,
                          siteCharge, siteDispersion, screenedTable, smoothPotential, point, direction * s,
                          rayFractional * s, potentialGridSize, numberOfAtoms, numberOfSites, numberOfOrientations,
                          shells, widths, cellRow0, cellRow1, cellRow2, cutOffSquared, coulombCutOffSquared,
                          longestCutOff, longestCutOffSquared, ceiling, beta, kT, screenedScale, screenedBins, alpha,
-                         useCharges, extraReach);
+                         useCharges, extraReach), point, rayFractional * s,
+                        spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2, obtuseA, obtuseB, obtuseC, obtuseInv0, obtuseInv1, obtuseInv2, blockedEnergyPerAngstrom, ceiling);
     if(df_lt(u, uBest))
     {
       uBest = u;
@@ -1449,18 +1471,20 @@ __kernel void RefineWellVertices(__global float4 *corners,
   float b = sBest + span / (float)(COARSE_STEPS);
   float x1 = b - GOLDEN_INVPHI * (b - a);
   float x2 = a + GOLDEN_INVPHI * (b - a);
-  df f1 = energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct, siteOffset,
+  df f1 = blockedOrEnergy(energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct, siteOffset,
                         siteCharge, siteDispersion, screenedTable, smoothPotential, point, direction * x1,
                         rayFractional * x1, potentialGridSize, numberOfAtoms, numberOfSites, numberOfOrientations,
                         shells, widths, cellRow0, cellRow1, cellRow2, cutOffSquared, coulombCutOffSquared,
                         longestCutOff, longestCutOffSquared, ceiling, beta, kT, screenedScale, screenedBins, alpha,
-                        useCharges, extraReach);
-  df f2 = energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct, siteOffset,
+                        useCharges, extraReach), point, rayFractional * x1,
+                        spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2, obtuseA, obtuseB, obtuseC, obtuseInv0, obtuseInv1, obtuseInv2, blockedEnergyPerAngstrom, ceiling);
+  df f2 = blockedOrEnergy(energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct, siteOffset,
                         siteCharge, siteDispersion, screenedTable, smoothPotential, point, direction * x2,
                         rayFractional * x2, potentialGridSize, numberOfAtoms, numberOfSites, numberOfOrientations,
                         shells, widths, cellRow0, cellRow1, cellRow2, cutOffSquared, coulombCutOffSquared,
                         longestCutOff, longestCutOffSquared, ceiling, beta, kT, screenedScale, screenedBins, alpha,
-                        useCharges, extraReach);
+                        useCharges, extraReach), point, rayFractional * x2,
+                        spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2, obtuseA, obtuseB, obtuseC, obtuseInv0, obtuseInv1, obtuseInv2, blockedEnergyPerAngstrom, ceiling);
   for(int iteration = 0; iteration < GOLDEN_STEPS; iteration++)
   {
     if(df_lt(f1, f2))
@@ -1469,12 +1493,13 @@ __kernel void RefineWellVertices(__global float4 *corners,
       x2 = x1;
       f2 = f1;
       x1 = b - GOLDEN_INVPHI * (b - a);
-      f1 = energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct, siteOffset,
+      f1 = blockedOrEnergy(energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct, siteOffset,
                          siteCharge, siteDispersion, screenedTable, smoothPotential, point, direction * x1,
                          rayFractional * x1, potentialGridSize, numberOfAtoms, numberOfSites, numberOfOrientations,
                          shells, widths, cellRow0, cellRow1, cellRow2, cutOffSquared, coulombCutOffSquared,
                          longestCutOff, longestCutOffSquared, ceiling, beta, kT, screenedScale, screenedBins, alpha,
-                         useCharges, extraReach);
+                         useCharges, extraReach), point, rayFractional * x1,
+                        spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2, obtuseA, obtuseB, obtuseC, obtuseInv0, obtuseInv1, obtuseInv2, blockedEnergyPerAngstrom, ceiling);
     }
     else
     {
@@ -1482,27 +1507,28 @@ __kernel void RefineWellVertices(__global float4 *corners,
       x1 = x2;
       f1 = f2;
       x2 = a + GOLDEN_INVPHI * (b - a);
-      f2 = energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct, siteOffset,
+      f2 = blockedOrEnergy(energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct, siteOffset,
                          siteCharge, siteDispersion, screenedTable, smoothPotential, point, direction * x2,
                          rayFractional * x2, potentialGridSize, numberOfAtoms, numberOfSites, numberOfOrientations,
                          shells, widths, cellRow0, cellRow1, cellRow2, cutOffSquared, coulombCutOffSquared,
                          longestCutOff, longestCutOffSquared, ceiling, beta, kT, screenedScale, screenedBins, alpha,
-                         useCharges, extraReach);
+                         useCharges, extraReach), point, rayFractional * x2,
+                        spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2, obtuseA, obtuseB, obtuseC, obtuseInv0, obtuseInv1, obtuseInv2, blockedEnergyPerAngstrom, ceiling);
     }
   }
   float s = 0.5f * (a + b);
   float4 moved = point + rayFractional * s;
   float3 wrapped = wrapUnit(moved.xyz);
   corners[vertex] = (float4)(wrapped.x, wrapped.y, wrapped.z, 0.0f);
-  energies[vertex] = df_hi(energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct,
+  energies[vertex] = df_hi(blockedOrEnergy(energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct,
                                          siteOffset, siteCharge, siteDispersion, screenedTable, smoothPotential, point,
                                          direction * s, rayFractional * s, potentialGridSize, numberOfAtoms,
                                          numberOfSites, numberOfOrientations, shells, widths, cellRow0, cellRow1,
                                          cellRow2, cutOffSquared, coulombCutOffSquared, longestCutOff,
                                          longestCutOffSquared, ceiling, beta, kT, screenedScale, screenedBins, alpha,
-                                         useCharges, extraReach));
+                                         useCharges, extraReach), point, rayFractional * s,
+                        spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2, obtuseA, obtuseB, obtuseC, obtuseInv0, obtuseInv1, obtuseInv2, blockedEnergyPerAngstrom, ceiling));
   (void)siteLength;
   (void)axes;
-  (void)blockedEnergyPerAngstrom;
 }
 )foo";

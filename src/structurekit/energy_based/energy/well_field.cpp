@@ -793,6 +793,17 @@ void refineVertices(std::vector<double3> &corners, std::vector<double> &energies
 
                  const std::vector<NearbyImage> &nearby = neighbourhood.gather(point);
 
+                 // a point in a blocking sphere has the blocked ramp's energy, as on the field: the bare framework
+                 // energy there (an attractive inaccessible cage) put the sphere's cap below the cap threshold
+                 auto blockedEnergy = [&](double pocket)
+                 { return std::min(-pocket * neighbourhood.blockedEnergyPerAngstrom, neighbourhood.ceiling); };
+                 double pocket = blockingSphereDistance(point, neighbourhood.unitCell, neighbourhood.spheres);
+                 if (pocket < 0.0)
+                 {
+                   energies[vertex] = blockedEnergy(pocket);
+                   return;
+                 }
+
                  double nearest = 0.0;
                  std::size_t bestOrientation = 0;
                  double energyHere =
@@ -804,7 +815,6 @@ void refineVertices(std::vector<double3> &corners, std::vector<double> &energies
                    return;
                  }
 
-                 double pocket = blockingSphereDistance(point, neighbourhood.unitCell, neighbourhood.spheres);
                  if (pocket < nearest) return;
 
                  double reliability = 0.0;
@@ -814,8 +824,15 @@ void refineVertices(std::vector<double3> &corners, std::vector<double> &energies
 
                  double3 rayFractional = inverseCell * direction;
 
+                 // the ray does not cross into a blocking sphere: a point inside one has the blocked energy
                  auto energyAlong = [&](double s)
-                 { return neighbourhood.energyAlong(nearby, point, rayFractional * s, direction * s); };
+                 {
+                   const double3 moved = wrapUnit(point + rayFractional * s);
+                   const double pocketThere =
+                       blockingSphereDistance(moved, neighbourhood.unitCell, neighbourhood.spheres);
+                   if (pocketThere < 0.0) return blockedEnergy(pocketThere);
+                   return neighbourhood.energyAlong(nearby, point, rayFractional * s, direction * s);
+                 };
 
                  constexpr int coarse = 14;
                  double sBest = 0.0;

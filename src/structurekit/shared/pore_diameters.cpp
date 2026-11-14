@@ -62,6 +62,9 @@ PercolatingPath widestPercolatingPath(const VoronoiNetwork& network, std::span<c
   for (std::size_t index : order)
   {
     const VoronoiEdge& edge = network.edges[index];
+    // an edge with no clearance is buried in the atoms (the network keeps them): no sphere passes it, so a
+    // structure that percolates only through such edges does not percolate
+    if (edge.radius <= 0.0) break;
     if (path.percolates && edge.radius < path.radius) break;
 
     auto [rootFrom, accFrom] = unionFind.find(edge.from);

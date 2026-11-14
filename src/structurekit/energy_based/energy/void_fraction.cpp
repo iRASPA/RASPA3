@@ -147,9 +147,12 @@ void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal
   std::print(myfile, "# Void-fraction using energy-based method\n");
   std::print(myfile, "# Crystal: {}\n", framework.name);
   std::print(myfile, "# Space-group Hall-number: {}\n", framework.spaceGroupHallNumber);
-  std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
-  std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
-  std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
+  std::print(myfile, "# Space-group Hall-symbol: {}\n",
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).HallString());
+  std::print(myfile, "# Space-group HM-symbol: {}\n",
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).HMString());
+  std::print(myfile, "# Space-group IT number: {}\n",
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).number());
   std::print(myfile, "# Number of framework atoms: {}\n", framework.atoms.size());
   std::print(myfile, "# Crystal volume: {} [Å³]\n", framework.unitCell.volume);
   std::print(myfile, "# Crystal mass: {} [g/mol]\n", framework.mass);

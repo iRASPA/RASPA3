@@ -381,6 +381,8 @@ void phi3Of(double n3, double &value, double &derivative)
 }
 
 std::once_flag fftwThreadsFlag;
+// guards the FFTW planner (fftw_plan_* and fftw_destroy_plan), which is global and not thread safe
+std::mutex fftwPlannerMutex;
 
 }  // namespace
 
@@ -483,11 +485,26 @@ void nldftApplyHenryPressureWindow(NLDFTOptions &options, double henryMoleculesP
   if (options.xHigh < options.xLow) std::swap(options.xLow, options.xHigh);
 }
 
-
-NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3 gridSize, const UnitCell &cell,
-                                      const NLDFTOptions &options, std::span<const float> orientationKelvin,
+NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3 gridSize, const UnitCell& cell,
+                                      const NLDFTOptions& requestedOptions, std::span<const float> orientationKelvin,
                                       std::size_t nOrientations)
 {
+  const bool molecular = nOrientations > 1 && orientationKelvin.size() == energyKelvin.size() * nOrientations;
+  // The spherical density has no sites: the bulk it is held against is the spherical fluid as well. Site offsets
+  // left in the options made the bulk the multi-site fluid while the pore solved the one-site functional.
+  NLDFTOptions options = requestedOptions;
+  if (!molecular)
+  {
+    options.dumbbellSiteOffsets.clear();
+    options.attractiveSiteOffsets.clear();
+  }
+  // one set of site positions carries both the hard-sphere deposit and the attraction
+  if (!options.dumbbellSiteOffsets.empty() && !options.attractiveSiteOffsets.empty() &&
+      options.dumbbellSiteOffsets != options.attractiveSiteOffsets)
+  {
+    throw std::invalid_argument("NLDFT: the hard-sphere and the attractive site offsets differ\n");
+  }
+
   NLDFTGridIsotherm result;
   result.bulk = nldftBulkCoexistence(options);
   if (!(result.bulk.saturationPressure > 0.0) || energyKelvin.empty()) return result;
@@ -496,7 +513,6 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
   std::size_t ny = gridSize.y;
   std::size_t nz = gridSize.z;
   if (energyKelvin.size() != nx * ny * nz) return result;
-  const bool molecular = nOrientations > 1 && orientationKelvin.size() == energyKelvin.size() * nOrientations;
   result.molecular = molecular;
   result.numberOfOrientations = molecular ? nOrientations : 1;
   const std::size_t M = result.numberOfOrientations;
@@ -641,10 +657,16 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
     for (std::size_t i = 0; i < N; ++i) phiAtt[i] = 0.0;
   }
 
-  fftw_plan forward = fftw_plan_dft_r2c_3d(static_cast<int>(nz), static_cast<int>(ny), static_cast<int>(nx),
-                                           rho.get(), rhoHat.get(), FFTW_MEASURE);
-  fftw_plan inverse = fftw_plan_dft_c2r_3d(static_cast<int>(nz), static_cast<int>(ny), static_cast<int>(nx),
-                                           scratch.get(), muHS.get(), FFTW_MEASURE);
+  // the FFTW planner is not thread safe: planning and destroying are serialized (executing a plan is safe)
+  fftw_plan forward{};
+  fftw_plan inverse{};
+  {
+    std::lock_guard<std::mutex> lock(fftwPlannerMutex);
+    forward = fftw_plan_dft_r2c_3d(static_cast<int>(nz), static_cast<int>(ny), static_cast<int>(nx), rho.get(),
+                                   rhoHat.get(), FFTW_MEASURE);
+    inverse = fftw_plan_dft_c2r_3d(static_cast<int>(nz), static_cast<int>(ny), static_cast<int>(nx), scratch.get(),
+                                   muHS.get(), FFTW_MEASURE);
+  }
 
   std::vector<double> w2Hat(nC), w3Hat(nC), uHat(nC), vHatX(nC), vHatY(nC), vHatZ(nC), kAbs(nC);
   double kMax = 0.0;
@@ -1669,8 +1691,11 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
     if (takeDown && apart && result.equilibriumTransition == 0.0) result.equilibriumTransition = chosen.relativePressure;
   }
 
-  fftw_destroy_plan(forward);
-  fftw_destroy_plan(inverse);
+  {
+    std::lock_guard<std::mutex> lock(fftwPlannerMutex);
+    fftw_destroy_plan(forward);
+    fftw_destroy_plan(inverse);
+  }
 
   return result;
 }

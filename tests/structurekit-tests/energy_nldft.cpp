@@ -1114,3 +1114,29 @@ TEST(energy_nldft, a_state_past_what_an_exponential_holds_is_still_a_site_for_on
     EXPECT_NEAR(farPast[point], within[point], 1.0e-3);
   }
 }
+
+// The spherical solver (one orientation) holds its pore against the spherical bulk, whatever site offsets the
+// options carry: the bulk used to be the multi-site fluid while the pore solved the one-site functional.
+TEST(energy_nldft, the_spherical_solver_ignores_site_offsets)
+{
+  NLDFTOptions spherical;
+  spherical.pressurePoints = 2;
+  spherical.xLow = 0.1;
+  spherical.xHigh = 0.3;
+  NLDFTOptions withSites = spherical;
+  withSites.dumbbellSiteOffsets = {-0.55, 0.55};
+  withSites.dumbbellSiteDiameter = 3.306;
+
+  uint3 gridSize{8, 8, 8};
+  UnitCell cell(20.0, 20.0, 20.0);
+  std::vector<float> energy(8 * 8 * 8, 0.0f);
+  const NLDFTGridIsotherm reference = nldftIsothermOnGrid(energy, gridSize, cell, spherical);
+  const NLDFTGridIsotherm result = nldftIsothermOnGrid(energy, gridSize, cell, withSites);
+  EXPECT_FALSE(result.molecular);
+  EXPECT_DOUBLE_EQ(result.bulk.liquidDensity, reference.bulk.liquidDensity);
+  EXPECT_DOUBLE_EQ(result.bulk.saturationPressure, reference.bulk.saturationPressure);
+  ASSERT_EQ(result.isotherm.size(), reference.isotherm.size());
+  for (std::size_t i = 0; i < result.isotherm.size(); ++i)
+    EXPECT_NEAR(result.isotherm[i].moleculesPerCell, reference.isotherm[i].moleculesPerCell,
+                1e-9 * std::max(1.0, reference.isotherm[i].moleculesPerCell));
+}

@@ -398,3 +398,15 @@ TEST(sampled_surface_area, zero_steps_or_slices_are_refused)
     EXPECT_THROW(route.run(alone, SampledProbe{}, 0), std::invalid_argument);
   }
 }
+
+// The device sampling refuses no inner steps or no iterations as the processor route does (it made an empty buffer
+// on the device and divided by nought).
+TEST(sampled_surface_area, zero_steps_are_refused_on_the_device)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+  const SampledStructure alone = structureOf(UnitCell(30.0, 30.0, 30.0), {double3(15.0, 15.0, 15.0)}, 1.5);
+  MC_OpenCL_SurfaceArea route;
+  EXPECT_THROW(route.run(alone, SampledProbe{}, 10, 0), std::invalid_argument);
+  EXPECT_THROW(route.run(alone, SampledProbe{}, 0, 10), std::invalid_argument);
+}

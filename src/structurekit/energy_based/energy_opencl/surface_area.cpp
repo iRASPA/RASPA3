@@ -108,7 +108,8 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
   double cutoff = interactions.cutOffVDW;
   double3x3 unitCell = framework.unitCell.cell;
   int3 numberOfReplicas = framework.unitCell.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
-  std::vector<double3> positions = framework.fractionalPositions;
+  // the fractional positions, or those of the atoms when the framework holds Cartesian positions only
+  std::vector<double3> positions = framework.fractionalPositionsOfAtoms();
   std::vector<double2> potentialParameters = framework.lennardJonesParameters(interactions);
   std::chrono::steady_clock::time_point time_begin, time_end;
 
@@ -391,9 +392,12 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
   std::print(myfile, "# Surface area using energy-based method\n");
   std::print(myfile, "# Crystal: {}\n", framework.name);
   std::print(myfile, "# Space-group Hall-number: {}\n", framework.spaceGroupHallNumber);
-  std::print(myfile, "# Space-group Hall-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HallString());
-  std::print(myfile, "# Space-group HM-symbol: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
-  std::print(myfile, "# Space-group IT number: {}\n", SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].number());
+  std::print(myfile, "# Space-group Hall-symbol: {}\n",
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).HallString());
+  std::print(myfile, "# Space-group HM-symbol: {}\n",
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).HMString());
+  std::print(myfile, "# Space-group IT number: {}\n",
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).number());
   std::print(myfile, "# Number of framework atoms: {}\n", framework.atoms.size());
   std::print(myfile, "# Crystal volume: {} [Å³]\n", framework.unitCell.volume);
   std::print(myfile, "# Crystal mass: {} [g/mol]\n", framework.mass);

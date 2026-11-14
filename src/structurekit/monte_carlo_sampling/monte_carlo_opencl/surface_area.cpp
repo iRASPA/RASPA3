@@ -87,8 +87,15 @@ void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const Sampled
   // used to be let go of by neither, and every run left three of them on the device.
   OpenCL::Handles made;
 
+  // the defaults of MC_SurfaceArea, so that the two routes sample the same number of points unless asked otherwise
   std::size_t number_of_iterations = numberOfIterations.value_or(100);
-  std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(10000);
+  std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(1000);
+  // the estimate divides by both, and an empty buffer cannot be made on the device
+  if (number_of_iterations == 0 || number_of_inner_steps == 0)
+  {
+    throw std::invalid_argument(
+        "MC_OpenCL_SurfaceArea: the number of iterations and of inner steps must be at least one\n");
+  }
 
   double3x3 unit_cell = structure.unitCell.cell;
   double3x3 inverse_unit_cell = structure.unitCell.inverseCell;

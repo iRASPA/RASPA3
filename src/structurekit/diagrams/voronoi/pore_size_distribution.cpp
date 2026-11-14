@@ -56,7 +56,7 @@ void writePoreSizeDistribution(const Crystal& framework, const std::string& diag
   std::print(report, "# Pore-size distribution ({}, exact)\n", diagramName);
   std::print(report, "# Space-group Hall-number: {}\n", framework.spaceGroupHallNumber);
   std::print(report, "# Space-group HM-symbol: {}\n",
-             SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).HMString());
   std::print(report, "# Number of framework atoms: {}\n", framework.atoms.size());
   std::print(report, "# Crystal volume: {} [Å³]\n", curve.cellVolume);
   std::print(report, "# Crystal mass: {} [g/mol]\n", framework.mass);
@@ -235,7 +235,7 @@ void writePoreSizePeaks(const Crystal& framework, const std::string& diagramName
   std::print(report, "# Pore-size peaks ({}, exact): room diameters and void fraction at each\n", diagramName);
   std::print(report, "# Space-group Hall-number: {}\n", framework.spaceGroupHallNumber);
   std::print(report, "# Space-group HM-symbol: {}\n",
-             SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).HMString());
   std::print(report, "# Number of framework atoms: {}\n", framework.atoms.size());
   std::print(report, "# Crystal volume: {} [Å³]\n", curve.cellVolume);
   std::print(report, "# Crystal mass: {} [g/mol]\n", framework.mass);

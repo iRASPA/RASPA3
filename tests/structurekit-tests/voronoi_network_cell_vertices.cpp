@@ -133,3 +133,15 @@ TEST(voronoi_network, every_corner_of_every_cell_is_kept_and_stands_where_its_no
   // Without this the test would say nothing about nodes that are several corners of a cell.
   EXPECT_GT(nodesMetMoreThanOnce, 0uz);
 }
+
+// A periodic self-loop (an edge from a node to its own image) is one undirected edge, held once in each direction.
+// Its two orientations, +delta and -delta, used to survive as two keys, so the cube of one atom had twelve directed
+// edges for its three lattice directions instead of six.
+TEST(voronoi_network, a_periodic_self_loop_is_one_edge_in_each_direction)
+{
+  const double a = 6.0;
+  UnitCell box{a, a, a};
+  VoronoiNetwork network = VoronoiNetwork::create(box, {double3(0.3, 0.6, 0.1)}, {1.0});
+  ASSERT_EQ(network.nodes.size(), 1uz);
+  EXPECT_EQ(network.edges.size(), 6uz);
+}

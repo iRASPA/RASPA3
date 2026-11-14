@@ -155,7 +155,7 @@ static void divideAmongAtoms(EnergyTessellation &tessellation, const Crystal &fr
   std::print(myfile, "# Volume and area divided among the atoms by strongest attraction\n");
   std::print(myfile, "# Crystal: {}\n", framework.name);
   std::print(myfile, "# Space-group HM-symbol: {}\n",
-             SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).HMString());
   std::print(myfile, "# Number of framework atoms: {}\n", numberOfAtoms);
   std::print(myfile, "# Crystal volume: {} [Å³]\n", volume);
   std::print(myfile, "# Crystal mass: {} [g/mol]\n", mass);

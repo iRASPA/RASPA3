@@ -290,7 +290,7 @@ void BETSurfaceArea::run(const EnergyBackend &backend, const PairInteractions &i
   std::print(myfile, "# Predicted BET surface area from the well-surface contact sheet\n");
   std::print(myfile, "# Crystal: {}\n", framework.name);
   std::print(myfile, "# Space-group HM-symbol: {}\n",
-             SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).HMString());
   std::print(myfile, "# Number of framework atoms: {}\n", framework.atoms.size());
   std::print(myfile, "# Crystal volume: {} [Å³]\n", framework.unitCell.volume);
   std::print(myfile, "# Crystal mass: {} [g/mol]\n", framework.mass);
@@ -373,6 +373,7 @@ void BETSurfaceArea::run(const EnergyBackend &backend, const PairInteractions &i
     std::print(myfile, "# The {} deepest voxels and the framework atom each is nearest to:\n", listed);
     std::print(myfile, "# {:>8} {:>8} {:>8}  {:>14}  {:>10}  {:>8}  {:>10}\n", "frac a", "frac b", "frac c", "U [K]",
                "U/kT", "atom", "r [Å]");
+    const std::vector<double3> fractionalPositions = framework.fractionalPositionsOfAtoms();
     for (std::size_t rank = 0; rank < listed; ++rank)
     {
       const std::size_t voxel = order[rank];
@@ -385,10 +386,10 @@ void BETSurfaceArea::run(const EnergyBackend &backend, const PairInteractions &i
 
       double nearestSquared = std::numeric_limits<double>::max();
       std::size_t nearestAtom = 0uz;
-      for (std::size_t iatom = 0; iatom < framework.fractionalPositions.size(); ++iatom)
+      for (std::size_t iatom = 0; iatom < fractionalPositions.size(); ++iatom)
       {
         const double3 dr =
-            framework.unitCell.applyPeriodicBoundaryConditions(cell * (point - framework.fractionalPositions[iatom]));
+            framework.unitCell.applyPeriodicBoundaryConditions(cell * (point - fractionalPositions[iatom]));
         const double rr = double3::dot(dr, dr);
         if (rr < nearestSquared)
         {

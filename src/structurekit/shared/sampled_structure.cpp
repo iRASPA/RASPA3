@@ -347,7 +347,7 @@ double SampledStructure::segmentClearance(const double3 &position, const double3
 
 void SampledStructure::writeHeader(std::ostream &stream) const
 {
-  const SKSpaceGroupSetting &spaceGroup = SKSpaceGroupDataBase::spaceGroupData[this->spaceGroupHallNumber];
+  const SKSpaceGroupSetting& spaceGroup = SKSpaceGroupDataBase::setting(this->spaceGroupHallNumber);
 
   std::print(stream, "# Crystal: {}\n", this->name);
   std::print(stream, "# Space-group Hall-number: {}\n", this->spaceGroupHallNumber);

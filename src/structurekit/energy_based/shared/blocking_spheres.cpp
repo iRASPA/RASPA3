@@ -181,7 +181,7 @@ void EnergyBlockingSpheres::run(const EnergyBackend &backend, const PairInteract
   std::print(report, "# Blocking spheres (energy landscape)\n");
   std::print(report, "# Crystal: {}\n", framework.name);
   std::print(report, "# Space-group HM-symbol: {}\n",
-             SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).HMString());
   std::print(report, "# Number of framework atoms: {}\n", framework.atoms.size());
   std::print(report, "# Crystal volume: {} [Å³]\n", framework.unitCell.volume);
   std::print(report, "# Molecule: {}, {} sites, {:.4f} [Å] end to end\n", probe.name, probe.sites.size(),

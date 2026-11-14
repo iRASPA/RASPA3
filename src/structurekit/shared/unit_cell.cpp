@@ -282,10 +282,12 @@ double UnitCell::longestDiagonal(double3 fractions) const
 
 int3 UnitCell::smallestNumberOfUnitCellsForMinimumImagesConvention(double cutOff) const
 {
+  // at least the cell itself: a cut-off of nought asks for no images, not for no cell (a count of nought divided
+  // by in every grid builder)
   double3 widths = perpendicularWidths();
-  return int3(static_cast<std::int32_t>(std::ceil(2.0 * cutOff / widths.x)),
-              static_cast<std::int32_t>(std::ceil(2.0 * cutOff / widths.y)),
-              static_cast<std::int32_t>(std::ceil(2.0 * cutOff / widths.z)));
+  return int3(std::max(1, static_cast<std::int32_t>(std::ceil(2.0 * cutOff / widths.x))),
+              std::max(1, static_cast<std::int32_t>(std::ceil(2.0 * cutOff / widths.y))),
+              std::max(1, static_cast<std::int32_t>(std::ceil(2.0 * cutOff / widths.z))));
 }
 
 UnitCell UnitCell::scaled(int3 scale) const

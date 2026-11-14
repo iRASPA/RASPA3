@@ -197,7 +197,7 @@ void EnergyBarrier::run(const PairInteractions &interactions, const Crystal &fra
   std::print(myfile, "# Crystal: {}\n", framework.name);
   std::print(myfile, "# Space-group Hall-number: {}\n", framework.spaceGroupHallNumber);
   std::print(myfile, "# Space-group HM-symbol: {}\n",
-             SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).HMString());
   std::print(myfile, "# Number of framework atoms: {}\n", framework.atoms.size());
   std::print(myfile, "# Crystal volume: {} [Å³]\n", framework.unitCell.volume);
   std::print(myfile, "# Probe atom: {} strength-value/kʙ: {} [K] size-value: {} [Å]\n", energyGrid.probeName,

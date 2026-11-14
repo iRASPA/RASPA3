@@ -177,3 +177,10 @@ TEST(SpaceGroupDatabase, ExpandingAGeneralPositionGivesOneImagePerOperation)
     EXPECT_EQ(positions.size(), setting.order()) << describe(hallNumber);
   }
 }
+
+// A Hall number past the table is refused instead of read past the end of it.
+TEST(SpaceGroupDatabase, SettingOfAHallNumberPastTheTableIsRefused)
+{
+  EXPECT_NO_THROW(static_cast<void>(SKSpaceGroupDataBase::setting(530)));
+  EXPECT_THROW(static_cast<void>(SKSpaceGroupDataBase::setting(531)), std::out_of_range);
+}

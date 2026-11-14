@@ -144,3 +144,30 @@ TEST(opencl_grid_limits, grids_of_a_crystal_without_fractional_positions_derive_
   mismatched.fractionalPositions.push_back(double3(0.1, 0.1, 0.1));
   EXPECT_THROW(ProbeEnergyGridCPU::compute(interactions, mismatched, "X", uint3{8, 8, 8}), std::runtime_error);
 }
+
+// A crystal holding Cartesian positions only (no fractional ones) is the same structure to the device routes:
+// they read the fractional positions as stored, found none, ran no pair at all, and reported a void fraction of one
+// and an area of nought.
+TEST(opencl_grid_limits, the_energy_routes_take_the_positions_of_the_atoms)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+  const PairInteractions interactions = probeAndAtom();
+  const Crystal withFractions = oneAtom();
+  Crystal cartesianOnly = withFractions;
+  cartesianOnly.fractionalPositions.clear();
+
+  EnergyOpenCLVoidFraction voidFraction;
+  voidFraction.run(interactions, withFractions, "X", uint3{16, 16, 16});
+  const double expected = voidFraction.voidFraction;
+  ASSERT_LT(expected, 0.99);
+  voidFraction.run(interactions, cartesianOnly, "X", uint3{16, 16, 16});
+  EXPECT_NEAR(voidFraction.voidFraction, expected, 1e-6);
+
+  EnergyOpenCLSurfaceArea surface;
+  surface.run(interactions, withFractions, 0.0, "X", uint3{16, 16, 16});
+  const double area = surface.area;
+  ASSERT_GT(area, 1.0);
+  surface.run(interactions, cartesianOnly, 0.0, "X", uint3{16, 16, 16});
+  EXPECT_NEAR(surface.area, area, 1e-6 * area);
+}

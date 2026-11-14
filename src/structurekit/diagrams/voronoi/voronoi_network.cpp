@@ -432,7 +432,10 @@ VoronoiNetwork VoronoiNetwork::create(const UnitCell& unitCell,
         std::size_t a = vertexNode[p];
         std::size_t b = vertexNode[q];
         int3 orientedDelta = delta;
-        if (a > b)
+        // one key per undirected edge: the lower node first, and for a periodic self-loop (a == b) the
+        // lexicographically positive offset, so that its two orientations do not become two edges
+        const bool negativeSelfLoop = a == b && std::tuple(delta.x, delta.y, delta.z) < std::tuple(0, 0, 0);
+        if (a > b || negativeSelfLoop)
         {
           std::swap(a, b);
           orientedDelta = int3(-delta.x, -delta.y, -delta.z);

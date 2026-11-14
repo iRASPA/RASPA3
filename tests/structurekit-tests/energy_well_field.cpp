@@ -245,3 +245,35 @@ TEST(energy_well_field, the_processor_and_the_device_block_the_same_voxels_of_a_
   }
   EXPECT_EQ(different, 0uz);
 }
+
+// A mesh vertex inside a blocking sphere has the blocked ramp's energy, as the field has there, on the processor and
+// on the device. The refinement used to keep the bare framework energy, so a sphere cap in an attractive blocked
+// cage came out below the cap threshold and its triangles were not trimmed.
+TEST(energy_well_field, a_vertex_in_a_blocking_sphere_is_refined_to_the_blocked_energy)
+{
+  PairInteractions interactions = probeAndAtom();
+  const std::vector<BlockingSphere> spheres{wideSphere};
+  Crystal framework = oneAtomInASkewedCell();
+  NeighbourhoodParameters parameters{};
+  parameters.probe = LinearProbe::singleSite(interactions, "X").value();
+  parameters.blockedEnergyPerAngstrom = 1000.0;
+  parameters.ceiling = ceiling;
+
+  const double3 corner(0.45, 0.45, 0.0);
+  const double expected = -1000.0 * distanceBySearch(corner);
+  ASSERT_GT(expected, 0.0);
+
+  std::vector<double3> corners{corner};
+  std::vector<double> energies;
+  WellFieldCPU::refineVertices(corners, energies, interactions, framework, parameters, spheres, -50.0);
+  ASSERT_EQ(energies.size(), 1uz);
+  EXPECT_NEAR(energies[0], expected, 1.0e-4 * expected);  // the vertex is quantized to 2^-20 of the cell
+
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+  corners = {corner};
+  energies.clear();
+  WellFieldOpenCL::refineVertices(corners, energies, interactions, framework, parameters, spheres, -50.0);
+  ASSERT_EQ(energies.size(), 1uz);
+  EXPECT_NEAR(energies[0], expected, 1.0e-3 * expected);
+}

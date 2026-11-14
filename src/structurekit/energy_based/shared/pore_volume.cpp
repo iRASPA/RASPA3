@@ -165,7 +165,7 @@ void EnergyPoreVolume::run(const EnergyBackend &backend, const PairInteractions 
   std::print(myfile, "# Pore volume from the energy landscape\n");
   std::print(myfile, "# Crystal: {}\n", framework.name);
   std::print(myfile, "# Space-group HM-symbol: {}\n",
-             SKSpaceGroupDataBase::spaceGroupData[framework.spaceGroupHallNumber].HMString());
+             SKSpaceGroupDataBase::setting(framework.spaceGroupHallNumber).HMString());
   std::print(myfile, "# Number of framework atoms: {}\n", framework.atoms.size());
   std::print(myfile, "# Crystal volume: {} [Å³]\n", volume);
   std::print(myfile, "# Crystal mass: {} [g/mol]\n", framework.mass);
