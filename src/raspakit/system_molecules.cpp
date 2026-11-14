@@ -542,6 +542,15 @@ void System::exchangeConfiguration(System& other)
     std::swap(reactions.list[reaction].lambda.currentBin, other.reactions.list[reaction].lambda.currentBin);
     std::swap(reactions.list[reaction].lambdaProductSide.currentBin,
               other.reactions.list[reaction].lambdaProductSide.currentBin);
+    // the coupling, the fractional side and the fractional molecules it couples: the bins above are derived
+    // from them and the molecule boundaries depend on them
+    std::swap(reactions.list[reaction].currentLambda, other.reactions.list[reaction].currentLambda);
+    std::swap(reactions.list[reaction].fractionalSideIsReactants,
+              other.reactions.list[reaction].fractionalSideIsReactants);
+    std::swap(reactions.list[reaction].reactantFractionalMoleculeIds,
+              other.reactions.list[reaction].reactantFractionalMoleculeIds);
+    std::swap(reactions.list[reaction].productFractionalMoleculeIds,
+              other.reactions.list[reaction].productFractionalMoleculeIds);
   }
 }
 

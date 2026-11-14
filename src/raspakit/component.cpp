@@ -256,6 +256,12 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
     automaticBlockingPockets = automaticBlockingPockets || specification.automatic;
   }
 
+  if (!parsed_data.contains("PseudoAtoms"))
+  {
+    throw std::runtime_error(
+        std::format("[Component reader]: No pseudo-atoms found [keyword 'PseudoAtoms' missing]\n"));
+  }
+
   std::size_t jsonNumberOfPseudoAtoms = parsed_data["PseudoAtoms"].size();
 
   definedAtoms.clear();
@@ -264,12 +270,6 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
   if (jsonNumberOfPseudoAtoms == 0)
   {
     throw std::runtime_error(std::format("[Component reader]: key 'PseudoAtoms' empty]\n"));
-  }
-
-  if (!parsed_data.contains("PseudoAtoms"))
-  {
-    throw std::runtime_error(
-        std::format("[Component reader]: No pseudo-atoms found [keyword 'PseudoAtoms' missing]\n"));
   }
 
   for (auto &[_, item] : parsed_data["PseudoAtoms"].items())
@@ -1739,7 +1739,17 @@ Molecule Component::createMoleculeRecord(std::span<const Atom> moleculeAtoms) co
   {
     com += definedAtoms[i].second * moleculeAtoms[i].position;
   }
-  com = com / totalMass;
+  if (totalMass > 0.0)
+  {
+    com = com / totalMass;
+  }
+  else
+  {
+    // a massless (dummy or probe) molecule has no centre of mass: the geometric centre, as getCenterOfMass
+    com = double3{};
+    for (const Atom& atom : moleculeAtoms) com += atom.position;
+    com = com / static_cast<double>(moleculeAtoms.size());
+  }
 
   simd_quatd orientation(0.0, 0.0, 0.0, 1.0);
   if (rigid && moleculeAtoms.size() > 1)
@@ -2672,7 +2682,7 @@ std::vector<TorsionPotential> Component::readTorsionPotentials(
           std::vector<double> potential_parameters =
               item[2].is_array() ? item[2].get<std::vector<double>>() : std::vector<double>{};
 
-          if (item[0][0].is_string() && item[0][1].is_string() && item[0][2].is_string())
+          if (item[0][0].is_string() && item[0][1].is_string() && item[0][2].is_string() && item[0][3].is_string())
           {
             std::vector<std::string> identifiers = item[0].get<std::vector<std::string>>();
 
@@ -3839,6 +3849,10 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
 
   archive << c.totalMass;
   archive << c.fugacityCoefficient;
+  archive << c.fugacityCoefficientGiven;
+  archive << c.chemicalPotential;
+  archive << c.lnPartitionFunctionSpecies;
+  archive << c.lnPartitionFunctionFromJANAF;
   archive << c.amountOfExcessMolecules;
   archive << c.bulkFluidDensity;
   archive << c.compressibility;
@@ -3961,6 +3975,10 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.totalMass;
   archive >> c.fugacityCoefficient;
+  archive >> c.fugacityCoefficientGiven;
+  archive >> c.chemicalPotential;
+  archive >> c.lnPartitionFunctionSpecies;
+  archive >> c.lnPartitionFunctionFromJANAF;
   archive >> c.amountOfExcessMolecules;
   archive >> c.bulkFluidDensity;
   archive >> c.compressibility;

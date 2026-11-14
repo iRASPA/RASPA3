@@ -112,8 +112,8 @@ std::string UreyBradleyPotential::print() const
       return std::format("{} - {} : MORSE p_0/k_B={:g} [K/Å^2], p_1={:g} [Å^-1], p_2={:g} [Å]\n", identifiers[0],
                          identifiers[1], parameters[0] * Units::EnergyToKelvin, parameters[1], parameters[2]);
     case UreyBradleyType::LJ_12_6:
-      return std::format("{} - {} : LJ_12_6 p_0/k_B={:g} [K Å^12], p_1={:g} [K Å^6]\n", identifiers[0], identifiers[1],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1]);
+      return std::format("{} - {} : LJ_12_6 p_0/k_B={:g} [K Å^12], p_1/k_B={:g} [K Å^6]\n", identifiers[0], identifiers[1],
+                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::EnergyToKelvin);
     case UreyBradleyType::LennardJones:
       return std::format("{} - {} : LENNARD_JONES p_0/k_B={:g} [K], p_1={:g} [Å]\n", identifiers[0], identifiers[1],
                          parameters[0] * Units::EnergyToKelvin, parameters[1]);

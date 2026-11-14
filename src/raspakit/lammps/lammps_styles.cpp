@@ -797,8 +797,8 @@ std::optional<RaspaTerm> bendFromLammps(std::string_view style, std::span<const 
   }
   if (style == "charmm" && c.size() >= 4)
   {
-    // K theta0 K_ub r_ub: the Urey-Bradley part is reported separately by the reader
-    return RaspaTerm{"HARMONIC", {2.0 * c[0] * K, c[1]}, (std::abs(c[2]) > 0.0) ? "Urey-Bradley term present" : ""};
+    // K theta0 K_ub r_ub: the Urey-Bradley part becomes a separate Urey-Bradley potential (LAMMPS::readDataFile)
+    return RaspaTerm{"HARMONIC", {2.0 * c[0] * K, c[1]}};
   }
   if (style == "zero")
   {

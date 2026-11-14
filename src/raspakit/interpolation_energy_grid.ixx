@@ -77,7 +77,13 @@ export struct InterpolationEnergyGrid
 
   void writeOutput(std::size_t systemId, const SimulationBox &simulationBox, const ForceField &forceField);
 
+  /// The voxel counts in the header of a CUBE file.
   static const uint3 parseExternalFieldGridDimensions(const std::string& filename);
+
+  /// The grid dimensions of a CUBE file over 'box': along an axis whose N voxels a step apart span the cell (a
+  /// periodic file, as CP2K writes it: voxel i at s = i/N) one more plane, the copy of s = 0 at s = 1; along an
+  /// axis whose N points span it end to end (both s = 0 and s = 1 stored, as RASPA writes it) the count itself.
+  static uint3 externalFieldGridDimensions(const std::string& filename, const SimulationBox& box);
 
   /**
    * \brief Parses external field grid based on the provided CUBE file.
@@ -89,6 +95,9 @@ export struct InterpolationEnergyGrid
    * \return A pair containing the 3D grid of external field values and the grid dimensions.
    */
   static const std::vector<double> parseExternalFieldGridCube(const std::string& filename);
+  /// The same, filled into 'numberOfGridPoints' (see externalFieldGridDimensions): a plane the file leaves out
+  /// is the periodic copy of the first one.
+  static const std::vector<double> parseExternalFieldGridCube(const std::string& filename, uint3 numberOfGridPoints);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const InterpolationEnergyGrid &s);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, InterpolationEnergyGrid &s);

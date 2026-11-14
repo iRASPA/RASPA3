@@ -2659,9 +2659,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
       if (item.contains("FugacityCoefficient") && item["FugacityCoefficient"].is_number())
       {
+        // 0 asks for the Peng-Robinson fugacity coefficient, as an omitted value does
         double fugacity_coefficient = item["FugacityCoefficient"].get<double>();
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
+          if (fugacity_coefficient == 0.0) continue;
           jsonComponents[i][componentId].fugacityCoefficient = fugacity_coefficient;
           jsonComponents[i][componentId].fugacityCoefficientGiven = true;
         }
@@ -3153,6 +3155,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             parseList<double>(jsonNumberOfSystems, "FugacityCoefficient", item["FugacityCoefficient"]);
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
+          if (fugacity_coefficients[i] == 0.0) continue;
           jsonComponents[i][componentId].fugacityCoefficient = fugacity_coefficients[i];
           jsonComponents[i][componentId].fugacityCoefficientGiven = true;
         }
@@ -3742,20 +3745,38 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
               "that converts pressures to fugacities per state point\n",
               systemId));
         }
-        double totalFugacity = 0.0;
+        // the mole fractions relative to the largest chemical potential, so that a strongly negative one does not
+        // underflow every exp(mu/kT) to zero and leave 0/0 mole fractions
+        double largestChemicalPotential = -std::numeric_limits<double>::infinity();
+        for (std::size_t i = 0; i != jsonNumberOfComponents; ++i)
+        {
+          if (jsonChemicalPotentials[systemId][i].has_value())
+            largestChemicalPotential = std::max(largestChemicalPotential, jsonChemicalPotentials[systemId][i].value());
+        }
+        double relativeFugacitySum = 0.0;
         for (std::size_t i = 0; i != jsonNumberOfComponents; ++i)
         {
           if (!jsonChemicalPotentials[systemId][i].has_value()) continue;
-          const double fugacity =
-              Units::KB * T * std::exp(jsonChemicalPotentials[systemId][i].value() / (Units::KB * T));
-          jsonComponents[systemId][i].molFraction = fugacity;
+          const double relativeFugacity =
+              std::exp((jsonChemicalPotentials[systemId][i].value() - largestChemicalPotential) / (Units::KB * T));
+          jsonComponents[systemId][i].molFraction = relativeFugacity;
           jsonComponents[systemId][i].fugacityCoefficient = 1.0;
           jsonComponents[systemId][i].chemicalPotential = jsonChemicalPotentials[systemId][i];
-          totalFugacity += fugacity;
+          relativeFugacitySum += relativeFugacity;
         }
         for (std::size_t i = 0; i != jsonNumberOfComponents; ++i)
         {
-          if (jsonChemicalPotentials[systemId][i].has_value()) jsonComponents[systemId][i].molFraction /= totalFugacity;
+          if (jsonChemicalPotentials[systemId][i].has_value())
+            jsonComponents[systemId][i].molFraction /= relativeFugacitySum;
+        }
+        const double totalFugacity =
+            Units::KB * T * std::exp(largestChemicalPotential / (Units::KB * T)) * relativeFugacitySum;
+        if (!(totalFugacity > 0.0) || !std::isfinite(totalFugacity))
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: system {}: the chemical potentials give a reservoir fugacity of {} (exp(mu/kT) "
+              "under- or overflows at T = {} K)\n",
+              systemId, totalFugacity, T));
         }
         P = totalFugacity * Units::PressureConversionFactor;
       }

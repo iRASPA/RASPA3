@@ -678,8 +678,10 @@ ReadResult readPrmtop(const std::filesystem::path& prmtopFile,
                               std::abs((*list)[i + 3]) / 3, (*list)[i + 4], flags});
     }
 
-  // 1-4 scaling (uniform in RASPA; AMBER allows it per dihedral type)
-  double scee = 1.2, scnb = 2.0;
+  // 1-4 scaling (uniform in RASPA; AMBER allows it per dihedral type). Without scale factors in the file AMBER
+  // takes 1.2 and 2.0; a CHAMBER topology takes 1 and 1 (CHARMM scales no 1-4 Coulomb, and its 1-4 table already
+  // holds the 1-4 Lennard-Jones parameters).
+  double scee = has14Table ? 1.0 : 1.2, scnb = has14Table ? 1.0 : 2.0;
   {
     std::set<double> sceeValues{}, scnbValues{};
     for (const std::array<std::int64_t, 6>& dihedral : dihedralList)
@@ -736,6 +738,16 @@ ReadResult readPrmtop(const std::filesystem::path& prmtopFile,
   }
   auto local = [&](std::int64_t atom, std::size_t molecule) -> std::int64_t
   { return atom - static_cast<std::int64_t>(molecules[molecule].front()); };
+  // an angle or dihedral through atoms the bonds do not connect (a coordination term between two fragments) has
+  // no molecule of its own, as a CMAP term
+  auto moleculeOfTerm = [&](std::span<const std::int64_t> atoms, std::string_view label)
+  {
+    const std::size_t m = moleculeOfAtom[static_cast<std::size_t>(atoms[0])];
+    for (std::int64_t atom : atoms)
+      if (moleculeOfAtom[static_cast<std::size_t>(atom)] != m)
+        throw std::runtime_error(std::format("[prmtop reader] an {} term spans two molecules", label));
+    return m;
+  };
   for (const std::array<std::int64_t, 3>& bond : bondList)
   {
     std::size_t m = moleculeOfAtom[static_cast<std::size_t>(bond[0])];
@@ -743,12 +755,12 @@ ReadResult readPrmtop(const std::filesystem::path& prmtopFile,
   }
   for (const std::array<std::int64_t, 4>& angle : angleList)
   {
-    std::size_t m = moleculeOfAtom[static_cast<std::size_t>(angle[0])];
+    std::size_t m = moleculeOfTerm(std::span<const std::int64_t>(angle.data(), 3), "angle");
     moleculeTemplates[m].angles.push_back({local(angle[0], m), local(angle[1], m), local(angle[2], m), angle[3]});
   }
   for (const std::array<std::int64_t, 6>& dihedral : dihedralList)
   {
-    std::size_t m = moleculeOfAtom[static_cast<std::size_t>(dihedral[0])];
+    std::size_t m = moleculeOfTerm(std::span<const std::int64_t>(dihedral.data(), 4), "dihedral");
     moleculeTemplates[m].dihedrals.push_back({local(dihedral[0], m), local(dihedral[1], m), local(dihedral[2], m),
                                               local(dihedral[3], m), dihedral[4], dihedral[5]});
   }

@@ -303,12 +303,26 @@ InterpolationEnergyGrid::InterpolationEnergyGrid(const SimulationBox unitCellBox
         data(std::to_underlying(order) *
              (numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
 {
+  // a grid is at least one cell (two planes) along every axis
+  if (numberOfGridPoints.x < 2 || numberOfGridPoints.y < 2 || numberOfGridPoints.z < 2)
+  {
+    throw std::runtime_error(std::format("An interpolation grid needs at least 2 points along every axis, got {}x{}x{}",
+                                         numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z));
+  }
 }
 
-const uint3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std::string& filename)
+namespace
+{
+struct CubeHeader
+{
+  uint3 dimensions;
+  std::array<double, 3> stepLengths;  ///< in Angstrom
+};
+
+CubeHeader readCubeHeader(const std::string& filename)
 {
   int3 gridDims;
-  double ax, ay, az, bx, by, bz, cx, cy, cz;  // dummy variables currently
+  std::array<double3, 3> steps;
 
   std::ifstream infile(filename);
 
@@ -332,8 +346,8 @@ const uint3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std:
       throw std::runtime_error("Invalid cube file (missing X grid line): " + filename);
   {
       std::istringstream iss(line);
-      if (!(iss >> gridDims.x >> ax >> ay >> az))
-          throw std::runtime_error("Invalid X grid line in cube: " + filename);
+      if (!(iss >> gridDims.x >> steps[0].x >> steps[0].y >> steps[0].z))
+        throw std::runtime_error("Invalid X grid line in cube: " + filename);
   }
 
   // Y vector
@@ -341,8 +355,8 @@ const uint3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std:
       throw std::runtime_error("Invalid cube file (missing Y grid line): " + filename);
   {
       std::istringstream iss(line);
-      if (!(iss >> gridDims.y >> bx >> by >> bz))
-          throw std::runtime_error("Invalid Y grid line in cube: " + filename);
+      if (!(iss >> gridDims.y >> steps[1].x >> steps[1].y >> steps[1].z))
+        throw std::runtime_error("Invalid Y grid line in cube: " + filename);
   }
 
   // Z vector
@@ -350,25 +364,51 @@ const uint3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std:
       throw std::runtime_error("Invalid cube file (missing Z grid line): " + filename);
   {
       std::istringstream iss(line);
-      if (!(iss >> gridDims.z >> cx >> cy >> cz))
-          throw std::runtime_error("Invalid Z grid line in cube: " + filename);
+      if (!(iss >> gridDims.z >> steps[2].x >> steps[2].y >> steps[2].z))
+        throw std::runtime_error("Invalid Z grid line in cube: " + filename);
   }
 
   // The sign of a count gives the unit of its step vector, Bohr when positive (what Gaussian, CP2K, ORCA, Multiwfn
-  // and Psi4 write) and Angstrom when negative; the steps are not used here (the grid spans the simulation cell), so
-  // either is accepted. Only a mix of the two is malformed.
+  // and Psi4 write) and Angstrom when negative. Only a mix of the two is malformed.
+  constexpr double bohrToAngstrom = 0.529177210903;
+  double unit{};
   if (gridDims.x < 0 && gridDims.y < 0 && gridDims.z < 0)
   {
-    return {static_cast<std::size_t>(-1 * gridDims.x), static_cast<std::size_t>(-1 * gridDims.y), static_cast<std::size_t>(-1 * gridDims.z)};
+    gridDims = int3(-gridDims.x, -gridDims.y, -gridDims.z);
+    unit = 1.0;
   }
-  if (gridDims.x > 0 && gridDims.y > 0 && gridDims.z > 0)
+  else if (gridDims.x > 0 && gridDims.y > 0 && gridDims.z > 0)
   {
-    return {static_cast<std::size_t>(gridDims.x), static_cast<std::size_t>(gridDims.y),
-            static_cast<std::size_t>(gridDims.z)};
+    unit = bohrToAngstrom;
   }
-  throw std::runtime_error("All grid dimensions in the CUBE file must be only negative or only positive, not mixed");
+  else
+  {
+    throw std::runtime_error("All grid dimensions in the CUBE file must be only negative or only positive, not mixed");
+  }
+  return {uint3(static_cast<std::size_t>(gridDims.x), static_cast<std::size_t>(gridDims.y),
+                static_cast<std::size_t>(gridDims.z)),
+          {unit * steps[0].length(), unit * steps[1].length(), unit * steps[2].length()}};
+}
+}  // namespace
 
-  std::unreachable();
+const uint3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std::string& filename)
+{
+  return readCubeHeader(filename).dimensions;
+}
+
+uint3 InterpolationEnergyGrid::externalFieldGridDimensions(const std::string& filename, const SimulationBox& box)
+{
+  const CubeHeader header = readCubeHeader(filename);
+  const double3 lengths = box.lengths();
+  uint3 dimensions = header.dimensions;
+  for (int k = 0; k < 3; ++k)
+  {
+    // N voxels a step apart span the cell: the plane at s = 1 (the copy of s = 0) is left out of the file
+    const double length = lengths[static_cast<std::size_t>(k)];
+    const double spanned = static_cast<double>(header.dimensions[k]) * header.stepLengths[static_cast<std::size_t>(k)];
+    if (std::abs(spanned - length) < 1e-4 * length) dimensions[k] += 1;
+  }
+  return dimensions;
 }
 
 /**
@@ -383,7 +423,21 @@ const uint3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std:
  */
 const std::vector<double> InterpolationEnergyGrid::parseExternalFieldGridCube(const std::string& filename)
 {
+  return parseExternalFieldGridCube(filename, parseExternalFieldGridDimensions(filename));
+}
+
+const std::vector<double> InterpolationEnergyGrid::parseExternalFieldGridCube(const std::string& filename,
+                                                                              uint3 numberOfGridPoints)
+{
   uint3 gridDims = parseExternalFieldGridDimensions(filename);
+  for (int k = 0; k < 3; ++k)
+  {
+    if (numberOfGridPoints[k] != gridDims[k] && numberOfGridPoints[k] != gridDims[k] + 1)
+    {
+      throw std::runtime_error(std::format("Cube file {} has {} points along axis {}, the grid {}", filename,
+                                           gridDims[k], k, numberOfGridPoints[k]));
+    }
+  }
 
   std::ifstream infile(filename);
 
@@ -412,7 +466,7 @@ const std::vector<double> InterpolationEnergyGrid::parseExternalFieldGridCube(co
     }
   }
 
-  std::vector<double> gridFlat(gridDims.x * gridDims.y * gridDims.z);
+  std::vector<double> gridFlat(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z);
   double value{};
 
   for (std::size_t ix = 0; ix < gridDims.x; ix++)
@@ -424,9 +478,24 @@ const std::vector<double> InterpolationEnergyGrid::parseExternalFieldGridCube(co
         if (!(infile >> value)){
           throw std::runtime_error("Unexpected end of cube data: " + filename);
         }
-        std::size_t idx = ix + gridDims.x * (iy + gridDims.y * iz);
+        std::size_t idx = ix + numberOfGridPoints.x * (iy + numberOfGridPoints.y * iz);
 
         gridFlat[idx] = value * Units::KelvinToEnergy;
+      }
+    }
+  }
+
+  // a periodic file leaves out the plane at s = 1: it is the copy of the plane at s = 0
+  for (std::size_t iz = 0; iz < numberOfGridPoints.z; ++iz)
+  {
+    for (std::size_t iy = 0; iy < numberOfGridPoints.y; ++iy)
+    {
+      for (std::size_t ix = 0; ix < numberOfGridPoints.x; ++ix)
+      {
+        if (ix < gridDims.x && iy < gridDims.y && iz < gridDims.z) continue;
+        gridFlat[ix + numberOfGridPoints.x * (iy + numberOfGridPoints.y * iz)] =
+            gridFlat[(ix % gridDims.x) +
+                     numberOfGridPoints.x * ((iy % gridDims.y) + numberOfGridPoints.y * (iz % gridDims.z))];
       }
     }
   }
@@ -445,7 +514,8 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
           "External field 'GridFile' holds energies only and requires 'InterpolationScheme' 'Polynomial' (no "
           "molecular dynamics or gradient-based Monte Carlo moves)\n");
     }
-    data = InterpolationEnergyGrid::parseExternalFieldGridCube(forceField.externalFieldGridFileName);
+    data =
+        InterpolationEnergyGrid::parseExternalFieldGridCube(forceField.externalFieldGridFileName, numberOfGridPoints);
   }
   else
   {
@@ -842,24 +912,27 @@ double polynomialInterpolate(const std::vector<double>& data, const uint3& numbe
     zt[static_cast<std::size_t>(l0)] = static_cast<double>(l0 + mstart);
 
     Index lp = z0 + l0 + mstart;
-    if (lp < 0) lp += static_cast<Index>(numberOfCells.z);
-    if (lp >= static_cast<Index>(numberOfCells.z)) lp -= static_cast<Index>(numberOfCells.z);
+    // modulo the period: a grid of fewer cells than the stencil half-width wraps more than once
+    lp = ((lp % static_cast<Index>(numberOfCells.z)) + static_cast<Index>(numberOfCells.z)) %
+         static_cast<Index>(numberOfCells.z);
 
     for (Index k0 = 0; k0 < NumPoints; ++k0)
     {
       yt[static_cast<std::size_t>(k0)] = static_cast<double>(k0 + mstart);
 
       Index kp = y0 + k0 + mstart;
-      if (kp < 0) kp += static_cast<Index>(numberOfCells.y);
-      if (kp >= static_cast<Index>(numberOfCells.y)) kp -= static_cast<Index>(numberOfCells.y);
+      // modulo the period: a grid of fewer cells than the stencil half-width wraps more than once
+      kp = ((kp % static_cast<Index>(numberOfCells.y)) + static_cast<Index>(numberOfCells.y)) %
+           static_cast<Index>(numberOfCells.y);
 
       for (Index j0 = 0; j0 < NumPoints; ++j0)
       {
         xt[static_cast<std::size_t>(j0)] = static_cast<double>(j0 + mstart);
 
         Index jp = x0 + j0 + mstart;
-        if (jp < 0) jp += static_cast<Index>(numberOfCells.x);
-        if (jp >= static_cast<Index>(numberOfCells.x)) jp -= static_cast<Index>(numberOfCells.x);
+        // modulo the period: a grid of fewer cells than the stencil half-width wraps more than once
+        jp = ((jp % static_cast<Index>(numberOfCells.x)) + static_cast<Index>(numberOfCells.x)) %
+             static_cast<Index>(numberOfCells.x);
 
         yjtmp[static_cast<std::size_t>(j0)] =
             data_cell[0, static_cast<std::size_t>(jp), static_cast<std::size_t>(kp), static_cast<std::size_t>(lp)];

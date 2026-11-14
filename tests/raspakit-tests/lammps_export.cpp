@@ -1543,3 +1543,125 @@ read_data pair.data
   std::ofstream(inputPath) << script("si");
   EXPECT_THROW(static_cast<void>(LAMMPS::readDataFile(dataPath, inputPath)), std::runtime_error);
 }
+
+// A charged system whose VDW style has no fused coul variant (here morse) runs under pair_style hybrid/overlay: the
+// pair coefficients need their sub-style and go to the input script. The data file used to carry PairIJ Coeffs
+// without it, and read_data stopped with "Pair coeff for hybrid has invalid style".
+TEST(lammps_export, hybrid_overlay_keeps_the_pair_coefficients_out_of_the_data_file)
+{
+  LAMMPS::Topology topology{};
+  topology.masses = {{"C", 12.0}};
+  topology.pairs.push_back(LAMMPS::PairEntry{1, 1, LAMMPS::PairTerm{"morse", "0.1 1.5 3.0"}, ""});
+  topology.useCharge = true;
+  topology.chargeMethod = ForceField::ChargeMethod::Ewald;
+
+  const std::string data = LAMMPS::writeDataFile(topology);
+  const std::string script = LAMMPS::writeInputScript(topology);
+  EXPECT_EQ(data.find("PairIJ Coeffs"), std::string::npos);
+  EXPECT_NE(script.find("pair_style hybrid/overlay"), std::string::npos);
+  EXPECT_NE(script.find("pair_coeff 1 1 morse 0.1 1.5 3.0"), std::string::npos);
+
+  // a fused style keeps them in the data file
+  topology.pairs.front().term = LAMMPS::PairTerm{"lj/cut", "0.1 3.0"};
+  EXPECT_NE(LAMMPS::writeDataFile(topology).find("PairIJ Coeffs"), std::string::npos);
+}
+
+// The reader's bonded and pair-style edge cases:
+// - a 'zero' bond without r0 is a FIXED bond at the length of the coordinates (it was FIXED at 0 A);
+// - the Urey-Bradley part of a charmm angle becomes a Urey-Bradley potential (it was dropped), and a charmm angle
+//   with K = 0 (how RASPA exports a Urey-Bradley term) adds no second bend on the triple;
+// - two dihedral types on one quadruple are summed into one cosine series (the component refused the second as an
+//   ambiguous definition);
+// - under hybrid/overlay the damping alpha of coul/wolf is not read as the VDW cut-off.
+TEST(lammps_export, reader_handles_zero_styles_urey_bradley_multi_term_dihedrals_and_hybrid_wolf)
+{
+  constexpr std::string_view data = R"(LAMMPS data
+
+4 atoms
+3 bonds
+3 angles
+2 dihedrals
+1 atom types
+1 bond types
+2 angle types
+2 dihedral types
+
+0.0 20.0 xlo xhi
+0.0 20.0 ylo yhi
+0.0 20.0 zlo zhi
+
+Masses
+
+1 12.0
+
+Atoms # full
+
+1 1 1 0.1 5.0 5.0 5.0 0 0 0
+2 1 1 -0.1 6.5 5.0 5.0 0 0 0
+3 1 1 0.1 7.0 6.4 5.0 0 0 0
+4 1 1 -0.1 8.5 6.4 5.5 0 0 0
+
+Bonds
+
+1 1 1 2
+2 1 2 3
+3 1 3 4
+
+Angles
+
+1 1 1 2 3
+2 2 1 2 3
+3 1 2 3 4
+
+Dihedrals
+
+1 1 1 2 3 4
+2 2 1 2 3 4
+)";
+  constexpr std::string_view script = R"(units real
+atom_style full
+pair_style hybrid/overlay coul/wolf 0.25 12.0 lj/cut 10.0
+pair_coeff 1 1 lj/cut 0.1 3.0
+pair_modify mix arithmetic
+bond_style zero
+bond_coeff 1
+angle_style charmm
+angle_coeff 1 50.0 109.5 0.0 0.0
+angle_coeff 2 0.0 0.0 20.0 2.5
+dihedral_style charmm
+dihedral_coeff 1 1.0 1 0 0.0
+dihedral_coeff 2 0.5 3 180 0.0
+read_data chain.data
+)";
+  TemporaryDirectory directory;
+  const std::filesystem::path dataPath = directory.path / "chain.data";
+  const std::filesystem::path inputPath = directory.path / "chain.in";
+  std::ofstream(dataPath) << data;
+  std::ofstream(inputPath) << script;
+
+  const LAMMPS::ReadResult read = LAMMPS::readDataFile(dataPath, inputPath);
+  EXPECT_NEAR(read.forceField["CutOffVDW"].get<double>(), 10.0, 1e-12);
+  EXPECT_NEAR(read.forceField["CutOffCoulomb"].get<double>(), 12.0, 1e-12);
+  EXPECT_EQ(read.simulation["Systems"][0]["ChargeMethod"], "Wolf");
+  EXPECT_NEAR(read.forceField["EwaldParameters"][0].get<double>(), 0.25, 1e-12);
+
+  ASSERT_EQ(read.components.size(), 1u);
+  const nlohmann::json& definition = read.components[0].definition;
+  ASSERT_EQ(definition["Bonds"].size(), 3u);
+  EXPECT_EQ(definition["Bonds"][0][1], "FIXED");
+  EXPECT_NEAR(definition["Bonds"][0][2][0].get<double>(), 1.5, 1e-9);
+
+  EXPECT_EQ(definition["Bends"].size(), 2u);
+  ASSERT_TRUE(definition.contains("UreyBradleys"));
+  ASSERT_EQ(definition["UreyBradleys"].size(), 1u);
+  EXPECT_EQ(definition["UreyBradleys"][0][1], "HARMONIC");
+  EXPECT_NEAR(definition["UreyBradleys"][0][2][1].get<double>(), 2.5, 1e-12);
+
+  ASSERT_EQ(definition["Torsions"].size(), 1u);
+  EXPECT_EQ(definition["Torsions"][0][1], "TRAPPE_EXTENDED");
+  const std::vector<double> c = definition["Torsions"][0][2].get<std::vector<double>>();
+  ASSERT_EQ(c.size(), 5u);
+  EXPECT_NEAR(c[1] / c[0], 1.0 / 1.5, 1e-12);
+  EXPECT_NEAR(c[3] / c[0], -0.5 / 1.5, 1e-12);
+  EXPECT_NEAR(c[2], 0.0, 1e-12);
+}

@@ -233,3 +233,35 @@ Si1 Si 0.1 0.2 0.3
   EXPECT_EQ(numbers[1], numbers[0]);
   EXPECT_EQ(numbers[2], numbers[0]);
 }
+
+// A file with site labels but no _atom_site_type_symbol (common in CSD, ICSD and RASPA2 files) reads its atoms from
+// the labels; every row used to be skipped, leaving a framework without atoms. A data-block keyword after the loop
+// ends it instead of being read as the next row.
+TEST(cif_reader, site_labels_without_type_symbols_are_read)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+  constexpr std::string_view cif = R"(
+data_test
+_cell_length_a 10.0
+_cell_length_b 10.0
+_cell_length_c 10.0
+_cell_angle_alpha 90.0
+_cell_angle_beta 90.0
+_cell_angle_gamma 90.0
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Si1 0.1 0.2 0.3
+O1  0.4 0.5 0.6
+data_second
+)";
+
+  const auto parsed = CIFReader::readCIFString(std::string(cif), forceField, CIFReader::UseChargesFrom::CIF_File);
+  ASSERT_TRUE(parsed.has_value());
+  auto [simulationBox, spaceGroupHallNumber, definedAtoms, unitCellAtoms] = parsed.value();
+  ASSERT_EQ(definedAtoms.size(), 2);
+  EXPECT_EQ(static_cast<std::size_t>(definedAtoms[0].type), forceField.findPseudoAtom("Si").value());
+  EXPECT_EQ(static_cast<std::size_t>(definedAtoms[1].type), forceField.findPseudoAtom("O").value());
+}

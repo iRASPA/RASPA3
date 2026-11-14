@@ -1285,7 +1285,7 @@ std::string ForceField::printForceFieldStatus() const
                Units::displayedUnitOfLengthString);
   }
 
-  std::print(stream, "Overlap-criteria VDW:          {: .6e} [{}]\n\n", energyOverlapCriteria,
+  std::print(stream, "Overlap-criteria VDW:          {: .6e} [{}]\n\n", energyOverlapCriteria * Units::EnergyToKelvin,
              Units::displayedUnitOfEnergyString);
 
   std::print(stream, "{}", settings.printSamplingStatus());

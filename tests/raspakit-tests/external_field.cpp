@@ -397,3 +397,82 @@ TEST(external_field, energy_status_holds_the_external_field_energy)
               1e-9 * std::abs(running.externalFieldVDW));
   EXPECT_NEAR(status.totalEnergy.energy, running.potentialEnergy(), 1e-6 * std::abs(running.potentialEnergy()));
 }
+
+// A confining geometry is not tabulated, even with the default 'UseExternalFieldGrid': the grid of a hard wall was
+// zero everywhere and, read first by the energy routines, let molecules sit outside the channel.
+TEST(external_field, confining_geometry_is_not_tabulated)
+{
+  const SimulationBox box(20.0, 20.0, 20.0);
+  ForceField forceField = makeForceField(ForceField::PotentialEnergySurfaceType::CylinderZ);
+  forceField.externalFieldGeometryParameters.x = 4.0;
+  forceField.settings.numberOfExternalFieldGridPoints = uint3{5, 5, 5};
+  ASSERT_TRUE(forceField.settings.useExternalFieldGrid);
+  System system = System(forceField, box, false, 300.0, 1e4, 1.0, {}, {}, {}, {}, 5);
+  system.hasExternalField = true;
+  std::ostringstream log;
+  system.createExternalFieldInterpolationGrid(log, 0);
+  EXPECT_FALSE(system.externalFieldInterpolationGrid.has_value());
+
+  const std::vector<Atom> outside{makeAtom(double3(16.0, 10.0, 3.0))};
+  EXPECT_GT(totalEnergy(forceField, box, system.externalFieldInterpolationGrid, outside), 0.0);
+}
+
+// A grid of one cell along an axis: the six-point polynomial stencil reaches two cells beyond it on either side, and
+// adding the period once left the index at -1 (read as SIZE_MAX, out of bounds). Wrapped modulo the period, a
+// constant field interpolates to that constant.
+TEST(external_field, polynomial_stencil_wraps_a_grid_of_one_cell)
+{
+  const SimulationBox box(10.0, 10.0, 10.0);
+  InterpolationEnergyGrid grid(box, double3(), uint3(2, 2, 2), ForceFieldSettings::InterpolationScheme::Polynomial);
+  grid.data.assign(8, 5.0);
+  for (const double3& position : {double3(0.0, 0.0, 0.0), double3(3.0, 7.0, 1.0), double3(9.9, 0.1, 5.0)})
+  {
+    EXPECT_NEAR(grid.interpolate(position), 5.0, 1e-12) << position.x << " " << position.y << " " << position.z;
+  }
+  EXPECT_THROW(
+      InterpolationEnergyGrid(box, double3(), uint3(1, 4, 4), ForceFieldSettings::InterpolationScheme::Polynomial),
+      std::runtime_error);
+}
+
+// A periodic CUBE file (as CP2K writes it) holds N voxels at s = i/N a step L/N apart, without the copy of s = 0 at
+// s = 1. The grid used to take the N planes as spanning the cell end to end, so its nodes sat at s = i/(N-1) and the
+// field was stretched over the cell. RASPA's own files (N points a step L/(N-1) apart) keep their counts.
+TEST(external_field, periodic_cube_file_gets_the_plane_at_the_cell_boundary)
+{
+  const ScopedTemporaryDirectory directory("raspa3_external_field_periodic_cube");
+  const SimulationBox box(10.0, 10.0, 10.0);
+  const auto write = [](const std::string& name, double step)
+  {
+    std::ofstream file(name);
+    std::print(file, "comment\ncomment\n    0    0.000000    0.000000    0.000000\n");
+    std::print(file, "   -4    {}    0.000000    0.000000\n", step);
+    std::print(file, "   -4    0.000000    {}    0.000000\n", step);
+    std::print(file, "   -4    0.000000    0.000000    {}\n", step);
+    // x slowest, z fastest; the value is that of the x plane
+    for (int i = 0; i < 4; ++i)
+      for (int j = 0; j < 16; ++j) std::print(file, "{} ", 10.0 * static_cast<double>(i));
+    std::print(file, "\n");
+  };
+
+  write("periodic.cube", 2.5);
+  const uint3 dimensions = InterpolationEnergyGrid::externalFieldGridDimensions("periodic.cube", box);
+  EXPECT_EQ(dimensions.x, 5u);
+  EXPECT_EQ(dimensions.y, 5u);
+  EXPECT_EQ(dimensions.z, 5u);
+
+  ForceField forceField = makeForceField(ForceField::PotentialEnergySurfaceType::GridFile);
+  forceField.externalFieldGridFileName = "periodic.cube";
+  InterpolationEnergyGrid grid(box, double3(), dimensions, ForceFieldSettings::InterpolationScheme::Polynomial);
+  std::ostringstream log;
+  grid.makeExternalFieldInterpolationGrid(log, forceField, box);
+  for (int i = 0; i < 4; ++i)
+  {
+    const double3 node(2.5 * static_cast<double>(i), 5.0, 5.0);
+    EXPECT_NEAR(grid.interpolate(node), 10.0 * static_cast<double>(i) * Units::KelvinToEnergy, 1e-9) << i;
+  }
+
+  write("end_to_end.cube", 10.0 / 3.0);
+  const uint3 own = InterpolationEnergyGrid::externalFieldGridDimensions("end_to_end.cube", box);
+  EXPECT_EQ(own.x, 4u);
+  EXPECT_EQ(own.z, 4u);
+}

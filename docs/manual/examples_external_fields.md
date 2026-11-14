@@ -98,7 +98,12 @@ A tabulated field couples linearly to the CFCMC fractional molecules
 \f$\partial U/\partial\lambda\f$ in the dU/dλ estimators). A field read from a
 cube file (`"ExternalFieldPotentialEnergySurface" : "GridFile"`,
 `"ExternalFieldGridFileName"`) exists only as this grid and therefore requires
-`"UseExternalFieldGrid" : true`.
+`"UseExternalFieldGrid" : true`. A confining geometry (`CylinderX/Y/Z`, `RectangleX/Y/Z`) is a
+hard wall, not an energy surface, and is never tabulated: with such a geometry
+`"UseExternalFieldGrid"` has no effect and the wall is tested exactly. A periodic
+cube file (N voxels a step L/N apart, as CP2K writes it) gets the plane at the
+cell boundary as the copy of the first one; a file whose N points span the cell
+end to end (as RASPA writes it) is read as it is.
 
 Run from `examples/external_fields/3_mc_water_in_cylinder_channel_grids`.
 

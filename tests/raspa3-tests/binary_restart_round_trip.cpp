@@ -185,3 +185,21 @@ TEST(BINARY_RESTART_ROUND_TRIP, drivers_keep_the_header_of_their_json_output)
   ASSERT_EQ(restoredMD.outputJsons.size(), 1uz);
   EXPECT_EQ(restoredMD.outputJsons[0]["initialization"]["units"], "K");
 }
+
+// The state-point fields a parallel-tempering refresh reads (an imposed chemical potential, the partition-function
+// species and its source, and whether the fugacity coefficient was given) are part of the component restart.
+TEST(BINARY_RESTART_ROUND_TRIP, component_keeps_its_state_point_fields)
+{
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component original = Component::makeMethane(forceField, 0);
+  original.chemicalPotential = -1234.5;
+  original.lnPartitionFunctionSpecies = "CH4";
+  original.lnPartitionFunctionFromJANAF = true;
+  original.fugacityCoefficientGiven = true;
+  Component restored;
+  roundTrip(original, restored, "component");
+  EXPECT_EQ(restored.chemicalPotential, std::optional<double>(-1234.5));
+  EXPECT_EQ(restored.lnPartitionFunctionSpecies, std::optional<std::string>("CH4"));
+  EXPECT_TRUE(restored.lnPartitionFunctionFromJANAF);
+  EXPECT_TRUE(restored.fugacityCoefficientGiven);
+}

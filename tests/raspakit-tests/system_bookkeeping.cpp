@@ -10,6 +10,7 @@ import component;
 import system;
 import simulationbox;
 import cross_links;
+import reaction;
 
 namespace
 {
@@ -88,6 +89,34 @@ TEST(system_bookkeeping, exchanging_configurations_swaps_the_fractional_counts_a
   EXPECT_EQ(b.components[0].lambdaPairSwap.currentBin, 3uz);
   EXPECT_EQ(a.components[0].lambdaGroupSwapCB.currentBin, 1uz);
   EXPECT_EQ(b.components[0].lambdaGroupSwapCB.currentBin, 5uz);
+}
+
+// The serial Rx/CFC state is part of the configuration: lambda, the fractional side and the fractional molecules
+// move with the atoms. Only the bins used to travel, so the next reaction move re-derived them from the stale lambda
+// and the molecule boundaries of the other replica's fractional side.
+TEST(system_bookkeeping, exchanging_configurations_swaps_the_reaction_state)
+{
+  const ForceField forceField = makeParticleForceField();
+  System a = makeParticleSystem(forceField, 4);
+  System b = makeParticleSystem(forceField, 4);
+  a.reactions.list.push_back(Reaction{});
+  b.reactions.list.push_back(Reaction{});
+  a.reactions.list[0].currentLambda = 0.8;
+  b.reactions.list[0].currentLambda = 0.1;
+  a.reactions.list[0].fractionalSideIsReactants = true;
+  b.reactions.list[0].fractionalSideIsReactants = false;
+  a.reactions.list[0].reactantFractionalMoleculeIds = {{0}};
+  b.reactions.list[0].productFractionalMoleculeIds = {{1, 2}};
+
+  a.exchangeConfiguration(b);
+
+  EXPECT_EQ(a.reactions.list[0].currentLambda, 0.1);
+  EXPECT_EQ(b.reactions.list[0].currentLambda, 0.8);
+  EXPECT_FALSE(a.reactions.list[0].fractionalSideIsReactants);
+  EXPECT_TRUE(b.reactions.list[0].fractionalSideIsReactants);
+  EXPECT_TRUE(a.reactions.list[0].reactantFractionalMoleculeIds.empty());
+  EXPECT_EQ(a.reactions.list[0].productFractionalMoleculeIds, (std::vector<std::vector<std::size_t>>{{1, 2}}));
+  EXPECT_EQ(b.reactions.list[0].reactantFractionalMoleculeIds, (std::vector<std::vector<std::size_t>>{{0}}));
 }
 
 // Moving a molecule that carries a cross-link renumbers the link sites instead of refusing the move.

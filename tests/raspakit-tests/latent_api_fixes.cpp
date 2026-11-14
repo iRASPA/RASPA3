@@ -30,6 +30,8 @@ import property_volume_evolution;
 import averages;
 import mc_moves_cputime;
 import mc_moves_move_types;
+import mc_moves_probabilities;
+import molecule;
 
 namespace
 {
@@ -245,4 +247,34 @@ TEST(latent_api_fixes, reaction_move_times_are_reported_with_the_system)
       std::string::npos);
   EXPECT_TRUE(timings.jsonSystemMCMoveCPUTimeStatistics().contains(
       Move::moveNames[std::to_underlying(Move::Types::ReactionCFCMC)]));
+}
+
+// The lambda coordinate of the Gibbs CFCMC move is sampled (System::samplePropertiesMC) and now also reported, in
+// the text and the JSON move statistics; only the grand-canonical lambda was.
+TEST(latent_api_fixes, gibbs_lambda_statistics_are_reported)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component methane = Component::makeMethane(forceField, 0);
+  methane.mc_moves_probabilities.setProbability(Move::Types::GibbsConventionalCFCMC, 1.0);
+  System system =
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {2}, 5);
+
+  EXPECT_NE(system.writeMCMoveStatistics().find("GibbsCFCMC lambda statistics"), std::string::npos);
+  const nlohmann::json json = system.jsonMCMoveStatistics();
+  EXPECT_TRUE(json[system.components[0].name]["lambdaStatistics"].contains("GibbsCFCMC"));
+}
+
+// A massless probe molecule has no centre of mass: its record takes the geometric centre, as the Component
+// constructor does, instead of 0/0 (NaN).
+TEST(latent_api_fixes, massless_probe_molecule_record_takes_the_geometric_centre)
+{
+  ForceField forceField({{"X", false, 0.0, 0.0, 0.0, 0, false}}, {{10.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
+  const Component probe(forceField, "probe", 1.0, 1.0, 0.0,
+                        {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0.0, 0u, 0u, 0u, 0u, false)}, {}, {}, 5, 21);
+  const std::vector<Atom> atoms{Atom(double3(1.0, 2.0, 3.0), 0.0, 1.0, 0.0, 0u, 0u, 0u, 0u, false)};
+  const double3 com = probe.createMoleculeRecord(atoms).centerOfMassPosition;
+  EXPECT_EQ(std::to_string(com.x), std::to_string(1.0));
+  EXPECT_EQ(std::to_string(com.y), std::to_string(2.0));
+  EXPECT_EQ(std::to_string(com.z), std::to_string(3.0));
 }

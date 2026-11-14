@@ -34,13 +34,18 @@ void System::createExternalFieldInterpolationGrid(std::ostream& stream, std::siz
 
   if(hasExternalField)
   {
-    if(forceField.settings.useExternalFieldGrid)
+    // A confining geometry (CylinderX/Y/Z, RectangleX/Y/Z) is a hard wall, not an energy surface: tabulated it
+    // would be zero everywhere and, read first by the energy routines, switch the confinement off.
+    const bool confiningGeometry =
+        forceField.potentialEnergySurfaceType >= ForceField::PotentialEnergySurfaceType::CylinderX &&
+        forceField.potentialEnergySurfaceType <= ForceField::PotentialEnergySurfaceType::RectangleZ;
+    if (forceField.settings.useExternalFieldGrid && !confiningGeometry)
     {
       // a field read from file sets the grid dimensions, an analytic field is tabulated on the requested grid
       const bool fieldFromFile = forceField.potentialEnergySurfaceType == ForceField::PotentialEnergySurfaceType::GridFile;
-      uint3 numberOfExternalFieldGridPoints =
-          fieldFromFile ? InterpolationEnergyGrid::parseExternalFieldGridDimensions(forceField.externalFieldGridFileName)
-                        : forceField.settings.numberOfExternalFieldGridPoints;
+      uint3 numberOfExternalFieldGridPoints = fieldFromFile ? InterpolationEnergyGrid::externalFieldGridDimensions(
+                                                                  forceField.externalFieldGridFileName, simulationBox)
+                                                            : forceField.settings.numberOfExternalFieldGridPoints;
 
       externalFieldInterpolationGrid = InterpolationEnergyGrid(simulationBox, forceField.potentialEnergySurfaceOrigin,
                                                       numberOfExternalFieldGridPoints, forceField.settings.interpolationScheme);

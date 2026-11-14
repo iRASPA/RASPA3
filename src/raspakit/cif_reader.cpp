@@ -463,12 +463,13 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
 
     if (value1)
     {
-      if (std::map<std::string, std::string>::iterator index = dictionary.find(std::string("_atom_site_type_symbol"));
-          (index != dictionary.end()))
+      // an atom row has a type symbol or a site label (CSD, ICSD and RASPA2 files often give the label only)
+      const std::map<std::string, std::string>::iterator index = dictionary.find(std::string("_atom_site_type_symbol"));
+      if (index != dictionary.end() || dictionary.contains("_atom_site_label"))
       {
-        // at least _atom_site_type_symbol is present; kept as written, so that a pseudo-atom named after the
-        // full symbol (O2-, Zn2+) is found before the symbol is stripped to its element
-        const std::string chemicalElement = index->second;
+        // the type symbol is kept as written, so that a pseudo-atom named after the full symbol (O2-, Zn2+) is
+        // found before the symbol is stripped to its element
+        const std::string chemicalElement = index != dictionary.end() ? index->second : std::string{};
 
         Atom atom = Atom();
 
@@ -598,7 +599,12 @@ std::optional<std::string> CIFReader::parseValue()
   // std::string keyword = tempString.toLower();
   std::string keyword = tempString;
 
-  if ((keyword.starts_with(std::string("_")) || keyword.starts_with(std::string("loop_"))))
+  // a tag, or a keyword that ends the loop: the next loop_, a data block, a save frame, or the STAR stop_ and global_
+  std::string lowered = keyword;
+  std::transform(lowered.begin(), lowered.end(), lowered.begin(),
+                 [](char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
+  if (lowered.starts_with("_") || lowered.starts_with("loop_") || lowered.starts_with("data_") ||
+      lowered.starts_with("save_") || lowered.starts_with("stop_") || lowered.starts_with("global_"))
   {
     scanner.setScanLocation(previousScanLocation);
 

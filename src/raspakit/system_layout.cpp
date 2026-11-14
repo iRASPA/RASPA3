@@ -401,7 +401,7 @@ std::span<Atom> System::spanOfMolecule(std::size_t selectedComponent, std::size_
   }
   std::size_t size = components[selectedComponent].atoms.size();
   index += size * selectedMolecule;
-  return std::span(&atomData[index + numberOfFrameworkAtoms], size);
+  return std::span(atomData.data() + index + numberOfFrameworkAtoms, size);
 }
 
 const std::span<const Atom> System::spanOfMolecule(std::size_t selectedComponent, std::size_t selectedMolecule) const
@@ -414,7 +414,7 @@ const std::span<const Atom> System::spanOfMolecule(std::size_t selectedComponent
   }
   std::size_t size = components[selectedComponent].atoms.size();
   index += size * selectedMolecule;
-  return std::span(&atomData[index + numberOfFrameworkAtoms], size);
+  return std::span(atomData.data() + index + numberOfFrameworkAtoms, size);
 }
 
 const std::span<const Atom> System::spanOfIntegerAtomsOfComponent(std::size_t selectedComponent) const
@@ -429,7 +429,7 @@ const std::span<const Atom> System::spanOfIntegerAtomsOfComponent(std::size_t se
   index += size * numberOfFractionalMoleculesPerComponent[selectedComponent];
   std::size_t number_of_atoms = size * (numberOfMoleculesPerComponent[selectedComponent] -
                                         numberOfFractionalMoleculesPerComponent[selectedComponent]);
-  return std::span(&atomData[index + numberOfFrameworkAtoms], number_of_atoms);
+  return std::span(atomData.data() + index + numberOfFrameworkAtoms, number_of_atoms);
 }
 
 std::span<double3> System::spanElectricFieldNew(std::size_t selectedComponent, std::size_t selectedMolecule)
@@ -442,7 +442,7 @@ std::span<double3> System::spanElectricFieldNew(std::size_t selectedComponent, s
   }
   std::size_t size = components[selectedComponent].atoms.size();
   index += size * selectedMolecule;
-  return std::span(&electricFieldNew[index + numberOfFrameworkAtoms], size);
+  return std::span(electricFieldNew.data() + index + numberOfFrameworkAtoms, size);
 }
 
 const std::span<const double3> System::spanElectricFieldNew(std::size_t selectedComponent,
@@ -456,7 +456,7 @@ const std::span<const double3> System::spanElectricFieldNew(std::size_t selected
   }
   std::size_t size = components[selectedComponent].atoms.size();
   index += size * selectedMolecule;
-  return std::span(&electricFieldNew[index + numberOfFrameworkAtoms], size);
+  return std::span(electricFieldNew.data() + index + numberOfFrameworkAtoms, size);
 }
 
 std::span<double3> System::spanElectricFieldOld(std::size_t selectedComponent, std::size_t selectedMolecule)
@@ -469,7 +469,7 @@ std::span<double3> System::spanElectricFieldOld(std::size_t selectedComponent, s
   }
   std::size_t size = components[selectedComponent].atoms.size();
   index += size * selectedMolecule;
-  return std::span(&electricField[index + numberOfFrameworkAtoms], size);
+  return std::span(electricField.data() + index + numberOfFrameworkAtoms, size);
 }
 
 const std::span<const double3> System::spanElectricFieldOld(std::size_t selectedComponent,
@@ -483,7 +483,7 @@ const std::span<const double3> System::spanElectricFieldOld(std::size_t selected
   }
   std::size_t size = components[selectedComponent].atoms.size();
   index += size * selectedMolecule;
-  return std::span(&electricField[index + numberOfFrameworkAtoms], size);
+  return std::span(electricField.data() + index + numberOfFrameworkAtoms, size);
 }
 
 std::size_t System::globalIndexOfComponentAndMolecule(std::size_t selectedComponent, std::size_t selectedMolecule)

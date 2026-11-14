@@ -689,3 +689,35 @@ TEST(amber_prmtop, two_atom_coordinates_with_a_box_keep_the_box)
   ASSERT_EQ(coordinates.velocities.size(), 2uz);
   EXPECT_NEAR(coordinates.velocities[0][0], -0.1, 1e-9);
 }
+
+// A CHAMBER topology without scale-factor sections takes SCEE = SCNB = 1 (its 1-4 table already holds the 1-4
+// Lennard-Jones parameters, and CHARMM does not scale the 1-4 Coulomb); the AMBER defaults 1.2 and 2.0 scaled both.
+TEST(amber_prmtop, chamber_topology_without_scale_factors_does_not_scale_the_14_pairs)
+{
+  TestFiles files;
+  std::string text = prmtopText;
+  auto section = [&](const std::string &flag)
+  {
+    const std::size_t begin = text.find("%FLAG " + flag + "\n");
+    const std::size_t end = text.find("%FLAG", begin + 1);
+    return std::pair{begin, end};
+  };
+  for (const std::string flag : {"SCEE_SCALE_FACTOR", "SCNB_SCALE_FACTOR"})
+  {
+    const auto [begin, end] = section(flag);
+    text.erase(begin, end - begin);
+  }
+  for (const std::string flag : {"LENNARD_JONES_ACOEF", "LENNARD_JONES_BCOEF"})
+  {
+    const auto [begin, end] = section(flag);
+    std::string copy = text.substr(begin, end - begin);
+    copy.replace(copy.find(flag), flag.size(), flag.substr(0, 14) + "14_" + flag.substr(14));
+    text.insert(end, copy);
+  }
+  writeText(files.prmtop, text.c_str());
+
+  AMBER::ReadResult result = AMBER::readPrmtop(files.prmtop, files.inpcrd);
+  const nlohmann::json &definition = result.components[0].definition;
+  EXPECT_NEAR(definition["Intra14VanDerWaalsScalingValue"].get<double>(), 1.0, 1e-12);
+  EXPECT_NEAR(definition["Intra14ChargeChargeScalingValue"].get<double>(), 1.0, 1e-12);
+}

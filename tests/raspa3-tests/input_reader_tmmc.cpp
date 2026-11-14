@@ -1513,3 +1513,19 @@ TEST(INPUT_READER_MD, parallel_tempering_replicas_take_the_state_point_of_their_
   EXPECT_NEAR(hotReplica.pressure, kT1 * std::exp(muInternal / kT1), 1.0e-9 * hotReplica.pressure);
   EXPECT_GT(std::abs(hotReplica.pressure - coldReplica.pressure), 1.0e-6 * coldReplica.pressure);
 }
+
+// "FugacityCoefficient" : 0 asks for the Peng-Robinson value, as documented; it used to be taken as a given
+// coefficient of zero, which sets the reservoir fugacity to zero.
+TEST(INPUT_READER, zero_fugacity_coefficient_asks_for_peng_robinson)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = readNVTExample();
+  input["Components"][0]["FugacityCoefficient"] = 0.0;
+  TemporaryInput temporary(std::move(input), "zero_fugacity_coefficient", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  const Component& component = reader.systems[0].components[0];
+  EXPECT_FALSE(component.fugacityCoefficientGiven);
+  if (component.fugacityCoefficient.has_value()) EXPECT_NE(*component.fugacityCoefficient, 0.0);
+}

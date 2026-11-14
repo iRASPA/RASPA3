@@ -396,8 +396,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   std::print(stream, "Translational constraint degrees of freedom center of mass: {}\n",
              translationalCenterOfMassConstraint);
   std::print(stream, "Translational degrees of freedom molecules: {}\n", translationalDegreesOfFreedom);
-  std::print(stream, "Total translational degrees of freedom molecules: {}\n",
-             translationalDegreesOfFreedom - translationalCenterOfMassConstraint);
+  std::print(stream, "Total translational degrees of freedom molecules: {}\n", freeTranslationalDegreesOfFreedom);
   std::print(stream, "Rotational degrees of freedom molecules: {}\n\n", rotationalDegreesOfFreedom);
 
   std::print(stream, "Potential energy:   {: .6e}\n", conv * runningEnergies.potentialEnergy());
@@ -585,6 +584,25 @@ void appendMoveRows(std::ostringstream& stream, const std::string& owner, const 
     }
     std::print(stream, "\n");
   }
+}
+
+// The lambda coordinates of the Gibbs, ion-pair and group CFCMC moves the component drives, as sampled in
+// System::samplePropertiesMC.
+std::vector<std::pair<std::string, const PropertyLambdaProbabilityHistogram*>> sampledMoveLambdaHistograms(
+    const System& system, std::size_t componentId)
+{
+  const Component& component = system.components[componentId];
+  std::vector<std::pair<std::string, const PropertyLambdaProbabilityHistogram*>> histograms;
+  if (system.usesGibbsConventionalCFCMC()) histograms.push_back({"GibbsCFCMC", &component.lambdaGibbs});
+  if (system.componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCFCMC))
+    histograms.push_back({"PairSwapCFCMC", &component.lambdaPairSwap});
+  if (system.componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCBCFCMC))
+    histograms.push_back({"PairSwapCBCFCMC", &component.lambdaPairSwapCB});
+  if (system.componentDrivesGroupSwapLambda(componentId, Move::Types::GroupSwapCFCMC))
+    histograms.push_back({"GroupSwapCFCMC", &component.lambdaGroupSwap});
+  if (system.componentDrivesGroupSwapLambda(componentId, Move::Types::GroupSwapCBCFCMC))
+    histograms.push_back({"GroupSwapCBCFCMC", &component.lambdaGroupSwapCB});
+  return histograms;
 }
 }  // namespace
 
@@ -1007,8 +1025,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::print(stream, "Translational constraint degrees of freedom center of mass: {}\n",
              translationalCenterOfMassConstraint);
   std::print(stream, "Translational degrees of freedom molecules: {}\n", translationalDegreesOfFreedom);
-  std::print(stream, "Total translational degrees of freedom molecules: {}\n",
-             translationalDegreesOfFreedom - translationalCenterOfMassConstraint);
+  std::print(stream, "Total translational degrees of freedom molecules: {}\n", free_translational_degrees_of_freedom);
   std::print(stream, "Rotational degrees of freedom molecules: {}\n\n", rotationalDegreesOfFreedom);
 
   std::print(stream, "Potential energy:   {: .6e}\n", conv * runningEnergies.potentialEnergy());
@@ -1306,6 +1323,13 @@ std::string System::writeMCMoveStatistics() const
                  component.lambdaGC.writeDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
 
+    for (const auto& [label, histogram] : sampledMoveLambdaHistograms(*this, componentId))
+    {
+      std::print(stream, "{} lambda statistics:\n", label);
+      std::print(stream, "{}", histogram->writeAveragesStatistics(beta, std::nullopt, std::nullopt));
+      std::print(stream, "{}", histogram->writeDUdLambdaStatistics(beta, std::nullopt, std::nullopt));
+    }
+
     if (component.mc_moves_probabilities.getProbability(Move::Types::Widom) > 0.0)
     {
       double imposedChemicalPotential =
@@ -1365,7 +1389,7 @@ nlohmann::json System::jsonMCMoveStatistics() const
   nlohmann::json status;
 
   status["system"] = mc_moves_statistics.jsonMCMoveStatistics();
-  for (const Component& component : components)
+  for (std::size_t componentId = 0; const Component& component : components)
   {
     status[component.name] = component.mc_moves_statistics.jsonMCMoveStatistics();
     nlohmann::json subMoves = component.jsonSubMoveStatistics();
@@ -1381,6 +1405,14 @@ nlohmann::json System::jsonMCMoveStatistics() const
           component.lambdaGC.jsonAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity);
       status[component.name]["lambdaStatistics"]["thermodynamicIntegration"] =
           component.lambdaGC.jsonDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity);
+    }
+
+    for (const auto& [label, histogram] : sampledMoveLambdaHistograms(*this, componentId))
+    {
+      status[component.name]["lambdaStatistics"][label]["CFCMC"] =
+          histogram->jsonAveragesStatistics(beta, std::nullopt, std::nullopt);
+      status[component.name]["lambdaStatistics"][label]["thermodynamicIntegration"] =
+          histogram->jsonDUdLambdaStatistics(beta, std::nullopt, std::nullopt);
     }
 
     if (component.mc_moves_probabilities.getProbability(Move::Types::Widom) > 0.0)
@@ -1408,6 +1440,7 @@ nlohmann::json System::jsonMCMoveStatistics() const
     nlohmann::json recoilGrowth =
         component.recoilGrowthStatistics.jsonStatistics(forceField.settings.recoilGrowthNumberOfTrialDirections);
     if (!recoilGrowth.empty()) status[component.name]["recoilGrowth"] = recoilGrowth;
+    ++componentId;
   }
 
   if (usesReactionConventionalCFCMC())

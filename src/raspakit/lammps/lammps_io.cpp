@@ -144,6 +144,15 @@ std::optional<std::string> fusedPairStyle(std::string_view vdw, const Topology &
   return std::nullopt;
 }
 
+/// The pair coefficients live in the data file only under a plain pair style: under hybrid/overlay (a charged system
+/// whose VDW style has no fused coul variant) every line needs its sub-style, which PairIJ Coeffs lines do not carry,
+/// so they are written to the input script instead.
+bool pairCoefficientsInDataFile(const Topology &topology)
+{
+  if (!topology.pairCoefficientsInDataFile()) return false;
+  return !topology.useCharge || fusedPairStyle(topology.pairStyles().front(), topology).has_value();
+}
+
 std::string vdwStyleArguments(std::string_view style, const Topology &topology)
 {
   if (style == "table") return std::format("table linear {}", topology.options.grid.pairPoints);
@@ -204,7 +213,7 @@ std::string writeDataFile(const Topology &topology)
     std::print(out, "{} {}  # {}\n", i + 1, formatValue(topology.masses[i].second), topology.masses[i].first);
   }
 
-  if (topology.pairCoefficientsInDataFile())
+  if (pairCoefficientsInDataFile(topology))
   {
     std::print(out, "\nPairIJ Coeffs\n\n");
     for (const PairEntry &pair : topology.pairs)
@@ -368,7 +377,7 @@ std::string writeInputScript(const Topology &topology)
   }
 
   // ---- pair coefficients (when not in the data file) -----------------------------------------------
-  if (!topology.pairCoefficientsInDataFile() || hybrid)
+  if (!pairCoefficientsInDataFile(topology))
   {
     std::print(out, "\n");
     if (overlay)

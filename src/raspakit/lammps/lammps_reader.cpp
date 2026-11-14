@@ -308,7 +308,7 @@ InputScript readInputScript(const std::filesystem::path &path, std::vector<std::
     }
     else if ((command == "bond_coeff" || command == "angle_coeff" || command == "dihedral_coeff" ||
               command == "improper_coeff") &&
-             words.size() >= 3)
+             words.size() >= 2)  // 'bond_coeff 1' of the zero style carries no coefficients
     {
       if (!isNumber(words[1]))
       {
@@ -804,25 +804,64 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
   forceField["TruncationMethod"] = script.shift ? "shifted" : "truncated";
   forceField["TailCorrections"] = script.tail;
   double cutOffVDW = 12.0, cutOffCoulomb = 12.0;
-  // the damped Coulomb styles (coul/wolf, coul/dsf, lj/cut/coul/wolf, lj/cut/coul/dsf) take the damping alpha
-  // first and the cut-offs after it (as LAMMPS::writeInputScript writes them); alpha was read as the VDW cut-off
-  const bool wolf = !script.pair.hybrid() && script.pair.name.contains("coul/wolf");
-  const bool dampedShiftedForce = !script.pair.hybrid() && script.pair.name.contains("coul/dsf");
-  std::optional<double> dampingAlpha{};
+  // The numbers of a pair style belong to its (sub-)styles: under hybrid/overlay every sub-style takes its own
+  // ('hybrid/overlay coul/wolf 0.25 12.0 morse 12.0'). The damped Coulomb styles (coul/wolf, coul/dsf and the
+  // fused lj/cut/coul/wolf, lj/cut/coul/dsf) take the damping alpha first and the cut-offs after it, a fused style
+  // the VDW and then the Coulomb cut-off, a table style its interpolation keyword and table length.
+  std::vector<std::pair<std::string, std::vector<double>>> pairStyleNumbers{};
+  if (script.pair.hybrid())
   {
-    std::vector<double> numbers;
     for (const std::string &argument : script.pair.arguments)
-      if (isNumber(argument)) numbers.push_back(toDouble(argument));
-    if ((wolf || dampedShiftedForce) && !numbers.empty())
     {
+      if (isNumber(argument))
+      {
+        if (!pairStyleNumbers.empty()) pairStyleNumbers.back().second.push_back(toDouble(argument));
+      }
+      else if (pairStyleNumbers.empty() || pairStyleNumbers.back().first != "table" ||
+               !(argument == "linear" || argument == "spline" || argument == "lookup" || argument == "bitmap"))
+      {
+        pairStyleNumbers.push_back({argument, {}});
+      }
+    }
+  }
+  else
+  {
+    pairStyleNumbers.push_back({script.pair.name, {}});
+    for (const std::string &argument : script.pair.arguments)
+      if (isNumber(argument)) pairStyleNumbers.back().second.push_back(toDouble(argument));
+  }
+  bool wolf = false;
+  bool dampedShiftedForce = false;
+  std::optional<double> dampingAlpha{};
+  std::optional<double> styleCutOffVDW{};
+  std::optional<double> styleCutOffCoulomb{};
+  for (auto [style, numbers] : pairStyleNumbers)
+  {
+    if (style == "table" || numbers.empty()) continue;
+    if (style.contains("coul/wolf") || style.contains("coul/dsf"))
+    {
+      (style.contains("coul/wolf") ? wolf : dampedShiftedForce) = true;
       dampingAlpha = numbers.front();
       numbers.erase(numbers.begin());
+      if (numbers.empty()) continue;
     }
-    if (!numbers.empty()) cutOffVDW = numbers[0];
-    cutOffCoulomb = numbers.size() > 1 ? numbers[1] : cutOffVDW;
-    if (script.pair.hybrid() && !numbers.empty())
-      result.warnings.push_back("[LAMMPS reader] hybrid pair_style: using the first numeric argument as VDW cut-off");
+    if (style.starts_with("coul"))
+    {
+      if (!styleCutOffCoulomb) styleCutOffCoulomb = numbers[0];
+    }
+    else if (style.contains("coul"))
+    {
+      if (!styleCutOffVDW) styleCutOffVDW = numbers[0];
+      if (!styleCutOffCoulomb) styleCutOffCoulomb = numbers.size() > 1 ? numbers[1] : numbers[0];
+    }
+    else if (!styleCutOffVDW)
+    {
+      styleCutOffVDW = numbers[0];
+    }
   }
+  if (styleCutOffVDW) cutOffVDW = *styleCutOffVDW;
+  cutOffCoulomb = styleCutOffCoulomb.value_or(styleCutOffVDW.value_or(cutOffCoulomb));
+  if (!styleCutOffVDW && styleCutOffCoulomb) cutOffVDW = *styleCutOffCoulomb;
   forceField["CutOffVDW"] = cutOffVDW;
   forceField["CutOffCoulomb"] = cutOffCoulomb;
 
@@ -939,6 +978,21 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
   static constexpr std::array<std::size_t, 6> torsionEnergyAll{0, 1, 2, 3, 4, 5};
   std::map<std::size_t, RaspaTerm> bondTerms = convertAll(data.bondCoefficients, script.bond, bondFromLammps, bondEnergy, "bond");
   std::map<std::size_t, RaspaTerm> bendTerms = convertAll(data.angleCoefficients, script.angle, bendFromLammps, bendEnergy, "angle");
+  // angle_style charmm (K theta0 K_ub r_ub) carries a Urey-Bradley 1-3 term next to the bend: it becomes a RASPA
+  // Urey-Bradley potential on the outer atoms. A charmm angle with K = 0 (how RASPA exports a Urey-Bradley term next
+  // to the bend of the same triple) has no bend.
+  std::map<std::size_t, RaspaTerm> ureyBradleyTerms;
+  for (const auto &[type, line] : data.angleCoefficients)
+  {
+    if (styleFor(script.angle, line) != "charmm" || line.values.size() < 4) continue;
+    if (line.values[2] != 0.0)
+    {
+      std::optional<RaspaTerm> term = bondFromLammps("harmonic", std::span<const double>(line.values).subspan(2, 2));
+      scaleEnergies(*term, bondEnergy, unitFactor);
+      ureyBradleyTerms[type] = *term;
+    }
+    if (line.values[0] == 0.0) bendTerms.erase(type);
+  }
   std::map<std::size_t, RaspaTerm> torsionTerms;
   for (const auto &[type, line] : data.dihedralCoefficients)
   {
@@ -1101,6 +1155,27 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
       definition["PseudoAtoms"].push_back(entry);
     }
 
+    // geometry of the first instance: the reference of the FIXED terms of a 'zero' style without coefficients
+    auto separation = [&](std::size_t from, std::size_t to)
+    {
+      return std::array<double, 3>{tpl.positions[to][0] - tpl.positions[from][0],
+                                   tpl.positions[to][1] - tpl.positions[from][1],
+                                   tpl.positions[to][2] - tpl.positions[from][2]};
+    };
+    auto dot = [](const std::array<double, 3> &u, const std::array<double, 3> &v)
+    { return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]; };
+    auto cross = [](const std::array<double, 3> &u, const std::array<double, 3> &v)
+    {
+      return std::array<double, 3>{u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2],
+                                   u[0] * v[1] - u[1] * v[0]};
+    };
+    constexpr double degrees = 180.0 / std::numbers::pi;
+    auto fixedReference = [](RaspaTerm term, double value)
+    {
+      if (term.type == "FIXED" && term.parameters.empty()) term.parameters = {value};
+      return term;
+    };
+
     if (!tpl.bonds.empty())
     {
       definition["Connectivity"] = nlohmann::json::array();
@@ -1110,28 +1185,113 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
         definition["Connectivity"].push_back({bond[0], bond[1]});
         auto it = bondTerms.find(bond[2]);
         if (it == bondTerms.end()) continue;
-        definition["Bonds"].push_back({{bond[0], bond[1]}, it->second.type, it->second.parameters});
+        const std::array<double, 3> r = separation(bond[0], bond[1]);
+        const RaspaTerm term = fixedReference(it->second, std::sqrt(dot(r, r)));
+        definition["Bonds"].push_back({{bond[0], bond[1]}, term.type, term.parameters});
       }
     }
     if (!tpl.angles.empty())
     {
+      // RASPA takes one bend per triple: several LAMMPS angle types on one triple (a bend and a separate Urey-Bradley
+      // angle) keep the first bend
       definition["Bends"] = nlohmann::json::array();
+      std::set<std::array<std::size_t, 3>> bentTriples;
       for (const std::array<std::size_t, 4> &angle : tpl.angles)
       {
+        if (auto it = ureyBradleyTerms.find(angle[3]); it != ureyBradleyTerms.end())
+        {
+          if (!definition.contains("UreyBradleys")) definition["UreyBradleys"] = nlohmann::json::array();
+          definition["UreyBradleys"].push_back({{angle[0], angle[2]}, it->second.type, it->second.parameters});
+        }
         auto it = bendTerms.find(angle[3]);
         if (it == bendTerms.end()) continue;
-        definition["Bends"].push_back({{angle[0], angle[1], angle[2]}, it->second.type, it->second.parameters});
+        if (!bentTriples.insert({angle[0], angle[1], angle[2]}).second)
+        {
+          result.warnings.push_back(std::format("[LAMMPS reader] angle {}-{}-{}: more than one bend; the first is kept",
+                                                angle[0], angle[1], angle[2]));
+          continue;
+        }
+        const std::array<double, 3> u = separation(angle[1], angle[0]), v = separation(angle[1], angle[2]);
+        const RaspaTerm term =
+            fixedReference(it->second, degrees * std::acos(std::clamp(dot(u, v) / std::sqrt(dot(u, u) * dot(v, v)),
+                                                                      -1.0, 1.0)));
+        definition["Bends"].push_back({{angle[0], angle[1], angle[2]}, term.type, term.parameters});
       }
     }
     if (!tpl.dihedrals.empty())
     {
-      definition["Torsions"] = nlohmann::json::array();
+      // RASPA takes one torsion per quadruple: the terms of a multi-term LAMMPS dihedral (several dihedral types on
+      // one quadruple, as CHARMM/AMBER files write them) are summed into one cosine series c_0 + sum_n c_n cos(n phi)
+      // (TRAPPE_EXTENDED, n <= 4) when every term is one (TRAPPE_EXTENDED, or CVFF with a phase of 0 or 180 degrees)
+      auto cosineSeries = [](const RaspaTerm &term) -> std::optional<std::array<double, 5>>
+      {
+        std::array<double, 5> c{};
+        if (term.type == "TRAPPE_EXTENDED")
+        {
+          for (std::size_t n = 0; n < 5 && n < term.parameters.size(); ++n) c[n] = term.parameters[n];
+          return c;
+        }
+        if (term.type == "CVFF" && term.parameters.size() >= 3)
+        {
+          const long n = std::lround(term.parameters[1]);
+          const double phase = std::remainder(term.parameters[2], 360.0);
+          if (n < 1 || n > 4 || std::abs(term.parameters[1] - static_cast<double>(n)) > 1e-9) return std::nullopt;
+          if (std::abs(phase) > 1e-9 && std::abs(std::abs(phase) - 180.0) > 1e-9) return std::nullopt;
+          c[0] = term.parameters[0];
+          c[static_cast<std::size_t>(n)] = std::abs(phase) < 1e-9 ? term.parameters[0] : -term.parameters[0];
+          return c;
+        }
+        return std::nullopt;
+      };
+      std::map<std::array<std::size_t, 4>, std::vector<RaspaTerm>> termsOfQuadruple;
+      std::vector<std::array<std::size_t, 4>> quadruples;
       for (const std::array<std::size_t, 5> &dihedral : tpl.dihedrals)
       {
         auto it = torsionTerms.find(dihedral[4]);
         if (it == torsionTerms.end()) continue;
+        const std::array<std::size_t, 4> quadruple{dihedral[0], dihedral[1], dihedral[2], dihedral[3]};
+        if (!termsOfQuadruple.contains(quadruple)) quadruples.push_back(quadruple);
+        termsOfQuadruple[quadruple].push_back(it->second);
+      }
+      definition["Torsions"] = nlohmann::json::array();
+      for (const std::array<std::size_t, 4> &quadruple : quadruples)
+      {
+        const std::vector<RaspaTerm> &terms = termsOfQuadruple[quadruple];
+        RaspaTerm term = terms.front();
+        if (terms.size() > 1)
+        {
+          std::array<double, 5> sum{};
+          bool summable = true;
+          for (const RaspaTerm &part : terms)
+          {
+            std::optional<std::array<double, 5>> c = cosineSeries(part);
+            if (!c)
+            {
+              summable = false;
+              break;
+            }
+            for (std::size_t n = 0; n < 5; ++n) sum[n] += (*c)[n];
+          }
+          if (summable)
+          {
+            term = RaspaTerm{"TRAPPE_EXTENDED", std::vector<double>(sum.begin(), sum.end())};
+          }
+          else
+          {
+            result.warnings.push_back(std::format(
+                "[LAMMPS reader] dihedral {}-{}-{}-{}: {} terms that do not sum to one cosine series; the first is kept",
+                quadruple[0], quadruple[1], quadruple[2], quadruple[3], terms.size()));
+          }
+        }
+        // IUPAC: the angle between the planes (a, b, c) and (b, c, d), positive clockwise looking along b -> c
+        const std::array<double, 3> b1 = separation(quadruple[0], quadruple[1]),
+                                    b2 = separation(quadruple[1], quadruple[2]),
+                                    b3 = separation(quadruple[2], quadruple[3]);
+        const std::array<double, 3> n1 = cross(b1, b2), n2 = cross(b2, b3);
+        const double phi = degrees * std::atan2(std::sqrt(dot(b2, b2)) * dot(b1, n2), dot(n1, n2));
+        term = fixedReference(term, phi);
         definition["Torsions"].push_back(
-            {{dihedral[0], dihedral[1], dihedral[2], dihedral[3]}, it->second.type, it->second.parameters});
+            {{quadruple[0], quadruple[1], quadruple[2], quadruple[3]}, term.type, term.parameters});
       }
     }
     if (!tpl.bonds.empty())
