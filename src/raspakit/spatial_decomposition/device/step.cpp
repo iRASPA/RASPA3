@@ -548,6 +548,9 @@ void DeviceStep::beginBuild(const CellList& cells, const SimulationBox& box, std
   outerCount.assign(iClusters, 0);
   laneCount.assign(iClusters * pairGroupSize, 0);
   hostPartials.assign(pairPartials * iClusters, 0.0f);
+  // no atoms (none yet, or the last one left): nothing to lay out or evaluate, and the device buffers may never
+  // have been allocated; finishBuild, packPositions, enqueue and wait are no-ops and the results are zero
+  if (padded == 0) return;
 
   // row and lane capacities: from the density on the first build, otherwise kept (grown on an overflow in
   // finishBuild / wait)
@@ -651,6 +654,11 @@ void DeviceStep::enqueueBuild()
 
 void DeviceStep::finishBuild()
 {
+  if (padded == 0)
+  {
+    builtTime += std::chrono::steady_clock::now() - buildStart;
+    return;
+  }
   for (;;)
   {
     context->wait(buildEvent);
@@ -803,11 +811,16 @@ void DeviceStep::enqueuePolymer()
 void DeviceStep::packPositions(std::size_t part, std::span<const std::uint32_t> sortedAtoms, const CellList& cells,
                                const SimulationBox& box)
 {
+  if (padded == 0) return;
   const double3x3& cell = box.cell;
   float* out = mappedPositions;
   float* relativeOut = mappedRelative;
   const bool track = pruning() && laneListsValid;
   const float* reference = listPositions.data();
+  // the displacement that spends the prune skin is measured against the compaction positions transported with the
+  // cell, p - H(t) H(t_c)^{-1} p_c (as on the host): the raw p - p_c misses an atom that holds its place while a
+  // barostat contracts the cell around it
+  const double3x3 transport = box.cell * inverseCellAtCompaction;
   const std::span<const std::uint32_t> referenceAtoms =
       useBonded ? std::span<const std::uint32_t>(referenceOfSorted) : std::span<const std::uint32_t>{};
   double maximum = 0.0;
@@ -828,9 +841,12 @@ void DeviceStep::packPositions(std::size_t part, std::span<const std::uint32_t> 
     slot[3] = static_cast<float>(cells.charge[k]);
     if (track)
     {
-      const double dx = static_cast<double>(slot[0]) - static_cast<double>(reference[offset]);
-      const double dy = static_cast<double>(slot[1]) - static_cast<double>(reference[offset + 1]);
-      const double dz = static_cast<double>(slot[2]) - static_cast<double>(reference[offset + 2]);
+      const double3 transported =
+          transport * double3(static_cast<double>(reference[offset]), static_cast<double>(reference[offset + 1]),
+                              static_cast<double>(reference[offset + 2]));
+      const double dx = static_cast<double>(slot[0]) - transported.x;
+      const double dy = static_cast<double>(slot[1]) - transported.y;
+      const double dz = static_cast<double>(slot[2]) - transported.z;
       maximum = std::max(maximum, dx * dx + dy * dy + dz * dz);
     }
     if (useBonded)
@@ -908,6 +924,7 @@ bool DeviceStep::compactionDue(const SimulationBox& box, double displacementSqua
 
 void DeviceStep::enqueue(const SimulationBox& box)
 {
+  if (padded == 0) return;
   // compact the lane lists when the outer list is new or (with pruning) an atom moved more than prune skin / 2
   // since the last compaction
   bool compact = !laneListsValid;
@@ -953,6 +970,7 @@ DeviceStep::ResidentTargets DeviceStep::residentTargets() const
 
 void DeviceStep::enqueueResident(const SimulationBox& box, bool compactionDue)
 {
+  if (padded == 0) return;
   const bool compact = !laneListsValid || (pruning() && compactionDue);
   if (compact)
   {
@@ -1040,6 +1058,11 @@ void DeviceStep::enqueueStep(const SimulationBox& box, bool compact)
 
 DeviceStep::Results DeviceStep::wait(const std::function<void()>& afterRetry)
 {
+  if (padded == 0)
+  {
+    ++steps;
+    return Results{};
+  }
   for (;;)
   {
     context->wait(stepEvent);

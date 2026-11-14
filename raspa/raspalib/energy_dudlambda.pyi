@@ -6,20 +6,7 @@ class EnergyDuDlambda():
     and the corresponding ``dU/dlambda`` contribution together.
     """
 
-    def __init__(
-        self,
-        energy: float,
-        dudlambda: float
-    ) -> None:
-        ...
-        """
-        Initialize an :class:`EnergyDuDlambda`.
-
-        Args:
-            energy: Energy contribution.
-            dudlambda: Derivative of energy with respect to lambda
-                (``dU/dlambda``).
-        """
+    # returned by the library only; it has no constructor
 
     @property
     def energy(self) -> float:

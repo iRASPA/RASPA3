@@ -10,13 +10,13 @@ class Atom():
     def __init__(
         self,
         position: tuple[float, float, float],
-        charge: float,
+        charge: float = 0.0,
         scaling: float = 1.0,
         molecule_id: int = 0,
         type: int = 0,
         component_id: int = 0,
-        group_id: bool = 0,
-        is_fractional: bool = 0
+        group_id: bool = False,
+        is_fractional: bool = False
     ) -> None:
         ...
         """

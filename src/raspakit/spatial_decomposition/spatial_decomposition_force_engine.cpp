@@ -125,6 +125,14 @@ bool SpatialDecompositionForceEngine::supports(const System& system, std::string
       return false;
     }
   }
+  // the reaction CFCMC fractional molecules are not flagged on their components (they belong to the reactions): a
+  // lambda move changes their scalings without changing the atom count, which the engine does not follow
+  if (system.usesReactionConventionalCFCMC() ||
+      std::ranges::any_of(system.numberOfFractionalMoleculesPerComponent, [](std::size_t n) { return n > 0; }))
+  {
+    reason = "fractional (reaction CFCMC) molecules";
+    return false;
+  }
   if (system.forceField.omitInterInteractions)
   {
     reason = "'OmitInterInteractions'";
@@ -828,6 +836,7 @@ void SpatialDecompositionForceEngine::residentRebuild(System& system)
   ++timing.rebuilds;
   devicePairs.beginBuild(cellList, box, 1);
   resident.setLayout(devicePairs, cellList, box);
+  resident.setReferenceMaps(box.cell * cellList.inverseCellAtBuild, box.cell * devicePairs.compactionInverseCell());
   resident.enqueuePack();
   devicePairs.finishBuild();
   timing.rebuild += std::chrono::steady_clock::now() - start;
@@ -869,6 +878,7 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
       rebuild = false;
     }
     resident.upload(system, devicePairs, cellList);
+    resident.setReferenceMaps(box.cell * cellList.inverseCellAtBuild, box.cell * devicePairs.compactionInverseCell());
     context.wait(resident.enqueuePack());
     residentValid = true;
     residentHostCurrent = true;
@@ -935,6 +945,8 @@ RunningEnergy SpatialDecompositionForceEngine::residentVelocityVerlet(System& sy
     refreshCutoffs(system);
     if (cellList.numberOfBuilds == 0) rebuild = true;
   }
+  // the displacements of the pack are measured against the references transported with the cell (as on the host)
+  resident.setReferenceMaps(box.cell * cellList.inverseCellAtBuild, box.cell * devicePairs.compactionInverseCell());
   std::chrono::steady_clock::time_point waitStart = std::chrono::steady_clock::now();
   context.wait(resident.enqueueFirstHalf(scaling, dt, coupling));
   timing.deviceWait += std::chrono::steady_clock::now() - waitStart;

@@ -9,10 +9,10 @@ class AverageEnergyType():
 
     def __init__(
         self,
-        total_energy: float,
-        van_der_waals_energy: float,
-        coulomb_energy: float,
-        polarization_energy: float
+        total_energy: float = 0.0,
+        van_der_waals_energy: float = 0.0,
+        coulomb_energy: float = 0.0,
+        polarization_energy: float = 0.0
     ) -> None:
         ...
         """

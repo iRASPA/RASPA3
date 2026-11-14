@@ -51,17 +51,56 @@ struct EwaldExclusionFactors
 {
   const double offset = EwaldChargeOffsetDelta * (1.0 - scalingTotal);
   const double s = r + offset;
-  const double inverseS = 1.0 / s;
+  const double x = alpha * s;
+  const double twoOverSqrtPi = 2.0 * std::numbers::inv_sqrtpi_v<double>;
+
+  // phi(s) = erf(alpha s)/s = alpha E(x) with E(x) = erf(x)/x, and phi'(s) = alpha^2 x (E'(x)/x), phi''(s) =
+  // alpha^3 E''(x). For small x the closed forms cancel catastrophically (and are 0/0 at s = 0: a core and its shell
+  // start on top of each other), so E, E'/x, E'' and (E'' - E'/x)/x^2 come from the series of erf(x)/x = (2/sqrt(pi))
+  // (1 - x^2/3 + x^4/10 - x^6/42 + ...) there (x < 0.01: the omitted terms are below 1e-16 relative).
+  double potential;
+  double firstDerivative;
+  double secondDerivative;
+  double firstOverX{};      // E'(x)/x
+  double curvatureTerm{};   // (E''(x) - E'(x)/x)/x^2
+  const bool series = x < 1.0e-2;
+  if (series)
+  {
+    const double x2 = x * x;
+    potential = alpha * twoOverSqrtPi * (1.0 + x2 * (-1.0 / 3.0 + x2 * (0.1 + x2 * (-1.0 / 42.0))));
+    firstOverX = twoOverSqrtPi * (-2.0 / 3.0 + x2 * (0.4 + x2 * (-1.0 / 7.0 + x2 * (1.0 / 27.0))));
+    curvatureTerm = twoOverSqrtPi * (0.8 + x2 * (-4.0 / 7.0 + x2 * (2.0 / 9.0)));
+    firstDerivative = alpha * alpha * x * firstOverX;
+    secondDerivative = alpha * alpha * alpha * twoOverSqrtPi * (-2.0 / 3.0 + x2 * (1.2 + x2 * (-5.0 / 7.0 + x2 * (7.0 / 27.0))));
+  }
+  else
+  {
+    const double inverseS = 1.0 / s;
+    potential = std::erf(x) * inverseS;
+    const double gaussianTerm = alpha * twoOverSqrtPi * std::exp(-x * x);
+    // phi'(s) and phi''(s) of phi(s) = erf(alpha s)/s
+    firstDerivative = (gaussianTerm - potential) * inverseS;
+    secondDerivative = -2.0 * alpha * alpha * gaussianTerm - 2.0 * (gaussianTerm - potential) * inverseS * inverseS;
+  }
+  const double dUdlambda = potential - scalingTotal * EwaldChargeOffsetDelta * firstDerivative;
+
+  if (offset == 0.0)
+  {
+    // s = r: phi'(r)/r = alpha^3 E'/x and (phi'' - phi'/r)/r^2 = alpha^5 (E'' - E'/x)/x^2, finite at r = 0
+    if (series)
+    {
+      const double alpha3 = alpha * alpha * alpha;
+      return {potential, dUdlambda, alpha3 * firstOverX, alpha3 * alpha * alpha * curvatureTerm};
+    }
+  }
+  else if (r == 0.0)
+  {
+    // the offset form has a cusp at r = 0 (s = r + Q): no direction, no gradient, and the pair vector is zero
+    return {potential, dUdlambda, 0.0, 0.0};
+  }
   const double inverseR = 1.0 / r;
-  const double potential = std::erf(alpha * s) * inverseS;
-  const double gaussianTerm =
-      2.0 * alpha * std::numbers::inv_sqrtpi_v<double> * std::exp(-alpha * alpha * s * s);
-  // phi'(s) and phi''(s) of phi(s) = erf(alpha s)/s
-  const double firstDerivative = (gaussianTerm - potential) * inverseS;
-  const double secondDerivative =
-      -2.0 * alpha * alpha * gaussianTerm - 2.0 * (gaussianTerm - potential) * inverseS * inverseS;
-  return {potential, potential - scalingTotal * EwaldChargeOffsetDelta * firstDerivative,
-          firstDerivative * inverseR, (secondDerivative - firstDerivative * inverseR) * inverseR * inverseR};
+  return {potential, dUdlambda, firstDerivative * inverseR,
+          (secondDerivative - firstDerivative * inverseR) * inverseR * inverseR};
 }
 
 inline double coulombSelfEnergyPrefactor(const ForceField& forceField)

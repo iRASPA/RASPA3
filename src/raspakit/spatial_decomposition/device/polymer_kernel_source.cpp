@@ -181,13 +181,13 @@ DEVICE_FUNCTION void polymerPairState(uint state, PRIVATE const float* P, float 
     if (charged && rr < p->cutOffChargeSquared)
     {
       const float x = p->alpha * r;
-      const float gaussian = p->twoAlphaOverSqrtPi * exp(-x * x);
       const float prefactor = p->coulombFactor * qq;
       if (p->fourier != 0u)
       {
-        const float potential = erf(x) * invR;
+        // erf(alpha r)/r and its force factor without the cancellation of the closed forms at small r
+        const float potential = p->alpha * (erfOverXMinusLimit(x) + TWO_OVER_SQRT_PI);
         *uCoulomb = prefactor * (P[3] * invR - potential);
-        *factor -= prefactor * (P[3] * invR * invRR + (gaussian - potential) * invRR);
+        *factor -= prefactor * (P[3] * invR * invRR + p->alpha * p->alpha * p->alpha * erfExclusionForceFactor(x));
       }
       else
       {
@@ -200,12 +200,12 @@ DEVICE_FUNCTION void polymerPairState(uint state, PRIVATE const float* P, float 
   }
   else if (charged && p->fourier != 0u)
   {
+    // erf(alpha r)/r and its force factor without the cancellation of the closed forms at small r (and finite at
+    // r = 0, a core and its shell on top of each other)
     const float x = p->alpha * r;
-    const float potential = erf(x) * invR;
-    const float gaussian = p->twoAlphaOverSqrtPi * exp(-x * x);
     const float prefactor = p->coulombFactor * qq;
-    *uExclusion = -prefactor * potential;
-    *factor -= prefactor * (gaussian - potential) * invRR;
+    *uExclusion = -prefactor * p->alpha * (erfOverXMinusLimit(x) + TWO_OVER_SQRT_PI);
+    *factor -= prefactor * p->alpha * p->alpha * p->alpha * erfExclusionForceFactor(x);
   }
 }
 

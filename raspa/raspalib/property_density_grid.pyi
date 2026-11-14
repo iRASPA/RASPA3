@@ -25,10 +25,10 @@ class PropertyDensityGrid():
         self,
         number_of_frameworks: int,
         number_of_components: int,
-        number_of_grid_points: tuple[int, int, int] = (128, 128, 128),
-        sample_every: int  = 1,
-        write_every: int = 5000,
-        density_grid_pseudo_atoms_list: collections.abc.Sequence[str] = [],
+        number_of_grid_points: tuple[int, int, int],
+        sample_every: int,
+        write_every: int | None,
+        density_grid_pseudo_atoms_list: collections.abc.Sequence[str],
         normalization_type: Normalization = Normalization.MAX,
         binning_mode: Binning = Binning.STANDARD
     ) -> None:
@@ -40,11 +40,10 @@ class PropertyDensityGrid():
             number_of_frameworks: Number of frameworks in the system.
             number_of_components: Number of components in the system.
             number_of_grid_points: Grid resolution as ``(nx, ny, nz)``.
-                Defaults to ``(128, 128, 128)``.
-            sample_every: Sampling interval in cycles. Defaults to ``1``.
-            write_every: Output-write interval in cycles. Defaults to ``5000``.
+            sample_every: Sampling interval in cycles.
+            write_every: Optional output-write interval in cycles.
             density_grid_pseudo_atoms_list: Pseudo-atom names for which density
-                grids are accumulated. Defaults to an empty sequence.
+                grids are accumulated.
             normalization_type: Density-grid normalization mode. Defaults to
                 :attr:`Normalization.MAX`.
             binning_mode: Density-grid binning mode. Defaults to

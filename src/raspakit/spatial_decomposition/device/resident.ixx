@@ -5,6 +5,7 @@ export module spatial_decomposition_device_resident;
 import std;
 
 import double3;
+import double3x3;
 import simd_quatd;
 import simulationbox;
 import system;
@@ -72,6 +73,10 @@ export class DeviceResident
   /// The cell of the box translations of the slot positions (after a cell change of the barostat; before the
   /// first half of the step that packs with the new cell).
   void setBox(const SimulationBox& box);
+  /// The deformations H(t) H(t0)^{-1} of the box since the list build and since the list compaction: the pack
+  /// measures the displacement that spends the skin against the reference positions transported with the cell, as
+  /// the host does (the raw displacement misses an atom that holds its place while the cell contracts around it).
+  void setReferenceMaps(const double3x3& sinceBuild, const double3x3& sinceCompaction);
 
   /// Scale factors of the velocities (translational, rotational) applied at the start of the next first half.
   struct Scaling

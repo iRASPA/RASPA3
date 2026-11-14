@@ -12,13 +12,14 @@ class MolecularDynamics():
 
     def __init__(
         self,
-        number_of_production_cycles: int = 0,
+        number_of_production_cycles: int,
+        number_of_pre_initialization_cycles: int = 0,
         number_of_initialization_cycles: int = 0,
         number_of_equilibration_cycles: int = 0,
         print_every: int = 5000,
         write_binary_restart_every: int = 5000,
-        rescale_wang_landau_every: int = 5000,
-        optimize_mc_moves_every: int = 5000,
+        rescale_wang_landau_every: int = 1000,
+        optimize_mc_moves_every: int = 100,
         systems: collections.abc.Sequence[System] = [],
         random_seed: int | None = None,
         number_of_blocks: int = 5,
@@ -29,7 +30,9 @@ class MolecularDynamics():
         Initialize a :class:`MolecularDynamics` simulation controller.
 
         Args:
-            number_of_production_cycles: Number of production cycles. Defaults to ``0``.
+            number_of_production_cycles: Number of production cycles.
+            number_of_pre_initialization_cycles: Number of pre-initialization cycles.
+                Defaults to ``0``.
             number_of_initialization_cycles: Number of initialization cycles.
                 Defaults to ``0``.
             number_of_equilibration_cycles: Number of equilibration cycles.
@@ -38,9 +41,9 @@ class MolecularDynamics():
             write_binary_restart_every: Interval for writing binary restart
                 files. Defaults to ``5000``.
             rescale_wang_landau_every: Interval for Wang-Landau rescaling
-                operations. Defaults to ``5000``.
+                operations. Defaults to ``1000``.
             optimize_mc_moves_every: Interval for Monte Carlo move-probability
-                optimization. Defaults to ``5000``.
+                optimization. Defaults to ``100``.
             systems: Sequence of simulation systems to run. Defaults to an
                 empty sequence.
             random_seed: Optional random seed. If ``None``, the backend selects

@@ -9,23 +9,19 @@ class PropertyConventionalRadialDistributionFunction:
     """
 
     def __init__(self,
-                 numberOf_blocks: int,
-                 number_of_pseudo_atoms: int,
                  number_of_bins: int,
                  range: float,
                  sample_every: int,
-                 write_every: int) -> None:
+                 write_every: int | None = None) -> None:
         ...
         """
         Initialize a :class:`PropertyConventionalRadialDistributionFunction`.
 
         Args:
-            numberOf_blocks: Number of blocks used for block averaging.
-            number_of_pseudo_atoms: Number of pseudo-atom types considered.
             number_of_bins: Number of histogram bins in the RDF.
             range: Maximum distance range of the RDF histogram.
             sample_every: Sampling interval in cycles.
-            write_every: Output-write interval in cycles.
+            write_every: Optional output-write interval in cycles.
         """
 
     @property

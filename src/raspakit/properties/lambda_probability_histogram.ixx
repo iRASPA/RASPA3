@@ -54,11 +54,12 @@ export struct PropertyLambdaProbabilityHistogram
   bool operator==(PropertyLambdaProbabilityHistogram const &) const = default;
 
   std::uint64_t versionNumber{1};
-  std::size_t numberOfBlocks;
+  // zero for a default-constructed histogram (Python constructs one): read uninitialized they sized the results
+  std::size_t numberOfBlocks{0};
 
-  std::size_t numberOfSamplePoints;
-  std::size_t currentBin;
-  double delta;
+  std::size_t numberOfSamplePoints{0};
+  std::size_t currentBin{0};
+  double delta{0.0};
 
   double WangLandauScalingFactor{1.0};
 
@@ -72,7 +73,7 @@ export struct PropertyLambdaProbabilityHistogram
   BlockAverage<double> density;
 
   // dU/dlambda-histogram
-  bool computeDUdlambda;
+  bool computeDUdlambda{false};
   // 1-based thermodynamic-integration group id assigned by System::assignDUdlambdaGroups();
   // 0 when this lambda coordinate is not tracked. Atoms of the corresponding fractional molecule
   // carry this id in Atom::groupId, and RunningEnergy accumulates dU/dlambda per group.

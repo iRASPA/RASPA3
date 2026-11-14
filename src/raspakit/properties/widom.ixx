@@ -183,6 +183,10 @@ export struct PropertyWidom
 
   inline void addWidomSample(std::size_t blockIndex, double RosenbluthValue, std::size_t N, double V, double weight)
   {
+    // Sampling <W> and <N / V> separately (rather than <V / (N + 1) W>) uses the backward canonical identity
+    // (N / V) Q(N, V) = Q(N - 1, V) <W>_{N-1,V}: in open, osmotic, and Gibbs ensembles <N / V> = beta f <W> holds
+    // pointwise at every V without the (1 - P(N = 0)) low-loading bias of <V / (N + 1) W>, and at fixed N = 1 it
+    // preserves the exact Henry limit K_H = <N / V> / f = beta <W> (see also PropertyGibbsWidom::addWidomSample).
     rosenbluthWeight.addSample(blockIndex, RosenbluthValue, weight);
     chemicalPotentialTerms.addSample(blockIndex, WidomData(0.0, RosenbluthValue, static_cast<double>(N) / V), weight);
   }

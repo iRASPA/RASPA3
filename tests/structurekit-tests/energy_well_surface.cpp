@@ -416,6 +416,71 @@ TEST(energy_well_surface, a_periodic_tube_packs_as_a_file)
   EXPECT_LT(packingArea(surface), 0.20 * lx * ly);
 }
 
+// A straight tube along [110] of a cubic cell wraps a and b, but along one translation (a + b): a file with that
+// period, not the slit the two axis flags made of it (no length at all) in a cell whose c is the shortest edge.
+TEST(energy_well_surface, a_diagonal_tube_packs_as_a_file)
+{
+  const double l = 12.0;
+  const uint3 gridSize{32, 32, 32};
+  PairInteractions interactions = oneType(sigma, epsilon);
+  Crystal framework = emptyBox(UnitCell(l, l, l));
+  addAtom(framework, 0.5, 0.5, 0.5);
+
+  WellField field = blankField(gridSize, framework.unitCell);
+  field.probe = probeOf(interactions, "X");
+  for (std::size_t k = 14; k <= 18; ++k)
+  {
+    for (std::size_t j = 0; j < gridSize.y; ++j)
+    {
+      for (std::size_t i = 0; i < gridSize.x; ++i)
+      {
+        // within two voxels of the line i - j = 0 (mod 32)
+        const int offset = (static_cast<int>(i) - static_cast<int>(j) + 48) % 32 - 16;
+        if (std::abs(offset) <= 2) markFilament(field, field.voxelIndex(i, j, k));
+      }
+    }
+  }
+
+  WellSurface surface = wellSurfaceOfField(framework, interactions, field, 0.0, 0.001, 0.0, {});
+
+  const double period = std::sqrt(2.0) * l;
+  EXPECT_GT(surface.filamentVolume, 0.0);
+  EXPECT_NEAR(surface.filamentRidgeLength, period, 0.20 * period);
+  EXPECT_LT(surface.filamentMedialArea, 0.20 * l * l);
+}
+
+// An inclined (111) slab wraps all three axes along two translations: a slit, packed on its midplane of area
+// sqrt(3) l^2 per cell, not the files the three axis flags made of it.
+TEST(energy_well_surface, an_inclined_slit_packs_on_the_midplane)
+{
+  const double l = 12.0;
+  const uint3 gridSize{32, 32, 32};
+  PairInteractions interactions = oneType(sigma, epsilon);
+  Crystal framework = emptyBox(UnitCell(l, l, l));
+  addAtom(framework, 0.5, 0.5, 0.5);
+
+  WellField field = blankField(gridSize, framework.unitCell);
+  field.probe = probeOf(interactions, "X");
+  for (std::size_t k = 0; k < gridSize.z; ++k)
+  {
+    for (std::size_t j = 0; j < gridSize.y; ++j)
+    {
+      for (std::size_t i = 0; i < gridSize.x; ++i)
+      {
+        // within a slab about the plane i + j + k = 16 (mod 32), a few voxels thick
+        const int offset = static_cast<int>((i + j + k + 16) % 32) - 16;
+        if (std::abs(offset) <= 3) markFilament(field, field.voxelIndex(i, j, k));
+      }
+    }
+  }
+
+  WellSurface surface = wellSurfaceOfField(framework, interactions, field, 0.0, 0.001, 0.0, {});
+
+  const double expected = std::sqrt(3.0) * l * l;
+  EXPECT_GT(surface.filamentVolume, 0.0);
+  EXPECT_GT(surface.filamentMedialArea, 0.5 * expected);
+  EXPECT_LT(surface.filamentRidgeLength, 0.20 * l);
+}
 
 // A flattened wrapping ribbon still wraps one axis: it is a file, not a midplane of the ribbon.
 TEST(energy_well_surface, a_flattened_tube_packs_as_a_file)

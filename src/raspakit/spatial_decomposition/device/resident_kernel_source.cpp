@@ -613,8 +613,12 @@ void residentPack(GLOBAL const float4* RESTRICT positionHi, GLOBAL const float4*
     const uint slot = slotOfAtom[i];
     const float charge = positionHi[i].w;
     slotPosition[slot] = FLOAT4(p.x, p.y, p.z, charge);
-    const float3 db = p - buildPosition[slot].xyz;
-    const float3 dc = p - compactReference[slot].xyz;
+    // against the references transported with the cell since the build and the compaction: ref + (M - 1) ref
+    const float3 rb = buildPosition[slot].xyz;
+    const float3 rc = compactReference[slot].xyz;
+    const float3 db = p - (rb + FLOAT3(dot(cellTable[6].xyz, rb), dot(cellTable[7].xyz, rb), dot(cellTable[8].xyz, rb)));
+    const float3 dc =
+        p - (rc + FLOAT3(dot(cellTable[9].xyz, rc), dot(cellTable[10].xyz, rc), dot(cellTable[11].xyz, rc)));
     displacement = FLOAT2(dot(db, db), dot(dc, dc));
     if (writeRelative != 0u)
     {

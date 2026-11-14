@@ -1117,6 +1117,45 @@ TEST_P(SpatialDecompositionDevice, engine_device_keeps_the_pair_across_the_bound
   EXPECT_NEAR(energy.moleculeMoleculeVDW, reference, 1e-4 * std::abs(reference));
 }
 
+// No guest atoms, from the start or after the last one left (a low-pressure muVT or HMC run): the device buffers
+// were never allocated (or the cluster count is zero) and the kernels still launched one work-group on them.
+TEST_P(SpatialDecompositionDevice, engine_device_handles_a_system_without_atoms)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+
+  ForceField forceField({{"M", false, 16.0, 0.0, 0.0, 8, false}}, {{100.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, true, false, false);
+  Component particle(forceField, "particle", 16.0, 1.0e6, 0.011,
+                     {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, ConnectivityTable(1),
+                     Potentials::IntraMolecularPotentials{}, 0, 0);
+  const SimulationBox box(40.0, 40.0, 40.0);
+  SpatialDecompositionSettings settings = settingsFor(1);
+  settings.pairDevice = pairDevice;
+  settings.deviceMesh = false;
+  settings.deviceBonded = false;
+
+  System empty(forceField, box, false, 300.0, 1.0e4, 1.0, std::nullopt, {particle}, {}, {0}, 5);
+  SpatialDecompositionForceEngine engine(settings);
+  engine.initialize(empty);
+  RunningEnergy energy{};
+  ASSERT_NO_THROW(energy = engine.computeGradients(empty, false));
+  EXPECT_EQ(energy.moleculeMoleculeVDW, 0.0);
+
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, std::nullopt, {particle}, {}, {2}, 5);
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  atoms[0].position = double3(10.0, 20.0, 20.0);
+  atoms[1].position = double3(13.5, 20.0, 20.0);
+  SpatialDecompositionForceEngine shrinking(settings);
+  shrinking.initialize(system);
+  EXPECT_LT(shrinking.computeGradients(system, false).moleculeMoleculeVDW, -1.0);
+  system.deleteMolecule(0, 0, system.spanOfMolecule(0, 0));
+  system.deleteMolecule(0, 0, system.spanOfMolecule(0, 0));
+  ASSERT_EQ(system.spanOfMoleculeAtoms().size(), 0uz);
+  ASSERT_NO_THROW(energy = shrinking.computeGradients(system, false));
+  EXPECT_EQ(energy.moleculeMoleculeVDW, 0.0);
+}
+
 // The pair table of the kernels is plain Lennard-Jones, but a 1-4 pair can have its own potential ('parameters14').
 // The bonded kernel only has the Lennard-Jones form: such a term stays on the host instead of being dropped.
 TEST_P(SpatialDecompositionDevice, engine_device_keeps_a_non_lennard_jones_1_4_pair)
@@ -1924,6 +1963,54 @@ TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_every_bond_bend
   }
 }
 
+// A core and its shell (CoreShellSpring) on top of each other or 1e-3 A apart: the Ewald exclusion of the charged
+// pair, erf(alpha r)/r and its force factor, divided 0 by 0 at r = 0 and cancelled catastrophically in single
+// precision near it. The host (double) and the device bonded kernel agree and are finite.
+TEST_P(SpatialDecompositionDevice, engine_device_core_shell_exclusion_at_and_near_zero_separation)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+
+  Potentials::IntraMolecularPotentials potentials{};
+  potentials.bonds.push_back(BondPotential({0, 1}, BondType::CoreShellSpring, {20000.0}));
+  potentials.bonds.push_back(BondPotential({1, 2}, BondType::Harmonic, {96500.0, 1.50}));
+  potentials.bonds.push_back(BondPotential({2, 3}, BondType::Harmonic, {96500.0, 1.50}));
+  for (const double separation : {0.0, 1.0e-3})
+  {
+    RandomNumber random(23);
+    System system = makeTermChainSystem(potentials, random);
+    std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+    for (std::size_t m = 0; m < system.moleculeData.size(); ++m)
+    {
+      atoms[4 * m + 1].position = atoms[4 * m].position + double3(separation, 0.0, 0.0);
+    }
+
+    SpatialDecompositionSettings hostSettings = settingsFor(4, 1.5, 0.5);
+    hostSettings.pairDevice = pairDevice;
+    hostSettings.deviceBonded = false;
+    SpatialDecompositionForceEngine host(hostSettings);
+    host.initialize(system);
+    const RunningEnergy hostEnergy = host.computeGradients(system, true);
+    const std::vector<double3> hostGradient = gradientsOf(system);
+    ASSERT_EQ(std::to_string(hostEnergy.potentialEnergy()).find("nan"), std::string::npos) << separation;
+    ASSERT_EQ(std::to_string(rmsNorm(hostGradient)).find("nan"), std::string::npos) << separation;
+
+    SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+    settings.pairDevice = pairDevice;
+    SpatialDecompositionForceEngine device(settings);
+    device.initialize(system);
+    ASSERT_TRUE(device.usesDeviceBonded());
+    const RunningEnergy energy = device.computeGradients(system, true);
+    const std::vector<double3> gradient = gradientsOf(system);
+    EXPECT_NEAR(energy.ewald_self + energy.ewald_exclusion, hostEnergy.ewald_self + hostEnergy.ewald_exclusion,
+                1e-5 * std::abs(hostEnergy.ewald_self + hostEnergy.ewald_exclusion))
+        << separation;
+    EXPECT_NEAR(energy.potentialEnergy(), hostEnergy.potentialEnergy(), 2e-5 * std::abs(hostEnergy.potentialEnergy()))
+        << separation;
+    EXPECT_LT(rmsDifference(gradient, hostGradient), 1e-5 * rmsNorm(hostGradient)) << separation;
+  }
+}
+
 // The device bonded kernel holds the cutoffs of its 1-4 pairs and bakes the shift of every pair at the cutoff into
 // its topology. A lowered Lennard-Jones cutoff (an automatic cutoff following the box, which re-derives the shifts)
 // must reach both, as it reaches the pair kernel: compared with an engine prepared at the lower cutoff.
@@ -2287,6 +2374,16 @@ TEST(spatial_decomposition, engine_rejects_unsupported_systems)
   system.forceField.omitInterInteractions = true;
   EXPECT_FALSE(SpatialDecompositionForceEngine::supports(system, reason));
   system.forceField.omitInterInteractions = false;
+
+  // the fractional molecules of a reaction CFCMC move are not flagged on their components
+  system.mc_moves_probabilities.setProbability(Move::Types::ReactionCFCMC, 1.0);
+  EXPECT_FALSE(SpatialDecompositionForceEngine::supports(system, reason));
+  EXPECT_EQ(reason, "fractional (reaction CFCMC) molecules");
+  system.mc_moves_probabilities.setProbability(Move::Types::ReactionCFCMC, 0.0);
+  system.numberOfFractionalMoleculesPerComponent[0] = 1;
+  EXPECT_FALSE(SpatialDecompositionForceEngine::supports(system, reason));
+  system.numberOfFractionalMoleculesPerComponent[0] = 0;
+  EXPECT_TRUE(SpatialDecompositionForceEngine::supports(system, reason)) << reason;
 
   // too many threads for the box (30 A, list cutoff 10 A: at most 12 x 12 x 12 cells of a quarter cutoff)
   SpatialDecompositionForceEngine engine(settingsFor(2048, 1.0));
@@ -4344,4 +4441,11 @@ TEST(spatial_decomposition, resident_support_refuses_an_automatic_coulomb_cutoff
   system.forceField.cutOffCoulombAutomatic = false;
   system.forceField.automaticEwald = true;
   EXPECT_TRUE(DeviceResident::supports(system, reason)) << reason;
+
+  // an empty system: the integrator buffers would be zero-sized
+  ForceField waterForceField = makeWaterForceField();
+  System empty(waterForceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {},
+               {makeWater(waterForceField)}, {}, {0}, 5);
+  EXPECT_FALSE(DeviceResident::supports(empty, reason));
+  EXPECT_EQ(reason, "no molecules to integrate");
 }

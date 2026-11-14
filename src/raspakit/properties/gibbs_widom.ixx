@@ -40,10 +40,19 @@ export struct PropertyGibbsWidom
 
   inline void addWidomSample(std::size_t blockIndex, double RosenbluthValue, std::size_t N, double V, double weight)
   {
-    // Volume per molecule of the molecules already in the box. Counting the test particle as N + 1
-    // shifts the ideal-gas term and the fugacity by ln((N + 1) / N), which corrupts the Henry
-    // coefficient at low loading. An empty box has no volume per molecule: it gives no chemical-potential sample
-    // (counted as one molecule, it gave V W, a finite fugacity for a box without molecules).
+    // Deliberately V / N, NOT the textbook V / (N + 1) of Sindzingre et al. (1987) / Smit & Frenkel (1989):
+    //   1. V / (N + 1) only cancels the volume-fluctuation bias in a pure single-component closed NpT fluid where
+    //      <V> = (N + 1) / (beta P). Whenever V is fixed or set by a host framework or solvent (NVT, flexible-host
+    //      NpT, or a dilute solute in NpT), -ln(<V / (N + 1) W>) / beta is the forward step F(N + 1) - F(N) at
+    //      density (N + 1) / V rather than the box density N / V: at N = 1 it reports twice the fugacity (+ln 2 in
+    //      beta mu) and halves the Henry coefficient K_H = rho / f, whereas V / N gives F(1) - F(0) and the exact
+    //      Henry limit.
+    //   2. In an open or Gibbs box that visits N = 0, summing Q(N + 1, V) = (V / (N + 1)) Q(N, V) <W> from N = 0
+    //      omits the M = 0 state and gives <V / (N + 1) W> = (1 - P(N = 0)) / (beta f), which plateaus at a finite
+    //      fugacity 1 / (beta <V W>_0) instead of vanishing as f -> 0 (for boxes that empty frequently, see
+    //      PropertyWidom, whose <N / V> / <W> = beta f has no N = 0 boundary term).
+    // An empty box (N = 0) has no volume per molecule: it gives no chemical-potential sample (counted as one
+    // molecule, it gave V W, a finite fugacity for a box without molecules).
     rosenbluthWeight.addSample(blockIndex, RosenbluthValue, weight);
     if (N == 0uz) return;
     const double volumePerMolecule = V / static_cast<double>(N);

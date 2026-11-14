@@ -91,6 +91,21 @@ DEVICE_FUNCTION float erfOverXMinusLimit(float x)
   return (erf(x) - TWO_OVER_SQRT_PI * x) / x;
 }
 
+// ((2/sqrt(pi)) exp(-x^2) - erf(x)/x) / x^2 = (d/dx (erf(x)/x)) / x: the exclusion force factor (phi'(r)/r) / alpha^3
+// of phi(r) = erf(alpha r)/r. The closed form cancels catastrophically in single precision for small x and is 0/0 at
+// r = 0 (a core and its shell on top of each other): the Taylor series for x <= 0.5 (omitted terms below 1e-7)
+DEVICE_FUNCTION float erfExclusionForceFactor(float x)
+{
+  const float x2 = x * x;
+  if (x2 <= 0.25f)
+  {
+    return TWO_OVER_SQRT_PI *
+           (-2.0f / 3.0f +
+            x2 * (0.4f + x2 * (-1.0f / 7.0f + x2 * (1.0f / 27.0f + x2 * (-1.0f / 132.0f + x2 * (1.0f / 780.0f))))));
+  }
+  return (TWO_OVER_SQRT_PI * exp(-x2) - erf(x) / x) / x2;
+}
+
 // BondPotential (distancePotentialEnergyGradientStrain): energy and DF with gradient_A = DF dr, dr = posA - posB
 DEVICE_FUNCTION float bondTerm(uint type, PRIVATE const float* P, float3 posA, float3 posB, PRIVATE float3* gA,
                                PRIVATE float3* gB)
@@ -620,9 +635,7 @@ void bondedAtoms(GLOBAL const float4* RESTRICT relative,          // per atom (s
         const float rr = dot(dr, dr);
         const float r = sqrt(rr);
         const float x = p->alpha * r;
-        const float potential = erf(x) / r;
-        const float gaussian = p->twoAlphaOverSqrtPi * exp(-x * x);
-        const float firstDerivativeFactor = (gaussian - potential) / rr;
+        const float firstDerivativeFactor = p->alpha * p->alpha * p->alpha * erfExclusionForceFactor(x);
         const float prefactor = p->coulombFactor * qa * pb.w;
         const float gradientFactor = prefactor * firstDerivativeFactor;
         exclusionGradient -= gradientFactor * dr;

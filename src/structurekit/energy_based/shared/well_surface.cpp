@@ -5,6 +5,8 @@ module energy_shared_well_surface;
 import std;
 
 import uint3;
+import int3;
+import grid_connected_components;
 import double3;
 import double3x3;
 import unit_cell;
@@ -496,6 +498,11 @@ void assignFilamentPacking(WellSurface &result, const WellField &field, const Un
     bool a{false};
     bool b{false};
     bool c{false};
+    // the independent cycle shifts of the component (lattice translations it closes over): their rank is its
+    // dimensionality, which the three axis flags do not tell (a [110] file wraps a and b and is one-dimensional,
+    // a (111) sheet wraps all three and is two-dimensional)
+    std::vector<int3> cycles{};
+    int rank{0};
   };
   std::vector<ComponentWrap> componentWraps;
   std::vector<int> imageX(nVoxels, 0), imageY(nVoxels, 0), imageZ(nVoxels, 0);
@@ -533,6 +540,16 @@ void assignFilamentPacking(WellSurface &result, const WellField &field, const Un
               if (nxImage != imageX[j]) wrapFlags.a = true;
               if (nyImage != imageY[j]) wrapFlags.b = true;
               if (nzImage != imageZ[j]) wrapFlags.c = true;
+              const int3 cycle(nxImage - imageX[j], nyImage - imageY[j], nzImage - imageZ[j]);
+              if (wrapFlags.rank < 3 && (cycle.x != 0 || cycle.y != 0 || cycle.z != 0))
+              {
+                wrapFlags.cycles.push_back(cycle);
+                const int extended = latticeVectorRank(wrapFlags.cycles);
+                if (extended > wrapFlags.rank)
+                  wrapFlags.rank = extended;
+                else
+                  wrapFlags.cycles.pop_back();
+              }
               continue;
             }
             channelComp[j] = id;
@@ -663,6 +680,8 @@ void assignFilamentPacking(WellSurface &result, const WellField &field, const Un
   std::vector<std::uint8_t> kind(nFilament, 1);
   std::vector<std::uint8_t> slitComponent(componentWraps.size(), 0);
   double nFilesA = 0.0, nFilesB = 0.0, nFilesC = 0.0;
+  // files that run along no axis (a [110] or (2,3,0) file): their packed lengths, each along its own period
+  double lengthDiagonal = 0.0;
   double pockets = 0.0;
   const double a = unitCell.lengthA, b = unitCell.lengthB, cLen = unitCell.lengthC;
   for (std::size_t c = 0; c < componentWraps.size(); ++c)
@@ -672,9 +691,12 @@ void assignFilamentPacking(WellSurface &result, const WellField &field, const Un
     const double nA = w.a ? filesAlong(0, nx, ny, nz, static_cast<int>(c)) : 0.0;
     const double nB = w.b ? filesAlong(1, ny, nx, nz, static_cast<int>(c)) : 0.0;
     const double nC = w.c ? filesAlong(2, nz, nx, ny, static_cast<int>(c)) : 0.0;
-    const bool slit = nWrap >= 2 && (!w.a || nA < 1.5) && (!w.b || nB < 1.5) && (!w.c || nC < 1.5) &&
-                      ((!w.a && a <= b && a <= cLen) || (!w.b && b <= a && b <= cLen) ||
-                       (!w.c && cLen <= a && cLen <= b));
+    // a sheet spans two independent translations: an inclined one (rank 2 over all three axes) is a slit, and a
+    // file that wraps two axes along one diagonal translation (rank 1) is never one
+    const bool slit =
+        (w.rank == 2 && nWrap == 3) ||
+        (w.rank == 2 && nWrap == 2 && (!w.a || nA < 1.5) && (!w.b || nB < 1.5) && (!w.c || nC < 1.5) &&
+         ((!w.a && a <= b && a <= cLen) || (!w.b && b <= a && b <= cLen) || (!w.c && cLen <= a && cLen <= b)));
     slitComponent[c] = slit ? 1 : 0;
     if (slit) continue;
     bool hasWell = false;
@@ -694,6 +716,22 @@ void assignFilamentPacking(WellSurface &result, const WellField &field, const Un
       double f = std::round(n);
       return f < 1.0 ? 1.0 : f;
     };
+    if (w.rank == 1 && nWrap >= 2)
+    {
+      // one family of diagonal files with the primitive period n_a a + n_b b + n_c c: a plane across an axis the
+      // period has |n| cells of cuts the file once per cell, so the files are the pieces per plane over |n|
+      const int3 v = w.cycles.front();
+      const int divisor = std::gcd(std::gcd(std::abs(v.x), std::abs(v.y)), std::abs(v.z));
+      const int3 primitive(v.x / divisor, v.y / divisor, v.z / divisor);
+      const double period = (unitCell.cell * double3(static_cast<double>(primitive.x), static_cast<double>(primitive.y),
+                                                     static_cast<double>(primitive.z)))
+                                .length();
+      const double files = primitive.x != 0   ? nA / std::abs(primitive.x)
+                           : primitive.y != 0 ? nB / std::abs(primitive.y)
+                                              : nC / std::abs(primitive.z);
+      lengthDiagonal += packedLength(addFiles(files), period);
+      continue;
+    }
     if (nWrap == 3)
     {
       const double pa = w.a ? a : 1.0e300, pb = w.b ? b : 1.0e300, pc = w.c ? cLen : 1.0e300;
@@ -760,7 +798,8 @@ void assignFilamentPacking(WellSurface &result, const WellField &field, const Un
     const double allowance = std::max(1.0, std::round(std::min(b, cLen) / fileSpacing));
     nFilesA += std::min(pockets, std::max(0.0, allowance - wrappingAlongA));
   }
-  const double length1D = packedLength(nFilesA, a) + packedLength(nFilesB, b) + packedLength(nFilesC, cLen);
+  const double length1D =
+      packedLength(nFilesA, a) + packedLength(nFilesB, b) + packedLength(nFilesC, cLen) + lengthDiagonal;
 
   for (std::size_t s = 0; s < nFilament; ++s)
   {

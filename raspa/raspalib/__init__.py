@@ -118,6 +118,16 @@ __all__ = [
     "PropertyMeanSquaredDisplacement",
     "PropertyVelocityAutoCorrelationFunction",
     "PropertyEnthalpy",
-    "EnthalpyOfAdsorptionData"
+    "EnthalpyOfAdsorptionData",
+    "CIFReader",
+    "MeanSquaredDisplacementData",
+    "MoveStatisticsDouble",
+    "PartialMolarPropertiesData",
+    "PressureData",
+    "PropertyGibbsWidom",
+    "PropertyPartialMolarProperties",
+    "PropertyRadialDistributionFunction",
+    "RandomNumber",
+    "VelocityAutoCorrelationFunctionData"
 ]
 

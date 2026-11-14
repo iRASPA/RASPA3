@@ -438,25 +438,27 @@ EXPAND_MODULE(MODULE_NAME)
       .value("TRICLINIC", SimulationBox::Type::Triclinic);
 
   simulationBox
-      .def(nanobind::init<double, double, double>(), 
-           nanobind::arg("a"), 
-           nanobind::arg("b"), 
-           nanobind::arg("c"))
-      .def(nanobind::init<double, double, double, double, double, double>(), 
-           nanobind::arg("a"), 
-           nanobind::arg("b"),
-           nanobind::arg("c"), 
-           nanobind::arg("alpha"), 
-           nanobind::arg("beta"), 
-           nanobind::arg("gamma"))
-      .def(nanobind::init<double, double, double, double, double, double, SimulationBox::Type>(), 
-           nanobind::arg("a"),
-           nanobind::arg("b"), 
-           nanobind::arg("c"), 
-           nanobind::arg("alpha"), 
-           nanobind::arg("beta"),
-           nanobind::arg("gamma"), 
-           nanobind::arg("type"))
+      .def(nanobind::init<double, double, double>(), nanobind::arg("a"), nanobind::arg("b"), nanobind::arg("c"))
+      // the angles in degrees (as documented, and as a CIF file gives them); the C++ constructors take radians
+      .def(
+          "__init__",
+          [](SimulationBox* box, double a, double b, double c, double alpha, double beta, double gamma)
+          {
+            new (box) SimulationBox(a, b, c, alpha * Units::DegreesToRadians, beta * Units::DegreesToRadians,
+                                    gamma * Units::DegreesToRadians);
+          },
+          nanobind::arg("a"), nanobind::arg("b"), nanobind::arg("c"), nanobind::arg("alpha"), nanobind::arg("beta"),
+          nanobind::arg("gamma"))
+      .def(
+          "__init__",
+          [](SimulationBox* box, double a, double b, double c, double alpha, double beta, double gamma,
+             SimulationBox::Type type)
+          {
+            new (box) SimulationBox(a, b, c, alpha * Units::DegreesToRadians, beta * Units::DegreesToRadians,
+                                    gamma * Units::DegreesToRadians, type);
+          },
+          nanobind::arg("a"), nanobind::arg("b"), nanobind::arg("c"), nanobind::arg("alpha"), nanobind::arg("beta"),
+          nanobind::arg("gamma"), nanobind::arg("type"))
       .def(nanobind::init<double3x3, SimulationBox::Type>())
       .def_rw("type", &SimulationBox::type)
       .def_ro("length_a", &SimulationBox::lengthA)
@@ -553,21 +555,21 @@ EXPAND_MODULE(MODULE_NAME)
       .def("join", &MCMoveProbabilities::join)
       .def("__repr__", &MCMoveProbabilities::repr);
 
-
   nanobind::class_<PropertyLambdaProbabilityHistogram>(m, "PropertyLambdaProbabilityHistogram")
       .def(nanobind::init<>())
+      .def(nanobind::init<std::size_t, std::size_t>(), nanobind::arg("number_of_blocks"),
+           nanobind::arg("number_of_sample_points"))
       // dimensionless
       .def_rw("bias_factor", &PropertyLambdaProbabilityHistogram::biasFactor)
       // dimensionless
       .def_rw("histogram", &PropertyLambdaProbabilityHistogram::histogram)
       .def_ro("occupancy_total", &PropertyLambdaProbabilityHistogram::occupancyTotal)
       .def_ro("occupancy_count", &PropertyLambdaProbabilityHistogram::occupancyCount)
-       // convert result to units of Kelvin
-      .def("average_dudlambda", [](PropertyLambdaProbabilityHistogram& p) 
-          { return Units::EnergyToKelvin * p.averageDuDlambda();})
+      // convert result to units of Kelvin
+      .def("average_dudlambda",
+           [](PropertyLambdaProbabilityHistogram& p) { return Units::EnergyToKelvin * p.averageDuDlambda(); })
       // dimensionless
       .def("result", &PropertyLambdaProbabilityHistogram::result);
-
 
   nanobind::class_<ConnectivityTable>(m, "ConnectivityTable")
     .def(nanobind::init<>());
@@ -642,7 +644,16 @@ EXPAND_MODULE(MODULE_NAME)
         .value("PAIR_SWAP_CBCFCMC", Move::Types::PairSwapCBCFCMC);
 
     nanobind::class_<MCMoveStatistics>(m, "MCMoveStatistics")
-        .def("__getitem__", [](MCMoveStatistics& self, Move::Types i) { return self[i]; })
+        // the statistics held by the object, not a copy of them: 'stats[MoveTypes.Translation].max_change = 0.5'
+        // has to change the move
+        .def("__getitem__",
+             [](nanobind::handle self, Move::Types i)
+             {
+               MCMoveStatistics& statistics = nanobind::cast<MCMoveStatistics&>(self);
+               return std::visit([&](auto& held)
+                                 { return nanobind::cast(&held, nanobind::rv_policy::reference_internal, self); },
+                                 statistics.stats[std::to_underlying(i)]);
+             })
         .def("__repr__", &MCMoveStatistics::repr);
 
     nanobind::class_<WidomData>(m, "WidomData")
@@ -707,7 +718,7 @@ EXPAND_MODULE(MODULE_NAME)
         .def("__repr__", &Component::repr);
 
     nanobind::class_<LoadingData>(m, "LoadingData")
-        .def(nanobind::init<std::size_t>())
+        .def(nanobind::init<std::size_t>(), nanobind::arg("number_of_components"))
         .def_ro("number_of_molecules", &LoadingData::numberOfMolecules)
         .def_ro("number_densities", &LoadingData::numberDensities)
         .def_ro("inverse_number_densities", &LoadingData::inverseNumberDensities);
@@ -718,7 +729,8 @@ EXPAND_MODULE(MODULE_NAME)
              nanobind::arg("tag") = std::nullopt);
 
     nanobind::class_<PropertyLoading>(m, "PropertyLoading")
-        .def(nanobind::init<std::size_t, std::size_t>())
+        .def(nanobind::init<std::size_t, std::size_t>(), nanobind::arg("number_of_blocks"),
+             nanobind::arg("number_of_components"))
         .def("result", &PropertyLoading::average)
         .def("average_loading_number_of_molecules", &PropertyLoading::averageLoadingNumberOfMolecules)
         .def("write_averages_statistics", &PropertyLoading::writeAveragesStatistics)
@@ -774,7 +786,7 @@ EXPAND_MODULE(MODULE_NAME)
         nanobind::arg("number_of_grid_points"), nanobind::arg("sample_every"), nanobind::arg("write_every"),
         nanobind::arg("density_grid_pseudo_atoms_list"),
         nanobind::arg("normalization_type") = PropertyDensityGrid::Normalization::Max,
-        nanobind::arg("binningMode") = PropertyDensityGrid::Binning::Standard);
+        nanobind::arg("binning_mode") = PropertyDensityGrid::Binning::Standard);
 
     nanobind::class_<PropertyEnergyHistogram> energy_histogram(m, "PropertyEnergyHistogram");
     energy_histogram
@@ -1038,11 +1050,11 @@ EXPAND_MODULE(MODULE_NAME)
 
   nanobind::class_<PropertyConservedEnergyEvolution>(m, "PropertyConservedEnergyEvolution")
       .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
-            nanobind::arg("number_of_production_cycles"), 
-            nanobind::arg("sample_every"), 
-            nanobind::arg("write_every") = nanobind::none())
-       // convert result to units of Kelvin
-      .def("result", [](const PropertyConservedEnergyEvolution& p) { return Units::EnergyToKelvin * p.result();});
+           nanobind::arg("number_of_production_cycles"), nanobind::arg("sample_every"),
+           nanobind::arg("write_every") = nanobind::none())
+      // the running energies as they are, in internal units like every RunningEnergy (System.compute_total_energies);
+      // their __repr__ prints Kelvin (multiplying here as well printed EnergyToKelvin squared)
+      .def("result", &PropertyConservedEnergyEvolution::result);
 
   nanobind::class_<Thermostat>(m, "Thermostat")
       .def(nanobind::init<std::size_t, std::size_t, double>(),
@@ -1051,10 +1063,16 @@ EXPAND_MODULE(MODULE_NAME)
             nanobind::arg("time_scale_parameter") = 0.15);
 
   nanobind::class_<EnthalpyOfAdsorptionData>(m, "EnthalpyOfAdsorptionData")
-      .def(nanobind::init<std::size_t>(),
-            nanobind::arg("number_of_components"))
+      .def(nanobind::init<std::size_t>(), nanobind::arg("number_of_components"))
       .def_ro("values", &EnthalpyOfAdsorptionData::values)
-      .def("__getitem__", &EnthalpyOfAdsorptionData::operator[]);
+      .def("__getitem__",
+           [](const EnthalpyOfAdsorptionData& data, std::size_t index)
+           {
+             // a Python sequence ends with an IndexError (iteration stops on it), not past the end of the values
+             if (index >= data.values.size()) throw nanobind::index_error();
+             return data.values[index];
+           })
+      .def("__len__", [](const EnthalpyOfAdsorptionData& data) { return data.values.size(); });
 
   nanobind::class_<PropertyEnthalpy>(m, "PropertyEnthalpy")
       .def(nanobind::init<std::size_t, std::size_t>(),

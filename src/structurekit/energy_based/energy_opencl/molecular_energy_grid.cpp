@@ -1073,7 +1073,9 @@ __kernel void MolecularOrientationEnergies(__global const float4 *position,
       }
     }
 
-    orientationEnergy[slabVoxel * numberOfOrientations + o] = excluded ? ceiling : min(total, ceiling);
+    // in size_t, as the read in MolecularStrongestAtom: a slab of voxels times the orientations exceeds INT_MAX
+    orientationEnergy[(size_t)(slabVoxel) * (size_t)(numberOfOrientations) + (size_t)(o)] =
+        excluded ? ceiling : min(total, ceiling);
   }
 }
 

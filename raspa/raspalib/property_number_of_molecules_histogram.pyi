@@ -12,7 +12,7 @@ class PropertyNumberOfMoleculesHistogram():
         self,
         number_of_blocks: int,
         value_range: tuple[float, float],
-        sample_every: int = 1,
+        sample_every: int,
         write_every: int | None = None
     ) -> None:
         ...

@@ -10,5 +10,6 @@ class MCMoveStatistics:
     :class:`Move.Types`.
     """
     def __getitem__(self, arg0: Move.Types) -> MoveStatisticsDouble | MoveStatisticsDouble3:
-        """Return statistics for the requested move type."""
+        """Return the statistics of the requested move type, held by this object: changing them (e.g. ``max_change``)
+        changes the move."""
         ...

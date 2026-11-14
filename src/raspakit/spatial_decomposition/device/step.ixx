@@ -231,6 +231,8 @@ export class DeviceStep
   /// Whether an atom that moved by the squared 'displacementSquared' since the last compaction requires a new one in
   /// the box 'box': the deformation of the box since then spends part of the prune skin.
   bool compactionDue(const SimulationBox& box, double displacementSquared) const;
+  /// Inverse of the cell at the last compaction of the lane lists (the map H(t) H(t_c)^{-1} of a later box).
+  const double3x3& compactionInverseCell() const { return inverseCellAtCompaction; }
   /// The criterion itself: the prune skin minus what the deformation takes from a pair at the inner cutoff.
   static bool pruneSkinExhausted(double pruneSkin, double innerCutoff, double shortening, double displacementSquared);
   /// Enqueues the step in resident mode: compaction when the lane lists are new or when `compactionDue` (an atom

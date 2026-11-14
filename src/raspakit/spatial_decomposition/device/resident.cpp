@@ -86,6 +86,12 @@ simd_quatd get4(const std::vector<float>& hi, const std::vector<float>& lo, std:
 
 bool DeviceResident::supports(const System& system, std::string& reason)
 {
+  // the integrator buffers are sized by the atoms and molecules: an empty system would upload zero-sized buffers
+  if (system.spanOfMoleculeAtoms().empty())
+  {
+    reason = "no molecules to integrate";
+    return false;
+  }
   if (system.thermobarostat.has_value())
   {
     const Thermobarostat& barostat = *system.thermobarostat;
@@ -179,7 +185,9 @@ void DeviceResident::ensureBuffers(const System& system)
   atomInfo.allocate(c, atoms * 4 * sizeof(std::uint32_t), DeviceMemory::Device);
   slotOfAtom.allocate(c, atoms * sizeof(std::uint32_t), DeviceMemory::Device);
   wrapOfAtom.allocate(c, atoms * 4 * sizeof(std::int32_t), DeviceMemory::Device);
-  cellTable.allocate(c, 6 * 4 * sizeof(float), DeviceMemory::Device);
+  // the cell (hi, lo) and the deformations minus one since the build and since the compaction (see setReferenceMaps)
+  cellTable.allocate(c, 12 * 4 * sizeof(float), DeviceMemory::Device);
+  setReferenceMaps(double3x3::identity(), double3x3::identity());
   comHi.allocate(c, moleculeBytes, DeviceMemory::Device);
   comLo.allocate(c, moleculeBytes, DeviceMemory::Device);
   comShiftHi.allocate(c, moleculeBytes, DeviceMemory::Device);
@@ -425,6 +433,26 @@ void DeviceResident::setBox(const SimulationBox& box)
   std::vector<float> table(hi);
   table.insert(table.end(), lo.begin(), lo.end());
   writeFloat4(cellTable, table);
+}
+
+void DeviceResident::setReferenceMaps(const double3x3& sinceBuild, const double3x3& sinceCompaction)
+{
+  // stored minus one: the transport adds (M - 1) ref to ref, exact for an unchanged box and without the single-
+  // precision rounding of M ref
+  std::vector<float> rows(6 * 4, 0.0f);
+  const auto put = [&](std::size_t first, const double3x3& map)
+  {
+    const double3x3 d = map - double3x3::identity();
+    for (std::size_t row = 0; row < 3; ++row)
+    {
+      rows[4 * (first + row)] = static_cast<float>(d.mm[0][row]);
+      rows[4 * (first + row) + 1] = static_cast<float>(d.mm[1][row]);
+      rows[4 * (first + row) + 2] = static_cast<float>(d.mm[2][row]);
+    }
+  };
+  put(0, sinceBuild);
+  put(3, sinceCompaction);
+  context->write(cellTable.get(), 6 * 4 * sizeof(float), rows.size() * sizeof(float), rows.data(), true);
 }
 
 DeviceEvent DeviceResident::enqueuePack()

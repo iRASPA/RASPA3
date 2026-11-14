@@ -27,6 +27,6 @@ class PropertyConservedEnergyEvolution():
 
     @property
     def result(self) -> collections.abc.Sequence[RunningEnergy]:
-        """Return sampled conserved-energy evolution data."""
+        """Return the sampled running energies, in internal units like every :class:`RunningEnergy`."""
         ...
 

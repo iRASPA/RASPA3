@@ -6,9 +6,9 @@ class Thermostat:
     temperature control during molecular dynamics.
     """
     def __init__(self,
-                 thermostat_chain_length: int,
-                 number_of_yoshida_suzuki_steps: int,
-                 time_scale_parameter: float) -> None:
+                 thermostat_chain_length: int = 5,
+                 number_of_yoshida_suzuki_steps: int = 5,
+                 time_scale_parameter: float = 0.15) -> None:
         ...
         """
         Initialize a :class:`Thermostat`.

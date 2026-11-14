@@ -1,6 +1,9 @@
 class RunningEnergy:
     """
     Provide per-sample running energy terms reported by RASPA.
+
+    The terms are in internal units (10 J/mol), from the methods and the attributes alike; ``repr`` prints them in
+    Kelvin.
     """
 
     def __init__(self) -> None:

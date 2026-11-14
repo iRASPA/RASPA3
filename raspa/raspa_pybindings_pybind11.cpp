@@ -449,25 +449,24 @@ EXPAND_MODULE(MODULE_NAME)
       .value("TRICLINIC", SimulationBox::Type::Triclinic)
       .finalize();
   simulationBox
-      .def(pybind11::init<double, double, double>(), 
-           pybind11::arg("a"), 
-           pybind11::arg("b"), 
-           pybind11::arg("c"))
-      .def(pybind11::init<double, double, double, double, double, double>(), 
-           pybind11::arg("a"), 
-           pybind11::arg("b"),
-           pybind11::arg("c"), 
-           pybind11::arg("alpha"), 
-           pybind11::arg("beta"), 
+      .def(pybind11::init<double, double, double>(), pybind11::arg("a"), pybind11::arg("b"), pybind11::arg("c"))
+      // the angles in degrees (as documented, and as a CIF file gives them); the C++ constructors take radians
+      .def(pybind11::init(
+               [](double a, double b, double c, double alpha, double beta, double gamma)
+               {
+                 return SimulationBox(a, b, c, alpha * Units::DegreesToRadians, beta * Units::DegreesToRadians,
+                                      gamma * Units::DegreesToRadians);
+               }),
+           pybind11::arg("a"), pybind11::arg("b"), pybind11::arg("c"), pybind11::arg("alpha"), pybind11::arg("beta"),
            pybind11::arg("gamma"))
-      .def(pybind11::init<double, double, double, double, double, double, SimulationBox::Type>(), 
-           pybind11::arg("a"),
-           pybind11::arg("b"), 
-           pybind11::arg("c"), 
-           pybind11::arg("alpha"), 
-           pybind11::arg("beta"),
-           pybind11::arg("gamma"), 
-           pybind11::arg("type"))
+      .def(pybind11::init(
+               [](double a, double b, double c, double alpha, double beta, double gamma, SimulationBox::Type type)
+               {
+                 return SimulationBox(a, b, c, alpha * Units::DegreesToRadians, beta * Units::DegreesToRadians,
+                                      gamma * Units::DegreesToRadians, type);
+               }),
+           pybind11::arg("a"), pybind11::arg("b"), pybind11::arg("c"), pybind11::arg("alpha"), pybind11::arg("beta"),
+           pybind11::arg("gamma"), pybind11::arg("type"))
       .def(pybind11::init<double3x3, SimulationBox::Type>())
       .def_readwrite("type", &SimulationBox::type)
       .def_readonly("length_a", &SimulationBox::lengthA)
@@ -565,21 +564,21 @@ EXPAND_MODULE(MODULE_NAME)
       .def("join", &MCMoveProbabilities::join)
       .def("__repr__", &MCMoveProbabilities::repr);
 
-
   pybind11::class_<PropertyLambdaProbabilityHistogram>(m, "PropertyLambdaProbabilityHistogram")
       .def(pybind11::init<>())
+      .def(pybind11::init<std::size_t, std::size_t>(), pybind11::arg("number_of_blocks"),
+           pybind11::arg("number_of_sample_points"))
       // dimensionless
       .def_readwrite("bias_factor", &PropertyLambdaProbabilityHistogram::biasFactor)
       // dimensionless
       .def_readwrite("histogram", &PropertyLambdaProbabilityHistogram::histogram)
       .def_readonly("occupancy_total", &PropertyLambdaProbabilityHistogram::occupancyTotal)
       .def_readonly("occupancy_count", &PropertyLambdaProbabilityHistogram::occupancyCount)
-       // convert result to units of Kelvin
-      .def("average_dudlambda", [](PropertyLambdaProbabilityHistogram& p) 
-          { return Units::EnergyToKelvin * p.averageDuDlambda();})
+      // convert result to units of Kelvin
+      .def("average_dudlambda",
+           [](PropertyLambdaProbabilityHistogram& p) { return Units::EnergyToKelvin * p.averageDuDlambda(); })
       // dimensionless
       .def("result", &PropertyLambdaProbabilityHistogram::result);
-
 
   pybind11::class_<ConnectivityTable>(m, "ConnectivityTable")
     .def(pybind11::init<>());
@@ -655,7 +654,17 @@ EXPAND_MODULE(MODULE_NAME)
       .finalize();
 
   pybind11::class_<MCMoveStatistics>(m, "MCMoveStatistics")
-      .def("__getitem__", [](MCMoveStatistics &self, Move::Types i) { return self[i]; })
+      // the statistics held by the object, not a copy of them: 'stats[MoveTypes.Translation].max_change = 0.5'
+      // has to change the move
+      .def("__getitem__",
+           [](pybind11::object self, Move::Types i)
+           {
+             MCMoveStatistics& statistics = self.cast<MCMoveStatistics&>();
+             return std::visit(
+                 [&](auto& held)
+                 { return pybind11::cast(&held, pybind11::return_value_policy::reference_internal, self); },
+                 statistics.stats[std::to_underlying(i)]);
+           })
       .def("__repr__", &MCMoveStatistics::repr);
 
   pybind11::class_<WidomData>(m, "WidomData")
@@ -714,9 +723,8 @@ EXPAND_MODULE(MODULE_NAME)
       .def("print_status", &Component::printStatus)
       .def("__repr__", &Component::repr);
 
-
   pybind11::class_<LoadingData>(m, "LoadingData")
-      .def(pybind11::init<std::size_t>())
+      .def(pybind11::init<std::size_t>(), pybind11::arg("number_of_components"))
       .def_readonly("number_of_molecules", &LoadingData::numberOfMolecules)
       .def_readonly("number_densities", &LoadingData::numberDensities)
       .def_readonly("inverse_number_densities", &LoadingData::inverseNumberDensities);
@@ -729,7 +737,8 @@ EXPAND_MODULE(MODULE_NAME)
            pybind11::arg("tag") = std::nullopt);
 
   pybind11::class_<PropertyLoading>(m, "PropertyLoading")
-      .def(pybind11::init<std::size_t, std::size_t>())
+      .def(pybind11::init<std::size_t, std::size_t>(), pybind11::arg("number_of_blocks"),
+           pybind11::arg("number_of_components"))
       .def("result", &PropertyLoading::average)
       .def("average_loading_number_of_molecules", &PropertyLoading::averageLoadingNumberOfMolecules)
       .def("write_averages_statistics", &PropertyLoading::writeAveragesStatistics)
@@ -782,18 +791,14 @@ EXPAND_MODULE(MODULE_NAME)
       .value("EQUITABLE", PropertyDensityGrid::Binning::Equitable)
       .finalize();
 
-  property_energy_grid.def(pybind11::init<std::size_t, std::size_t, int3, std::size_t, 
-                                          std::size_t, std::vector<std::size_t>,
-                                          PropertyDensityGrid::Normalization, PropertyDensityGrid::Binning>(),
-           pybind11::arg("number_of_frameworks"), 
-           pybind11::arg("number_of_components"),
-           pybind11::arg("number_of_grid_points"), 
-           pybind11::arg("sample_every"), 
-           pybind11::arg("write_every"), 
-           pybind11::arg("density_grid_pseudo_atoms_list"),
-           pybind11::arg("normalization_type") = PropertyDensityGrid::Normalization::Max,
-           pybind11::arg("binningMode") = PropertyDensityGrid::Binning::Standard);
-
+  property_energy_grid.def(
+      pybind11::init<std::size_t, std::size_t, int3, std::size_t, std::size_t, std::vector<std::size_t>,
+                     PropertyDensityGrid::Normalization, PropertyDensityGrid::Binning>(),
+      pybind11::arg("number_of_frameworks"), pybind11::arg("number_of_components"),
+      pybind11::arg("number_of_grid_points"), pybind11::arg("sample_every"), pybind11::arg("write_every"),
+      pybind11::arg("density_grid_pseudo_atoms_list"),
+      pybind11::arg("normalization_type") = PropertyDensityGrid::Normalization::Max,
+      pybind11::arg("binning_mode") = PropertyDensityGrid::Binning::Standard);
 
   pybind11::class_<PropertyEnergyHistogram> energy_histogram(m, "PropertyEnergyHistogram");
     energy_histogram
@@ -1056,11 +1061,11 @@ EXPAND_MODULE(MODULE_NAME)
 
   pybind11::class_<PropertyConservedEnergyEvolution>(m, "PropertyConservedEnergyEvolution")
       .def(pybind11::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
-            pybind11::arg("number_of_production_cycles"), 
-            pybind11::arg("sample_every"), 
-            pybind11::arg("write_every") = std::nullopt)
-       // convert result to units of Kelvin
-      .def("result", [](const PropertyConservedEnergyEvolution& p) { return Units::EnergyToKelvin * p.result();});
+           pybind11::arg("number_of_production_cycles"), pybind11::arg("sample_every"),
+           pybind11::arg("write_every") = std::nullopt)
+      // the running energies as they are, in internal units like every RunningEnergy (System.compute_total_energies);
+      // their __repr__ prints Kelvin (multiplying here as well printed EnergyToKelvin squared)
+      .def("result", &PropertyConservedEnergyEvolution::result);
 
   pybind11::class_<Thermostat>(m, "Thermostat")
       .def(pybind11::init<std::size_t, std::size_t, double>(),
@@ -1069,10 +1074,16 @@ EXPAND_MODULE(MODULE_NAME)
             pybind11::arg("time_scale_parameter") = 0.15);
 
   pybind11::class_<EnthalpyOfAdsorptionData>(m, "EnthalpyOfAdsorptionData")
-      .def(pybind11::init<std::size_t>(),
-            pybind11::arg("number_of_components"))
+      .def(pybind11::init<std::size_t>(), pybind11::arg("number_of_components"))
       .def_readonly("values", &EnthalpyOfAdsorptionData::values)
-      .def("__getitem__", &EnthalpyOfAdsorptionData::operator[]);
+      .def("__getitem__",
+           [](const EnthalpyOfAdsorptionData& data, std::size_t index)
+           {
+             // a Python sequence ends with an IndexError (iteration stops on it), not past the end of the values
+             if (index >= data.values.size()) throw pybind11::index_error();
+             return data.values[index];
+           })
+      .def("__len__", [](const EnthalpyOfAdsorptionData& data) { return data.values.size(); });
 
   pybind11::class_<PropertyEnthalpy>(m, "PropertyEnthalpy")
       .def(pybind11::init<std::size_t, std::size_t>(),

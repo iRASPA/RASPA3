@@ -40,12 +40,12 @@ class System():
         force_field: ForceField,
         simulation_box: SimulationBox | None = None,
         has_external_field: bool = False,
-        external_temperature: float = 300.0,
+        external_temperature: float = 298.0,
         external_pressure: float | None = None,
-        helium_void_fraction: float = 0.29,
+        helium_void_fraction: float = 0.0,
         framework_components: Framework | None = None,
         components: collections.abc.Sequence[Component] = [],
-        initial_positions: collections.abc.Sequence[tuple[float, float, float]] = [],
+        initial_positions: collections.abc.Sequence[collections.abc.Sequence[tuple[float, float, float]]] = [],
         initial_number_of_molecules: collections.abc.Sequence[int] = [],
         number_of_blocks: int = 5,
         system_probabilities: MCMoveProbabilities = MCMoveProbabilities()
@@ -64,7 +64,8 @@ class System():
                 corrections/analysis.
             framework_components: Optional framework component definition.
             components: Sequence of mobile components in the system.
-            initial_positions: Optional initial positions.
+            initial_positions: Optional initial positions, per component the
+                atom positions of its initial molecules.
             initial_number_of_molecules: Initial molecule counts per component.
             number_of_blocks: Number of blocks used for block averaging.
             system_probabilities: Monte Carlo move probabilities at the system

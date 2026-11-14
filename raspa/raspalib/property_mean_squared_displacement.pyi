@@ -10,7 +10,7 @@ class PropertyMeanSquaredDisplacement:
 
     def __init__(self,
                  sample_every: int,
-                 write_every: int | None,
+                 write_every: int | None = None,
                  number_of_block_elements_msd: int = 25) -> None:
         ...
         """

@@ -18,9 +18,9 @@ class Framework():
         force_field: ForceField,
         component_name: str,
         simulation_box: SimulationBox,
-        space_group_hall_number: int = None,
-        defined_atoms: collections.abc.Sequence[Atom] = None,
-        number_of_unit_cells: collections.abc.Sequence[int] = [1, 1, 1],
+        space_group_hall_number: int,
+        defined_atoms: collections.abc.Sequence[Atom],
+        number_of_unit_cells: collections.abc.Sequence[int],
     ) -> None:
         ...
         """

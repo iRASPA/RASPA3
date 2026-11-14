@@ -21,13 +21,13 @@ class ForceField():
 
     def __init__(
         self,
-        pseudo_atoms: collections.abc.Sequence[PseudoAtom] = None,
-        parameters: collections.abc.Sequence[VDWParameters] = None,
+        pseudo_atoms: collections.abc.Sequence[PseudoAtom],
+        parameters: collections.abc.Sequence[VDWParameters],
         mixing_rule: MixingRule = MixingRule.LORENTZ_BERTHELOT,
         cutoff_framework_vdw: float = 12.0,
         cutoff_molecule_vdw: float = 12.0,
         cutoff_coulomb: float = 12.0,
-        shifted: bool = False,
+        shifted: bool = True,
         tail_corrections: bool = False,
         use_charge=True,
     ) -> None:

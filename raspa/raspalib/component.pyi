@@ -28,11 +28,8 @@ class Component():
         connectivity_table: ConnectivityTable = ConnectivityTable(),
         intra_molecular_potentials: IntraMolecularPotentials = IntraMolecularPotentials(),
         number_of_blocks: int = 5,
-        number_of_lambda_bins: int = 21,
-        particle_probabilities: MCMoveProbabilities = MCMoveProbabilities(),
-        fugacity_coefficient: float | None = None,
-        thermodynamic_integration: bool = False,
-        blocking_pockets: collections.abc.Sequence[tuple[float, float, float, float]] = []
+        number_of_lambda_bins: int = 41,
+        particle_probabilities: MCMoveProbabilities = MCMoveProbabilities()
     ) -> None:
         ...
         """
@@ -53,16 +50,10 @@ class Component():
             number_of_blocks: Number of sampling blocks used for statistics.
                 Defaults to ``5``.
             number_of_lambda_bins: Number of bins in lambda histograms.
-                Defaults to ``21``.
+                Defaults to ``41``.
             particle_probabilities: Monte Carlo move probabilities for this
                 component. Defaults to a fresh
                 :class:`MCMoveProbabilities` instance.
-            fugacity_coefficient: Optional fugacity coefficient override.
-                Defaults to ``None``.
-            thermodynamic_integration: Enable thermodynamic integration
-                bookkeeping. Defaults to ``False``.
-            blocking_pockets: Sequence of blocking-pocket definitions as
-                ``(x, y, z, radius)`` tuples. Defaults to an empty sequence.
         """
 
     @property
