@@ -3275,7 +3275,29 @@ std::vector<std::vector<std::size_t>> Component::readRepeatUnits(
                                                                         static_cast<std::size_t>(c.type)};
                                                                   }),
                      "chiral-centre", false, 4);
-  // (the non-bonded pairs follow from the connectivity and the rigid fragments, checked above and below)
+  // the cross terms and the explicit pair terms were not checked: a cross term present in one unit only was accepted
+  checkPeriodicTerms(intraMolecularPotentials.bondBonds |
+                         std::views::transform([](const BondBondPotential& p) { return p.identifiers; }),
+                     "bond-bond", true);
+  checkPeriodicTerms(intraMolecularPotentials.bondBends |
+                         std::views::transform([](const BondBendPotential& p) { return p.identifiers; }),
+                     "bond-bend", true);
+  checkPeriodicTerms(intraMolecularPotentials.bondTorsions |
+                         std::views::transform([](const BondTorsionPotential& p) { return p.identifiers; }),
+                     "bond-torsion", true);
+  checkPeriodicTerms(intraMolecularPotentials.bendBends |
+                         std::views::transform([](const BendBendPotential& p) { return p.identifiers; }),
+                     "bend-bend", true);
+  checkPeriodicTerms(intraMolecularPotentials.bendTorsions |
+                         std::views::transform([](const BendTorsionPotential& p) { return p.identifiers; }),
+                     "bend-torsion", true);
+  checkPeriodicTerms(intraMolecularPotentials.vanDerWaals |
+                         std::views::transform([](const VanDerWaalsPotential& p) { return p.identifiers; }),
+                     "Van der Waals pair", true);
+  checkPeriodicTerms(intraMolecularPotentials.coulombs |
+                         std::views::transform([](const CoulombPotential& p) { return p.identifiers; }),
+                     "Coulomb pair", true);
+  // (the excluded pairs follow from the connectivity and the rigid fragments, checked above and below)
 
   // Rigid fragments must lie inside a single repeat unit, map onto rigid fragments under the shift,
   // and be congruent to their shifted counterparts (the relabeled body must fit the slot's rigid

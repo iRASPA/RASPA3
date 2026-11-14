@@ -62,7 +62,10 @@ void PropertyEnergyHistogram::writeOutput(std::size_t systemId, std::size_t curr
 
   for (std::size_t bin = 0; bin != numberOfBins; ++bin)
   {
-    if (average[bin].totalEnergy > 0.0)
+    // the channels are histograms of their own energies: a bin can hold Van der Waals, Coulomb or polarization
+    // counts with no total-energy count (the rows were written for the total energy only)
+    if (average[bin].totalEnergy > 0.0 || average[bin].VanDerWaalsEnergy > 0.0 || average[bin].CoulombEnergy > 0.0 ||
+        average[bin].polarizationEnergy > 0.0)
     {
       stream_output << std::format("{} {} {} {} {} {} {} {} {}\n", energies[bin] * Units::EnergyToKelvin, 
           average[bin].totalEnergy, error[bin].totalEnergy, average[bin].VanDerWaalsEnergy, error[bin].VanDerWaalsEnergy,

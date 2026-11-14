@@ -47,7 +47,7 @@ ProbeEnergyGrid ProbeEnergyGridCPU::compute(const PairInteractions &interactions
   grid.energy.assign(numberOfVoxels, 0.0f);
   grid.strongestAtom.assign(numberOfVoxels, -1);
 
-  std::vector<double3> fractionalPositions = framework.fractionalPositions;
+  std::vector<double3> fractionalPositions = framework.fractionalPositionsOfAtoms();
   if (fractionalPositions.empty()) return grid;
 
   const std::size_t numberOfAtoms = fractionalPositions.size();

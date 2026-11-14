@@ -23,6 +23,11 @@ import interactions_polarization;
 import interactions_framework_molecule;
 import integrators_cputime;
 import json;
+import bond_potential;
+import bend_potential;
+import property_lambda_probability_histogram;
+import property_volume_evolution;
+import averages;
 
 namespace
 {
@@ -151,4 +156,78 @@ TEST(latent_api_fixes, md_energy_outputs_carry_every_term_and_the_timing_total_c
   time.noSquishFreeRotorOrderTwo = std::chrono::duration<double>(3.0);
   time.noSquishRotate = std::chrono::duration<double>(2.0);
   EXPECT_DOUBLE_EQ(time.total().count(), 3.0);
+}
+
+// A two-parameter bond and bend left the unused parameters as whatever the stack held: two equal potentials
+// compared unequal, and the normalization caches keyed on the parameters missed (or, with NaN bytes, broke the
+// ordering of their maps).
+TEST(latent_api_fixes, unused_bond_and_bend_parameters_are_zero)
+{
+  for (int repeat = 0; repeat < 4; ++repeat)
+  {
+    const BondPotential bond({0, 1}, BondType::Harmonic, {1000.0, 1.5});
+    EXPECT_EQ(bond.parameters[2], 0.0);
+    EXPECT_EQ(bond.parameters[3], 0.0);
+    EXPECT_TRUE(bond == BondPotential({0, 1}, BondType::Harmonic, {1000.0, 1.5}));
+    const BendPotential bend({0, 1, 2}, BendType::Harmonic, {62500.0, 114.0});
+    EXPECT_EQ(bend.parameters[2], 0.0);
+    EXPECT_EQ(bend.parameters[3], 0.0);
+    EXPECT_TRUE(bend == BendPotential({0, 1, 2}, BendType::Harmonic, {62500.0, 114.0}));
+  }
+}
+
+// A lambda-bias file is resampled onto the bins at the nearest of its points: truncating i delta (M - 1), which
+// lands just below an integer for some bins in IEEE arithmetic, read the value of the preceding point into those
+// bins even for a file of the same size. (The fast-math build may fold the product to i exactly, so there this is a
+// guard of the identity rather than a reproduction.)
+TEST(latent_api_fixes, lambda_bias_file_of_the_same_size_is_read_bin_for_bin)
+{
+  const std::filesystem::path path = std::filesystem::temp_directory_path() / "raspa3_lambda_bias.json";
+  {
+    std::ofstream file(path);
+    file << "{\"bias\": [";
+    for (int i = 0; i < 19; ++i) file << (i == 0 ? "" : ", ") << i;
+    file << "]}";
+  }
+  // 19 bins: i delta (M - 1) lands below i for i = 7, 11, 14 and 15
+  PropertyLambdaProbabilityHistogram histogram(5, 19);
+  histogram.readBiasingFile(path);
+  for (std::size_t i = 0; i < 19; ++i) EXPECT_EQ(histogram.biasFactor[i], static_cast<double>(i)) << i;
+  std::filesystem::remove(path);
+}
+
+// A periodic write of an evolution comes after the sample of its own cycle: writing at cycle 4 with a sample every
+// cycle has the samples 0 to 4, five of them, and the write printed only the first four.
+TEST(latent_api_fixes, evolution_written_during_the_run_includes_the_sample_of_its_cycle)
+{
+  const std::filesystem::path original = std::filesystem::current_path();
+  const std::filesystem::path directory = std::filesystem::temp_directory_path() / "raspa3_volume_evolution";
+  std::filesystem::remove_all(directory);
+  std::filesystem::create_directories(directory);
+  std::filesystem::current_path(directory);
+  {
+    PropertyVolumeEvolution evolution(10, 1, 4);
+    for (std::size_t cycle = 0; cycle <= 4; ++cycle) evolution.addSample(cycle, 1000.0 + static_cast<double>(cycle));
+    evolution.writeOutput(0, 4);
+  }
+  std::ifstream file("volume_evolution/volume_evolution.s0.txt");
+  std::size_t lines = 0;
+  for (std::string line; std::getline(file, line);)
+    if (!line.empty() && line[0] != '#') ++lines;
+  file.close();
+  std::filesystem::current_path(original);
+  std::filesystem::remove_all(directory);
+  EXPECT_EQ(lines, 5uz);
+}
+
+// The confidence interval of the defined blocks takes the Student-t value of their own degrees of freedom: three
+// blocks (two degrees of freedom) took the value of the configured five blocks (t = 2.776 instead of 4.303).
+TEST(latent_api_fixes, mean_confidence_uses_the_student_t_of_its_blocks)
+{
+  std::vector<double> blocks{1.0, 2.0, 3.0};
+  const auto [mean, confidence] = meanConfidence(blocks);
+  EXPECT_DOUBLE_EQ(mean, 2.0);
+  const double standardError = std::sqrt(2.0 / 6.0);
+  EXPECT_NEAR(confidence, studentTCriticalValue(2) * standardError, 1e-12);
+  EXPECT_GT(confidence, 4.0 * standardError);
 }

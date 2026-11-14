@@ -33,9 +33,10 @@ void PropertyConservedEnergyEvolution::writeOutput(std::size_t systemId, std::si
   std::ofstream stream_output(std::format("conserved_energy/conserved_energy.s{}.txt", systemId));
 
   // the samples are taken at the multiples of 'sampleEvery': after the last of 'absoluteCurrentCycle' completed cycles
-  // there are ceil(absoluteCurrentCycle / sampleEvery) of them
+  // there are ceil(absoluteCurrentCycle / sampleEvery) of them; a write during the run comes after the sample of its
+  // own cycle 'absoluteCurrentCycle', which is the last of absoluteCurrentCycle / sampleEvery + 1 (it was left out)
   std::size_t currentIndex =
-      lastWrite ? (absoluteCurrentCycle + sampleEvery - 1uz) / sampleEvery : absoluteCurrentCycle / sampleEvery;
+      lastWrite ? (absoluteCurrentCycle + sampleEvery - 1uz) / sampleEvery : absoluteCurrentCycle / sampleEvery + 1uz;
   for(std::size_t index = 0; index < std::min(currentIndex, data.size()); ++index)
   {
     stream_output << std::format("{} {} {} {} {}\n", index, data[index].conservedEnergy() * Units::EnergyToKelvin,

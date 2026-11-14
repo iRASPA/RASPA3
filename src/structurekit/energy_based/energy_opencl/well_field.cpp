@@ -26,10 +26,17 @@ import blocking_spheres;
 import energy_shared_linear_probe;
 import energy_shared_electrostatic_potential_grid;
 import energy_shared_well_field;
+import energy_well_field;
 
 namespace
 {
 constexpr std::size_t maxOrientations = 128;
+
+// More orientations than the kernel holds: the processor builder computes the field instead.
+struct TooManyOrientations : std::runtime_error
+{
+  using std::runtime_error::runtime_error;
+};
 
 void check(cl_int err, const char *what, int line)
 {
@@ -261,8 +268,8 @@ GpuPack packNeighbourhood(const PairInteractions &interactions, const Crystal &f
                                         : std::vector<double3>{double3(0.0, 0.0, 1.0)};
   if (directions.size() > maxOrientations)
   {
-    throw std::runtime_error(std::format("WellFieldOpenCL: {} orientations exceeds the GPU cap of {}\n",
-                                         directions.size(), maxOrientations));
+    throw TooManyOrientations(std::format("WellFieldOpenCL: {} orientations exceeds the GPU cap of {}\n",
+                                          directions.size(), maxOrientations));
   }
   pack.numberOfOrientations = static_cast<cl_int>(directions.size());
   pack.axes.resize(directions.size());
@@ -465,8 +472,19 @@ WellField WellFieldOpenCL::compute(const PairInteractions &interactions, const C
 
   std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
 
-  GpuPack pack = packNeighbourhood(interactions, framework, probe, numberOfOrientations, thermalEnergy,
-                                   blockingSpheres, blockedEnergyPerAngstrom, ceiling, potential, coulombFactor, 0.0);
+  GpuPack pack;
+  try
+  {
+    pack = packNeighbourhood(interactions, framework, probe, numberOfOrientations, thermalEnergy, blockingSpheres,
+                             blockedEnergyPerAngstrom, ceiling, potential, coulombFactor, 0.0);
+  }
+  catch (const TooManyOrientations&)
+  {
+    // the kernel holds at most 'maxOrientations': the same field from the processor builder (the GPU route
+    // refused a --gpu --bet run with --orientations 256 outright)
+    return WellFieldCPU::compute(interactions, framework, probe, gridSize, numberOfOrientations, thermalEnergy,
+                                 blockingSpheres, blockedEnergyPerAngstrom, ceiling, potential, coulombFactor);
+  }
 
   WellField field;
   field.gridSize = gridSize;

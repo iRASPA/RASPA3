@@ -381,4 +381,34 @@ TEST(minimization_hessian_wolf, flexible_framework_excluded_pairs_match_finite_d
       }
     }
   }
+  // The isotropic strain blocks (one strain degree of freedom, all positions scaled by exp(epsilon)): the shifted
+  // completion of the excluded framework pairs added its strain gradient but no strain-strain or position-strain
+  // second derivative.
+  const double strainStep = 1e-4;
+  auto strainedEnergy = [&](double epsilon, std::optional<std::pair<std::size_t, double>> shift = std::nullopt)
+  {
+    std::vector<double3> saved(atoms.size());
+    for (std::size_t a = 0; a < atoms.size(); ++a) saved[a] = atoms[a].position;
+    if (shift) perturb(shift->first / 3, shift->first % 3, shift->second);
+    for (Atom& atom : atoms) atom.position = atom.position * std::exp(epsilon);
+    const double energy = exclusionEnergy();
+    for (std::size_t a = 0; a < atoms.size(); ++a) atoms[a].position = saved[a];
+    return energy;
+  };
+  {
+    const double numerical = (strainedEnergy(strainStep) - 2.0 * strainedEnergy(0.0) + strainedEnergy(-strainStep)) /
+                             (strainStep * strainStep);
+    const double value = hessian.strainStrain()[0];
+    EXPECT_NEAR(numerical, value, 1e-3 * std::max({1.0, std::abs(numerical), std::abs(value)})) << "strain-strain";
+  }
+  for (std::size_t i = 0; i < 3 * atoms.size(); ++i)
+  {
+    const double numerical =
+        (strainedEnergy(strainStep, std::pair{i, delta}) - strainedEnergy(-strainStep, std::pair{i, delta}) -
+         strainedEnergy(strainStep, std::pair{i, -delta}) + strainedEnergy(-strainStep, std::pair{i, -delta})) /
+        (4.0 * delta * strainStep);
+    const double value = hessian.positionStrain()[dofOf(i / 3, i % 3)];
+    EXPECT_NEAR(numerical, value, 1e-3 * std::max({1.0, std::abs(numerical), std::abs(value)}))
+        << "position-strain " << i;
+  }
 }

@@ -425,6 +425,21 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
         addFlexiblePairCellDerivatives(*layout.frameworkAtomDof(i, MinimizationDofAxis::X),
                                        *layout.frameworkAtomDof(j, MinimizationDofAxis::X), f1, f2, dr);
       }
+      if (computeStrain)
+      {
+        // the isotropic strain blocks, as the erf exclusion of the framework pairs (there were none): flexible
+        // framework atoms scale with the cell, the pair couples as a flexible pair
+        const double3 positionStrain = (f2 * rr) * dr + 2.0 * f1 * dr;
+        const std::size_t baseI = *layout.frameworkAtomDof(i, MinimizationDofAxis::X);
+        const std::size_t baseJ = *layout.frameworkAtomDof(j, MinimizationDofAxis::X);
+        for (std::size_t axis = 0; axis < 3; ++axis)
+        {
+          hessian.addPositionStrain(baseI + axis, 0, (&positionStrain.x)[axis]);
+          hessian.addPositionStrain(baseJ + axis, 0, -(&positionStrain.x)[axis]);
+        }
+        Minimization::scatterAtomicStrainStrainIsotropic(hessian, f1, f2, dr, dr, dr, double3{}, double3{}, false,
+                                                         false);
+      }
     }
   }
 }

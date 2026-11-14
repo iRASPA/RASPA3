@@ -114,7 +114,9 @@ export inline std::pair<double, double> meanConfidence(std::vector<double> &data
 
   double standardError = std::sqrt(sumOfSquaresDiff / (size * (size - 1.0)));
 
-  return {mean, standardError * standardNormalDeviate};
+  // the Student-t value of the blocks actually given (the callers pass the defined blocks only, not always all of
+  // them): the constant of the configured number of blocks overstated or understated the interval otherwise
+  return {mean, standardError * studentTCriticalValue(data.size() - 1)};
 }
 
 /**

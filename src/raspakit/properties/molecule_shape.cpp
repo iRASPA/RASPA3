@@ -661,6 +661,14 @@ void PropertyMoleculeShape::writeOutput(std::size_t systemId, const std::vector<
         summary << std::format("principal axis 2 of <S>    ({:.6g}, {:.6g}, {:.6g})\n", axis2.x, axis2.y, axis2.z);
         summary << std::format("principal axis 3 of <S>    ({:.6g}, {:.6g}, {:.6g})\n", axis3->x, axis3->y, axis3->z);
       }
+      else if (axis1.has_value() || axis3.has_value())
+      {
+        // two equal eigenvalues (an oblate or a prolate <S>): the axes in their plane are any, the third is the
+        // symmetry axis and is determined (it was reported as undetermined with the degenerate pair)
+        const double3 axis = axis1.has_value() ? axis1.value() : axis3.value();
+        summary << std::format("symmetry axis of <S>       ({:.6g}, {:.6g}, {:.6g})   (two equal eigenvalues)\n",
+                               axis.x, axis.y, axis.z);
+      }
       else
       {
         summary << "# principal axes of <S> undetermined (degenerate eigenvalues: isotropic to within noise)\n";

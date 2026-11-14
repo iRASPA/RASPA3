@@ -53,6 +53,11 @@ export struct Crystal
 
   std::vector<double3> cartesianPositions() const;
 
+  // The fractional positions of the atoms: the carried ones, or, when a caller built the crystal without them,
+  // derived from the Cartesian positions (wrapped into [0, 1)). Throws when the two lists disagree in length. The
+  // grid builders read the carried list as it was and returned an all-zero grid for a crystal without it.
+  std::vector<double3> fractionalPositionsOfAtoms() const;
+
   // Each atom's own size and strength, unmixed, in the order the atoms are stored. What wants this is the
   // device code, which cannot index a table of pairs from inside a kernel as cheaply as it can carry two
   // numbers per atom.

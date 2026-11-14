@@ -475,9 +475,21 @@ std::string writeInputScript(const Topology &topology)
     mobile = "mobile";
   }
 
+  std::string integrate = mobile;
+  if (topology.numberOfFragments > 0)
+  {
+    std::print(out, "\n# rigid bodies (RASPA rigid molecules and rigid fragments)\n");
+    std::print(out, "variable inbody atom \"i_fragment > 0\"\n");
+    std::print(out, "group bodies variable inbody\n");
+    std::print(out, "group flexible subtract {} bodies\n", mobile);
+    std::print(out, "fix bodies bodies rigid/small custom i_fragment\n");
+    integrate = "flexible";
+  }
+
   if (!topology.shakeBondTypes.empty() || !topology.shakeAngleTypes.empty())
   {
-    std::string line = std::format("fix constraints {} shake 1.0e-6 100 0", mobile);
+    // on the flexible atoms only: SHAKE and rigid/small must not act on the same atoms
+    std::string line = std::format("fix constraints {} shake 1.0e-6 100 0", integrate);
     if (!topology.shakeBondTypes.empty())
     {
       line += " b";
@@ -489,17 +501,6 @@ std::string writeInputScript(const Topology &topology)
       for (std::size_t t : topology.shakeAngleTypes) line += std::format(" {}", t);
     }
     std::print(out, "\n# fixed bond lengths / bend angles of RASPA\n{}\n", line);
-  }
-
-  std::string integrate = mobile;
-  if (topology.numberOfFragments > 0)
-  {
-    std::print(out, "\n# rigid bodies (RASPA rigid molecules and rigid fragments)\n");
-    std::print(out, "variable inbody atom \"i_fragment > 0\"\n");
-    std::print(out, "group bodies variable inbody\n");
-    std::print(out, "group flexible subtract {} bodies\n", mobile);
-    std::print(out, "fix bodies bodies rigid/small custom i_fragment\n");
-    integrate = "flexible";
   }
 
   // ---- diagnostics and run --------------------------------------------------------------------------

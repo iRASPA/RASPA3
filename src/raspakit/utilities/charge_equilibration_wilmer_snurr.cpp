@@ -352,6 +352,12 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
   for (std::size_t index = 0; const Atom& atom : frameworkAtoms)
   {
     std::size_t pseudo_atom_type = static_cast<std::size_t>(atom.type);
+    // checked here, before the element is read from the pseudo-atom (the tables below check it too late for that)
+    if (pseudo_atom_type >= forceField.pseudoAtoms.size())
+    {
+      throw std::runtime_error(std::format("[Charge equilibration]: atom type {} has no pseudo-atom (there are {})\n",
+                                           pseudo_atom_type, forceField.pseudoAtoms.size()));
+    }
     std::size_t element_index = forceField.pseudoAtoms[pseudo_atom_type].atomicNumber;
 
     J[index] = referenceTableJ(forceField, pseudo_atom_type, element_index);

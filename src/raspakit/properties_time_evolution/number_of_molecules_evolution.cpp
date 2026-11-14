@@ -36,9 +36,10 @@ void PropertyNumberOfMoleculesEvolution::writeOutput(std::size_t systemId, std::
   std::ofstream stream_output(std::format("number_of_molecules_evolution/number_of_molecules_evolution.s{}.txt", systemId));
 
   // the samples are taken at the multiples of 'sampleEvery': after the last of 'absoluteCurrentCycle' completed cycles
-  // there are ceil(absoluteCurrentCycle / sampleEvery) of them
+  // there are ceil(absoluteCurrentCycle / sampleEvery) of them; a write during the run comes after the sample of its
+  // own cycle 'absoluteCurrentCycle', which is the last of absoluteCurrentCycle / sampleEvery + 1 (it was left out)
   std::size_t currentIndex =
-      lastWrite ? (absoluteCurrentCycle + sampleEvery - 1uz) / sampleEvery : absoluteCurrentCycle / sampleEvery;
+      lastWrite ? (absoluteCurrentCycle + sampleEvery - 1uz) / sampleEvery : absoluteCurrentCycle / sampleEvery + 1uz;
   // without components there is nothing to write (and no result[0])
   const std::size_t numberOfSamples = result.empty() ? 0uz : result[0].size();
   for(std::size_t index = 0; index < std::min(currentIndex, numberOfSamples); ++index)

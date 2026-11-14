@@ -18,6 +18,11 @@ void MC_SurfaceArea::run(const SampledStructure &structure, const SampledProbe &
 
   std::size_t number_of_iterations = numberOfIterations.value_or(100);
   std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(1000);
+  // the estimate divides by both (zero of either gave 0 / 0, a not-a-number reported as the area)
+  if (number_of_iterations == 0 || number_of_inner_steps == 0)
+  {
+    throw std::invalid_argument("MC_SurfaceArea: the number of iterations and of inner steps must be at least one\n");
+  }
 
   double sum{};
   double sum_of_squares{};

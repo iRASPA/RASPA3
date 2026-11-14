@@ -935,7 +935,18 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
           com += mass * position_view[k];
           totalMass += mass;
         }
-        com /= totalMass;
+        if (totalMass > 0.0)
+        {
+          com /= totalMass;
+        }
+        else
+        {
+          // a massless (dummy or probe) molecule has no centre of mass: the geometric centre, as
+          // Component::getCenterOfMass
+          com = double3(0.0, 0.0, 0.0);
+          for (const double3& position : position_view) com += position;
+          com /= static_cast<double>(position_view.size());
+        }
 
         simd_quatd orientation{};
 
@@ -1256,7 +1267,17 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
       com += mass * atom.position;
       totalMass += mass;
     }
-    com /= totalMass;
+    if (totalMass > 0.0)
+    {
+      com /= totalMass;
+    }
+    else
+    {
+      // a massless (dummy or probe) molecule has no centre of mass: the geometric centre, as Component::getCenterOfMass
+      com = double3(0.0, 0.0, 0.0);
+      for (const Atom& atom : span) com += atom.position;
+      com /= static_cast<double>(span.size());
+    }
 
     molecule.centerOfMassPosition = com * scale;
 
@@ -1291,7 +1312,17 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
       com += mass * atom.position;
       totalMass += mass;
     }
-    com /= totalMass;
+    if (totalMass > 0.0)
+    {
+      com /= totalMass;
+    }
+    else
+    {
+      // a massless (dummy or probe) molecule has no centre of mass: the geometric centre, as Component::getCenterOfMass
+      com = double3(0.0, 0.0, 0.0);
+      for (const Atom& atom : span) com += atom.position;
+      com /= static_cast<double>(span.size());
+    }
 
     // Scale only the center of mass through the box transformation, keeping the fractional center-of-mass
     // position fixed. Both rigid and flexible molecules are translated as a rigid body by the resulting

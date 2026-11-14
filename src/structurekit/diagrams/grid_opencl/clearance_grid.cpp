@@ -163,20 +163,7 @@ ClearanceGrid ClearanceGrid::compute(const PairInteractions &interactions, const
   // The fractional positions are the same atoms in the same order, and a crystal may come without them, in which
   // case they are worked out here as the other routes do. Any other difference in length leaves no way of saying
   // which radius goes with which position.
-  if (!framework.fractionalPositions.empty() && framework.fractionalPositions.size() != framework.atoms.size())
-  {
-    throw std::runtime_error(std::format("ClearanceGrid: {} fractional positions for {} atoms\n",
-                                         framework.fractionalPositions.size(), framework.atoms.size()));
-  }
-  std::vector<double3> fractionalPositions = framework.fractionalPositions;
-  if (fractionalPositions.empty())
-  {
-    fractionalPositions.reserve(framework.atoms.size());
-    for (const CrystalAtom &atom : framework.atoms)
-    {
-      fractionalPositions.push_back(framework.unitCell.inverseCell * atom.position);
-    }
-  }
+  std::vector<double3> fractionalPositions = framework.fractionalPositionsOfAtoms();
   grid.atomRadii.reserve(framework.atoms.size());
   for (const CrystalAtom &atom : framework.atoms)
   {

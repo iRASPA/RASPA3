@@ -463,3 +463,32 @@ TEST(FOUNDATIONKIT_FIXES, hdf5_writer_writes_a_single_bool_as_hbool)
   EXPECT_TRUE(b[1]);
   EXPECT_FALSE(b[2]);
 }
+
+// A misspelled switch is not a positional argument: '--orientation' (for '--orientations') was taken for the input
+// file name when the positional slot was still free, and the switch meant was silently missing. A negative number or
+// a plain file name is still a positional argument.
+TEST(FOUNDATIONKIT_FIXES, argparser_refuses_an_unknown_switch_instead_of_taking_it_for_a_file)
+{
+  for (const std::string unknown : {"--orientation", "-x"})
+  {
+    std::array<std::string, 2> storage{"raspa3", unknown};
+    std::array<char*, 2> argv{};
+    for (std::size_t i = 0; i < storage.size(); ++i) argv[i] = storage[i].data();
+    std::string file;
+    argparser::argparser parser(static_cast<int>(argv.size()), argv.data());
+    parser.pos("FILE", "the input", [&](const std::string& value) { file = value; });
+    EXPECT_THROW(parser(), argparser::unknown_option_exception) << unknown;
+    EXPECT_TRUE(file.empty());
+  }
+  for (const std::string positional : {"my structure.cif", "-5"})
+  {
+    std::array<std::string, 2> storage{"raspa3", positional};
+    std::array<char*, 2> argv{};
+    for (std::size_t i = 0; i < storage.size(); ++i) argv[i] = storage[i].data();
+    std::string file;
+    argparser::argparser parser(static_cast<int>(argv.size()), argv.data());
+    parser.pos("FILE", "the input", [&](const std::string& value) { file = value; });
+    EXPECT_NO_THROW(parser());
+    EXPECT_EQ(file, positional);
+  }
+}

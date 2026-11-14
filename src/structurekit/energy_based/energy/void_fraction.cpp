@@ -55,7 +55,7 @@ void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal
 
   // the fractional positions of the atoms, from the Cartesian ones when the crystal does not carry them (one built
   // by hand: indexing its empty 'fractionalPositions' by the atoms read past it)
-  std::vector<double3> fractionalPositions = framework.fractionalPositions;
+  std::vector<double3> fractionalPositions = framework.fractionalPositionsOfAtoms();
   if (fractionalPositions.size() != framework.size())
   {
     fractionalPositions.resize(framework.size());

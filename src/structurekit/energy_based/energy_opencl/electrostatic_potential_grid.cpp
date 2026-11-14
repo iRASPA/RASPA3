@@ -61,8 +61,10 @@ ElectrostaticPotentialGrid ElectrostaticPotentialGridOpenCL::compute(const PairI
         numberOfVoxels, std::numeric_limits<std::int32_t>::max()));
   }
   grid.smoothPotential.assign(numberOfVoxels, 0.0f);
+  // no voxels, nothing to compute (a buffer of zero bytes cannot be made)
+  if (numberOfVoxels == 0) return grid;
 
-  std::vector<double3> fractionalPositions = framework.fractionalPositions;
+  std::vector<double3> fractionalPositions = framework.fractionalPositionsOfAtoms();
   if (fractionalPositions.empty()) return grid;
 
   for (const CrystalAtom &atom : framework.atoms)
@@ -87,6 +89,10 @@ ElectrostaticPotentialGrid ElectrostaticPotentialGridOpenCL::compute(const PairI
 
   cl_int err;
 
+  // Everything made on the device from here on is let go of when this is, however the routine is left: a throw past
+  // the program, the kernel or a buffer left them on the device for as long as the context lived.
+  OpenCL::Handles made;
+
   const char *source = ElectrostaticPotentialGridOpenCL::reciprocalKernelSource;
   cl_program program = clCreateProgramWithSource(OpenCL::clContext.value(), 1, &source, nullptr, &err);
   if (err != CL_SUCCESS)
@@ -94,6 +100,7 @@ ElectrostaticPotentialGrid ElectrostaticPotentialGridOpenCL::compute(const PairI
     throw std::runtime_error(
         std::format("ElectrostaticPotentialGridOpenCL: OpenCL clCreateProgramWithSource failed at {}\n", __LINE__));
   }
+  made.program = program;
 
   err = clBuildProgram(program, 0, nullptr, nullptr, nullptr, nullptr);
   if (err != CL_SUCCESS)
@@ -109,15 +116,16 @@ ElectrostaticPotentialGrid ElectrostaticPotentialGridOpenCL::compute(const PairI
   cl_kernel kernel = clCreateKernel(program, "ReciprocalPotentialField", &err);
   if (err != CL_SUCCESS)
   {
-    clReleaseProgram(program);
     throw std::runtime_error(
         std::format("ElectrostaticPotentialGridOpenCL: OpenCL clCreateKernel failed at {}\n", __LINE__));
   }
+  made.kernel = kernel;
 
-  cl_mem waveBuffer = OpenCL::createBuffer(CL_MEM_READ_ONLY, sizeof(cl_float4) * std::max<std::size_t>(1, waves.size()));
+  cl_mem waveBuffer =
+      made.keep(OpenCL::createBuffer(CL_MEM_READ_ONLY, sizeof(cl_float4) * std::max<std::size_t>(1, waves.size())));
   cl_mem imaginaryBuffer =
-      OpenCL::createBuffer(CL_MEM_READ_ONLY, sizeof(cl_float) * std::max<std::size_t>(1, imaginary.size()));
-  cl_mem potentialBuffer = OpenCL::createBuffer(CL_MEM_WRITE_ONLY, sizeof(cl_float) * numberOfVoxels);
+      made.keep(OpenCL::createBuffer(CL_MEM_READ_ONLY, sizeof(cl_float) * std::max<std::size_t>(1, imaginary.size())));
+  cl_mem potentialBuffer = made.keep(OpenCL::createBuffer(CL_MEM_WRITE_ONLY, sizeof(cl_float) * numberOfVoxels));
 
   if (!waves.empty())
   {
@@ -153,12 +161,6 @@ ElectrostaticPotentialGrid ElectrostaticPotentialGridOpenCL::compute(const PairI
   OpenCL::readBuffer(potentialBuffer, sizeof(cl_float) * numberOfVoxels, grid.smoothPotential.data());
 
   clFinish(OpenCL::clCommandQueue.value());
-
-  clReleaseMemObject(waveBuffer);
-  clReleaseMemObject(imaginaryBuffer);
-  clReleaseMemObject(potentialBuffer);
-  clReleaseKernel(kernel);
-  clReleaseProgram(program);
 
   std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - time_begin;
   grid.seconds = elapsed.count();

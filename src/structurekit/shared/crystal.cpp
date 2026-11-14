@@ -9,6 +9,24 @@ import double3;
 
 import pair_interactions;
 
+std::vector<double3> Crystal::fractionalPositionsOfAtoms() const
+{
+  if (!this->fractionalPositions.empty())
+  {
+    if (this->fractionalPositions.size() != this->atoms.size())
+    {
+      throw std::runtime_error(std::format("Crystal '{}': {} fractional positions for {} atoms\n", this->name,
+                                           this->fractionalPositions.size(), this->atoms.size()));
+    }
+    return this->fractionalPositions;
+  }
+  std::vector<double3> positions;
+  positions.reserve(this->atoms.size());
+  for (const CrystalAtom& atom : this->atoms)
+    positions.push_back(double3::fract(this->unitCell.inverseCell * atom.position));
+  return positions;
+}
+
 std::vector<double3> Crystal::cartesianPositions() const
 {
   std::vector<double3> positions;

@@ -926,7 +926,9 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
             std::format("[LAMMPS reader] {} type {} with style '{}' cannot be converted; term dropped", label, type, style));
         continue;
       }
-      scaleEnergies(*term, energyIndices, unitFactor);
+      // a FIXED term holds a length or an angle and no energy: the energy units (eV under 'units metal') do not apply,
+      // and scaling turned a 1.54 A bond into 35.5 A
+      if (term->type != "FIXED") scaleEnergies(*term, energyIndices, unitFactor);
       if (!term->note.empty()) result.warnings.push_back(std::format("[LAMMPS reader] {} type {}: {}", label, type, term->note));
       converted[type] = *term;
     }

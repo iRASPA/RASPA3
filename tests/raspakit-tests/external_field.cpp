@@ -341,3 +341,34 @@ TEST(external_field, grid_setup_without_framework_or_without_grid)
   ASSERT_TRUE(withGrid.externalFieldInterpolationGrid.has_value());
   EXPECT_EQ(readCubeValues(output).size(), 125uz);
 }
+
+// A Gaussian CUBE file gives its step vectors in Bohr when the voxel counts are positive (what Gaussian, CP2K, ORCA,
+// Multiwfn and Psi4 write) and in Angstrom when they are negative. The reader took only the negative form and
+// refused every file in the default, positive one; a mix of the two signs is still malformed.
+TEST(external_field, cube_files_with_bohr_or_angstrom_steps_are_read)
+{
+  const ScopedTemporaryDirectory directory("raspa3_external_field_cube_units");
+  const auto write = [](const std::string& name, int sign, int signZ)
+  {
+    std::ofstream file(name);
+    std::print(file, "comment\ncomment\n    1    0.000000    0.000000    0.000000\n");
+    std::print(file, "{:5d}    1.000000    0.000000    0.000000\n", sign * 2);
+    std::print(file, "{:5d}    0.000000    1.000000    0.000000\n", sign * 3);
+    std::print(file, "{:5d}    0.000000    0.000000    1.000000\n", signZ * 4);
+    std::print(file, "    8    0.000000    0.000000    0.000000    0.000000\n");
+    for (int i = 0; i < 24; ++i) std::print(file, "{} ", static_cast<double>(i));
+    std::print(file, "\n");
+  };
+  for (const int sign : {1, -1})
+  {
+    const std::string name = sign > 0 ? "bohr.cube" : "angstrom.cube";
+    write(name, sign, sign);
+    const uint3 dimensions = InterpolationEnergyGrid::parseExternalFieldGridDimensions(name);
+    EXPECT_EQ(dimensions.x, 2u);
+    EXPECT_EQ(dimensions.y, 3u);
+    EXPECT_EQ(dimensions.z, 4u);
+    EXPECT_EQ(InterpolationEnergyGrid::parseExternalFieldGridCube(name).size(), 24uz) << name;
+  }
+  write("mixed.cube", 1, -1);
+  EXPECT_THROW(InterpolationEnergyGrid::parseExternalFieldGridDimensions("mixed.cube"), std::runtime_error);
+}

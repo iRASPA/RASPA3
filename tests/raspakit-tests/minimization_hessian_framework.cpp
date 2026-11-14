@@ -18,6 +18,8 @@ import intra_molecular_potentials;
 import bond_potential;
 import bend_potential;
 import torsion_potential;
+import bond_bend_potential;
+import bend_torsion_potential;
 import system;
 import simulationbox;
 import running_energy;
@@ -197,6 +199,73 @@ TEST(minimization_hessian_framework, semi_flexible_molecule_isotropic_strain_blo
   potentials.bonds = {BondPotential({2, 3}, BondType::Harmonic, {1500.0, 1.1})};
   potentials.bends = {BendPotential({1, 2, 3}, BendType::Harmonic, {800.0, 110.0})};
   potentials.torsions = {TorsionPotential({0, 1, 2, 3}, TorsionType::TraPPE, {0.0, 120.0, -30.0, 200.0})};
+  const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("O"));
+  Component component(forceField, "semi-flexible", 64.0, 1.0e6, 0.02,
+                      {Atom({-0.6, 0.25, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                       Atom({0.0, -0.35, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                       Atom({0.6, 0.25, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                       Atom({1.2, -0.25, 0.35}, 0.0, 1.0, 0, type, 0, false, false)},
+                      connectivityTable, potentials, 0, 0);
+  component.buildFragmentGraph({{0, 1, 2}});
+  const std::array<double3, 4> basePositions = {double3(5.0, 5.0, 5.0), double3(5.6, 4.4, 5.0), double3(6.2, 5.0, 5.0),
+                                                double3(7.0, 4.3, 5.6)};
+  System system(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {component},
+                {{basePositions[0], basePositions[1], basePositions[2], basePositions[3]}}, {0}, 5);
+  ASSERT_TRUE(system.components[0].isSemiFlexible());
+  system.initializeGroupData();
+
+  const MinimizationDofLayout layout = buildMinimizationDofLayout(system.moleculeData, system.components);
+  ASSERT_EQ(layout.numDofs(), 9u);
+  const std::size_t comBase = *layout.atomRigidComDof(0, 0);
+  const std::size_t orientationBase = *layout.atomRigidOrientationDof(0, 0);
+  const std::size_t flexibleBase = *layout.flexibleAtomDof(0, 3, MinimizationDofAxis::X);
+  const double3 baseCom = (basePositions[0] + basePositions[1] + basePositions[2]) / 3.0;
+
+  // The rigid group moves its center of mass with the strain and rotates its offsets about lab axes
+  // (Rodrigues); the flexible atom scales.
+  const auto apply = [&](double epsilon, std::optional<std::size_t> dof, double delta)
+  {
+    double3 comShift{};
+    double3 omega{};
+    double3 flexibleShift{};
+    if (dof && *dof >= comBase && *dof < comBase + 3) (&comShift.x)[*dof - comBase] = delta;
+    if (dof && *dof >= orientationBase && *dof < orientationBase + 3) (&omega.x)[*dof - orientationBase] = delta;
+    if (dof && *dof >= flexibleBase && *dof < flexibleBase + 3) (&flexibleShift.x)[*dof - flexibleBase] = delta;
+    const double scale = std::exp(epsilon);
+    const double angle = std::sqrt(double3::dot(omega, omega));
+    std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+      double3 offset = basePositions[i] - baseCom;
+      if (angle > 0.0)
+      {
+        const double3 axis = omega / angle;
+        offset = offset * std::cos(angle) + double3::cross(axis, offset) * std::sin(angle) +
+                 axis * (double3::dot(axis, offset) * (1.0 - std::cos(angle)));
+      }
+      atoms[i].position = scale * (baseCom + comShift) + offset;
+    }
+    atoms[3].position = scale * (basePositions[3] + flexibleShift);
+  };
+  expectIsotropicStrainBlocksMatchFiniteDifference(system, layout, apply);
+}
+
+TEST(minimization_hessian_framework, semi_flexible_cross_terms_isotropic_strain_blocks_match_finite_difference)
+{
+  ForceField forceField({{"O", false, 16.0, 0.0, 0.0, 8, false}}, {{80.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 8.0, 8.0, 8.0, false, false, false);
+  ConnectivityTable connectivityTable(4);
+  for (std::size_t i = 0; i < 3; ++i)
+  {
+    connectivityTable[i, i + 1] = true;
+    connectivityTable[i + 1, i] = true;
+  }
+  // the cross terms couple the rigid group {0, 1, 2} to the flexible atom 3, whose rigid offsets do not scale
+  Potentials::IntraMolecularPotentials potentials;
+  potentials.bonds = {BondPotential({2, 3}, BondType::Harmonic, {1500.0, 1.1})};
+  // the cross terms (scattered by the semi-flexible cross-term route, which had no isotropic strain blocks)
+  potentials.bondBends = {BondBendPotential({1, 2, 3}, BondBendType::CVFF, {109.5, 4000.0, 1.0, 4000.0, 1.1})};
+  potentials.bendTorsions = {BendTorsionPotential({0, 1, 2, 3}, BendTorsionType::CVFF, {500.0, 109.5, 109.5})};
   const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("O"));
   Component component(forceField, "semi-flexible", 64.0, 1.0e6, 0.02,
                       {Atom({-0.6, 0.25, 0.0}, 0.0, 1.0, 0, type, 0, false, false),

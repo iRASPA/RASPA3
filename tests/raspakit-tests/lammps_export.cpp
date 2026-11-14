@@ -905,6 +905,85 @@ read_data quadratic.data
   EXPECT_NEAR(definition["Bends"][0][2][1].get<double>(), 114.0, 1e-9);
 }
 
+// A FIXED bond and angle (bond_style zero, angle_style zero) hold a length and an angle and no energy: under
+// 'units metal' the reader multiplied them by the eV-to-kcal/mol factor (a 1.54 A bond became 35.5 A, 114 degrees
+// became 2629 degrees).
+TEST(lammps_export, reader_leaves_fixed_lengths_and_angles_unscaled)
+{
+  const std::string data = R"(LAMMPS data file
+
+3 atoms
+2 bonds
+1 angles
+1 atom types
+1 bond types
+1 angle types
+
+0.0 20.0 xlo xhi
+0.0 20.0 ylo yhi
+0.0 20.0 zlo zhi
+
+Masses
+
+1 14.0
+
+Pair Coeffs # lj/cut
+
+1 0.01 3.9
+
+Bond Coeffs # zero
+
+1 1.54
+
+Angle Coeffs # zero
+
+1 114.0
+
+Atoms # molecular
+
+1 1 1 5.0 5.0 5.0
+2 1 1 6.54 5.0 5.0
+3 1 1 7.2 6.4 5.0
+
+Bonds
+
+1 1 1 2
+2 1 2 3
+
+Angles
+
+1 1 1 2 3
+)";
+  const std::string input = R"(units metal
+atom_style molecular
+pair_style lj/cut 9.0
+bond_style zero
+angle_style zero
+read_data fixed.data
+)";
+  TemporaryDirectory directory;
+  std::filesystem::path dataPath = directory.path / "fixed.data";
+  std::filesystem::path inputPath = directory.path / "fixed.in";
+  std::ofstream(dataPath) << data;
+  std::ofstream(inputPath) << input;
+
+  LAMMPS::ReadResult read = LAMMPS::readDataFile(dataPath, inputPath);
+  ASSERT_EQ(read.components.size(), 1u);
+  const nlohmann::json& definition = read.components[0].definition;
+  ASSERT_FALSE(definition["Bonds"].empty());
+  for (const nlohmann::json& bond : definition["Bonds"])
+  {
+    EXPECT_EQ(bond[1], "FIXED");
+    EXPECT_NEAR(bond[2][0].get<double>(), 1.54, 1e-12);
+  }
+  ASSERT_FALSE(definition["Bends"].empty());
+  for (const nlohmann::json& bend : definition["Bends"])
+  {
+    EXPECT_EQ(bend[1], "FIXED");
+    EXPECT_NEAR(bend[2][0].get<double>(), 114.0, 1e-12);
+  }
+}
+
 TEST(lammps_export, rigid_molecule_gets_fragment_ids_and_rigid_small)
 {
   ForceField forceField = chainForceField();

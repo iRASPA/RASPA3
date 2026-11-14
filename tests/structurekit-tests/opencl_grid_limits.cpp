@@ -21,6 +21,8 @@ import opencl;
 import energy_opencl_surface_area;
 import energy_opencl_void_fraction;
 import energy_opencl_probe_energy_grid;
+import energy_probe_energy_grid;
+import energy_shared_probe_energy_grid;
 
 // The device routes of the energy grids without a device, and with a grid larger than their kernels can index.
 
@@ -120,4 +122,25 @@ TEST(opencl_grid_limits, a_grid_larger_than_the_kernels_can_index_is_refused)
 
   expectRefusal([] { ProbeEnergyGridOpenCL::compute(probeAndAtom(), oneAtom(), "X", uint3{2048, 2048, 1024}); },
                 "more than the device kernels can index");
+}
+
+// A crystal built without the carried fractional positions (only the Cartesian atoms): the grid builders read the
+// empty list and returned an all-zero grid. They derive the positions from the atoms, and refuse a list whose length
+// disagrees with the atoms.
+TEST(opencl_grid_limits, grids_of_a_crystal_without_fractional_positions_derive_them)
+{
+  const PairInteractions interactions = probeAndAtom();
+  const Crystal carried = oneAtom();
+  Crystal derived = carried;
+  derived.fractionalPositions.clear();
+
+  const ProbeEnergyGrid reference = ProbeEnergyGridCPU::compute(interactions, carried, "X", uint3{8, 8, 8});
+  const ProbeEnergyGrid grid = ProbeEnergyGridCPU::compute(interactions, derived, "X", uint3{8, 8, 8});
+  ASSERT_EQ(grid.energy.size(), reference.energy.size());
+  EXPECT_TRUE(std::ranges::any_of(reference.energy, [](float e) { return e != 0.0f; }));
+  for (std::size_t i = 0; i < grid.energy.size(); ++i) EXPECT_EQ(grid.energy[i], reference.energy[i]) << i;
+
+  Crystal mismatched = carried;
+  mismatched.fractionalPositions.push_back(double3(0.1, 0.1, 0.1));
+  EXPECT_THROW(ProbeEnergyGridCPU::compute(interactions, mismatched, "X", uint3{8, 8, 8}), std::runtime_error);
 }

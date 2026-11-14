@@ -119,7 +119,7 @@ MolecularEnergyGrid MolecularEnergyGridCPU::compute(const PairInteractions &inte
   grid.freeEnergy.assign(numberOfVoxels, 0.0f);
   grid.minimumEnergy.assign(numberOfVoxels, 0.0f);
 
-  std::vector<double3> fractionalPositions = framework.fractionalPositions;
+  std::vector<double3> fractionalPositions = framework.fractionalPositionsOfAtoms();
   if (fractionalPositions.empty()) return grid;
 
   const std::size_t numberOfAtoms = fractionalPositions.size();
@@ -362,7 +362,7 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
   const std::size_t numberOfVoxels = static_cast<std::size_t>(gridSize.x) * gridSize.y * gridSize.z;
   std::vector<std::int32_t> labels(numberOfVoxels, -1);
 
-  std::vector<double3> fractionalPositions = framework.fractionalPositions;
+  std::vector<double3> fractionalPositions = framework.fractionalPositionsOfAtoms();
   if (fractionalPositions.empty()) return labels;
 
   const bool useCharges = probe.isCharged() && potential != nullptr && potential->numberOfVoxels() > 0;

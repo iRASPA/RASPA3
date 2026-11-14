@@ -363,8 +363,11 @@ void PropertyLambdaProbabilityHistogram::readBiasingFile(std::filesystem::path p
     {
       double lambda = static_cast<double>(i) * delta;
 
-      std::size_t index = std::min(static_cast<std::size_t>(lambda * static_cast<double>(lambda_bias_data.size() - 1)),
-                                   lambda_bias_data.size() - 1);
+      // the nearest sample: i delta (M - 1) lands just below an integer for most i (0.3 * 20 = 5.9999...), and
+      // truncating it read the preceding sample, so even a file of the same size came back shifted by one bin
+      std::size_t index =
+          std::min(static_cast<std::size_t>(std::llround(lambda * static_cast<double>(lambda_bias_data.size() - 1))),
+                   lambda_bias_data.size() - 1);
       biasFactor[i] = lambda_bias_data[index];
     }
   }

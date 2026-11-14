@@ -211,9 +211,13 @@ inline bool readsGrid(const ForceField& forceField,
 {
   // a grid holds the framework as it was built: with mobile framework atoms the pairs are evaluated, as everywhere
   if (framework.has_value() && framework->hasMobileAtoms()) return false;
+  // and, with charges on, the Coulomb grid (the last entry): read with the Van der Waals grid alone, its missing value
+  // threw inside this noexcept evaluation (as in Interactions::computeFrameworkMoleculeEnergy, a pseudo-atom grid
+  // never stands in the last entry)
   const std::size_t type = static_cast<std::size_t>(atom.type);
-  return type < interpolationGrids.size() && interpolationGrids[type].has_value() && atom.isFullyCoupled() &&
-         forceField.chargeMethod == ForceField::ChargeMethod::Ewald;
+  return type + 1 < interpolationGrids.size() && interpolationGrids[type].has_value() && atom.isFullyCoupled() &&
+         forceField.chargeMethod == ForceField::ChargeMethod::Ewald &&
+         (!forceField.useCharge || interpolationGrids.back().has_value());
 }
 
 /// The energy of one trial atom from its interpolation grid (VDW, and the Coulomb grid when charges

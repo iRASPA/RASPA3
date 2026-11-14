@@ -1086,3 +1086,34 @@ TEST(CBMC_BASE_SAMPLER, two_spin_decided_centres_on_one_atom_are_no_half_circle)
   EXPECT_EQ(two.determinedChiralCenters.size(), 2uz);
   EXPECT_FALSE(two.parityIsHalfCircle);
 }
+
+// The same stereocentre declared twice (in neighbour orders of equal parity) restricts the base to the one half it
+// restricts it to declared once. The normalization took a factor one half per declaration (0.25 for two), assuming
+// independent centres, which centres on one atom never are: their joint parity fraction is one half or zero. The
+// fraction is estimated jointly with the coupling acceptance.
+TEST(CBMC_BASE_SAMPLER, a_stereocentre_declared_twice_restricts_the_base_to_one_half)
+{
+  ForceField forceField = makeZeroForceField();
+  const double beta = 1.0 / (Units::KB * kTemperature);
+  std::string twice(kChiralBranchJson);
+  const std::string once = "\"ChiralCenters\" : [[1, 0, 2, 3]]";
+  const std::size_t at = twice.find(once);
+  ASSERT_NE(at, std::string::npos);
+  // (0, 2, 3) -> (2, 3, 0) is a cyclic permutation: the same handedness
+  twice.replace(at, once.size(), "\"ChiralCenters\" : [[1, 0, 2, 3], [1, 2, 3, 0]]");
+
+  double normalization[2]{};
+  for (std::size_t k = 0; k < 2; ++k)
+  {
+    TemporaryFile file(k == 0 ? "chiral-once.json" : "chiral-twice.json",
+                       k == 0 ? std::string(kChiralBranchJson) : twice);
+    Component component(Component::Type::Adsorbate, 0, forceField, k == 0 ? "chiral-once" : "chiral-twice",
+                        file.stemPath().string(), 5, 21, MCMoveProbabilities(), std::nullopt, false);
+    component.prepareGrowthPlans(beta);
+    const std::vector<CBMC::GrowStep>& plan = component.growthPlan({0, 1});
+    ASSERT_EQ(plan.front().base.determinedChiralCenters.size(), k + 1);
+    normalization[k] = CBMC::logBaseSamplerNormalization(beta, component, plan);
+  }
+  // the parity fraction of the two is a sampled one half (frozen seed): within its statistical error
+  EXPECT_NEAR(normalization[1], normalization[0], 0.02);
+}

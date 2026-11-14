@@ -971,7 +971,10 @@ WellSurface wellSurfaceOfField(const Crystal &framework, const PairInteractions 
       static_cast<double>(iso) - std::max({0.02 * std::abs(static_cast<double>(iso)), 0.01 * std::abs(deepest), 1.0e-6});
 
   result.patches.reserve(corners.size() / 3);
-  result.deepestWell = std::numeric_limits<double>::infinity();
+  // no triangle, no well: tracked with a flag, since the fast-math build folds std::isfinite of an infinity to true
+  // and a surface with no triangles reported a deepest well of inf
+  bool anyTriangle = false;
+  result.deepestWell = 0.0;
   double depthMoment = 0.0;
   result.area = 0.0;
   result.numberOfTriangles = 0;
@@ -1011,11 +1014,12 @@ WellSurface wellSurfaceOfField(const Crystal &framework, const PairInteractions 
     }
     result.weightedArea += area * weight;
     depthMoment += area * meanEnergy;
-    result.deepestWell = std::min({result.deepestWell, patch.energy[0], patch.energy[1], patch.energy[2]});
+    const double deepest = std::min({patch.energy[0], patch.energy[1], patch.energy[2]});
+    result.deepestWell = anyTriangle ? std::min(result.deepestWell, deepest) : deepest;
+    anyTriangle = true;
   }
 
   if (result.area > 0.0) result.meanDepth = depthMoment / result.area;
-  if (!std::isfinite(result.deepestWell)) result.deepestWell = 0.0;
 
   if (framework.mass > 0.0)
   {

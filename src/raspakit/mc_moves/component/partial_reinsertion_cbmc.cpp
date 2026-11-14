@@ -34,9 +34,6 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
                                                               std::size_t selectedComponent,
                                                               std::size_t selectedMolecule)
 {
-  std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
-  Molecule &molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
-
   Move::Types move = Move::Types::PartialReinsertionCBMC;
   Component &component = system.components[selectedComponent];
 
@@ -53,6 +50,10 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
   {
     return std::nullopt;
   }
+
+  // only now: with no molecule of the component the span and the molecule index read past the molecule data
+  std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
+  Molecule& molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
 
   std::size_t selected_configuration = random.uniform_integer(0, component.partialReinsertionFixedAtoms.size() - 1);
   component.mc_moves_statistics.addSubTrial(move, selected_configuration,

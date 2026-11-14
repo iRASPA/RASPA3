@@ -70,7 +70,7 @@ ProbeEnergyGrid ProbeEnergyGridOpenCL::compute(const PairInteractions &interacti
   grid.energy.assign(numberOfVoxels, 0.0f);
   grid.strongestAtom.assign(numberOfVoxels, -1);
 
-  std::vector<double3> fractionalPositions = framework.fractionalPositions;
+  std::vector<double3> fractionalPositions = framework.fractionalPositionsOfAtoms();
   if (fractionalPositions.empty()) return grid;
 
   // The mixing is the force field's own, taken for the pair rather than assembled here, so that the field

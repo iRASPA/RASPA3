@@ -193,8 +193,11 @@ void CIFReader::parseSymmetry(std::string& string)
   }
 
   // prefer setting spacegroup based on Hall-symbol
+  // the IUCr core dictionary names it '_space_group_name_Hall' (CIF1) and '_space_group.name_Hall' (CIF2 / DDLm);
+  // '_symmetry_space_group_name_Hall' is the older, deprecated name
   if ((string == std::string("_symmetry_space_group_name_Hall")) ||
-      (string == std::string("_symmetry.space_group_name_Hall")))
+      (string == std::string("_symmetry.space_group_name_Hall")) || (string == std::string("_space_group_name_Hall")) ||
+      (string == std::string("_space_group.name_Hall")))
   {
     std::optional<std::string> possibleString = scanString();
 

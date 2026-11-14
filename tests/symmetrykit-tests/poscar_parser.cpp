@@ -142,3 +142,29 @@ Direct
   SKPOSCARParser parser(poscar);
   EXPECT_THROW(parser.startParsing(), std::runtime_error);
 }
+
+// VASP species labels with the POTCAR variant ('Fe_pv', 'O_s', and with the hash VASP 5.4 appends): the element is
+// the part before it. The whole label missed the element table and took the species index as atomic number, so iron
+// came out as hydrogen and oxygen as helium.
+TEST(POSCARParser, ParsesSpeciesLabelsWithPotcarVariants)
+{
+  const std::string poscar = R"(FeO with POTCAR labels
+1.0
+4.3 0.0 0.0
+0.0 4.3 0.0
+0.0 0.0 4.3
+Fe_pv O_s/5ae3c0
+1 1
+Direct
+0.0 0.0 0.0
+0.5 0.5 0.5
+)";
+
+  SKPOSCARParser parser(poscar);
+  parser.startParsing();
+
+  const auto atoms = parser.firstTestFrame();
+  ASSERT_EQ(totalAtomCount(atoms), 2U);
+  EXPECT_EQ(std::get<1>(atoms[0]), 26U);
+  EXPECT_EQ(std::get<1>(atoms[1]), 8U);
+}

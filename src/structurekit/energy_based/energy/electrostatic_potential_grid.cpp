@@ -36,7 +36,7 @@ ElectrostaticPotentialGrid ElectrostaticPotentialGridCPU::compute(const PairInte
   std::size_t numberOfVoxels = static_cast<std::size_t>(gridSize.x) * gridSize.y * gridSize.z;
   grid.smoothPotential.assign(numberOfVoxels, 0.0f);
 
-  std::vector<double3> fractionalPositions = framework.fractionalPositions;
+  std::vector<double3> fractionalPositions = framework.fractionalPositionsOfAtoms();
   if (fractionalPositions.empty()) return grid;
 
   for (const CrystalAtom &atom : framework.atoms)

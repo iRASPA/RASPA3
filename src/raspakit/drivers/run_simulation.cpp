@@ -160,6 +160,7 @@ void runSimulation(InputReader& inputReader)
       if (inputReader.restartFromBinary)
       {
         readBinaryRestartFile(hyper_parallel_tempering, inputReader.restartFromBinaryFileName);
+        applyInputDevices(hyper_parallel_tempering.systems);
       }
       hyper_parallel_tempering.run();
       break;
@@ -170,6 +171,7 @@ void runSimulation(InputReader& inputReader)
       if (inputReader.restartFromBinary)
       {
         readBinaryRestartFile(reweighted_histogram, inputReader.restartFromBinaryFileName);
+        applyInputDevices(reweighted_histogram.systems);
       }
       reweighted_histogram.run();
       break;
@@ -180,6 +182,7 @@ void runSimulation(InputReader& inputReader)
       if (inputReader.restartFromBinary)
       {
         readBinaryRestartFile(parallel_tmmc, inputReader.restartFromBinaryFileName);
+        applyInputDevices(parallel_tmmc.systems);
       }
       parallel_tmmc.run();
       break;
@@ -221,6 +224,7 @@ void runSimulation(InputReader& inputReader)
       if (inputReader.restartFromBinary)
       {
         readBinaryRestartFile(polymerization, inputReader.restartFromBinaryFileName);
+        applyInputDevices(polymerization.md.systems);
         polymerization.createOutputFiles();
       }
       polymerization.run();

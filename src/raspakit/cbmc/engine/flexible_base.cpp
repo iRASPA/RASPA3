@@ -52,10 +52,29 @@ double bendMinimumEnergy(const BendPotential &bend)
 // cached plan carries its constants. The sampler is a hot path and must not prepare anything itself
 // (the former fall-back mutated the component's caches from inside a const grow, which is neither
 // thread-safe nor free): an unprepared step is a setup error and is reported as one.
+// Whether a flexible attach step has estimated constants: a coupling, or more than one chiral centre decided by the
+// base (centres declared on one atom with other neighbour orders or triples: their joint parity fraction is not the
+// product of halves).
+bool hasEstimatedConstants(const CBMC::GrowStep& step)
+{
+  return step.flexibleAttach && (step.base.hasCoupling || step.base.determinedChiralCenters.size() > 1);
+}
+
+// Whether every chiral centre the base decides has its declared parity.
+bool baseParityHolds(const CBMC::GrowStep& step, std::span<const Atom> atoms)
+{
+  for (const ChiralCenter& center : step.base.determinedChiralCenters)
+  {
+    const double referenceSign = center.type == ChiralCenter::Chirality::R_Chiral ? 1.0 : -1.0;
+    if (!(referenceSign * CBMC::chiralSignedVolume(center.ids, atoms) > 0.0)) return false;
+  }
+  return true;
+}
+
 CBMC::BaseCouplingConstants baseCouplingConstantsOf(double beta, const Component &component,
                                                     const CBMC::GrowStep &step)
 {
-  if (!step.base.hasCoupling) return {0.0, 0.0};
+  if (!hasEstimatedConstants(step)) return {0.0, 0.0};
   if (!step.base.couplingConstants.has_value() || component.growthPlanBeta != beta)
   {
     throw std::logic_error(std::format(
@@ -172,13 +191,19 @@ double CBMC::logFlexibleBaseNormalization(double beta, const Component &componen
                                                  : std::log(4.0 * std::numbers::pi);  // uniform sphere
     }
 
-    if (step.base.hasCoupling)
+    // The coupling acceptance and the parity of the chiral centres are estimated together, E[a 1_parity]: their
+    // product <a> 0.5^k assumed them independent, which a coupling term that tells the two hands apart (an
+    // asymmetric torsion or improper) breaks, and 0.5^k is not the parity fraction of k centres on one atom (it is
+    // one half or zero). A single centre alone keeps its exact half.
+    if (hasEstimatedConstants(step))
     {
       const BaseCouplingConstants constants = baseCouplingConstantsOf(beta, component, step);
       logNormalization += constants.logMeanClampedBoltzmann - beta * constants.referenceEnergy;
     }
-
-    logNormalization += static_cast<double>(step.base.determinedChiralCenters.size()) * std::log(0.5);
+    else
+    {
+      logNormalization += static_cast<double>(step.base.determinedChiralCenters.size()) * std::log(0.5);
+    }
   }
 
   return logNormalization;
@@ -205,7 +230,7 @@ double CBMC::baseCouplingEnergy(const GrowStep &step, std::span<const Atom> atom
 CBMC::BaseCouplingConstants CBMC::estimateBaseCouplingConstants(double beta, std::size_t numberOfAtoms,
                                                                 const GrowStep &step)
 {
-  if (!step.flexibleAttach || !step.base.hasCoupling) return {0.0, 0.0};
+  if (!hasEstimatedConstants(step)) return {0.0, 0.0};
 
   const std::size_t previousBead = step.previousBead.value();
   const std::size_t currentBead = step.currentBead;
@@ -232,7 +257,7 @@ CBMC::BaseCouplingConstants CBMC::estimateBaseCouplingConstants(double beta, std
                                     : random.randomVectorOnUnitSphere();
       atoms[step.nextBeads[i]].position = bondLength * direction;
     }
-    return baseCouplingEnergy(step, atoms);
+    return step.base.hasCoupling ? baseCouplingEnergy(step, atoms) : 0.0;
   };
 
   // Reference energy: rigorous per-bend minima when only sibling bends couple; otherwise the
@@ -261,8 +286,10 @@ CBMC::BaseCouplingConstants CBMC::estimateBaseCouplingConstants(double beta, std
     for (std::size_t s = 0; s != batchSize; ++s)
     {
       const double clampedBoltzmannFactor = std::min(1.0, std::exp(-beta * (drawIndependentBase() - referenceEnergy)));
-      sum += clampedBoltzmannFactor;
-      sumOfSquares += clampedBoltzmannFactor * clampedBoltzmannFactor;
+      // jointly with the parity the sampler rejects on next (see logFlexibleBaseNormalization)
+      const double accepted = baseParityHolds(step, atoms) ? clampedBoltzmannFactor : 0.0;
+      sum += accepted;
+      sumOfSquares += accepted * accepted;
     }
     numberOfSamples += static_cast<double>(batchSize);
     const double mean = sum / numberOfSamples;
@@ -270,6 +297,13 @@ CBMC::BaseCouplingConstants CBMC::estimateBaseCouplingConstants(double beta, std
     if (std::sqrt(variance / numberOfSamples) < Constants::baseCouplingRelativeTolerance * mean) break;
   }
 
+  if (!(sum > 0.0))
+  {
+    throw std::runtime_error(std::format(
+        "CBMC: no base conformation of growth step at bead {} has the declared chirality of its centres (the "
+        "declarations on one atom contradict each other)\n",
+        currentBead));
+  }
   return {referenceEnergy, std::log(sum / numberOfSamples)};
 }
 
@@ -278,7 +312,7 @@ void CBMC::prepareBaseCouplingConstants(double beta, std::size_t numberOfAtoms, 
 {
   for (GrowStep &step : plan)
   {
-    if (!step.flexibleAttach || !step.base.hasCoupling)
+    if (!hasEstimatedConstants(step))
     {
       step.base.couplingConstants.reset();
       continue;

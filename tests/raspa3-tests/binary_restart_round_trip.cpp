@@ -18,6 +18,9 @@ import write_lammps_data;
 import sample_movies;
 import mc_moves_move_types;
 import mc_moves_probabilities;
+import json;
+import monte_carlo;
+import molecular_dynamics;
 
 // Binary restart round trips of the state that a restart read used to lose: the unit-cell data of a framework,
 // the mixing rule of a force field, the source of a pseudo-atom, the file and frame bookkeeping of the movie and
@@ -155,4 +158,30 @@ TEST(BINARY_RESTART_ROUND_TRIP, framework_keeps_its_intramolecular_generation_op
   ASSERT_EQ(restored.torsionDefinitions.size(), 1uz);
   EXPECT_EQ(restored.torsionDefinitions[0].parameters, (std::vector<double>{1.0, 2.0}));
   EXPECT_TRUE(restored.improperTorsionDefinitions.empty());
+}
+
+// The JSON output of a run: its header (version, seed, initial conditions) is written by setup(), which a resumed run
+// skips, so the final output of a restarted MonteCarlo or MolecularDynamics run had lost it.
+TEST(BINARY_RESTART_ROUND_TRIP, drivers_keep_the_header_of_their_json_output)
+{
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  const Component methane = Component::makeMethane(forceField, 0);
+  const std::vector<System> systems{
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {2}, 5)};
+
+  MonteCarlo mc({0, 0, 0, 0, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
+  mc.outputJsons[0]["version"] = "3.1.0";
+  mc.outputJsons[0]["seed"] = 42;
+  MonteCarlo restoredMC;
+  roundTrip(mc, restoredMC, "mc_json");
+  ASSERT_EQ(restoredMC.outputJsons.size(), 1uz);
+  EXPECT_EQ(restoredMC.outputJsons[0]["version"], "3.1.0");
+  EXPECT_EQ(restoredMC.outputJsons[0]["seed"], 42);
+
+  MolecularDynamics md({0, 0, 0, 0, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
+  md.outputJsons[0]["initialization"]["units"] = "K";
+  MolecularDynamics restoredMD;
+  roundTrip(md, restoredMD, "md_json");
+  ASSERT_EQ(restoredMD.outputJsons.size(), 1uz);
+  EXPECT_EQ(restoredMD.outputJsons[0]["initialization"]["units"], "K");
 }

@@ -14,6 +14,11 @@ void Integration_SurfaceArea::run(const SampledStructure &structure, const Sampl
   std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
 
   std::size_t number_of_slices = numberOfSlices.value_or(1024);
+  // the estimate divides by it (no slices gave 0 / 0, a not-a-number reported as the area)
+  if (number_of_slices == 0)
+  {
+    throw std::invalid_argument("Integration_SurfaceArea: the number of slices must be at least one\n");
+  }
 
   // The directions are the same for every atom: their sines and cosines are tabulated once per stack and per
   // slice (as they were computed, so the directions are the same numbers), instead of four trigonometric calls

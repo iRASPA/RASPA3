@@ -320,6 +320,11 @@ class argparser
       }
       else
       {
+        // a misspelled switch ('--orientation', '-x') is no positional argument: taken for one, it was read as the
+        // file name and the switch it was meant to be was silently missing
+        const bool looksLikeSwitch =
+            arg->size() > 1 && (*arg)[0] == '-' && ((*arg)[1] == '-' || std::isalpha(static_cast<unsigned char>((*arg)[1])));
+        if (looksLikeSwitch) throw unknown_option_exception(*arg);
         if (current_positional_ != std::end(positionals_))
         {
           (current_positional_->handler)(*arg);

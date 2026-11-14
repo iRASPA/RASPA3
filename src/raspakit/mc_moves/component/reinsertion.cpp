@@ -33,9 +33,6 @@ import mc_moves_cputime;
 std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, System &system,
                                                        std::size_t selectedComponent, std::size_t selectedMolecule)
 {
-  std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
-  Molecule &molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
-
   Move::Types move = Move::Types::ReinsertionCBMC;
   Component &component = system.components[selectedComponent];
 
@@ -47,6 +44,10 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   {
     return std::nullopt;
   }
+
+  // only now: with no molecule of the component the span and the molecule index read past the molecule data
+  std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
+  Molecule& molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
 
   // A cross-linked molecule is held by its links: it is regrown in place with its linked sites kept
   // fixed (a partial regrowth whose placed set is the linked sites), with the links' terms entering

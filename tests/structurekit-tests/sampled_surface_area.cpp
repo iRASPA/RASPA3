@@ -382,3 +382,19 @@ TEST(sampled_surface_area, the_device_routes_leave_nothing_on_the_device)
   }
   EXPECT_EQ(holdersOfTheContext(), before) << "the sampling route left its program or its kernel behind";
 }
+
+// No inner steps, no iterations or no slices: the estimates divided 0 by 0 and reported a not-a-number as the area
+// ('-M 0', '--number-of-slices 0'). They are refused.
+TEST(sampled_surface_area, zero_steps_or_slices_are_refused)
+{
+  const SampledStructure alone = structureOf(UnitCell(30.0, 30.0, 30.0), {double3(15.0, 15.0, 15.0)}, 1.5);
+  {
+    MC_SurfaceArea route;
+    EXPECT_THROW(route.run(alone, SampledProbe{}, 10, 0), std::invalid_argument);
+    EXPECT_THROW(route.run(alone, SampledProbe{}, 0, 10), std::invalid_argument);
+  }
+  {
+    Integration_SurfaceArea route;
+    EXPECT_THROW(route.run(alone, SampledProbe{}, 0), std::invalid_argument);
+  }
+}

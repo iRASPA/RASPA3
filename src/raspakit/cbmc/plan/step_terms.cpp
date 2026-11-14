@@ -332,6 +332,13 @@ std::string baseCouplingSignature(const CBMC::GrowStep &step)
     appendTerm("cmap", t.mapIndex, t.identifiers, std::array<double, 0>{});
     key += ":" + terms.cmapMaps[t.mapIndex].name;
   }
+  // the constants hold the joint acceptance of the coupling and the chiral parity: steps with other centres are
+  // not congruent
+  for (const ChiralCenter& center : step.base.determinedChiralCenters)
+  {
+    key += std::format(";chi{}", static_cast<std::size_t>(center.type));
+    for (std::size_t id : center.ids) key += ":" + roleOf(id);
+  }
   return key;
 }
 
@@ -647,5 +654,6 @@ void CBMC::prepareStep(GrowStep& step, const ConnectivityTable& connectivity, co
   spinPotentials.cmaps = std::move(split.spinTerms.cmaps);
   step.spin.hasUnsampledTerms = hasUnsampledTerms(spinPotentials);
 
-  if (step.base.hasCoupling) step.base.couplingSignature = baseCouplingSignature(step);
+  if (step.base.hasCoupling || step.base.determinedChiralCenters.size() > 1)
+    step.base.couplingSignature = baseCouplingSignature(step);
 }

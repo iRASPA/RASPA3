@@ -1620,6 +1620,13 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Molecu
   archive << mc.simulationStage;
 
   archive << mc.systems;
+  // the JSON output so far: its header (version, seed, initial conditions) is written by setup(), which a resumed
+  // run skips, so the final output written after a restart lost it
+  {
+    std::vector<std::string> jsons;
+    for (const nlohmann::json& json : mc.outputJsons) jsons.push_back(json.dump());
+    archive << jsons;
+  }
   archive << mc.fractionalMoleculeSystem;
 
   archive << mc.estimation;
@@ -1662,6 +1669,12 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MolecularDyn
   archive >> mc.simulationStage;
 
   archive >> mc.systems;
+  {
+    std::vector<std::string> jsons;
+    archive >> jsons;
+    mc.outputJsons.clear();
+    for (const std::string& json : jsons) mc.outputJsons.push_back(nlohmann::json::parse(json));
+  }
   archive >> mc.fractionalMoleculeSystem;
 
   archive >> mc.estimation;

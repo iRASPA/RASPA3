@@ -1613,3 +1613,46 @@ TEST(energy_well_surface, gpu_lewiner_normals_agree_with_cpu_inside_a_cube)
   EXPECT_NEAR(onGPU.concave, onProcessor.concave, 1.0e-3 * onProcessor.total());
   EXPECT_NEAR(onGPU.unresolved, onProcessor.unresolved, 1.0e-3 * onProcessor.total());
 }
+
+// A field with no well has no triangles and no deepest well: it started at +infinity and was reset where
+// std::isfinite said so, which the fast-math build folds to true, so the report gave a deepest well of inf.
+TEST(energy_well_surface, a_surface_without_triangles_has_no_deepest_well)
+{
+  PairInteractions interactions = oneType(sigma, epsilon);
+  Crystal framework = emptyBox(UnitCell(12.0, 12.0, 12.0));
+  addAtom(framework, 0.5, 0.5, 0.5);
+  WellField field = blankField(uint3{16, 16, 16}, framework.unitCell);
+  field.probe = probeOf(interactions, "X");
+
+  WellSurface surface = wellSurfaceOfField(framework, interactions, field, 0.0, 0.001, 0.0, {});
+  ASSERT_EQ(surface.numberOfTriangles, 0uz);
+  EXPECT_EQ(std::to_string(surface.deepestWell), std::to_string(0.0));
+}
+
+// More orientations than the device kernel holds (128): the GPU route refused the field ('--gpu --bet
+// --orientations 256' failed outright) instead of computing it on the processor.
+TEST(energy_well_surface, the_device_route_computes_a_field_with_more_orientations_than_it_holds)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+
+  const uint3 gridSize{8, 8, 8};
+  PairInteractions interactions = oneType(sigma, epsilon);
+  Crystal framework = oneAtom(16.0);
+  LinearProbe dimer;
+  dimer.name = "dimer";
+  dimer.headTailSymmetric = false;
+  dimer.sites.push_back(LinearProbe::Site{0, -1.2, 0.0, "X"});
+  dimer.sites.push_back(LinearProbe::Site{0, 1.2, 0.0, "X"});
+  const std::size_t orientations = 256;
+
+  WellField cpu =
+      WellFieldCPU::compute(interactions, framework, dimer, gridSize, orientations, 0.5 * epsilon, {}, 1000.0, ceiling);
+  WellField gpu;
+  ASSERT_NO_THROW(gpu = WellFieldOpenCL::compute(interactions, framework, dimer, gridSize, orientations, 0.5 * epsilon,
+                                                 {}, 1000.0, ceiling));
+  ASSERT_GT(cpu.numberOfOrientations, 128uz);
+  EXPECT_EQ(gpu.numberOfOrientations, cpu.numberOfOrientations);
+  ASSERT_EQ(gpu.energy.size(), cpu.energy.size());
+  for (std::size_t i = 0; i < cpu.energy.size(); ++i) EXPECT_EQ(gpu.energy[i], cpu.energy[i]);
+}

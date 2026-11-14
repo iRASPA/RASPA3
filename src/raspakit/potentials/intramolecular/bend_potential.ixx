@@ -48,7 +48,7 @@ export struct BendPotential
 
   std::array<std::size_t, 3> identifiers;                        ///< Identifiers of the two particles forming the bend.
   BendType type;                                                 ///< The type of bend potential.
-  std::array<double, maximumNumberOfBendParameters> parameters;  ///< Parameters associated with the bend potential.
+  std::array<double, maximumNumberOfBendParameters> parameters{};  ///< Parameters associated with the bend potential.
 
   /**
    * \brief Default constructor for BendPotential.

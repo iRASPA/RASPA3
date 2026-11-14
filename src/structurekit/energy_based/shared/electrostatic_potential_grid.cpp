@@ -20,7 +20,7 @@ ElectrostaticPotentialGrid::~ElectrostaticPotentialGrid() {}
 
 double ElectrostaticPotentialGrid::exactPotentialAt(const Crystal &framework, double3 fractionalPosition) const
 {
-  std::vector<double3> fractionalPositions = framework.fractionalPositions;
+  std::vector<double3> fractionalPositions = framework.fractionalPositionsOfAtoms();
 
   double3x3 cell = framework.unitCell.cell;
   double3 widths = framework.unitCell.perpendicularWidths();

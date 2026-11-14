@@ -69,6 +69,57 @@ void scatterSemiFlexibleCrossTerm(GeneralizedHessian& hessian, const Minimizatio
   Minimization::scatterCartesianTermSites(hessian, sites, gradients, local);
   Minimization::removeRigidOffsetStrainGradientSites(hessian, layout, rigidCache, moleculeIndex, termAtoms, positions,
                                                      gradients);
+
+  // The isotropic strain blocks (one strain degree of freedom): under exp(epsilon) a flexible atom scales with the
+  // cell and a rigid-group atom moves with its centre of mass (its internal offset does not scale), so
+  // dx_t/depsilon = d2x_t/depsilon2 = s_t, the position or the centre of mass. Then
+  //   d2U/depsilon2       = sum_tu s_t H_tu s_u + sum_t g_t . s_t
+  //   d2U/dq depsilon     = sum_tu (dx_t/dq) H_tu s_u + (ds_t/dq) . g_t,
+  // with ds_t/dq the identity on the translational degrees of freedom (the atom or the centre of mass) and zero on
+  // the orientations. An angle of a semi-flexible molecule that spans a rigid group changes under the strain; these
+  // blocks were missing.
+  if (hessian.numStrain() != 1) return;
+  std::vector<double3> strainDerivative(M);
+  for (std::size_t t = 0; t < M; ++t)
+  {
+    strainDerivative[t] = layout.atomRigidComDof(moleculeIndex, termAtoms[t]).has_value()
+                              ? rigidCache.bodyCenterOfMass(moleculeIndex, termAtoms[t])
+                              : positions[t];
+  }
+  std::vector<double3> curvature(M);  // sum_u H_tu s_u
+  for (std::size_t t = 0; t < M; ++t)
+  {
+    for (std::size_t u = 0; u < M; ++u)
+    {
+      for (std::size_t a = 0; a < 3; ++a)
+      {
+        for (std::size_t b = 0; b < 3; ++b)
+        {
+          (&curvature[t].x)[a] += full[t][u][a][b] * (&strainDerivative[u].x)[b];
+        }
+      }
+    }
+  }
+  double strainStrain = 0.0;
+  for (std::size_t t = 0; t < M; ++t)
+  {
+    strainStrain += double3::dot(strainDerivative[t], curvature[t]) + double3::dot(gradients[t], strainDerivative[t]);
+    const Minimization::HessianSite& site = sites[t];
+    if (!site.positionBase) continue;
+    for (std::size_t axis = 0; axis < 3; ++axis)
+    {
+      hessian.addPositionStrain(*site.positionBase + axis, 0, (&curvature[t].x)[axis] + (&gradients[t].x)[axis]);
+    }
+    if (site.orientationBase && site.derivatives != nullptr)
+    {
+      const std::array<double3, 3> dVec = {site.derivatives->dVecX, site.derivatives->dVecY, site.derivatives->dVecZ};
+      for (std::size_t axis = 0; axis < 3; ++axis)
+      {
+        hessian.addPositionStrain(*site.orientationBase + axis, 0, double3::dot(dVec[axis], curvature[t]));
+      }
+    }
+  }
+  hessian.addStrainStrain(0, 0, strainStrain);
 }
 }  // namespace
 

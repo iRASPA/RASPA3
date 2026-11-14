@@ -197,3 +197,39 @@ O1 O  0.4 0.5 0.6
   // the inversion doubles both atoms
   EXPECT_EQ(unitCellAtoms.size(), 4uz);
 }
+
+// The space group by its Hall symbol under the IUCr core names, '_space_group_name_Hall' (CIF1) and
+// '_space_group.name_Hall' (CIF2): only the deprecated '_symmetry_space_group_name_Hall' was read, and a file with the
+// standard name fell back to P 1 (no symmetry operations applied).
+TEST(cif_reader, hall_symbol_under_the_iucr_names)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+  std::vector<std::size_t> numbers;
+  for (const std::string tag : {"_symmetry_space_group_name_Hall", "_space_group_name_Hall", "_space_group.name_Hall"})
+  {
+    const std::string cif = std::format(R"(
+data_test
+_cell_length_a 10.0
+_cell_length_b 10.0
+_cell_length_c 10.0
+_cell_angle_alpha 90.0
+_cell_angle_beta 90.0
+_cell_angle_gamma 90.0
+{} '-P 4 2 3'
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Si1 Si 0.1 0.2 0.3
+)",
+                                        tag);
+    const auto parsed = CIFReader::readCIFString(cif, forceField, CIFReader::UseChargesFrom::CIF_File);
+    ASSERT_TRUE(parsed.has_value()) << tag;
+    numbers.push_back(std::get<1>(parsed.value()));
+  }
+  EXPECT_NE(numbers[0], 1uz);
+  EXPECT_EQ(numbers[1], numbers[0]);
+  EXPECT_EQ(numbers[2], numbers[0]);
+}

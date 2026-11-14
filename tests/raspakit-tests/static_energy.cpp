@@ -21,6 +21,7 @@ import energy_status;
 import interactions_intermolecular;
 import interactions_framework_molecule;
 import interactions_ewald;
+import cbmc_external_energy;
 
 TEST(static_energy, Test_2_CO2_in_ITQ_29_1x1x1)
 {
@@ -124,9 +125,8 @@ TEST(static_energy, tail_correction_aggregated_matches_per_atom_reference)
   // Tail corrections are position-independent, but give the atoms distinct positions anyway.
   for (std::size_t i = 0; i < atomData.size(); ++i)
   {
-    atomData[i].position =
-        double3(1.0 + 0.31 * static_cast<double>(i), 2.0 + 0.13 * static_cast<double>(i),
-                3.0 + 0.19 * static_cast<double>(i));
+    atomData[i].position = double3(1.0 + 0.31 * static_cast<double>(i), 2.0 + 0.13 * static_cast<double>(i),
+                                   3.0 + 0.19 * static_cast<double>(i));
   }
 
   // Tag the first molecule as fractional in dU/dlambda group 1, the second as fractional in group 2, and leave
@@ -163,9 +163,8 @@ TEST(static_energy, tail_correction_aggregated_difference_matches_per_atom_refer
 
   for (std::size_t i = 0; i < atomData.size(); ++i)
   {
-    atomData[i].position =
-        double3(1.0 + 0.31 * static_cast<double>(i), 2.0 + 0.13 * static_cast<double>(i),
-                3.0 + 0.19 * static_cast<double>(i));
+    atomData[i].position = double3(1.0 + 0.31 * static_cast<double>(i), 2.0 + 0.13 * static_cast<double>(i),
+                                   3.0 + 0.19 * static_cast<double>(i));
   }
 
   // Current state: first molecule fractional (group 1) at lambda = 0.4, everything else integer.
@@ -262,9 +261,9 @@ TEST(static_energy, switched_off_molecule_is_not_read_from_the_framework_grid)
   const std::vector<std::optional<InterpolationEnergyGrid>> noGrids(system.interpolationGrids.size());
 
   // the grids are live: an integer molecule reads them (and agrees with the pair sum to interpolation accuracy)
-  RunningEnergy integerFromGrid = Interactions::computeFrameworkMoleculeEnergy(
-      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-      system.spanOfFrameworkAtoms(), atomData);
+  RunningEnergy integerFromGrid =
+      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                   system.framework, system.spanOfFrameworkAtoms(), atomData);
   RunningEnergy integerFromPairs = Interactions::computeFrameworkMoleculeEnergy(
       system.forceField, system.simulationBox, noGrids, system.framework, system.spanOfFrameworkAtoms(), atomData);
   EXPECT_NE(integerFromGrid.frameworkMoleculeVDW, integerFromPairs.frameworkMoleculeVDW);
@@ -278,8 +277,8 @@ TEST(static_energy, switched_off_molecule_is_not_read_from_the_framework_grid)
   for (Atom& atom : switchedOff) atom.setScalingOff();
 
   std::optional<RunningEnergy> withGrids = Interactions::computeFrameworkMoleculeEnergyDifference(
-      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-      system.frameworkCellList(), system.spanOfFrameworkAtoms(), switchedOff, oldFractional);
+      system.forceField, system.simulationBox, system.interpolationGrids, system.framework, system.frameworkCellList(),
+      system.spanOfFrameworkAtoms(), switchedOff, oldFractional);
   std::optional<RunningEnergy> withoutGrids = Interactions::computeFrameworkMoleculeEnergyDifference(
       system.forceField, system.simulationBox, noGrids, system.framework, system.frameworkCellList(),
       system.spanOfFrameworkAtoms(), switchedOff, oldFractional);
@@ -290,8 +289,7 @@ TEST(static_energy, switched_off_molecule_is_not_read_from_the_framework_grid)
 
   // the switched-off molecule has no framework energy: the difference is minus the fractional energy
   RunningEnergy fractionalEnergy = Interactions::computeFrameworkMoleculeEnergy(
-      system.forceField, system.simulationBox, noGrids, system.framework, system.spanOfFrameworkAtoms(),
-      oldFractional);
+      system.forceField, system.simulationBox, noGrids, system.framework, system.spanOfFrameworkAtoms(), oldFractional);
   EXPECT_NEAR(withGrids->frameworkMoleculeVDW, -fractionalEnergy.frameworkMoleculeVDW, 1e-10);
   EXPECT_NEAR(withGrids->frameworkMoleculeCharge, -fractionalEnergy.frameworkMoleculeCharge, 1e-10);
 
@@ -301,4 +299,43 @@ TEST(static_energy, switched_off_molecule_is_not_read_from_the_framework_grid)
       system.spanOfFrameworkAtoms(), switchedOff, oldFractional);
   ASSERT_TRUE(bruteForce.has_value());
   EXPECT_NEAR(bruteForce->frameworkMoleculeVDW, -fractionalEnergy.frameworkMoleculeVDW, 1e-10);
+}
+
+// A CBMC trial atom read its framework energy from the Van der Waals grid of its type without checking that the
+// Coulomb grid (the last entry) exists: with charges on and that grid missing, its value threw inside the noexcept
+// evaluation (std::terminate). It now falls back to the pairs, as the full evaluation does.
+TEST(static_energy, cbmc_framework_energy_without_the_coulomb_grid_uses_the_pairs)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component co2 = Component::makeCO2(forceField, 0, true);
+  forceField.settings.gridPseudoAtomIndices = {static_cast<std::size_t>(co2.atoms[0].type),
+                                               static_cast<std::size_t>(co2.atoms[1].type)};
+  forceField.settings.numberOfVDWGridPoints = uint3(32, 32, 32);
+  forceField.settings.numberOfCoulombGridPoints = uint3(32, 32, 32);
+  forceField.settings.numberOfGridTestPoints = 10;
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {co2}, {}, {1}, 5);
+  std::ostringstream log;
+  system.createFrameworkInterpolationGrids(log);
+  ASSERT_TRUE(system.interpolationGrids[static_cast<std::size_t>(co2.atoms[0].type)].has_value());
+  ASSERT_TRUE(system.forceField.useCharge);
+
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  atomData[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
+  atomData[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
+  atomData[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
+
+  std::vector<std::optional<InterpolationEnergyGrid>> withoutCoulomb = system.interpolationGrids;
+  withoutCoulomb.back() = std::nullopt;
+  const std::vector<std::optional<InterpolationEnergyGrid>> none(system.interpolationGrids.size(), std::nullopt);
+  const std::optional<RunningEnergy> partial = CBMC::computeFrameworkMoleculeEnergy(
+      system.forceField, system.simulationBox, withoutCoulomb, system.framework, system.spanOfFrameworkAtoms(),
+      system.forceField.cutOffFrameworkVDW, system.forceField.cutOffCoulomb, atomData);
+  const std::optional<RunningEnergy> pairs = CBMC::computeFrameworkMoleculeEnergy(
+      system.forceField, system.simulationBox, none, system.framework, system.spanOfFrameworkAtoms(),
+      system.forceField.cutOffFrameworkVDW, system.forceField.cutOffCoulomb, atomData);
+  ASSERT_TRUE(partial.has_value() && pairs.has_value());
+  EXPECT_NEAR(partial->frameworkMoleculeVDW, pairs->frameworkMoleculeVDW, 1e-8 * std::abs(pairs->frameworkMoleculeVDW));
+  EXPECT_NEAR(partial->frameworkMoleculeCharge, pairs->frameworkMoleculeCharge,
+              1e-8 * std::abs(pairs->frameworkMoleculeCharge));
 }

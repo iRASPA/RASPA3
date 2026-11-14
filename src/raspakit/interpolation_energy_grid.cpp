@@ -354,14 +354,19 @@ const uint3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std:
           throw std::runtime_error("Invalid Z grid line in cube: " + filename);
   }
 
+  // The sign of a count gives the unit of its step vector, Bohr when positive (what Gaussian, CP2K, ORCA, Multiwfn
+  // and Psi4 write) and Angstrom when negative; the steps are not used here (the grid spans the simulation cell), so
+  // either is accepted. Only a mix of the two is malformed.
   if (gridDims.x < 0 && gridDims.y < 0 && gridDims.z < 0)
   {
     return {static_cast<std::size_t>(-1 * gridDims.x), static_cast<std::size_t>(-1 * gridDims.y), static_cast<std::size_t>(-1 * gridDims.z)};
   }
-  else
+  if (gridDims.x > 0 && gridDims.y > 0 && gridDims.z > 0)
   {
-    throw std::runtime_error("All grid dimensions in the CUBE file must be only negative or only positive, not mixed");
+    return {static_cast<std::size_t>(gridDims.x), static_cast<std::size_t>(gridDims.y),
+            static_cast<std::size_t>(gridDims.z)};
   }
+  throw std::runtime_error("All grid dimensions in the CUBE file must be only negative or only positive, not mixed");
 
   std::unreachable();
 }
@@ -1164,6 +1169,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Interp
   archive << s.numberOfGridPoints;
   archive << s.numberOfCells;
   archive << s.order;
+  archive << s.data;
 
   // the end marker after the fields, where the reader looks for it
 #if DEBUG_ARCHIVE
@@ -1189,6 +1195,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Interpolatio
   archive >> s.numberOfGridPoints;
   archive >> s.numberOfCells;
   archive >> s.order;
+  archive >> s.data;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

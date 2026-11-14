@@ -1203,7 +1203,18 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
         com += mass * atom.position;
         totalMass += mass;
       }
-      com = com / totalMass;
+      if (totalMass > 0.0)
+      {
+        com = com / totalMass;
+      }
+      else
+      {
+        // a massless (dummy or probe) molecule has no centre of mass: the geometric centre, as
+        // Component::getCenterOfMass
+        com = double3(0.0, 0.0, 0.0);
+        for (std::size_t k = 0; k < molecule.numberOfAtoms; ++k) com += moleculeAtoms[molecule.atomIndex + k].position;
+        com = com / static_cast<double>(molecule.numberOfAtoms);
+      }
       for (std::size_t k = 0; k < molecule.numberOfAtoms; ++k)
       {
         polarizationComOffset[molecule.atomIndex + k] = moleculeAtoms[molecule.atomIndex + k].position - com;
@@ -1371,7 +1382,17 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
       com += mass * atom.position;
       totalMass += mass;
     }
-    com = com / totalMass;
+    if (totalMass > 0.0)
+    {
+      com = com / totalMass;
+    }
+    else
+    {
+      // a massless (dummy or probe) molecule has no centre of mass: the geometric centre, as Component::getCenterOfMass
+      com = double3(0.0, 0.0, 0.0);
+      for (const Atom& atom : span) com += atom.position;
+      com = com / static_cast<double>(span.size());
+    }
 
     for (std::size_t k = 0; k < span.size(); ++k)
     {

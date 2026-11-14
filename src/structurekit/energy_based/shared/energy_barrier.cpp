@@ -26,7 +26,7 @@ namespace
 void writeFieldCheck(const PairInteractions &interactions, const Crystal &framework, const ProbeEnergyGrid &energyGrid)
 {
   std::optional<std::size_t> probeType = interactions.findType(energyGrid.probeName);
-  std::vector<double3> fractionalPositions = framework.fractionalPositions;
+  std::vector<double3> fractionalPositions = framework.fractionalPositionsOfAtoms();
   double3x3 cell = framework.unitCell.cell;
   const double cutOffSquared = energyGrid.cutOff * energyGrid.cutOff;
   const std::int32_t extra = 1;

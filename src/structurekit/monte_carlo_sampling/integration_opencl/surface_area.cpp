@@ -84,6 +84,11 @@ void Integration_OpenCL_SurfaceArea::run(const SampledStructure &structure, cons
   OpenCL::Handles made;
 
   std::size_t number_of_slices = numberOfSlices.value_or(1024);
+  // the estimate divides by it (no slices gave 0 / 0, a not-a-number reported as the area)
+  if (number_of_slices == 0)
+  {
+    throw std::invalid_argument("Integration_SurfaceArea: the number of slices must be at least one\n");
+  }
 
   double3x3 unit_cell = structure.unitCell.cell;
   double3x3 inverse_unit_cell = structure.unitCell.inverseCell;

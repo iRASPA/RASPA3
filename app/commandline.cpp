@@ -490,7 +490,15 @@ void CommandLine::run(int argc, char *argv[])
   catch (::argparser::unknown_option_exception const &e)
   {
     std::cerr << "\u001b[31;1mERROR: " << e.what() << "\u001b[0m\n";
-    opt.display_help();
+    // display_help ends by throwing help_requested_exception: thrown from this handler it escaped the try and
+    // terminated the program
+    try
+    {
+      opt.display_help();
+    }
+    catch (::argparser::help_requested_exception const&)
+    {
+    }
     std::exit(-2);
   }
   // handle all other exceptions
@@ -621,8 +629,14 @@ void CommandLine::run(int argc, char *argv[])
   }
 
   // start running
-  std::vector<std::string> filenames =
-      std::ranges::to<std::vector<std::string>>(std::string_view(input_files) | std::ranges::views::split(' '));
+  // the one positional argument, as given: split on spaces, a path with a space in it was taken for two files, and an
+  // empty one for none, so the analyses asked for ran on nothing and the program exited as if it had succeeded
+  if (input_files.empty())
+  {
+    std::cerr << "\u001b[31;1mERROR: no input CIF file given\u001b[0m\n";
+    std::exit(-1);
+  }
+  const std::vector<std::string> filenames{input_files};
   // a force field chosen on the command line holds for every file; one detected from a file holds for that file
   const std::optional<ForceField> selectedForceField = forceField;
   for (const std::string &filename : filenames)

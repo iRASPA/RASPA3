@@ -339,17 +339,25 @@ void ThermodynamicIntegration::production()
 
     for (std::size_t system_id{0}; System& system : systems)
     {
+      // the virial of this configuration before it is sampled: sampleProperties adds the current excess pressure to
+      // the pressure averages, and computed after it the first cycle sampled no virial and the others an earlier one
+      std::optional<std::pair<EnergyStatus, double3x3>> freshPressure{};
+      std::chrono::steady_clock::duration freshPressureTime{};
+      if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
+      {
+        const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+        freshPressure = system.computeMolecularPressure();
+        system.currentEnergyStatus = freshPressure->first;
+        system.currentExcessPressureTensor = freshPressure->second / system.simulationBox.volume;
+        freshPressureTime = std::chrono::steady_clock::now() - start;
+      }
       system.sampleProperties(system_id, estimation.currentBin, currentCycle);
 
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {
-        std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
-        std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
-        system.currentEnergyStatus = molecularPressure.first;
-        system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-        std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
+        const std::pair<EnergyStatus, double3x3> molecularPressure = *freshPressure;
 
-        system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
+        system.mc_moves_cputime.energyPressureComputation += freshPressureTime;
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }
 

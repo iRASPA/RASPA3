@@ -764,6 +764,18 @@ void MonteCarloTransitionMatrix::production()
 
     for (std::size_t system_id{0}; System& system : systems)
     {
+      // the virial of this configuration before it is sampled: sampleProperties adds the current excess pressure to
+      // the pressure averages, and computed after it the first cycle sampled no virial and the others an earlier one
+      std::optional<std::pair<EnergyStatus, double3x3>> freshPressure{};
+      std::chrono::steady_clock::duration freshPressureTime{};
+      if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
+      {
+        const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+        freshPressure = system.computeMolecularPressure();
+        system.currentEnergyStatus = freshPressure->first;
+        system.currentExcessPressureTensor = freshPressure->second / system.simulationBox.volume;
+        freshPressureTime = std::chrono::steady_clock::now() - start;
+      }
       system.sampleProperties(system_id, estimation.currentBin, currentCycle);
       if (system.forceBasedRDFSampleDue(currentCycle))
       {
@@ -772,13 +784,9 @@ void MonteCarloTransitionMatrix::production()
 
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {
-        std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
-        std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
-        system.currentEnergyStatus = molecularPressure.first;
-        system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-        std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
+        const std::pair<EnergyStatus, double3x3> molecularPressure = *freshPressure;
 
-        system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
+        system.mc_moves_cputime.energyPressureComputation += freshPressureTime;
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }
 
@@ -962,6 +970,13 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
   archive << mc.simulationStage;
 
   archive << mc.systems;
+  // the JSON output so far: its header (version, seed, initial conditions) is written by setup(), which a resumed
+  // run skips, so the final output written after a restart lost it
+  {
+    std::vector<std::string> jsons;
+    for (const nlohmann::json& json : mc.outputJsons) jsons.push_back(json.dump());
+    archive << jsons;
+  }
   archive << mc.random;
 
   archive << mc.fractionalMoleculeSystem;
@@ -1005,6 +1020,12 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarloTr
   archive >> mc.simulationStage;
 
   archive >> mc.systems;
+  {
+    std::vector<std::string> jsons;
+    archive >> jsons;
+    mc.outputJsons.clear();
+    for (const std::string& json : jsons) mc.outputJsons.push_back(nlohmann::json::parse(json));
+  }
   archive >> mc.random;
 
   archive >> mc.fractionalMoleculeSystem;

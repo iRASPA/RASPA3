@@ -304,7 +304,11 @@ void assignAtomElement(std::shared_ptr<SKAsymmetricAtom>& atom, const std::strin
                      std::size_t speciesIndex)
 {
   atom->setDisplayName(chemicalElementString);
-  if (const auto elementIterator = PredefinedElements::atomicNumberData.find(chemicalElementString);
+  // a VASP species label carries its POTCAR variant ('Fe_pv', 'O_s', 'Fe_pv/5ae3c0' in VASP 5.4 and later): the
+  // element is the part before it (the whole label missed the table and took the species index as atomic number,
+  // hydrogen for the first species)
+  const std::string element = chemicalElementString.substr(0, chemicalElementString.find_first_of("_/"));
+  if (const auto elementIterator = PredefinedElements::atomicNumberData.find(element);
       elementIterator != PredefinedElements::atomicNumberData.end())
   {
     atom->setElementIdentifier(elementIterator->second);
