@@ -349,15 +349,8 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
 
   const Component& component = system.components[selectedComponent];
 
-  // only semi-flexible molecules have group states: a fully rigid one (one rigid fragment) has none to drop
-  if (result == MC_Moves::ParticleExchangeResult::Deleted && component.isSemiFlexible())
-  {
-    // drop the rigid-group states of the deleted molecule; the entries of the molecules behind it
-    // shift down so that groupData stays aligned with the molecule layout
-    const std::size_t offset = system.groupDataOffsetOfMolecule(selectedComponent, exchangedMolecule);
-    const auto first = system.groupData.begin() + static_cast<std::ptrdiff_t>(offset);
-    system.groupData.erase(first, first + static_cast<std::ptrdiff_t>(component.numberOfRigidFragments()));
-  }
+  // the rigid-group states of a deleted molecule were dropped with it (System::deleteMolecule keeps groupData aligned
+  // with the molecule layout)
 
   if (result == MC_Moves::ParticleExchangeResult::Inserted)
   {
@@ -384,9 +377,24 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
           states.push_back(state);
         }
       }
+      // System::insertMolecule gave the molecule its derived states (when groupData was in use, else none): they
+      // take the thermal velocities here
       const std::size_t offset = system.groupDataOffsetOfMolecule(selectedComponent, selectedMolecule);
-      system.groupData.insert(system.groupData.begin() + static_cast<std::ptrdiff_t>(offset), states.begin(),
-                              states.end());
+      std::size_t expectedGroups{};
+      for (const Molecule& record : system.moleculeData)
+      {
+        const Component& recordComponent = system.components[record.componentId];
+        if (recordComponent.isSemiFlexible()) expectedGroups += recordComponent.numberOfRigidFragments();
+      }
+      if (system.groupData.size() == expectedGroups)
+      {
+        std::copy(states.begin(), states.end(), system.groupData.begin() + static_cast<std::ptrdiff_t>(offset));
+      }
+      else
+      {
+        system.groupData.insert(system.groupData.begin() + static_cast<std::ptrdiff_t>(offset), states.begin(),
+                                states.end());
+      }
 
       for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
       {

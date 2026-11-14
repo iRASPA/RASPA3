@@ -387,3 +387,52 @@ TEST(MC_CFCMC_FLEXIBLE_CHARGED_DRIFT, gibbs_conventional_fractional_molecule_set
   EXPECT_NEAR(system.ewaldMoveChargeDerivative({})[groupId - 1], 0.5, 1e-12);
   EXPECT_NEAR(system.ewaldMoveChargeDerivative(fractionalMolecule)[groupId - 1], 0.0, 1e-12);
 }
+
+// Two charged ion components, each with its own CFCMC fractional molecule and dU/dlambda group: a swap of one
+// changes the net charge while the other's fractional ion carries group-tagged charge outside the move. The Ewald
+// net-charge correction then contributes 2 u_ion dQ Q'_g to the running dU/dlambda of the other group, which the
+// swap sub-steps left out (no external group charge was passed), so the running dU/dlambda drifted from a full
+// recomputation at every accepted swap.
+TEST(MC_CFCMC_FLEXIBLE_CHARGED_DRIFT, swap_cfcmc_keeps_the_dudlambda_of_another_fractional_ion)
+{
+  const ForceField forceField({{"Na", false, 22.99, 0.6, 0.0, 11, false}, {"Cl", false, 35.45, -0.4, 0.0, 17, false}},
+                              {{15.0, 2.6}, {40.0, 3.4}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0,
+                              true, false, true);
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
+  Component sodium(forceField, "sodium", 0.0, 0.0, 0.0, {Atom({0, 0, 0}, 0.6, 1.0, 0, 0, 0, false, false)}, {}, {}, 5,
+                   21, probabilities, std::nullopt, false);
+  Component chloride(forceField, "chloride", 0.0, 0.0, 0.0, {Atom({0, 0, 0}, -0.4, 1.0, 0, 1, 1, false, false)}, {}, {},
+                     5, 21, probabilities, std::nullopt, false);
+  sodium.lnPartitionFunction = 1.0;
+  chloride.lnPartitionFunction = 1.0;
+  // thermodynamic integration on both: each fractional ion carries its own dU/dlambda group
+  sodium.lambdaGC.computeDUdlambda = true;
+  chloride.lambdaGC.computeDUdlambda = true;
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {sodium, chloride}, {}, {6, 6},
+                5);
+  ASSERT_TRUE(system.forceField.usesEwaldFourier());
+  ASSERT_TRUE(system.components[0].hasFractionalMolecule);
+  ASSERT_TRUE(system.components[1].hasFractionalMolecule);
+  ASSERT_NE(system.components[0].lambdaGC.dUdlambdaGroupId, 0);
+  ASSERT_NE(system.components[1].lambdaGC.dUdlambdaGroupId, 0);
+  system.precomputeTotalRigidEnergy();
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(11);
+  std::size_t fractionalMoleculeSystem = 0;
+  double largestDrift = 0.0;
+  std::size_t numberOfExchanges = 0;
+  for (std::size_t step = 0; step < 3000; ++step)
+  {
+    const std::size_t before = system.numberOfIntegerMoleculesPerComponent[step % 2];
+    MC_Moves::performRandomMoveProduction(random, system, system, step % 2, fractionalMoleculeSystem, 0);
+    if (system.numberOfIntegerMoleculesPerComponent[step % 2] != before) ++numberOfExchanges;
+    const RunningEnergy recomputed = system.computeTotalEnergies();
+    for (std::size_t g = 0; g < 2; ++g)
+      largestDrift =
+          std::max(largestDrift, std::abs(system.runningEnergies.dudlambdaEwald[g] - recomputed.dudlambdaEwald[g]));
+  }
+  ASSERT_GT(numberOfExchanges, 0uz);
+  EXPECT_LT(largestDrift, 1e-6);
+}

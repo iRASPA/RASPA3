@@ -14,6 +14,7 @@ import system;
 import running_energy;
 import ewald_structure_factor;
 import mc_moves_move_types;
+import mc_moves_volume;
 
 std::optional<RunningEnergy> MC_Moves::translationSmartMCMoveAll(RandomNumber &random, System &system)
 {
@@ -165,7 +166,10 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMoveAll(RandomNumber &r
 
   const RunningEnergy energyDifference = newEnergy - oldEnergy;
 
-  if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + logBias))
+  // a configuration a CBMC move could not retrace (a pair, framework or external-field energy above the overlap
+  // criterion: outside a confining wall, on an atom) is refused as the volume move refuses it
+  if (!MC_Moves::volumeTrialOverlaps(system, newEnergy) &&
+      random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + logBias))
   {
     system.mc_moves_statistics.addAccepted(move);
 

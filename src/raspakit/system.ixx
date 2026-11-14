@@ -622,6 +622,33 @@ export struct System
     return derivative;
   }
 
+  /// The same for a sub-step of a chained move ('netChargeDerivativeExternal' of 'energyDifferenceEwaldFourier'):
+  /// the dU/dlambda-group charges of the molecule atoms other than the molecules 'replaced' (system atoms, as they are
+  /// now: the sub-step's own molecule, and those earlier sub-steps took out), plus those of the trial molecules
+  /// 'added' by earlier sub-steps and not yet in the system. Every dU/dlambda-tagged charge outside the sub-step
+  /// counts, the fractional molecules of other moves included: passing only the move's own partners (or nothing)
+  /// drifted the running dU/dlambda of the net-charge correction whenever a sub-step changed the net charge.
+  [[nodiscard]] std::array<double, maximumNumberOfDUDlambdaGroups> ewaldMoveChargeDerivative(
+      std::span<const std::span<const Atom>> replaced, std::span<const std::span<const Atom>> added) const
+  {
+    std::array<double, maximumNumberOfDUDlambdaGroups> derivative = ewaldMoveChargeDerivative({});
+    for (const std::span<const Atom>& atoms : replaced)
+    {
+      for (const Atom& atom : atoms)
+      {
+        if (atom.groupId != 0) derivative[atom.groupId - 1] -= atom.charge;
+      }
+    }
+    for (const std::span<const Atom>& atoms : added)
+    {
+      for (const Atom& atom : atoms)
+      {
+        if (atom.groupId != 0) derivative[atom.groupId - 1] += atom.charge;
+      }
+    }
+    return derivative;
+  }
+
   // --- transition-matrix Monte Carlo (TMMC) ------------------------------------------------------
   // The macrostate is the molecule count of one component, the adsorbate. A cation beside it is a
   // component too, picked for its own moves, but the matrix is not of its count: its moves must neither
@@ -872,6 +899,12 @@ export struct System
   std::span<const GroupState> spanOfGroupData() const;
   /// The index in 'groupData' of the first rigid-fragment state of molecule 'moleculeId' of component 'componentId'.
   std::size_t groupDataOffsetOfMolecule(std::size_t componentId, std::size_t moleculeId) const;
+  /// Keeps 'groupData' (when in use) aligned with the molecules as they are inserted, deleted, moved and exchanged:
+  /// the rigid-fragment states of an inserted molecule are derived from its atoms (as 'initializeGroupData' derives
+  /// a fresh state), those of a deleted one are removed. A misaligned 'groupData' was read past its end by the kinetic
+  /// energies, and grafted the momenta of one molecule onto another.
+  void groupDataMoleculeInserted(std::size_t selectedComponent, std::size_t moleculeIndex);
+  void groupDataMoleculeDeleted(std::size_t selectedComponent, std::size_t moleculeIndex);
   std::span<GroupState> spanOfFrameworkGroupData();
   std::span<const GroupState> spanOfFrameworkGroupData() const;
   std::span<double> spanOfMoleculeElectrostaticPotential();

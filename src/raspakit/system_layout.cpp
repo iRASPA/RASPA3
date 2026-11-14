@@ -314,6 +314,31 @@ std::size_t System::groupDataOffsetOfMolecule(std::size_t componentId, std::size
   return offset + moleculeId * groupsPerMolecule(componentId);
 }
 
+void System::groupDataMoleculeInserted(std::size_t selectedComponent, std::size_t moleculeIndex)
+{
+  const Component& component = components[selectedComponent];
+  if (groupData.empty() || !component.isSemiFlexible()) return;
+  const std::size_t offset = groupDataOffsetOfMolecule(selectedComponent, moleculeIndex);
+  const std::span<const Atom> atoms = spanOfMolecule(selectedComponent, moleculeIndex);
+  std::vector<GroupState> states;
+  states.reserve(component.numberOfRigidFragments());
+  for (std::size_t g = 0; g != component.fragmentGraph.fragments.size(); ++g)
+  {
+    if (component.fragmentGraph.fragments[g].isRigidBody()) states.push_back(component.deriveFragmentState(g, atoms));
+  }
+  groupData.insert(groupData.begin() + static_cast<std::ptrdiff_t>(offset), states.begin(), states.end());
+}
+
+void System::groupDataMoleculeDeleted(std::size_t selectedComponent, std::size_t moleculeIndex)
+{
+  const Component& component = components[selectedComponent];
+  if (groupData.empty() || !component.isSemiFlexible()) return;
+  const std::size_t offset = groupDataOffsetOfMolecule(selectedComponent, moleculeIndex);
+  const std::ptrdiff_t begin = static_cast<std::ptrdiff_t>(offset);
+  groupData.erase(groupData.begin() + begin,
+                  groupData.begin() + begin + static_cast<std::ptrdiff_t>(component.numberOfRigidFragments()));
+}
+
 void System::initializeFrameworkGroupData()
 {
   if (!framework.has_value() || framework->numberOfRigidGroups() == 0)

@@ -218,7 +218,8 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
   {
     energyFourierDifference += Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, system.components, member.atoms, {}, runningNetCharge);
+        system.simulationBox, system.components, member.atoms, {}, runningNetCharge,
+        system.ewaldMoveChargeDerivative({}));
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
     if (!system.forceField.omitInterInteractions) runningNetCharge += system.components[member.componentId].netCharge;
@@ -618,7 +619,8 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
   {
     energyFourierDifference += Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, system.components, {}, members[i].atoms, runningNetCharge);
+        system.simulationBox, system.components, {}, members[i].atoms, runningNetCharge,
+        system.ewaldMoveChargeDerivative(members[i].atoms));
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
     if (!system.forceField.omitInterInteractions)

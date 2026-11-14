@@ -401,6 +401,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Transi
 
   archive << m.statisticsFileName;
   archive << m.numberOfLambdaBins;
+  archive << m.currentLambdaBin;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -449,6 +450,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, TransitionMa
 
   archive >> m.statisticsFileName;
   archive >> m.numberOfLambdaBins;
+  archive >> m.currentLambdaBin;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

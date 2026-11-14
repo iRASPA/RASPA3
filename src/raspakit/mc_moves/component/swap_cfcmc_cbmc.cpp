@@ -193,7 +193,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                 return Interactions::energyDifferenceEwaldFourier(
                     system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
                     system.forceField, system.simulationBox, system.components, fractionalMolecule,
-                    oldFractionalMolecule, runningNetCharge);
+                    oldFractionalMolecule, runningNetCharge, system.ewaldMoveChargeDerivative(fractionalMolecule));
               });
     EwaldEnergyDifference += system.intraCoulombRescaleDifference(fractionalMolecule, oldFractionalMolecule);
     // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
@@ -259,7 +259,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                 return Interactions::energyDifferenceEwaldFourier(
                     system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
                     system.forceField, system.simulationBox, system.components,
-                    std::span(growData->atoms.begin(), growData->atoms.end()), {}, runningNetCharge);
+                    std::span(growData->atoms.begin(), growData->atoms.end()), {}, runningNetCharge,
+                    system.ewaldMoveChargeDerivative({}));
               });
 
     // Compute tail-correction energy contribution for the new molecule (threaded counts include the step-1 change).
@@ -453,14 +454,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       // Compute Ewald energy difference for the retraced molecule (net charge threaded across the two sub-steps,
       // see insertion)
       double runningNetCharge = system.ewaldMoveNetCharge();
-      RunningEnergy energyFourierDifference = timed(
-          system, component, move, Move::Timing::DeletionEwald,
-          [&]
-          {
-            return Interactions::energyDifferenceEwaldFourier(
-                system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                system.forceField, system.simulationBox, system.components, {}, fractionalMolecule, runningNetCharge);
-          });
+      RunningEnergy energyFourierDifference =
+          timed(system, component, move, Move::Timing::DeletionEwald,
+                [&]
+                {
+                  return Interactions::energyDifferenceEwaldFourier(
+                      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                      system.forceField, system.simulationBox, system.components, {}, fractionalMolecule,
+                      runningNetCharge, system.ewaldMoveChargeDerivative(fractionalMolecule));
+                });
       // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
       if (!system.forceField.omitInterInteractions)
         runningNetCharge += Interactions::scaledNetChargeDifference({}, fractionalMolecule);
@@ -584,15 +586,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       }
 
       // Compute Ewald energy contribution for the new fractional molecule
-      RunningEnergy EwaldEnergyDifference =
-          timed(system, component, move, Move::Timing::DeletionEwald,
-                [&]
-                {
-                  return Interactions::energyDifferenceEwaldFourier(
-                      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
-                      system.forceField, system.simulationBox, system.components, newFractionalMolecule,
-                      savedFractionalMolecule, runningNetCharge);
-                });
+      RunningEnergy EwaldEnergyDifference = timed(
+          system, component, move, Move::Timing::DeletionEwald,
+          [&]
+          {
+            return Interactions::energyDifferenceEwaldFourier(
+                system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
+                system.forceField, system.simulationBox, system.components, newFractionalMolecule,
+                savedFractionalMolecule, runningNetCharge, system.ewaldMoveChargeDerivative(newFractionalMolecule));
+          });
       EwaldEnergyDifference += system.intraCoulombRescaleDifference(newFractionalMolecule, savedFractionalMolecule);
 
       // Compute tail-correction energy contribution for the new fractional molecule (threaded counts include step 1).

@@ -85,6 +85,7 @@ void System::insertFractionalMoleculeAtIndex(std::size_t selectedComponent, std:
   }
 
   updateMoleculeAtomInformation(selectedComponent);
+  groupDataMoleculeInserted(selectedComponent, moleculeIndex);
 }
 
 void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
@@ -167,6 +168,7 @@ void System::insertMolecule(std::size_t selectedComponent, [[maybe_unused]] cons
   }
 
   updateMoleculeAtomInformation(selectedComponent);
+  groupDataMoleculeInserted(selectedComponent, numberOfMoleculesPerComponent[selectedComponent] - 1);
 }
 
 void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
@@ -213,6 +215,7 @@ void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_u
   }
 
   updateMoleculeAtomInformation(selectedComponent);
+  groupDataMoleculeInserted(selectedComponent, numberOfMoleculesPerComponent[selectedComponent] - 1);
 }
 
 void System::insertSerialReactionFractionalMolecule(std::size_t selectedComponent, std::size_t moleculeIndex,
@@ -232,6 +235,7 @@ void System::deleteFractionalMolecule(std::size_t selectedComponent, std::size_t
                                       const std::span<Atom> molecule)
 {
   checkPolymerLayoutIsFixed("a molecule was inserted, deleted or moved");
+  groupDataMoleculeDeleted(selectedComponent, selectedMolecule);
   for (const Atom& atom : molecule)
   {
     numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] -= 1;
@@ -280,6 +284,7 @@ void System::deleteFractionalMolecule(std::size_t selectedComponent, std::size_t
 void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedMolecule, const std::span<Atom> molecule)
 {
   checkPolymerLayoutIsFixed("a molecule was inserted, deleted or moved");
+  groupDataMoleculeDeleted(selectedComponent, selectedMolecule);
   // Update the number of pseudo atoms per type (used for tail-corrections)
   for (const Atom& atom : molecule)
   {
@@ -393,6 +398,16 @@ void System::moveMolecule(std::size_t selectedComponent, std::size_t moleculeInd
   const std::ptrdiff_t middleRecord = (moleculeIndex < newIndex) ? firstRecord + 1 : lastRecord - 1;
   std::rotate(moleculeData.begin() + firstRecord, moleculeData.begin() + middleRecord,
               moleculeData.begin() + lastRecord);
+  // and so do their rigid-fragment states
+  if (!groupData.empty() && components[selectedComponent].isSemiFlexible())
+  {
+    const std::ptrdiff_t groups = static_cast<std::ptrdiff_t>(components[selectedComponent].numberOfRigidFragments());
+    const std::ptrdiff_t firstGroup =
+        static_cast<std::ptrdiff_t>(groupDataOffsetOfMolecule(selectedComponent, lowIndex));
+    const std::ptrdiff_t lastGroup = firstGroup + static_cast<std::ptrdiff_t>(highIndex - lowIndex + 1) * groups;
+    const std::ptrdiff_t middleGroup = (moleculeIndex < newIndex) ? firstGroup + groups : lastGroup - groups;
+    std::rotate(groupData.begin() + firstGroup, groupData.begin() + middleGroup, groupData.begin() + lastGroup);
+  }
 
   // the sites of the moved molecule and of the molecules in between are renumbered
   crossLinks.moleculeMoved(selectedComponent, moleculeIndex, newIndex);
@@ -438,6 +453,30 @@ void System::exchangeMolecule(System& other, std::size_t selectedComponent, std:
   for (Atom& atom : otherAtoms) atom.moleculeId = static_cast<std::uint32_t>(otherIndex);
   std::swap(moleculeData[index], other.moleculeData[otherIndex]);
   std::swap(moleculeData[index].atomIndex, other.moleculeData[otherIndex].atomIndex);
+
+  // the rigid-fragment states follow their molecules; a side without them (or one of the two) derives them afresh
+  if (components[selectedComponent].isSemiFlexible())
+  {
+    const std::ptrdiff_t groups = static_cast<std::ptrdiff_t>(components[selectedComponent].numberOfRigidFragments());
+    const std::ptrdiff_t first = static_cast<std::ptrdiff_t>(groupDataOffsetOfMolecule(selectedComponent, molecule));
+    const std::ptrdiff_t otherFirst =
+        static_cast<std::ptrdiff_t>(other.groupDataOffsetOfMolecule(selectedComponent, otherMolecule));
+    if (!groupData.empty() && !other.groupData.empty())
+    {
+      std::swap_ranges(groupData.begin() + first, groupData.begin() + first + groups,
+                       other.groupData.begin() + otherFirst);
+    }
+    else
+    {
+      for (System* side : {this, &other})
+      {
+        if (side->groupData.empty()) continue;
+        const std::size_t slot = side == this ? molecule : otherMolecule;
+        side->groupDataMoleculeDeleted(selectedComponent, slot);
+        side->groupDataMoleculeInserted(selectedComponent, slot);
+      }
+    }
+  }
 
   // the cross-link sites follow their molecules; a link can not reach into another system
   if (&other == this)

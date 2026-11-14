@@ -20,6 +20,7 @@ import mc_moves_move_types;
 import mc_moves_probabilities;
 import json;
 import monte_carlo;
+import transition_matrix;
 import molecular_dynamics;
 
 // Binary restart round trips of the state that a restart read used to lose: the unit-cell data of a framework,
@@ -202,4 +203,17 @@ TEST(BINARY_RESTART_ROUND_TRIP, component_keeps_its_state_point_fields)
   EXPECT_EQ(restored.lnPartitionFunctionSpecies, std::optional<std::string>("CH4"));
   EXPECT_TRUE(restored.lnPartitionFunctionFromJANAF);
   EXPECT_TRUE(restored.fugacityCoefficientGiven);
+}
+
+// The lambda bin of a joint (N, lambda) transition matrix is restored with it; it came back as bin 0, and the restored
+// matrix was not equal to the one written.
+TEST(BINARY_RESTART_ROUND_TRIP, transition_matrix_keeps_its_lambda_bin)
+{
+  TransitionMatrix original;
+  original.numberOfLambdaBins = 5;
+  original.currentLambdaBin = 3;
+  TransitionMatrix restored;
+  roundTrip(original, restored, "transition_matrix");
+  EXPECT_EQ(restored.currentLambdaBin, 3uz);
+  EXPECT_TRUE(restored == original);
 }

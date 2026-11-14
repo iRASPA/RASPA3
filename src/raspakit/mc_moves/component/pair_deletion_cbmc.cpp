@@ -237,7 +237,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, system.components, {}, oldMoleculeA,
       system.ewaldMoveNetCharge() -
-          (system.forceField.omitInterInteractions ? 0.0 : system.components[componentB].netCharge));
+          (system.forceField.omitInterInteractions ? 0.0 : system.components[componentB].netCharge),
+      // the dU/dlambda-tagged charge besides A and B (B was taken out by step B)
+      system.ewaldMoveChargeDerivative(std::array<std::span<const Atom>, 2>{std::span<const Atom>(oldMoleculeA),
+                                                                            std::span<const Atom>(oldMoleculeB)},
+                                       {}));
   system.storedEik = savedStoredEik;
   system.trialEik = savedTrialEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
@@ -486,7 +490,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, system.components, {}, oldMoleculeA,
       system.ewaldMoveNetCharge() -
-          (system.forceField.omitInterInteractions ? 0.0 : system.components[componentB].netCharge));
+          (system.forceField.omitInterInteractions ? 0.0 : system.components[componentB].netCharge),
+      // the dU/dlambda-tagged charge besides A and B (B was taken out by step B)
+      system.ewaldMoveChargeDerivative(std::array<std::span<const Atom>, 2>{std::span<const Atom>(oldMoleculeA),
+                                                                            std::span<const Atom>(oldMoleculeB)},
+                                       {}));
   system.storedEik = savedStoredEik;
   system.trialEik = savedTrialEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;

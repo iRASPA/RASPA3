@@ -21,6 +21,7 @@ import interactions_ewald;
 import interactions_intermolecular;
 import interactions_framework_molecule;
 import mc_moves_move_types;
+import mc_moves_volume;
 import simulationbox;
 import double3;
 import spatial_decomposition_settings;
@@ -225,7 +226,9 @@ std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System
   system.mc_moves_cputime[move][Move::Timing::Energy] += (std::chrono::steady_clock::now() - time_energy);
   const double deltaH = (finalEnergy.potentialEnergy() + finalKinetic) - (oldEnergy.potentialEnergy() + initialKinetic);
 
-  if (random.uniform() < std::exp(-system.beta * deltaH))
+  // a configuration a CBMC move could not retrace (a pair, framework or external-field energy above the overlap
+  // criterion: outside a confining wall, on an atom) is refused as the volume move refuses it
+  if (!MC_Moves::volumeTrialOverlaps(system, finalEnergy) && random.uniform() < std::exp(-system.beta * deltaH))
   {
     system.mc_moves_statistics.addAccepted(move);
     // the adaptive HMC step size is a property of the move, not of the system (the MD drivers read 'timeStep')
@@ -475,7 +478,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   const double deltaH = (newEnergy.potentialEnergy() + finalKinetic) - (oldEnergy.potentialEnergy() + initialKinetic);
 
   // accept or reject based on energy difference
-  if (random.uniform() < std::exp(-system.beta * deltaH))
+  if (!MC_Moves::volumeTrialOverlaps(system, newEnergy) && random.uniform() < std::exp(-system.beta * deltaH))
   {
     system.mc_moves_statistics.addAccepted(move);
 

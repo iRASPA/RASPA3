@@ -102,23 +102,6 @@ double scaledChargeDifference(std::span<const Atom> newAtoms, std::span<const At
   return charge;
 }
 
-// per-group summed (unscaled) charge of the dU/dlambda group-tagged atoms of a set of spans;
-// used as the 'external' charge derivative for the net-charge correction when one member of the
-// group is updated (integer or switched-off atoms carry no tag and drop out automatically)
-std::array<double, maximumNumberOfDUDlambdaGroups> groupChargeSumOfSpans(
-    const std::vector<std::span<const Atom>>& spans)
-{
-  std::array<double, maximumNumberOfDUDlambdaGroups> charge{};
-  for (std::span<const Atom> atoms : spans)
-  {
-    for (const Atom& atom : atoms)
-    {
-      if (atom.groupId != 0) charge[atom.groupId - 1] += atom.charge;
-    }
-  }
-  return charge;
-}
-
 // external-field + framework + intermolecular energy difference for replacing 'oldAtoms' by 'newAtoms'
 std::optional<RunningEnergy> computeNonEwaldEnergyDifference(System& system, std::span<const Atom> newAtoms,
                                                              std::span<const Atom> oldAtoms,
@@ -232,18 +215,6 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     }
   };
 
-  // 'external' group-tagged charge of all group members except 'excluded', in their current state
-  auto groupChargeSumOfOthers = [&](std::size_t excluded)
-  {
-    std::vector<std::span<const Atom>> spans;
-    spans.reserve(groupSize);
-    for (std::size_t j = 0; j < groupSize; ++j)
-    {
-      if (j != excluded) spans.push_back(fractionalMolecules[j]);
-    }
-    return groupChargeSumOfSpans(spans);
-  };
-
   // Snapshot the committed effective type counts; threaded across the sequential tail sub-steps of the move.
   std::vector<double> tailEffectiveCounts = system.effectiveNumberOfPseudoAtomsVDW;
   std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupCounts =
@@ -301,16 +272,16 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
       energyDifference += nonEwaldDifference.value();
 
       MC_Moves::timed(central, system, move, Move::Timing::InsertionEwald,
-            [&]
-            {
-              energyDifference += Interactions::energyDifferenceEwaldFourier(
-                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                  firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField,
-                  system.simulationBox, system.components, fractionalMolecules[i], oldFractionalMolecules[i], runningNetCharge,
-                  groupChargeSumOfOthers(i));
-              energyDifference +=
-                  system.intraCoulombRescaleDifference(fractionalMolecules[i], oldFractionalMolecules[i]);
-            });
+                      [&]
+                      {
+                        energyDifference += Interactions::energyDifferenceEwaldFourier(
+                            system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                            firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField,
+                            system.simulationBox, system.components, fractionalMolecules[i], oldFractionalMolecules[i],
+                            runningNetCharge, system.ewaldMoveChargeDerivative(fractionalMolecules[i]));
+                        energyDifference +=
+                            system.intraCoulombRescaleDifference(fractionalMolecules[i], oldFractionalMolecules[i]);
+                      });
       firstEwaldCall = false;
       // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
       if (!system.forceField.omitInterInteractions)
@@ -457,7 +428,8 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
 
       trialExtraDifference += Interactions::energyDifferenceEwaldFourier(
           system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik, system.forceField,
-          system.simulationBox, system.components, trialAtoms[i], {}, runningNetCharge, groupChargeSumOfSpans(earlierTrials));
+          system.simulationBox, system.components, trialAtoms[i], {}, runningNetCharge,
+          system.ewaldMoveChargeDerivative({}, earlierTrials));
       // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
       if (!system.forceField.omitInterInteractions) runningNetCharge += scaledChargeDifference(trialAtoms[i], {});
     }
@@ -836,13 +808,14 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     bool firstEwaldCall = true;
     for (std::size_t i = 0; i < groupSize; ++i)
     {
-      std::vector<std::span<const Atom>> laterMembers;
-      for (std::size_t j = i + 1; j < groupSize; ++j) laterMembers.push_back(oldFractionalMolecules[j]);
+      // the members removed so far and this one (still in the system, in their old state)
+      std::vector<std::span<const Atom>> removedMembers;
+      for (std::size_t j = 0; j <= i; ++j) removedMembers.push_back(oldFractionalMolecules[j]);
 
       removalExtraDifference += Interactions::energyDifferenceEwaldFourier(
-          system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-          firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField, system.simulationBox, system.components,
-          {}, oldFractionalMolecules[i], runningNetCharge, groupChargeSumOfSpans(laterMembers));
+          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, firstEwaldCall ? system.storedEik : system.trialEik,
+          system.trialEik, system.forceField, system.simulationBox, system.components, {}, oldFractionalMolecules[i],
+          runningNetCharge, system.ewaldMoveChargeDerivative(removedMembers, {}));
       firstEwaldCall = false;
       // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
       if (!system.forceField.omitInterInteractions)
@@ -922,19 +895,17 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
       }
       energyDifference += nonEwaldDifference.value();
 
-      std::vector<std::span<const Atom>> earlierMembers;
-      for (std::size_t j = 0; j < i; ++j) earlierMembers.push_back(newFractionalMolecules[j]);
-
       MC_Moves::timed(central, system, move, Move::Timing::DeletionEwald,
-            [&]
-            {
-              energyDifference += Interactions::energyDifferenceEwaldFourier(
-                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
-                  system.forceField, system.simulationBox, system.components, newFractionalMolecules[i], oldNewFractionalMolecules[i],
-                  runningNetCharge, groupChargeSumOfSpans(earlierMembers));
-              energyDifference +=
-                  system.intraCoulombRescaleDifference(newFractionalMolecules[i], oldNewFractionalMolecules[i]);
-            });
+                      [&]
+                      {
+                        energyDifference += Interactions::energyDifferenceEwaldFourier(
+                            system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.trialEik, system.trialEik,
+                            system.forceField, system.simulationBox, system.components, newFractionalMolecules[i],
+                            oldNewFractionalMolecules[i], runningNetCharge,
+                            system.ewaldMoveChargeDerivative(newFractionalMolecules[i]));
+                        energyDifference += system.intraCoulombRescaleDifference(newFractionalMolecules[i],
+                                                                                 oldNewFractionalMolecules[i]);
+                      });
       // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
       if (!system.forceField.omitInterInteractions)
         runningNetCharge += scaledChargeDifference(newFractionalMolecules[i], oldNewFractionalMolecules[i]);
@@ -1121,16 +1092,16 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
       energyDifference += nonEwaldDifference.value();
 
       MC_Moves::timed(central, system, move, Move::Timing::LambdaEwald,
-            [&]
-            {
-              energyDifference += Interactions::energyDifferenceEwaldFourier(
-                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                  firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField,
-                  system.simulationBox, system.components, fractionalMolecules[i], oldFractionalMolecules[i], runningNetCharge,
-                  groupChargeSumOfOthers(i));
-              energyDifference +=
-                  system.intraCoulombRescaleDifference(fractionalMolecules[i], oldFractionalMolecules[i]);
-            });
+                      [&]
+                      {
+                        energyDifference += Interactions::energyDifferenceEwaldFourier(
+                            system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                            firstEwaldCall ? system.storedEik : system.trialEik, system.trialEik, system.forceField,
+                            system.simulationBox, system.components, fractionalMolecules[i], oldFractionalMolecules[i],
+                            runningNetCharge, system.ewaldMoveChargeDerivative(fractionalMolecules[i]));
+                        energyDifference +=
+                            system.intraCoulombRescaleDifference(fractionalMolecules[i], oldFractionalMolecules[i]);
+                      });
       firstEwaldCall = false;
       // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
       if (!system.forceField.omitInterInteractions)

@@ -1254,6 +1254,7 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularPolarizationElec
   double rr;
 
   RunningEnergy energySum{};
+  bool overlap = false;
 
   if (forceField.omitInterInteractions) return energySum;
   // the energy difference is computed regardless; only the field accumulation follows the polarization switch
@@ -1299,7 +1300,9 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularPolarizationElec
         {
           Potentials::PairDerivatives<0> energyFactor =
               Potentials::potentialVDW<0>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
-          if (checkOverlap && energyFactor.energy > overlapCriteria) return std::nullopt;
+          // an overlap is reported at the end: the field deltas are completed first, so that a caller that applies
+          // them (most ignore the energy) is not left with the new-atom part added and the old-atom part missing
+          if (checkOverlap && energyFactor.energy > overlapCriteria) overlap = true;
 
           energySum.moleculeMoleculeVDW += energyFactor.energy;
           energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
@@ -1391,5 +1394,6 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularPolarizationElec
     }
   }
 
+  if (overlap) return std::nullopt;
   return std::optional{energySum};
 }

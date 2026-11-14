@@ -144,7 +144,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, system.components, newMoleculeB, {},
       system.ewaldMoveNetCharge() +
-          (system.forceField.omitInterInteractions ? 0.0 : system.components[selectedComponent].netCharge));
+          (system.forceField.omitInterInteractions ? 0.0 : system.components[selectedComponent].netCharge),
+      // the dU/dlambda-tagged charge besides B: the system's, and that of A, which step A added
+      system.ewaldMoveChargeDerivative({}, std::array<std::span<const Atom>, 1>{std::span<const Atom>(newMoleculeA)}));
   system.storedEik = savedStoredEik;
   system.trialEik = savedTrialEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;
@@ -396,7 +398,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, system.components, newMoleculeB, {},
       system.ewaldMoveNetCharge() +
-          (system.forceField.omitInterInteractions ? 0.0 : system.components[selectedComponent].netCharge));
+          (system.forceField.omitInterInteractions ? 0.0 : system.components[selectedComponent].netCharge),
+      // the dU/dlambda-tagged charge besides B: the system's, and that of A, which step A added
+      system.ewaldMoveChargeDerivative({}, std::array<std::span<const Atom>, 1>{std::span<const Atom>(newMoleculeA)}));
   system.storedEik = savedStoredEik;
   system.trialEik = savedTrialEik;
   RunningEnergy energyFourierDifference = energyFourierDifferenceA + energyFourierDifferenceB;

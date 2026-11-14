@@ -91,6 +91,11 @@ std::optional<CBMC::StepTrialEnergy> CBMC::evaluateStepTrial(const GrowContext &
 double CBMC::unsampledInternalLogFactor(double beta, const GrowStep &step, const std::vector<Atom> &chainAtoms)
 {
   if (stepHandlesUnsampledInternalTerms(step)) return 0.0;
+  // The terms among the beads of the seed fragment are a constant of its (rigid or single-bead) geometry: they cancel
+  // against the single-molecule partition function and are left out, as the conventional swap and the device
+  // multi-trial grower leave them out. A rigid component has no ideal-gas Rosenbluth weight to cancel them, and its
+  // CBMC insertions were weighted by exp(-beta U) of its constant internal terms.
+  if (step.kind == GrowStep::Kind::PlaceSeedFragment) return 0.0;
   return -beta * step.intra.computeInternalEnergiesNotSampledDuringGrowth(chainAtoms).potentialEnergy();
 }
 

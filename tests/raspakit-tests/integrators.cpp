@@ -2294,3 +2294,32 @@ TEST(integrators, group_data_holds_only_the_semi_flexible_molecules)
   const double3 com = system.groupData[system.groupDataOffsetOfMolecule(1, 0)].centerOfMassPosition;
   EXPECT_NEAR((com - expected).length(), 0.0, 1e-12);
 }
+
+// The rigid-fragment states of the semi-flexible molecules follow the molecules through insertions and deletions:
+// an inserted molecule gets its own state (groupData was one molecule short, and the kinetic energies read past its
+// end), and deleting a molecule removes its state, so the others keep theirs (an equal number of deletions and
+// insertions used to graft the momenta of one molecule onto another).
+TEST(system, group_data_follows_inserted_and_deleted_molecules)
+{
+  System system = makeSemiFlexibleChainSystem();
+  ASSERT_TRUE(system.components[0].isSemiFlexible());
+  ASSERT_EQ(system.components[0].numberOfRigidFragments(), 1uz);
+  system.initializeGroupData();
+  ASSERT_EQ(system.groupData.size(), 2uz);
+  system.groupData[0].velocity = double3(1.0, 0.0, 0.0);
+  system.groupData[1].velocity = double3(0.0, 2.0, 0.0);
+
+  std::vector<Atom> atoms(system.spanOfMolecule(0, 1).begin(), system.spanOfMolecule(0, 1).end());
+  for (Atom& atom : atoms) atom.position += double3(0.0, 0.0, 5.0);
+  Molecule molecule = system.moleculeData[1];
+  molecule.centerOfMassPosition += double3(0.0, 0.0, 5.0);
+  system.insertMolecule(0, molecule, atoms);
+  ASSERT_EQ(system.groupData.size(), 3uz);
+  EXPECT_EQ(system.groupData[0].velocity.x, 1.0);
+  EXPECT_EQ(system.groupData[1].velocity.y, 2.0);
+  EXPECT_NEAR(system.groupData[2].centerOfMassPosition.z, system.groupData[1].centerOfMassPosition.z + 5.0, 1e-9);
+
+  system.deleteMolecule(0, 0, system.spanOfMolecule(0, 0));
+  ASSERT_EQ(system.groupData.size(), 2uz);
+  EXPECT_EQ(system.groupData[0].velocity.y, 2.0);
+}

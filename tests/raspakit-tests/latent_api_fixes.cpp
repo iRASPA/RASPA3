@@ -26,6 +26,9 @@ import json;
 import bond_potential;
 import distance_potential_gradient_hessian_strain;
 import bend_potential;
+import urey_bradley_potential;
+import cbmc_chain_common;
+import cbmc_grow_step;
 import randomnumbers;
 import property_lambda_probability_histogram;
 import property_volume_evolution;
@@ -350,4 +353,48 @@ TEST(latent_api_fixes, core_shell_spring_hessian_is_p0_at_zero_separation)
     EXPECT_EQ(std::to_string(f1), std::to_string(1500.0)) << separation;
     EXPECT_EQ(std::to_string(f2), std::to_string(0.0)) << separation;
   }
+}
+
+// On an overlap the polarization field difference still completes its field deltas (the removed old position
+// included) before it reports the overlap: the moves that apply the deltas whatever the energy is were left with the
+// new position's field added and the old one's never taken out.
+TEST(latent_api_fixes, polarization_field_difference_is_complete_on_an_overlap)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  forceField.chargeMethod = ForceField::ChargeMethod::Coulomb;
+  forceField.computePolarization = true;
+  forceField.omitInterPolarization = false;
+  const SimulationBox box(30.0, 30.0, 30.0);
+  const std::vector<Atom> neighbours{Atom(double3(10.0, 10.0, 10.0), 0.5, 1.0, 1.0, 0, 6, 0, 0, false)};
+  const std::vector<Atom> newAtoms{Atom(double3(10.2, 10.0, 10.0), -0.5, 1.0, 1.0, 1, 6, 0, 0, false)};
+  const std::vector<Atom> oldAtoms{Atom(double3(15.0, 10.0, 10.0), -0.5, 1.0, 1.0, 1, 6, 0, 0, false)};
+
+  auto deltas = [&](bool checkOverlap)
+  {
+    std::vector<double3> neighbour(1), moleculeNew(1), moleculeOld(1);
+    const std::optional<RunningEnergy> energy = Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+        forceField, box, neighbour, moleculeNew, moleculeOld, neighbours, newAtoms, oldAtoms, checkOverlap);
+    return std::pair{energy.has_value(), neighbour[0]};
+  };
+  const auto [checkedHasValue, checked] = deltas(true);
+  const auto [uncheckedHasValue, unchecked] = deltas(false);
+  EXPECT_FALSE(checkedHasValue);
+  EXPECT_TRUE(uncheckedHasValue);
+  EXPECT_NEAR(checked.x, unchecked.x, 1e-12 * std::abs(unchecked.x));
+}
+
+// The internal terms among the beads of the seed fragment (a rigid molecule's Urey-Bradley term here) are a constant
+// of its geometry and leave the CBMC weight alone; an attach step still weighs the terms it does not sample.
+TEST(latent_api_fixes, cbmc_seed_step_leaves_its_constant_internal_terms_out_of_the_weight)
+{
+  std::vector<Atom> atoms{Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 1.0, 0, 0, 0, 0, false),
+                          Atom(double3(2.0, 0.0, 0.0), 0.0, 1.0, 1.0, 0, 0, 0, 0, false)};
+  CBMC::GrowStep step;
+  step.kind = CBMC::GrowStep::Kind::PlaceSeedFragment;
+  step.nextBeads = {0, 1};
+  step.intra.ureyBradleys.push_back(UreyBradleyPotential({0, 1}, UreyBradleyType::Harmonic, {1000.0, 1.5}));
+  EXPECT_EQ(CBMC::unsampledInternalLogFactor(1.0, step, atoms), 0.0);
+  step.kind = CBMC::GrowStep::Kind::AttachFragment;
+  step.rigidBody = true;
+  EXPECT_LT(CBMC::unsampledInternalLogFactor(1.0, step, atoms), 0.0);
 }

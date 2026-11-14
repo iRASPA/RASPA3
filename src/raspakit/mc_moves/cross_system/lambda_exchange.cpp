@@ -90,17 +90,6 @@ static double scaledChargeDifference(std::span<const Atom> newAtoms, std::span<c
   return charge;
 }
 
-// per-group summed (unscaled) charge of the dU/dlambda group-tagged atoms
-static std::array<double, maximumNumberOfDUDlambdaGroups> groupChargeSum(std::span<const Atom> atoms)
-{
-  std::array<double, maximumNumberOfDUDlambdaGroups> charge{};
-  for (const Atom &atom : atoms)
-  {
-    if (atom.groupId != 0) charge[atom.groupId - 1] += atom.charge;
-  }
-  return charge;
-}
-
 // external-field + framework + intermolecular energy difference for replacing 'oldAtoms' by 'newAtoms'
 static std::optional<RunningEnergy> computeNonEwaldEnergyDifference(System &system, std::span<const Atom> newAtoms,
                                                                     std::span<const Atom> oldAtoms)
@@ -172,15 +161,6 @@ static std::optional<LambdaRescaleTrial> rescaleToLambda(System &system, std::si
     trial.oldAtoms.emplace_back(molecule.begin(), molecule.end());
   }
 
-  // group-tagged charge of all pinned molecules; per-molecule the 'external' part is the total
-  // minus its own contribution (needed for the dU/dlambda-consistent Ewald net-charge correction)
-  std::array<double, maximumNumberOfDUDlambdaGroups> totalGroupCharge{};
-  for (const std::vector<Atom> &oldMolecule : trial.oldAtoms)
-  {
-    const std::array<double, maximumNumberOfDUDlambdaGroups> own = groupChargeSum(oldMolecule);
-    for (std::size_t g = 0; g < maximumNumberOfDUDlambdaGroups; ++g) totalGroupCharge[g] += own[g];
-  }
-
   std::vector<double> tailEffectiveCounts = system.effectiveNumberOfPseudoAtomsVDW;
   std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups> tailGroupCounts =
       system.fractionalPseudoAtomCountsPerGroup;
@@ -213,15 +193,13 @@ static std::optional<LambdaRescaleTrial> rescaleToLambda(System &system, std::si
     }
     trial.energyDifference += nonEwaldDifference.value();
 
-    std::array<double, maximumNumberOfDUDlambdaGroups> externalGroupCharge = totalGroupCharge;
-    const std::array<double, maximumNumberOfDUDlambdaGroups> ownGroupCharge = groupChargeSum(oldMolecule);
-    for (std::size_t g = 0; g < maximumNumberOfDUDlambdaGroups; ++g) externalGroupCharge[g] -= ownGroupCharge[g];
-
+    // the dU/dlambda-tagged charge outside this molecule, the pinned molecules (rescaled in place, in their state in
+    // the chain) and every other fractional molecule alike
     // chain the Ewald state: the first molecule starts from storedEik, later ones from trialEik
     trial.energyDifference += Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-        (i == 0) ? system.storedEik : system.trialEik, system.trialEik, system.forceField, system.simulationBox, system.components,
-        molecule, oldMolecule, runningNetCharge, externalGroupCharge);
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, (i == 0) ? system.storedEik : system.trialEik,
+        system.trialEik, system.forceField, system.simulationBox, system.components, molecule, oldMolecule,
+        runningNetCharge, system.ewaldMoveChargeDerivative(molecule));
     // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
     if (!system.forceField.omitInterInteractions) runningNetCharge += scaledChargeDifference(molecule, oldMolecule);
     // the molecule is rescaled in place: its intramolecular Coulomb kernel changes with the Fourier term
