@@ -14,6 +14,8 @@ import interactions_external_field;
 import cbmc_external_energy;
 import units;
 import system;
+import component;
+import energy_status;
 
 namespace
 {
@@ -371,4 +373,27 @@ TEST(external_field, cube_files_with_bohr_or_angstrom_steps_are_read)
   }
   write("mixed.cube", 1, -1);
   EXPECT_THROW(InterpolationEnergyGrid::parseExternalFieldGridDimensions("mixed.cube"), std::runtime_error);
+}
+
+// The energy status of the pressure computation (the source of the averaged energies) carries the external-field
+// energy of each component; before, it was left at zero and missing from the total.
+TEST(external_field, energy_status_holds_the_external_field_energy)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+  forceField.potentialEnergySurfaceType = ForceField::PotentialEnergySurfaceType::SecondOrderPolynomialTestFunction;
+  Component methane = Component::makeMethane(forceField, 0);
+  System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), true, 300.0, 1e4, 1.0, {}, {methane}, {}, {3}, 5);
+  for (std::size_t i = 0; i < 3; ++i)
+  {
+    const double3 position(4.0 + 6.0 * static_cast<double>(i), 7.0, 11.0);
+    system.moleculeData[i].centerOfMassPosition = position;
+    system.spanOfMoleculeAtoms()[i].position = position;
+  }
+
+  const RunningEnergy running = system.computeTotalEnergies();
+  ASSERT_GT(std::abs(running.externalFieldVDW), 1.0);
+  EnergyStatus status = system.computeMolecularPressure().first;
+  EXPECT_NEAR(status.externalFieldComponentEnergy(0, 0).VanDerWaals.energy, running.externalFieldVDW,
+              1e-9 * std::abs(running.externalFieldVDW));
+  EXPECT_NEAR(status.totalEnergy.energy, running.potentialEnergy(), 1e-6 * std::abs(running.potentialEnergy()));
 }

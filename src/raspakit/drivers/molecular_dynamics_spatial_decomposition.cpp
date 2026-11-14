@@ -312,7 +312,8 @@ void distributeCenterOfMassDisplacement(System& system, const MoleculeRange& ran
 
 // Whether the per-component energy decomposition can be taken from the engine's running energies instead of the
 // exact O(N^2) code. The engine rejects frameworks, external fields, polarization and cross-links, so the status is
-// the intra-molecular terms per component plus the inter-molecular VDW, real-space Coulomb and reciprocal terms;
+// the intra-molecular terms per component plus the inter-molecular VDW, real-space Coulomb and reciprocal terms and
+// the polymer-bond overlay;
 // with a single component those all belong to the (0, 0) pair. The reciprocal (mesh) sum cannot be attributed to
 // component pairs, so mixtures keep the exact decomposition.
 bool engineProvidesEnergyStatus(const System& system) { return system.components.size() == 1; }
@@ -345,6 +346,9 @@ EnergyStatus energyStatusFromRunningEnergies(const System& system)
   inter.VanDerWaalsTailCorrection = EnergyDuDlambda(e.tail, 0.0);
   inter.CoulombicReal = EnergyDuDlambda(e.moleculeMoleculeCharge, 0.0);
   inter.CoulombicFourier = EnergyDuDlambda(e.ewald_fourier + e.ewald_self + e.ewald_exclusion, 0.0);
+  // the polymer-bond overlay: the link terms between monomers (its exclusions and overrides are already in the
+  // slots above)
+  status.crossLinkEnergy = EnergyDuDlambda(e.crossLink, 0.0);
 
   status.translationalKineticEnergy = e.translationalKineticEnergy;
   status.rotationalKineticEnergy = e.rotationalKineticEnergy;

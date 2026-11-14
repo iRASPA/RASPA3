@@ -1269,12 +1269,15 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 
   // Cross-links act between molecules, so unlike the intramolecular potentials their forces do not cancel
   // in the molecular virial: their strain derivative and site gradients enter like the inter-molecular
-  // terms (the gradients feed the atomic-to-molecular correction below).
+  // terms (the gradients feed the atomic-to-molecular correction below). Their energy holds the link
+  // potentials and the removal of the non-bonded pairs (and, for polymer links, the intramolecular overrides)
+  // the links exclude, which the pair loops above still counted: one 'crossLinkEnergy' entry.
   if (!crossLinks.empty())
   {
     const auto [crossLinkEnergy, crossLinkStrain] = Interactions::computeCrossLinkEnergyStrainDerivative(
         forceField, simulationBox, components, numberOfMoleculesPerComponent, moleculeAtoms, pressureDynamics,
         crossLinks);
+    pressureInfo.first.crossLinkEnergy += EnergyDuDlambda(crossLinkEnergy.potentialEnergy(), 0.0);
     pressureInfo.second += crossLinkStrain;
   }
   if (!polymerLinks.empty())
@@ -1282,6 +1285,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     const auto [polymerEnergy, polymerStrain] = Interactions::computePolymerLinkEnergyStrainDerivative(
         forceField, simulationBox, components, numberOfMoleculesPerComponent, moleculeAtoms, pressureDynamics,
         polymerLinks);
+    pressureInfo.first.crossLinkEnergy += EnergyDuDlambda(polymerEnergy.potentialEnergy(), 0.0);
     pressureInfo.second += polymerStrain;
   }
 
@@ -1309,6 +1313,20 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
       pressureInfo.first.intraComponentEnergies[i].cmap += runningIntraEnergy.cmap;
       pressureInfo.first.intraComponentEnergies[i].vanDerWaals += runningIntraEnergy.intraVDW;
       pressureInfo.first.intraComponentEnergies[i].coulomb += runningIntraEnergy.intraCoul;
+
+      // The external field is a one-body energy of each component. It has no forces in this code (no
+      // integrator applies them), so it carries no virial either: only the energy is recorded.
+      if (hasExternalField)
+      {
+        const std::size_t firstAtom = span_molecules.front().atomIndex;
+        const std::size_t endAtom = span_molecules.back().atomIndex + span_molecules.back().numberOfAtoms;
+        RunningEnergy externalFieldEnergy;
+        Interactions::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox,
+                                                 moleculeAtoms.subspan(firstAtom, endAtom - firstAtom),
+                                                 externalFieldEnergy, externalFieldInterpolationGrid);
+        pressureInfo.first.externalFieldComponentEnergy(0, i).VanDerWaals +=
+            EnergyDuDlambda(externalFieldEnergy.externalFieldVDW, 0.0);
+      }
 
       // Intramolecular potentials (bonds, bends, torsions, ...) must NOT contribute to the molecular
       // (center-of-mass based) pressure: internal forces sum to zero over each molecule and cancel in the

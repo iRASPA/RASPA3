@@ -932,6 +932,10 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine,
              Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.polarizationEnergy.energy,
              conv * energyData.first.polarizationEnergy.energy, conv * energyData.second.polarizationEnergy.energy,
              Units::displayedUnitOfEnergyString);
+  std::print(stream, "Cross-link energy{}       {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.crossLinkEnergy.energy,
+             conv * energyData.first.crossLinkEnergy.energy, conv * energyData.second.crossLinkEnergy.energy,
+             Units::displayedUnitOfEnergyString);
 
   std::print(stream, "\n");
 

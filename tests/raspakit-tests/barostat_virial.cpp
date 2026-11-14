@@ -21,6 +21,7 @@ import running_energy;
 import potential_coulomb_real_space;
 import interactions_intermolecular;
 import bond_potential;
+import cross_links;
 import bend_potential;
 import torsion_potential;
 import connectivity_table;
@@ -992,4 +993,30 @@ TEST(BAROSTAT_VIRIAL, ewald_terms_of_a_mobile_framework_do_not_depend_on_polariz
   EXPECT_NEAR(polarizable.ewald_exclusion, plain.ewald_exclusion,
               1e-10 * std::max(1.0, std::abs(plain.ewald_exclusion)));
   EXPECT_NEAR(polarizable.potentialEnergy(), plain.potentialEnergy(), 1e-10 * std::abs(plain.potentialEnergy()));
+}
+
+// The energy status of the pressure computation (the source of the averaged energies) carries the cross-link term:
+// the link bond and the removal of the non-bonded pair the link excludes. Before, both were discarded, so two
+// linked methanes 1.6 A apart reported their full Lennard-Jones overlap and no bond energy.
+TEST(BAROSTAT_VIRIAL, energy_status_holds_the_cross_link_energy)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component methane = Component::makeMethane(forceField, 0);
+  System system =
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {2}, 5);
+  for (std::size_t i = 0; i < 2; ++i)
+  {
+    const double3 position(12.0 + 1.6 * static_cast<double>(i), 12.5, 12.5);
+    system.moleculeData[i].centerOfMassPosition = position;
+    system.spanOfMoleculeAtoms()[i].position = position;
+  }
+  system.crossLinks.bondTypes.push_back(CrossLinkBondType{});
+  system.crossLinks.bondTypes.back().bond = BondPotential({0, 0}, BondType::Harmonic, {1000.0, 1.5});
+  system.crossLinks.links.push_back(CrossLink{{0, 0, 0}, {0, 1, 0}, 0});
+  system.crossLinks.rebuildIndex();
+
+  const RunningEnergy running = system.computeTotalEnergies();
+  ASSERT_GT(std::abs(running.crossLink), 1.0);
+  const EnergyStatus status = system.computeMolecularPressure().first;
+  EXPECT_NEAR(status.totalEnergy.energy, running.potentialEnergy(), 1e-6 * std::abs(running.potentialEnergy()));
 }

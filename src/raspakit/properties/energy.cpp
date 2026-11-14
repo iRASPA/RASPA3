@@ -807,6 +807,19 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
              prefactor * computedAverage.second.polarizationEnergy.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "\n");
 
+  std::print(stream, "Cross-link energy{}\n", Units::displayedUnitOfEnergyConversionString);
+  std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
+  for (std::size_t i = 0; i < numberOfBlocks; ++i)
+  {
+    EnergyStatus blockAverage = averaged(i);
+    std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.crossLinkEnergy.energy);
+  }
+  std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
+  std::print(stream, "    Average  {: .6e} +/- {: .6e} [{}]\n",
+             prefactor * computedAverage.first.crossLinkEnergy.energy,
+             prefactor * computedAverage.second.crossLinkEnergy.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "\n");
+
   std::print(stream, "Total energy{}\n", Units::displayedUnitOfEnergyConversionString);
   std::print(stream, "------------------------------------------------------------------------------------------------------------------------\n");
   for (std::size_t i = 0; i < numberOfBlocks; ++i)

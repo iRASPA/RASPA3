@@ -91,9 +91,4 @@ class Component():
         """Return lambda-probability histogram statistics."""
         ...
 
-    @property
-    def average_dudlambda(self) -> tuple[collections.abc.Sequence[tuple[float, float, float]], collections.abc.Sequence[tuple[float, float, float]]]:
-        """Return average dU/dlambda data used in thermodynamic integration."""
-        ...
-
 

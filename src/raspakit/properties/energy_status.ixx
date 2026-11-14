@@ -13,7 +13,7 @@ import json;
 
 export struct EnergyStatus
 {
-  EnergyStatus() : totalEnergy(0.0, 0.0), polarizationEnergy(0.0, 0.0) {};
+  EnergyStatus() : totalEnergy(0.0, 0.0), polarizationEnergy(0.0, 0.0), crossLinkEnergy(0.0, 0.0) {};
 
   EnergyStatus(std::size_t numberOfExternalFields, std::size_t numberOfFrameworks, std::size_t numberOfComponents)
       : numberOfExternalFields(numberOfExternalFields),
@@ -30,6 +30,7 @@ export struct EnergyStatus
         frameworkComponentEnergies(std::vector<EnergyInter>(std::max(1uz, numberOfFrameworks) * numberOfComponents)),
         interComponentEnergies(std::vector<EnergyInter>(numberOfComponents * numberOfComponents)),
         polarizationEnergy(0.0, 0.0),
+        crossLinkEnergy(0.0, 0.0),
         dUdlambda(0.0),
         translationalKineticEnergy(0.0),
         rotationalKineticEnergy(0.0),
@@ -66,6 +67,7 @@ export struct EnergyStatus
   {
     totalEnergy = EnergyDuDlambda(0.0, 0.0);
     polarizationEnergy = EnergyDuDlambda(0.0, 0.0);
+    crossLinkEnergy = EnergyDuDlambda(0.0, 0.0);
     dUdlambda = 0.0;
     translationalKineticEnergy = 0.0;
     rotationalKineticEnergy = 0.0;
@@ -107,7 +109,7 @@ export struct EnergyStatus
     }
     totalEnergy =
         intraEnergy.total() + externalFieldMoleculeEnergy.total() + frameworkMoleculeEnergy.total() +
-        interEnergy.total() + polarizationEnergy;
+        interEnergy.total() + polarizationEnergy + crossLinkEnergy;
   }
 
   std::string printEnergyStatus(const std::vector<Component>& components, const std::string& label);
@@ -116,6 +118,7 @@ export struct EnergyStatus
   {
     totalEnergy += b.totalEnergy;
     polarizationEnergy += b.polarizationEnergy;
+    crossLinkEnergy += b.crossLinkEnergy;
     dUdlambda += b.dUdlambda;
     translationalKineticEnergy += b.translationalKineticEnergy;
     rotationalKineticEnergy += b.rotationalKineticEnergy;
@@ -148,6 +151,7 @@ export struct EnergyStatus
   {
     totalEnergy -= b.totalEnergy;
     polarizationEnergy -= b.polarizationEnergy;
+    crossLinkEnergy -= b.crossLinkEnergy;
     dUdlambda -= b.dUdlambda;
     translationalKineticEnergy -= b.translationalKineticEnergy;
     rotationalKineticEnergy -= b.rotationalKineticEnergy;
@@ -181,6 +185,7 @@ export struct EnergyStatus
     EnergyStatus v(numberOfExternalFields, numberOfFrameworks, numberOfComponents);
     v.totalEnergy = -totalEnergy;
     v.polarizationEnergy = -polarizationEnergy;
+    v.crossLinkEnergy = -crossLinkEnergy;
     v.dUdlambda = -dUdlambda;
     v.translationalKineticEnergy = -translationalKineticEnergy;
     v.rotationalKineticEnergy = -rotationalKineticEnergy;
@@ -223,6 +228,9 @@ export struct EnergyStatus
   std::vector<EnergyInter> frameworkComponentEnergies;
   std::vector<EnergyInter> interComponentEnergies;
   EnergyDuDlambda polarizationEnergy;
+  /// The cross-link and polymer-link bonds between molecules: their bonded terms and the non-bonded pair
+  /// exclusions and intramolecular overrides they bring (RunningEnergy::crossLink with its companions).
+  EnergyDuDlambda crossLinkEnergy;
   double dUdlambda;
   double translationalKineticEnergy;
   double rotationalKineticEnergy;
@@ -239,6 +247,7 @@ export inline EnergyStatus operator+(const EnergyStatus& a, const EnergyStatus& 
   EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
   m.totalEnergy = a.totalEnergy + b.totalEnergy;
   m.polarizationEnergy = a.polarizationEnergy + b.polarizationEnergy;
+  m.crossLinkEnergy = a.crossLinkEnergy + b.crossLinkEnergy;
   m.dUdlambda = a.dUdlambda + b.dUdlambda;
   m.translationalKineticEnergy = a.translationalKineticEnergy + b.translationalKineticEnergy;
   m.rotationalKineticEnergy = a.rotationalKineticEnergy + b.rotationalKineticEnergy;
@@ -272,6 +281,7 @@ export inline EnergyStatus operator-(const EnergyStatus& a, const EnergyStatus& 
   EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
   m.totalEnergy = a.totalEnergy - b.totalEnergy;
   m.polarizationEnergy = a.polarizationEnergy - b.polarizationEnergy;
+  m.crossLinkEnergy = a.crossLinkEnergy - b.crossLinkEnergy;
   m.dUdlambda = a.dUdlambda - b.dUdlambda;
   m.translationalKineticEnergy = a.translationalKineticEnergy - b.translationalKineticEnergy;
   m.rotationalKineticEnergy = a.rotationalKineticEnergy - b.rotationalKineticEnergy;
@@ -305,6 +315,7 @@ export inline EnergyStatus operator*(const EnergyStatus& a, const EnergyStatus& 
   EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
   m.totalEnergy = a.totalEnergy * b.totalEnergy;
   m.polarizationEnergy = a.polarizationEnergy * b.polarizationEnergy;
+  m.crossLinkEnergy = a.crossLinkEnergy * b.crossLinkEnergy;
   m.dUdlambda = a.dUdlambda * b.dUdlambda;
   m.translationalKineticEnergy = a.translationalKineticEnergy * b.translationalKineticEnergy;
   m.rotationalKineticEnergy = a.rotationalKineticEnergy * b.rotationalKineticEnergy;
@@ -338,6 +349,7 @@ export inline EnergyStatus operator*(const double& a, const EnergyStatus& b)
   EnergyStatus m(b.numberOfExternalFields, b.numberOfFrameworks, b.numberOfComponents);
   m.totalEnergy = a * b.totalEnergy;
   m.polarizationEnergy = a * b.polarizationEnergy;
+  m.crossLinkEnergy = a * b.crossLinkEnergy;
   m.dUdlambda = a * b.dUdlambda;
   m.translationalKineticEnergy = a * b.translationalKineticEnergy;
   m.rotationalKineticEnergy = a * b.rotationalKineticEnergy;
@@ -371,6 +383,7 @@ export inline EnergyStatus operator/(const EnergyStatus& a, const double& b)
   EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
   m.totalEnergy = a.totalEnergy / b;
   m.polarizationEnergy = a.polarizationEnergy / b;
+  m.crossLinkEnergy = a.crossLinkEnergy / b;
   m.dUdlambda = a.dUdlambda / b;
   m.translationalKineticEnergy = a.translationalKineticEnergy / b;
   m.rotationalKineticEnergy = a.rotationalKineticEnergy / b;
@@ -404,6 +417,7 @@ export inline EnergyStatus sqrt(const EnergyStatus& a)
   EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
   m.totalEnergy = sqrt(a.totalEnergy);
   m.polarizationEnergy = sqrt(a.polarizationEnergy);
+  m.crossLinkEnergy = sqrt(a.crossLinkEnergy);
   m.dUdlambda = std::sqrt(a.dUdlambda);
   m.translationalKineticEnergy = std::sqrt(a.translationalKineticEnergy);
   m.rotationalKineticEnergy = std::sqrt(a.rotationalKineticEnergy);
