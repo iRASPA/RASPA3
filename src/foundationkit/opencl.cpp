@@ -87,6 +87,9 @@ void OpenCL::readBuffer(cl_mem mem, std::size_t bytes, void *host)
 
 void OpenCL::initialize()
 {
+  // the handles are shared by every caller (the threaded routes and the drivers among them): set them up once
+  static std::mutex initializationMutex;
+  const std::lock_guard<std::mutex> lock(initializationMutex);
   if (clContext.has_value() && clDeviceId.has_value() && clCommandQueue.has_value())
   {
     return;
@@ -371,7 +374,8 @@ std::optional<cl_device_id> OpenCL::bestOpenCLDevice(cl_device_type device_type)
         continue;
       }
 
-      if (supportsImageFormatCapabilities(context, devices[j]))
+      // a device that runs kernels on buffers is enough: no kernel uses images (the image-format probe this was
+      // gated on rejected compute-only drivers without 3D image writes)
       {
         cl_command_queue command_queue = clCreateCommandQueue(context, devices[j], 0, &err);
         if (err != CL_SUCCESS)
@@ -406,73 +410,6 @@ std::optional<cl_device_id> OpenCL::bestOpenCLDevice(cl_device_type device_type)
   }
 
   return std::nullopt;
-}
-
-bool OpenCL::supportsImageFormatCapabilities(cl_context &trial_clContext, cl_device_id &trialclDeviceId)
-{
-  cl_int err;
-
-  // check image support
-  cl_bool image_support = false;
-  clGetDeviceInfo(trialclDeviceId, CL_DEVICE_IMAGE_SUPPORT, sizeof(image_support), &image_support, nullptr);
-
-  if (!image_support)
-  {
-    return false;
-  }
-
-  // check the needed image formats
-  cl_image_format imageFormat_RGBA_INT8{CL_RGBA, CL_UNSIGNED_INT8};
-  cl_image_desc imageDescriptor_RGBA_INT8{CL_MEM_OBJECT_IMAGE3D, 256, 256, 256, 0, 0, 0, 0, 0, nullptr};
-  cl_mem image_RGBA_INT8 = clCreateImage(trial_clContext, CL_MEM_READ_WRITE, &imageFormat_RGBA_INT8,
-                                         &imageDescriptor_RGBA_INT8, nullptr, &err);
-  if (err != CL_SUCCESS)
-  {
-    return false;
-  }
-  clReleaseMemObject(image_RGBA_INT8);
-
-  cl_image_format imageFormat_R_INT8{CL_R, CL_UNSIGNED_INT8};
-  cl_image_desc imageDescriptor_R_INT8{CL_MEM_OBJECT_IMAGE3D, 256, 256, 256, 0, 0, 0, 0, 0, nullptr};
-  cl_mem image_R_INT8 =
-      clCreateImage(trial_clContext, CL_MEM_READ_WRITE, &imageFormat_R_INT8, &imageDescriptor_R_INT8, nullptr, &err);
-  if (err != CL_SUCCESS)
-  {
-    return false;
-  }
-  clReleaseMemObject(image_R_INT8);
-
-  cl_image_format imageFormat_R_INT16{CL_R, CL_UNSIGNED_INT16};
-  cl_image_desc imageDescriptor_R_INT16{CL_MEM_OBJECT_IMAGE3D, 256, 256, 256, 0, 0, 0, 0, 0, nullptr};
-  cl_mem image_R_INT16 =
-      clCreateImage(trial_clContext, CL_MEM_READ_WRITE, &imageFormat_R_INT16, &imageDescriptor_R_INT16, nullptr, &err);
-  if (err != CL_SUCCESS)
-  {
-    return false;
-  }
-  clReleaseMemObject(image_R_INT16);
-
-  cl_image_format imageFormat_R_INT32{CL_R, CL_UNSIGNED_INT32};
-  cl_image_desc imageDescriptor_R_INT32{CL_MEM_OBJECT_IMAGE3D, 128, 128, 128, 0, 0, 0, 0, 0, nullptr};
-  cl_mem image_R_INT32 =
-      clCreateImage(trial_clContext, CL_MEM_READ_WRITE, &imageFormat_R_INT32, &imageDescriptor_R_INT32, nullptr, &err);
-  if (err != CL_SUCCESS)
-  {
-    return false;
-  }
-  clReleaseMemObject(image_R_INT32);
-
-  cl_image_format imageFormat_R_FLOAT{CL_R, CL_FLOAT};
-  cl_image_desc imageDescriptor_R_FLOAT{CL_MEM_OBJECT_IMAGE3D, 128, 128, 128, 0, 0, 0, 0, 0, nullptr};
-  cl_mem image_R_FLOAT =
-      clCreateImage(trial_clContext, CL_MEM_READ_WRITE, &imageFormat_R_FLOAT, &imageDescriptor_R_FLOAT, nullptr, &err);
-  if (err != CL_SUCCESS)
-  {
-    return false;
-  }
-  clReleaseMemObject(image_R_FLOAT);
-
-  return true;
 }
 
 OpenCL::Handles::~Handles()

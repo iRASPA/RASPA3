@@ -11,7 +11,7 @@ class PropertyNumberOfMoleculesHistogram():
     def __init__(
         self,
         number_of_blocks: int,
-        value_range: tuple[float, float],
+        value_range: tuple[int, int],
         sample_every: int,
         write_every: int | None = None
     ) -> None:

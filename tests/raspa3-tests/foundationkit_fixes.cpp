@@ -533,3 +533,19 @@ TEST(FOUNDATIONKIT_FIXES, argparser_refuses_an_unknown_switch_instead_of_taking_
     EXPECT_EQ(file, positional);
   }
 }
+
+// The character sets are matched byte by byte on UTF-8 text: the 0x85 of 'Å' (0xC3 0x85) and the 0xA0 of a
+// non-breaking space (0xC2 0xA0) are continuation bytes, not a line end or a space.
+TEST(FOUNDATIONKIT_FIXES, character_sets_do_not_split_utf8_characters)
+{
+  const std::string text = "10.0 0.0 0.0 # a in \xC3\x85ngstrom,\xC2\xA0ok\nnext";
+  Scanner scanner(text, CharacterSet::whitespaceCharacterSet());
+  std::string line;
+  EXPECT_TRUE(scanner.scanUpToCharacters(CharacterSet::newlineCharacterSet(), line));
+  EXPECT_EQ(line, "10.0 0.0 0.0 # a in \xC3\x85ngstrom,\xC2\xA0ok");
+
+  Scanner words("\xC3\x85ngstrom\xC2\xA0unit", CharacterSet::newlineCharacterSet());
+  std::string word;
+  EXPECT_TRUE(words.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), word));
+  EXPECT_EQ(word, "\xC3\x85ngstrom\xC2\xA0unit");
+}

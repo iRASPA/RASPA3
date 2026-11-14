@@ -569,9 +569,26 @@ EXPAND_MODULE(MODULE_NAME)
       .def(pybind11::init<std::size_t, std::size_t>(), pybind11::arg("number_of_blocks"),
            pybind11::arg("number_of_sample_points"))
       // dimensionless
-      .def_readwrite("bias_factor", &PropertyLambdaProbabilityHistogram::biasFactor)
+      .def_property(
+          "bias_factor", [](const PropertyLambdaProbabilityHistogram& p) { return p.biasFactor; },
+          [](PropertyLambdaProbabilityHistogram& p, const std::vector<double>& value)
+          {
+            // one bias per lambda bin: the moves index it by bin
+            if (value.size() != p.numberOfSamplePoints)
+              throw std::invalid_argument(std::format("bias_factor needs {} values (one per lambda bin), got {}",
+                                                      p.numberOfSamplePoints, value.size()));
+            p.biasFactor = value;
+          })
       // dimensionless
-      .def_readwrite("histogram", &PropertyLambdaProbabilityHistogram::histogram)
+      .def_property(
+          "histogram", [](const PropertyLambdaProbabilityHistogram& p) { return p.histogram; },
+          [](PropertyLambdaProbabilityHistogram& p, const std::vector<double>& value)
+          {
+            if (value.size() != p.numberOfSamplePoints)
+              throw std::invalid_argument(std::format("histogram needs {} values (one per lambda bin), got {}",
+                                                      p.numberOfSamplePoints, value.size()));
+            p.histogram = value;
+          })
       .def_readonly("occupancy_total", &PropertyLambdaProbabilityHistogram::occupancyTotal)
       .def_readonly("occupancy_count", &PropertyLambdaProbabilityHistogram::occupancyCount)
       // convert result to units of Kelvin
@@ -740,7 +757,22 @@ EXPAND_MODULE(MODULE_NAME)
            pybind11::arg("thermodynamic_integration") = false,
            pybind11::arg("blocking_pockets") = std::vector<double4>())
       .def_readonly("name", &Component::name)
-      .def_readwrite("lambda_histogram", &Component::lambdaGC)
+      .def_property(
+          "lambda_histogram", [](Component& c) -> PropertyLambdaProbabilityHistogram& { return c.lambdaGC; },
+          [](Component& c, const PropertyLambdaProbabilityHistogram& value)
+          {
+            // the moves and the drivers index the histogram by the lambda bins and the blocks of the component
+            if (value.numberOfSamplePoints != c.lambdaGC.numberOfSamplePoints ||
+                value.numberOfBlocks != c.lambdaGC.numberOfBlocks ||
+                value.biasFactor.size() != value.numberOfSamplePoints ||
+                value.histogram.size() != value.numberOfSamplePoints)
+            {
+              throw std::invalid_argument(std::format("lambda_histogram needs {} lambda bins and {} blocks, as the component",
+                                                      c.lambdaGC.numberOfSamplePoints, c.lambdaGC.numberOfBlocks));
+            }
+            c.lambdaGC = value;
+          },
+          pybind11::return_value_policy::reference_internal)
       .def_readonly("mc_moves_probabilities", &Component::mc_moves_probabilities)
       .def_readonly("mc_moves_statistics", &Component::mc_moves_statistics)
       .def_readwrite("blocking_pockets", &Component::blockingPockets)
@@ -840,7 +872,7 @@ EXPAND_MODULE(MODULE_NAME)
                                                                  {Units::EnergyToKelvin * bins, average, error};});
 
   pybind11::class_<PropertyNumberOfMoleculesHistogram>(m, "PropertyNumberOfMoleculesHistogram")
-      .def(pybind11::init<std::size_t, std::pair<double, double>, std::size_t, std::optional<std::size_t>>(),
+      .def(pybind11::init<std::size_t, std::pair<std::size_t, std::size_t>, std::size_t, std::optional<std::size_t>>(),
                  pybind11::arg("number_of_blocks"), 
                  pybind11::arg("value_range"),
                  pybind11::arg("sample_every"), 
@@ -976,7 +1008,8 @@ EXPAND_MODULE(MODULE_NAME)
            pybind11::arg("property") = std::nullopt)
       .def_readwrite("average_enthalpies_of_adsorption", &System::averageEnthalpiesOfAdsorption)
       .def_readwrite("average_partial_molar_properties", &System::averagePartialMolarProperties)
-      .def_readwrite("atom_data", &System::atomData)
+      // read only: the atoms are kept in step with their dynamics, molecules and groups
+      .def_readonly("atom_data", &System::atomData)
       .def_readwrite("translational_degrees_of_freedom", &System::translationalDegreesOfFreedom)
       .def_readwrite("rotational_degrees_of_freedom", &System::rotationalDegreesOfFreedom)
       .def_readwrite("time_step", &System::timeStep)
@@ -1103,11 +1136,14 @@ EXPAND_MODULE(MODULE_NAME)
       .def(pybind11::init<std::size_t>(), pybind11::arg("number_of_components"))
       .def_readonly("values", &EnthalpyOfAdsorptionData::values)
       .def("__getitem__",
-           [](const EnthalpyOfAdsorptionData& data, std::size_t index)
+           [](const EnthalpyOfAdsorptionData& data, std::ptrdiff_t index)
            {
-             // a Python sequence ends with an IndexError (iteration stops on it), not past the end of the values
-             if (index >= data.values.size()) throw pybind11::index_error();
-             return data.values[index];
+             // a Python sequence ends with an IndexError (iteration stops on it), not past the end of the values, and
+             // a negative index counts from the end
+             const std::ptrdiff_t size = static_cast<std::ptrdiff_t>(data.values.size());
+             if (index < 0) index += size;
+             if (index < 0 || index >= size) throw pybind11::index_error();
+             return data.values[static_cast<std::size_t>(index)];
            })
       .def("__len__", [](const EnthalpyOfAdsorptionData& data) { return data.values.size(); });
 
@@ -1127,6 +1163,14 @@ EXPAND_MODULE(MODULE_NAME)
       .def(pybind11::init<std::size_t, std::size_t>(),
             pybind11::arg("number_of_blocks"),
             pybind11::arg("number_of_components"))
-      .def("average_properties", [](const PropertyPartialMolarProperties& p) { return p.average(); });
+      // convert the partial molar energies to units of Kelvin
+      .def("average_properties",
+           [](const PropertyPartialMolarProperties& p)
+           {
+             auto [average, error] = p.average();
+             for (double& value : average.partialMolarEnergy) value *= Units::EnergyToKelvin;
+             for (double& value : error.partialMolarEnergy) value *= Units::EnergyToKelvin;
+             return std::pair{average, error};
+           });
 
 }

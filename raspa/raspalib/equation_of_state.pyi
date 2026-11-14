@@ -1,5 +1,7 @@
 import enum
 import collections.abc
+from raspalib.simulation_box import SimulationBox
+from raspalib.component import Component
 
 class EquationOfState():
     """
@@ -57,35 +59,44 @@ class EquationOfState():
                     simulations that alter composition. Defaults to ``True``.
             """
 
-    @property
-    def critical_temperature(self) -> float:
-        """Return the component critical temperature."""
-        ...
+        @property
+        def critical_temperature(self) -> float:
+            """Return the component critical temperature."""
+            ...
 
-    @property
-    def critical_pressure(self) -> float:
-        """Return the component critical pressure."""
-        ...
+        @property
+        def critical_pressure(self) -> float:
+            """Return the component critical pressure."""
+            ...
 
-    @property
-    def acentric_factor(self) -> float:
-        """Return the component acentric factor."""
-        ...
+        @property
+        def acentric_factor(self) -> float:
+            """Return the component acentric factor."""
+            ...
 
-    @property
-    def mol_fraction(self) -> float:
-        """Return the component mole fraction."""
-        ...
+        @property
+        def mol_fraction(self) -> float:
+            """Return the component mole fraction."""
+            ...
 
-    @property
-    def swappable(self) -> bool:
-        """Return whether the component is marked as swappable."""
-        ...
+        @property
+        def swappable(self) -> bool:
+            """Return whether the component is marked as swappable."""
+            ...
 
     class FluidResult():
         """
         EOS-computed output properties for a fluid component.
         """
+
+        def __init__(
+            self,
+            compressibility: float,
+            fugacity_coefficient: float | None,
+            fluid_state: "EquationOfState.FluidState",
+        ) -> None:
+            """Initialize a :class:`FluidResult`."""
+            ...
 
         @property
         def compressibility(self) -> float:
@@ -102,16 +113,25 @@ class EquationOfState():
             """Return the inferred phase/state classification."""
             ...
 
-    def __init__(self) -> None:
-        """Initialize an :class:`EquationOfState` helper instance."""
+    def __init__(
+        self,
+        type: EquationOfStateType,
+        mixing_rules: MixingRules,
+        temperature: float,
+        pressure: float,
+        simulation_box: SimulationBox,
+        helium_void_fraction: float,
+        components: collections.abc.Sequence[Component],
+    ) -> None:
+        """Compute the fugacity coefficients of the components (positional arguments only)."""
         ...
 
     @staticmethod
     def compute_fluid_properties(temperature: float,
                                  pressure: float,
                                  properties: collections.abc.Sequence[FluidInput],
-                                 type: EquationOfStateType,
-                                 mixing_rules: MixingRules,
+                                 type: EquationOfStateType = EquationOfStateType.PENG_ROBINSON,
+                                 mixing_rules: MixingRules = MixingRules.VAN_DER_WAALS,
                                  ) -> collections.abc.Sequence[FluidResult]:
         """Compute EOS properties for all provided fluid components.
 

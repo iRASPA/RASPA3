@@ -620,6 +620,15 @@ void CommandLine::run(int argc, char *argv[])
     use_apollonius = true;
   }
 
+  // A surface area or void fraction asked for without a route takes the exact one as well (it printed a header and
+  // ran nothing).
+  if ((state.test(State::SurfaceArea) || state.test(State::VoidFraction)) && !use_gridbased_methods &&
+      !use_apollonius && !use_voronoi && !use_geometric_methods && !use_monte_carlo_methods &&
+      !use_integration_methods && !use_energy_methods)
+  {
+    use_apollonius = true;
+  }
+
   // A pore network is only of use to an analysis that reads one, so asking for the Apollonius diagram
   // without saying what to do with it is asking for the pore analysis; the pore-size distributions read it too.
   if ((use_apollonius || use_voronoi) && !state.test(State::SurfaceArea) && !state.test(State::VoidFraction) &&
@@ -775,13 +784,10 @@ void CommandLine::run(int argc, char *argv[])
     // nitrogen rather than aborting the run over a name the user never asked for. A probe named on
     // the command line overrides the surface / occupancy probe, but never the helium accessibility
     // label: reachable vs sealed is always He. An ephemeral σ/ε probe is the type it was entered as.
-    auto geometricProbe = [&](const std::string &preferred) -> std::string
+    auto geometricProbe = [&](const std::string& preferred) -> std::string
     {
-      if (preferred == "probe-He")
-      {
-        if (forceField->findPseudoAtom("probe-He").has_value()) return "probe-He";
-        // No helium in this force field: fall through to the caller-facing probe rather than invent one.
-      }
+      // a probe asked for (--probe, --probe-size-parameter / --probe-strength-parameter) comes before the default
+      // of the route ('probe-He' for the void fraction)
       if (ephemeral_probe_type.has_value()) return ephemeral_probe_type.value();
       if (probe_atom_name.has_value())
       {
@@ -1023,7 +1029,8 @@ void CommandLine::run(int argc, char *argv[])
                number_of_iterations, number_of_slices, geometricProbe("probe-He"));
       }
 
-      if (use_geometric_methods)
+      // the sampled and the sliced areas, also when asked for by name without --geometric (they ran only with it)
+      if (use_geometric_methods || ((use_monte_carlo_methods || use_integration_methods) && !use_energy_methods))
       {
         auto [structure, probe] = sampledSurface(geometricProbe("probe-N2"));
 
@@ -1741,20 +1748,24 @@ void CommandLine::run(int argc, char *argv[])
                                        : forceField->cutOffCoulomb,
                                    pseudoAtomIdx);
 
-        // unpreferable copy implementation to reorder fortran layout of grid data to c layout
+        // unpreferable copy implementation to reorder fortran layout of grid data to c layout; the grid holds
+        // 'numberOfGridPoints' points along each axis (the end planes included)
+        const std::size_t nx = grid.numberOfGridPoints.x;
+        const std::size_t ny = grid.numberOfGridPoints.y;
+        const std::size_t nz = grid.numberOfGridPoints.z;
         std::vector<double> reordered(grid.data.size());
         std::mdspan<double, std::dextents<std::size_t, 4>, std::layout_left> spanFortran(
-            grid.data.data(), std::to_underlying(order), gridSize.x + 1, gridSize.y + 1, gridSize.z + 1);
-        std::mdspan<double, std::dextents<std::size_t, 4>> spanC(reordered.data(), std::to_underlying(order),
-                                                                 gridSize.x + 1, gridSize.y + 1, gridSize.z + 1);
+            grid.data.data(), std::to_underlying(order), nx, ny, nz);
+        std::mdspan<double, std::dextents<std::size_t, 4>> spanC(reordered.data(), std::to_underlying(order), nx, ny,
+                                                                 nz);
 
         for (std::size_t v = 0; v < std::to_underlying(order); v++)
         {
-          for (std::size_t ix = 0; ix < static_cast<std::size_t>(gridSize.x + 1); ix++)
+          for (std::size_t ix = 0; ix < nx; ix++)
           {
-            for (std::size_t iy = 0; iy < static_cast<std::size_t>(gridSize.y + 1); iy++)
+            for (std::size_t iy = 0; iy < ny; iy++)
             {
-              for (std::size_t iz = 0; iz < static_cast<std::size_t>(gridSize.z + 1); iz++)
+              for (std::size_t iz = 0; iz < nz; iz++)
               {
                 spanC[v, ix, iy, iz] = spanFortran[v, ix, iy, iz];
               }
@@ -1762,11 +1773,8 @@ void CommandLine::run(int argc, char *argv[])
           }
         }
 
-        h5File.createDataset<double>(
-            "/", forceField->pseudoAtoms[pseudoAtomIdx].name,
-            {std::to_underlying(order), static_cast<std::size_t>(gridSize.x + 1),
-             static_cast<std::size_t>(gridSize.y + 1), static_cast<std::size_t>(gridSize.z + 1)},
-            {});
+        h5File.createDataset<double>("/", forceField->pseudoAtoms[pseudoAtomIdx].name,
+                                     {std::to_underlying(order), nx, ny, nz}, {});
         h5File.writeVector<double>("/", forceField->pseudoAtoms[pseudoAtomIdx].name, reordered);
       }
     }

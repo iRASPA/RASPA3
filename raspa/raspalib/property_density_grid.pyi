@@ -27,8 +27,8 @@ class PropertyDensityGrid():
         number_of_components: int,
         number_of_grid_points: tuple[int, int, int],
         sample_every: int,
-        write_every: int | None,
-        density_grid_pseudo_atoms_list: collections.abc.Sequence[str],
+        write_every: int,
+        density_grid_pseudo_atoms_list: collections.abc.Sequence[int],
         normalization_type: Normalization = Normalization.MAX,
         binning_mode: Binning = Binning.STANDARD
     ) -> None:
@@ -41,8 +41,8 @@ class PropertyDensityGrid():
             number_of_components: Number of components in the system.
             number_of_grid_points: Grid resolution as ``(nx, ny, nz)``.
             sample_every: Sampling interval in cycles.
-            write_every: Optional output-write interval in cycles.
-            density_grid_pseudo_atoms_list: Pseudo-atom names for which density
+            write_every: Output-write interval in cycles.
+            density_grid_pseudo_atoms_list: Pseudo-atom indices for which density
                 grids are accumulated.
             normalization_type: Density-grid normalization mode. Defaults to
                 :attr:`Normalization.MAX`.

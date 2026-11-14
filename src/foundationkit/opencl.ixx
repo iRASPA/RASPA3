@@ -22,7 +22,6 @@ extern std::optional<cl_command_queue> clCommandQueue;
 void initialize(void);
 std::optional<cl_device_id> bestOpenCLDevice(cl_device_type device_type);
 std::string printBestOpenCLDevice();
-bool supportsImageFormatCapabilities(cl_context &trial_clContext, cl_device_id &trial_clDeviceId);
 
 // Apple's OpenCL 1.2 treats a device allocation or copy of exactly 4 GiB as size 0.
 // createBuffer pads that size; readBuffer/writeBuffer copy in 256 MiB chunks.

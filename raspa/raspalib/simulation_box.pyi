@@ -12,8 +12,8 @@ class SimulationBox():
     class SimulationBoxType(enum.IntEnum):
         """Supported simulation-box geometry types."""
 
-        Rectangular: int = 0
-        Triclinic: int = 1
+        RECTANGULAR: int = 0
+        TRICLINIC: int = 1
 
     @overload
     def __init__(self, a: float, b: float, c: float) -> None:

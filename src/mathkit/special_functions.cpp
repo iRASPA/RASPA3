@@ -173,67 +173,118 @@ double series_2F1(double a, double b, double c, double z)
   return (s);
 }
 
-// Gosper's method
-// http://www.math.utexas.edu/pipermail/maxima/2006/000126.html
-// https://www.mapleprimes.com/posts/41570-c-code-for-the-hypergeometric
+namespace
+{
+bool isNonPositiveInteger(double x) { return x <= 0.0 && x == std::floor(x); }
+
+// 1 / Gamma(x), zero at the poles of Gamma
+double reciprocalGamma(double x) { return isNonPositiveInteger(x) ? 0.0 : 1.0 / std::tgamma(x); }
+
+// psi(x) = Gamma'(x) / Gamma(x): reflection for x <= 0, the recurrence up to x >= 10 and the asymptotic series
+double digamma(double x)
+{
+  if (x <= 0.0) return digamma(1.0 - x) - std::numbers::pi / std::tan(std::numbers::pi * x);
+  double result = 0.0;
+  while (x < 10.0)
+  {
+    result -= 1.0 / x;
+    x += 1.0;
+  }
+  const double f = 1.0 / (x * x);
+  return result + std::log(x) - 0.5 / x -
+         f * (1.0 / 12.0 - f * (1.0 / 120.0 - f * (1.0 / 252.0 - f * (1.0 / 240.0 - f / 132.0))));
+}
+
+// the logarithmic sum of Abramowitz & Stegun 15.3.10-12 in w = 1 - z,
+//   sum_n (a + s)_n (b + s)_n / (n! (n + m)!) w^n [ln w - psi(n + 1) - psi(n + m + 1) + psi(a + s + n) + psi(b + s +
+//   n)]
+double logarithmicSum(double a, double b, int m, double w)
+{
+  const double logW = std::log(w);
+  double term = 1.0 / std::tgamma(static_cast<double>(m) + 1.0);
+  double sum{};
+  for (int n = 0; n < 100000; ++n)
+  {
+    if (n > 0) term *= (a + n - 1) * (b + n - 1) / (static_cast<double>(n) * static_cast<double>(n + m)) * w;
+    const double value = term * (logW - digamma(n + 1.0) - digamma(n + m + 1.0) + digamma(a + n) + digamma(b + n));
+    sum += value;
+    if (n > 3 && std::fabs(value) <= std::numeric_limits<double>::epsilon() * std::fabs(sum)) break;
+  }
+  return sum;
+}
+
+// the finite sum sum_{n < m} (a)_n (b)_n / (n! (1 - m)_n) w^n of A&S 15.3.11-12
+double finiteSum(double a, double b, int m, double w)
+{
+  double term = 1.0;
+  double sum{};
+  for (int n = 0; n < m; ++n)
+  {
+    if (n > 0) term *= (a + n - 1) * (b + n - 1) / (static_cast<double>(n) * (1.0 - m + n - 1)) * w;
+    sum += term;
+  }
+  return sum;
+}
+
+// 2F1(a, b; c; z) for 1/2 < z < 1 from the connection formula in 1 - z (A&S 15.3.6), and its logarithmic forms
+// (15.3.10-12) when c - a - b is an integer (within 1e-8, where the two terms of 15.3.6 cancel to the rounding of
+// Gamma(c - a - b))
+double hypergeometric2F1NearOne(double a, double b, double c, double z)
+{
+  const double w = 1.0 - z;
+  const double m = c - a - b;
+  const double integerM = std::round(m);
+  if (std::fabs(m - integerM) > 1.0e-8)
+  {
+    return std::tgamma(c) * std::tgamma(m) * reciprocalGamma(c - a) * reciprocalGamma(c - b) *
+               hypergeometric(a, b, 1.0 - m, w) +
+           std::pow(w, m) * std::tgamma(c) * std::tgamma(-m) * reciprocalGamma(a) * reciprocalGamma(b) *
+               hypergeometric(c - a, c - b, m + 1.0, w);
+  }
+  if (integerM >= 0.0)
+  {
+    const int k = static_cast<int>(integerM);
+    const double finite = k > 0 ? std::tgamma(static_cast<double>(k)) * std::tgamma(c) * reciprocalGamma(a + k) *
+                                      reciprocalGamma(b + k) * finiteSum(a, b, k, w)
+                                : 0.0;
+    return finite - std::pow(-w, k) * std::tgamma(c) * reciprocalGamma(a) * reciprocalGamma(b) *
+                        logarithmicSum(a + k, b + k, k, w);
+  }
+  const int k = static_cast<int>(-integerM);
+  const double finite = std::tgamma(static_cast<double>(k)) * std::tgamma(c) * reciprocalGamma(a) * reciprocalGamma(b) *
+                        std::pow(w, -k) * finiteSum(a - k, b - k, k, w);
+  return finite - (k % 2 == 0 ? 1.0 : -1.0) * std::tgamma(c) * reciprocalGamma(a - k) * reciprocalGamma(b - k) *
+                      logarithmicSum(a, b, k, w);
+}
+}  // namespace
+
+// 2F1(a, b; c; z) for real z <= 1: the power series for |z| <= 1/2 (and for a terminating series), Pfaff's
+// transformation 2F1(a, b; c; z) = (1 - z)^(-a) 2F1(a, c - b; c; z / (z - 1)) for z < -1/2, and the connection
+// formula in 1 - z for 1/2 < z < 1. (Gosper's recurrence, used before for |z| > 1/2, diverges for
+// 2 sqrt(2) - 2 < z < 1 and z <= -4.)
 double hypergeometric2F1(double a, double b, double c, double z)
 {
-  int k;
-  // double K;
-  int kMax;
-  double d_k;
-  double e_k;
-  double f_k;
-  double d_k1;
-  double e_k1;
-  double f_k1, t;
-  double xi;
-  double lambda;
-  double mu;
-  double result;
-
   if (std::fabs(z) <= 0.5)
   {
-    result = series_2F1(a, b, c, z);
-    return (result);
+    return series_2F1(a, b, c, z);
+  }
+  if (isNonPositiveInteger(a) || isNonPositiveInteger(b))
+  {
+    // a polynomial
+    return hypergeometric(a, b, c, z);
   }
 
-  mu = c - a - b;
+  const double mu = c - a - b;
   if (z == 1.0)
   {
-    // the recurrence below divides by z - 1; at z = 1 a terminating series (a or b a non-positive integer) is
-    // summed directly, otherwise Gauss's theorem gives Gamma(c) Gamma(c-a-b) / (Gamma(c-a) Gamma(c-b)) for
-    // c - a - b > 0 and the function is unbounded for c - a - b <= 0, with the sign of its prefactor
+    // the connection formula below takes log(1 - z); at z = 1 Gauss's theorem gives Gamma(c) Gamma(c-a-b) / (Gamma(c-a)
+    // Gamma(c-b)) for c - a - b > 0 and the function is unbounded for c - a - b <= 0, with the sign of its prefactor
     // Gamma(c) Gamma(a+b-c) / (Gamma(a) Gamma(b)) (of -Gamma(c) log(1-z) / (Gamma(a) Gamma(b)) for c - a - b = 0)
-    if ((a <= 0.0 && a == std::floor(a)) || (b <= 0.0 && b == std::floor(b))) return hypergeometric(a, b, c, 1.0);
     if (mu > 0.0) return std::tgamma(c) * std::tgamma(mu) / (std::tgamma(c - a) * std::tgamma(c - b));
     const double prefactor = std::tgamma(c) * (mu < 0.0 ? std::tgamma(-mu) : 1.0) / (std::tgamma(a) * std::tgamma(b));
     return std::copysign(std::numeric_limits<double>::infinity(), prefactor);
   }
-
-  kMax = 2000;
-  xi = z / (z - 1.0);
-  d_k = 0.0;
-  e_k = 1.0;
-  f_k = 0.0;
-  f_k1 = 0.0;
-  for (k = 0; k <= kMax; k++)
-  {
-    lambda = (static_cast<double>(k) + a) * (static_cast<double>(k) + b) / (static_cast<double>(k) + 1.0) /
-             (2.0 * static_cast<double>(k) + c) / (2.0 * static_cast<double>(k) + c + 1.0);
-    d_k1 = (lambda * z * (xi * d_k * (mu + static_cast<double>(k)) + e_k));
-    e_k1 = (lambda * z * (-a * b * xi * d_k + (static_cast<double>(k) + c) * e_k));
-    t = d_k * (-static_cast<double>(k) / (-1.0 + z) - (b * a - (mu + static_cast<double>(k)) * static_cast<double>(k)) /
-                                                          (2.0 * static_cast<double>(k) + c) * xi) +
-        e_k;
-    f_k1 = (f_k + t);
-    if (areEqual(f_k1, f_k) == 1 && maxNORM(t) <= std::numeric_limits<double>::epsilon() && 3 < k) break;
-    d_k = (d_k1);
-    e_k = (e_k1);
-    f_k = (f_k1);
-  }
-  // the partial sum including the last term, which the break above skips assigning to f_k
-  result = f_k1;
-
-  return (result);
+  if (z > 1.0) return std::numeric_limits<double>::quiet_NaN();
+  if (z < 0.0) return std::pow(1.0 - z, -a) * hypergeometric2F1(a, c - b, c, z / (z - 1.0));
+  return hypergeometric2F1NearOne(a, b, c, z);
 }

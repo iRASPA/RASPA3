@@ -24,7 +24,6 @@ class PropertyConventionalRadialDistributionFunction:
             write_every: Optional output-write interval in cycles.
         """
 
-    @property
     def result(self) -> list[list[tuple[collections.abc.Sequence[float],
                                         collections.abc.Sequence[float],
                                         collections.abc.Sequence[float]]]]:

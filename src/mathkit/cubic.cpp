@@ -64,10 +64,11 @@ int cubic(double A[4], double X[3], int* L)
       X[0] = X[1] = X[2] = -W;
       *L = 3;
     }
-    else if (std::abs(DIS) <= epsilon * (3.0 * p * p * pScale + 2.0 * std::abs(Q) * qScale))
+    else if (p < 0.0 && std::abs(DIS) <= epsilon * (3.0 * p * p * pScale + 2.0 * std::abs(Q) * qScale))
     {
       // vanishing discriminant: the depressed cubic has the double root d = -cbrt(Q) = -sign(Q) sqrt(-p) and
-      // the simple root -2 d (p < 0 here, otherwise DIS would exceed the tolerance); the trigonometric form
+      // the simple root -2 d (a small p > 0 with a small Q leaves a single real root, DIS = Q^2 + p^3 > 0, which
+      // the branch below handles); the trigonometric form
       // below would split the double root by sqrt(|DIS|) through the ill-conditioned acos near +-1
       const double d = std::copysign(std::sqrt(-p), -Q);
       X[0] = std::min(-2.0 * d, d) - W;

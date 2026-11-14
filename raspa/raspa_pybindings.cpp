@@ -560,9 +560,26 @@ EXPAND_MODULE(MODULE_NAME)
       .def(nanobind::init<std::size_t, std::size_t>(), nanobind::arg("number_of_blocks"),
            nanobind::arg("number_of_sample_points"))
       // dimensionless
-      .def_rw("bias_factor", &PropertyLambdaProbabilityHistogram::biasFactor)
+      .def_prop_rw(
+          "bias_factor", [](const PropertyLambdaProbabilityHistogram& p) { return p.biasFactor; },
+          [](PropertyLambdaProbabilityHistogram& p, const std::vector<double>& value)
+          {
+            // one bias per lambda bin: the moves index it by bin
+            if (value.size() != p.numberOfSamplePoints)
+              throw std::invalid_argument(std::format("bias_factor needs {} values (one per lambda bin), got {}",
+                                                      p.numberOfSamplePoints, value.size()));
+            p.biasFactor = value;
+          })
       // dimensionless
-      .def_rw("histogram", &PropertyLambdaProbabilityHistogram::histogram)
+      .def_prop_rw(
+          "histogram", [](const PropertyLambdaProbabilityHistogram& p) { return p.histogram; },
+          [](PropertyLambdaProbabilityHistogram& p, const std::vector<double>& value)
+          {
+            if (value.size() != p.numberOfSamplePoints)
+              throw std::invalid_argument(std::format("histogram needs {} values (one per lambda bin), got {}",
+                                                      p.numberOfSamplePoints, value.size()));
+            p.histogram = value;
+          })
       .def_ro("occupancy_total", &PropertyLambdaProbabilityHistogram::occupancyTotal)
       .def_ro("occupancy_count", &PropertyLambdaProbabilityHistogram::occupancyCount)
       // convert result to units of Kelvin
@@ -734,7 +751,22 @@ EXPAND_MODULE(MODULE_NAME)
              nanobind::arg("thermodynamic_integration") = false,
              nanobind::arg("blocking_pockets") = std::vector<double4>())
         .def_ro("name", &Component::name)
-        .def_rw("lambda_histogram", &Component::lambdaGC)
+        .def_prop_rw(
+          "lambda_histogram", [](Component& c) -> PropertyLambdaProbabilityHistogram& { return c.lambdaGC; },
+          [](Component& c, const PropertyLambdaProbabilityHistogram& value)
+          {
+            // the moves and the drivers index the histogram by the lambda bins and the blocks of the component
+            if (value.numberOfSamplePoints != c.lambdaGC.numberOfSamplePoints ||
+                value.numberOfBlocks != c.lambdaGC.numberOfBlocks ||
+                value.biasFactor.size() != value.numberOfSamplePoints ||
+                value.histogram.size() != value.numberOfSamplePoints)
+            {
+              throw std::invalid_argument(std::format("lambda_histogram needs {} lambda bins and {} blocks, as the component",
+                                                      c.lambdaGC.numberOfSamplePoints, c.lambdaGC.numberOfBlocks));
+            }
+            c.lambdaGC = value;
+          },
+          nanobind::rv_policy::reference_internal)
         .def_ro("mc_moves_probabilities", &Component::mc_moves_probabilities)
         .def_ro("mc_moves_statistics", &Component::mc_moves_statistics)
         .def_rw("blocking_pockets", &Component::blockingPockets)
@@ -828,7 +860,7 @@ EXPAND_MODULE(MODULE_NAME)
                                                                  {Units::EnergyToKelvin * bins, average, error};});
 
   nanobind::class_<PropertyNumberOfMoleculesHistogram>(m, "PropertyNumberOfMoleculesHistogram")
-      .def(nanobind::init<std::size_t, std::pair<double, double>, std::size_t, std::optional<std::size_t>>(),
+      .def(nanobind::init<std::size_t, std::pair<std::size_t, std::size_t>, std::size_t, std::optional<std::size_t>>(),
                  nanobind::arg("number_of_blocks"), 
                  nanobind::arg("value_range"),
                  nanobind::arg("sample_every"), 
@@ -977,7 +1009,8 @@ EXPAND_MODULE(MODULE_NAME)
            nanobind::arg("property") = nanobind::none())
       .def_rw("average_enthalpies_of_adsorption", &System::averageEnthalpiesOfAdsorption)
       .def_rw("average_partial_molar_properties", &System::averagePartialMolarProperties)
-      .def_rw("atom_data", &System::atomData)
+      // read only: the atoms are kept in step with their dynamics, molecules and groups
+      .def_ro("atom_data", &System::atomData)
       .def_rw("translational_degrees_of_freedom", &System::translationalDegreesOfFreedom)
       .def_rw("rotational_degrees_of_freedom", &System::rotationalDegreesOfFreedom)
       .def_rw("time_step", &System::timeStep)
@@ -1092,11 +1125,14 @@ EXPAND_MODULE(MODULE_NAME)
       .def(nanobind::init<std::size_t>(), nanobind::arg("number_of_components"))
       .def_ro("values", &EnthalpyOfAdsorptionData::values)
       .def("__getitem__",
-           [](const EnthalpyOfAdsorptionData& data, std::size_t index)
+           [](const EnthalpyOfAdsorptionData& data, std::ptrdiff_t index)
            {
-             // a Python sequence ends with an IndexError (iteration stops on it), not past the end of the values
-             if (index >= data.values.size()) throw nanobind::index_error();
-             return data.values[index];
+             // a Python sequence ends with an IndexError (iteration stops on it), not past the end of the values, and
+             // a negative index counts from the end
+             const std::ptrdiff_t size = static_cast<std::ptrdiff_t>(data.values.size());
+             if (index < 0) index += size;
+             if (index < 0 || index >= size) throw nanobind::index_error();
+             return data.values[static_cast<std::size_t>(index)];
            })
       .def("__len__", [](const EnthalpyOfAdsorptionData& data) { return data.values.size(); });
 
@@ -1116,5 +1152,13 @@ EXPAND_MODULE(MODULE_NAME)
       .def(nanobind::init<std::size_t, std::size_t>(),
             nanobind::arg("number_of_blocks"),
             nanobind::arg("number_of_components"))
-      .def("average_properties", [](const PropertyPartialMolarProperties& p) { return p.average(); });
+      // convert the partial molar energies to units of Kelvin
+      .def("average_properties",
+           [](const PropertyPartialMolarProperties& p)
+           {
+             auto [average, error] = p.average();
+             for (double& value : average.partialMolarEnergy) value *= Units::EnergyToKelvin;
+             for (double& value : error.partialMolarEnergy) value *= Units::EnergyToKelvin;
+             return std::pair{average, error};
+           });
 }

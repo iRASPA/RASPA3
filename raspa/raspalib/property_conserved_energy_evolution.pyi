@@ -25,7 +25,6 @@ class PropertyConservedEnergyEvolution():
             write_every: Optional output-write interval in cycles.
         """
 
-    @property
     def result(self) -> collections.abc.Sequence[RunningEnergy]:
         """Return the sampled running energies, in internal units like every :class:`RunningEnergy`."""
         ...

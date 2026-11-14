@@ -562,3 +562,41 @@ TEST(MATHKIT_FIXES, ring_matrix_products_refuse_to_overflow)
   const RingMatrix fits(1, 1, {{40000}});
   EXPECT_EQ((fits * fits)(0, 0), 1600000000);
 }
+
+// A shifted cubic (x - x0)((x - x0)^2 + delta) with a tiny delta > 0 has a single real root: the near-zero
+// discriminant took the double-root branch and its sqrt(-p) of a positive p (three NaN roots).
+TEST(MATHKIT_FIXES, cubic_with_a_tiny_positive_p_has_one_real_root)
+{
+  const double delta = 1.0e-12;
+  double coefficients[4] = {1.0 / 27.0 + delta / 3.0, 1.0 / 3.0 + delta, 1.0, 1.0};
+  double roots[3]{};
+  int numberOfRoots{};
+  cubic(coefficients, roots, &numberOfRoots);
+  ASSERT_EQ(numberOfRoots, 1);
+  EXPECT_NE(std::to_string(roots[0]), std::to_string(std::numeric_limits<double>::quiet_NaN()));
+  // a near-triple root is determined to about the cube root of the rounding of the coefficients
+  EXPECT_NEAR(roots[0], -1.0 / 3.0, 1e-5);
+  const double x = roots[0];
+  EXPECT_LT(std::abs(coefficients[0] + x * (coefficients[1] + x * (coefficients[2] + x * coefficients[3]))), 1e-15);
+}
+
+// 2F1 for |z| > 1/2 through Pfaff's transformation and the connection formula in 1 - z: Gosper's recurrence diverged
+// for 2 sqrt(2) - 2 < z < 1 and z <= -4 (NaN at 2F1(1, 1; 2; 0.99)).
+TEST(MATHKIT_FIXES, hypergeometric_2F1_converges_for_every_z_below_one)
+{
+  for (const double z : {0.6, 0.85, 0.9, 0.99, 0.999999, -0.7, -2.0, -4.0, -10.0, -1000.0})
+  {
+    // c - a - b = 0, 1 (logarithmic forms), -1 and non-integer
+    EXPECT_NEAR(hypergeometric2F1(1.0, 1.0, 2.0, z) / (-std::log(1.0 - z) / z), 1.0, 1e-12) << z;
+    EXPECT_NEAR(hypergeometric2F1(1.0, 1.0, 3.0, z) / (2.0 * (z + (1.0 - z) * std::log(1.0 - z)) / (z * z)), 1.0, 1e-12)
+        << z;
+    EXPECT_NEAR(hypergeometric2F1(1.0, 2.0, 2.0, z) * (1.0 - z), 1.0, 1e-12) << z;
+    EXPECT_NEAR(hypergeometric2F1(0.3, 1.7, 1.7, z) / std::pow(1.0 - z, -0.3), 1.0, 1e-12) << z;
+  }
+  // against the power series where it still converges
+  for (const double z : {0.55, 0.7, 0.85, -0.6, -0.9})
+  {
+    EXPECT_NEAR(hypergeometric2F1(0.3, -1.2, 2.9, z) / hypergeometric(0.3, -1.2, 2.9, z), 1.0, 1e-10) << z;
+    EXPECT_NEAR(hypergeometric2F1(1.5, 2.5, 2.0, z) / hypergeometric(1.5, 2.5, 2.0, z), 1.0, 1e-10) << z;
+  }
+}

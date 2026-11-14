@@ -60,25 +60,6 @@ TEST(opencl_device, device_report_lists_every_preferred_vector_width)
   EXPECT_EQ(line, expected);
 }
 
-// The device-selection test asks for every 3D image format the code relies on; R / UNSIGNED_INT32 was tested as a
-// second copy of R / UNSIGNED_INT16. The selected device must create the corrected format.
-TEST(opencl_device, selected_device_supports_the_tested_image_formats)
-{
-  OpenCL::initialize();
-  if (!OpenCL::clContext.has_value() || !OpenCL::clDeviceId.has_value()) GTEST_SKIP() << "no OpenCL device";
-
-  cl_context context = OpenCL::clContext.value();
-  cl_device_id device = OpenCL::clDeviceId.value();
-  EXPECT_TRUE(OpenCL::supportsImageFormatCapabilities(context, device));
-
-  cl_int err = CL_SUCCESS;
-  cl_image_format format{CL_R, CL_UNSIGNED_INT32};
-  cl_image_desc descriptor{CL_MEM_OBJECT_IMAGE3D, 128, 128, 128, 0, 0, 0, 0, 0, nullptr};
-  cl_mem image = clCreateImage(context, CL_MEM_READ_WRITE, &format, &descriptor, nullptr, &err);
-  EXPECT_EQ(err, CL_SUCCESS);
-  if (err == CL_SUCCESS) clReleaseMemObject(image);
-}
-
 // The void-fraction helper initializes OpenCL itself, owns its program and kernel, and releases them once.
 TEST(opencl_device, void_fraction_helper_owns_and_releases_its_program_and_kernel)
 {

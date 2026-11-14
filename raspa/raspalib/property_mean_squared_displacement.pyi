@@ -22,7 +22,6 @@ class PropertyMeanSquaredDisplacement:
             number_of_block_elements_msd: Number of elements per block of the order-N algorithm.
         """
 
-    @property
     def result(self) -> tuple[collections.abc.Sequence[float],
                               collections.abc.Sequence[float]]:
         """Return sampled time points and mean-squared-displacement values."""

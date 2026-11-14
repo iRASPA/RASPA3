@@ -1547,6 +1547,7 @@ void System::checkCartesianPositions()
 
 void System::setThermostat(const std::optional<Thermostat>& thermo)
 {
+  thermostat.reset();  // None clears the property
   if (thermo.has_value())
   {
     thermostat = Thermostat(temperature, timeStep, translationalDegreesOfFreedom, rotationalDegreesOfFreedom,
@@ -1572,10 +1573,8 @@ void System::setThermobarostat(const std::optional<Thermobarostat>& barostat)
 
 void System::setSamplePDBMovie(const std::optional<SampleMovie>& movie)
 {
-  if (movie.has_value())
-  {
-    samplePDBMovie = movie;
-  }
+  // None clears the property
+  samplePDBMovie = movie;
 }
 
 void System::updateSamplePDBMovie(std::size_t systemId, std::size_t currentCycle)
@@ -1592,27 +1591,58 @@ void System::setNumberOfMoleculesHistogram(const std::optional<PropertyNumberOfM
   averageNumberOfMoleculesHistogram.reset();  // None clears the property
   if (hist.has_value())
   {
+    // sized for the blocks and the components of this system
     averageNumberOfMoleculesHistogram = PropertyNumberOfMoleculesHistogram(
-        hist->numberOfBlocks, components.size(), hist->range, hist->sampleEvery, hist->writeEvery);
+        averageEnergies.numberOfBlocks, components.size(), hist->range, hist->sampleEvery, hist->writeEvery);
   }
 }
 
 void System::setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogram>& hist)
 {
-  // None clears the property
+  // sized for the blocks of this system; None clears the property
   averageEnergyHistogram = hist;
+  if (averageEnergyHistogram.has_value())
+  {
+    if (averageEnergyHistogram->sampleEvery == 0uz)
+      throw std::invalid_argument("PropertyEnergyHistogram: sample_every must be positive");
+    averageEnergyHistogram->histogram =
+        BlockHistogram<AverageEnergyType>(averageEnergies.numberOfBlocks, 1, averageEnergyHistogram->numberOfBins);
+  }
 }
 
 void System::setPropertyDensityGrid(const std::optional<PropertyDensityGrid>& grid)
 {
-  // None clears the property
-  propertyDensityGrid = grid;
+  // sized for the frameworks and components of this system, with pseudo-atoms of its force field; None clears the
+  // property
+  propertyDensityGrid.reset();
+  if (grid.has_value())
+  {
+    for (std::size_t pseudoAtom : grid->densityGridPseudoAtomsList)
+    {
+      if (pseudoAtom >= forceField.pseudoAtoms.size())
+        throw std::out_of_range(
+            std::format("PropertyDensityGrid: pseudo-atom {} is out of range (the force field has {})", pseudoAtom,
+                        forceField.pseudoAtoms.size()));
+    }
+    if (grid->sampleEvery == 0uz || grid->writeEvery == 0uz)
+      throw std::invalid_argument("PropertyDensityGrid: sample_every and write_every must be positive");
+    propertyDensityGrid = PropertyDensityGrid(framework.has_value() ? 1uz : 0uz, components.size(),
+                                              grid->numberOfGridPoints, grid->sampleEvery, grid->writeEvery,
+                                              grid->densityGridPseudoAtomsList, grid->normType, grid->binningMode);
+  }
 }
 
 void System::setPropertyNumberOfMoleculesEvolution(std::optional<PropertyNumberOfMoleculesEvolution> property)
 {
-  // None clears the property
-  propertyNumberOfMoleculesEvolution = property;
+  // sized for the components of this system; None clears the property
+  propertyNumberOfMoleculesEvolution.reset();
+  if (property.has_value())
+  {
+    if (property->sampleEvery == 0uz)
+      throw std::invalid_argument("PropertyNumberOfMoleculesEvolution: sample_every must be positive");
+    propertyNumberOfMoleculesEvolution = PropertyNumberOfMoleculesEvolution(
+        property->totalSamples * property->sampleEvery, components.size(), property->sampleEvery, property->writeEvery);
+  }
 }
 
 void System::setPropertyVolumeEvolution(std::optional<PropertyVolumeEvolution> property)

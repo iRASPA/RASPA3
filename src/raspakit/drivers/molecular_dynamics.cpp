@@ -676,6 +676,16 @@ MolecularDynamics::MolecularDynamics(const SimulationSchedule& schedule, const s
       outputJsons(systems.size()),
       estimation(numberOfBlocks, schedule.numberOfProductionCycles)
 {
+  // the block of a sample comes from 'estimation': the systems must hold as many blocks of averages
+  for (const System& system : this->systems)
+  {
+    if (system.averageEnergies.numberOfBlocks != numberOfBlocks)
+    {
+      throw std::invalid_argument(
+          std::format("MolecularDynamics: number_of_blocks {} differs from the {} blocks of a system\n", numberOfBlocks,
+                      system.averageEnergies.numberOfBlocks));
+    }
+  }
 }
 
 System& MolecularDynamics::randomSystem()

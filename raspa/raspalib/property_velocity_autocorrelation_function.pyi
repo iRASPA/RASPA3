@@ -23,7 +23,6 @@ class PropertyVelocityAutoCorrelationFunction:
             write_every: Optional output-write interval in cycles.
         """
 
-    @property
     def result(self) -> tuple[collections.abc.Sequence[float],
                               collections.abc.Sequence[float]]:
         """Return time points and velocity-autocorrelation values."""

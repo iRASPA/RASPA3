@@ -14,13 +14,23 @@ export import property_block_average;
 
 export struct PropertyNumberOfMoleculesHistogram
 {
+  /// The bins of the range [first, second): an empty or reversed range has none and is refused (second - first wrapped
+  /// to about SIZE_MAX).
+  static std::size_t checkedNumberOfBins(std::pair<std::size_t, std::size_t> range)
+  {
+    if (range.second <= range.first)
+      throw std::invalid_argument(std::format("PropertyNumberOfMoleculesHistogram: the range ({}, {}) is empty",
+                                              range.first, range.second));
+    return range.second - range.first;
+  }
+
   PropertyNumberOfMoleculesHistogram() {};
 
 
     PropertyNumberOfMoleculesHistogram(std::size_t numberOfBlocks, std::pair<std::size_t, std::size_t> range,
                                        std::size_t sampleEvery, std::optional<std::size_t> writeEvery):
         numberOfBlocks(numberOfBlocks),
-        numberOfBins(range.second - range.first),
+        numberOfBins(checkedNumberOfBins(range)),
         range(range),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery)
@@ -31,7 +41,7 @@ export struct PropertyNumberOfMoleculesHistogram
                                      std::pair<std::size_t, std::size_t> range,
                                      std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
       : numberOfBlocks(numberOfBlocks),
-        numberOfBins(range.second - range.first),
+        numberOfBins(checkedNumberOfBins(range)),
         range(range),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),

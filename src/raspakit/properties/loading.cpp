@@ -163,6 +163,9 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
 std::pair<double, double> PropertyLoading::averageLoadingNumberOfMolecules(std::size_t comp) const
 {
   std::pair<LoadingData, LoadingData> loadingAverage = average();
+  if (comp >= loadingAverage.first.numberOfMolecules.size())
+    throw std::out_of_range(std::format("PropertyLoading: component {} out of range ({})", comp,
+                                        loadingAverage.first.numberOfMolecules.size()));
   return {loadingAverage.first.numberOfMolecules[comp], loadingAverage.second.numberOfMolecules[comp]};
 }
 

@@ -896,7 +896,8 @@ std::vector<int> RingMatrix::Algorithm_6_15(int a, std::vector<int> bi, int N)
     {
       int convertedRes = std::get<1>(res);
       ci[i] = convertedRes;
-      ahat = (ahat + convertedRes * bi[i]) % N;
+      // widened as everywhere else: the product of two residues overflows 32 bits for N > 46340
+      ahat = narrowed((wide(ahat) + wide(convertedRes) * wide(bi[i])) % N);
       i += 1;
       has_gi = false;
     }

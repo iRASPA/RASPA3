@@ -56,6 +56,10 @@ export struct PropertyRadialDistributionFunction
   /// with its absolute normalisation, integrated from g(0) = 0: no assumption on g at the end of the range.
   std::pair<std::vector<double>, std::vector<double>> result(std::size_t atomTypeA, std::size_t atomTypeB) const
   {
+    // a type past the last would alias the next row of channels, or read past the histogram
+    if (atomTypeA >= numberOfPseudoAtoms || atomTypeB >= numberOfPseudoAtoms)
+      throw std::out_of_range(std::format("PropertyRadialDistributionFunction: pseudo-atom types ({}, {}) out of range ({})",
+                                          atomTypeA, atomTypeB, numberOfPseudoAtoms));
     return histogram.average(channel(atomTypeA, atomTypeB));
   }
 

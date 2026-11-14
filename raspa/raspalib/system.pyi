@@ -179,11 +179,11 @@ class System():
         """Return conserved-energy evolution property, if configured."""
         ...
 
-    def set_thermostat(self, rdf: Thermostat) -> None:
+    def set_thermostat(self, thermostat: Thermostat | None = None) -> None:
         """Attach thermostat settings to the system."""
         ...
 
-    def set_sample_pdb_movie(self, sample_movie: SampleMovie) -> None:
+    def set_sample_pdb_movie(self, property: SampleMovie | None = None) -> None:
         """Enable/configure PDB-movie sampling."""
         ...
 
@@ -219,7 +219,7 @@ class System():
         """Attach mean-squared-displacement property configuration."""
         ...
 
-    def set_property_msd(self, property: PropertyVelocityAutoCorrelationFunction) -> None:
+    def set_property_vacf(self, property: PropertyVelocityAutoCorrelationFunction | None = None) -> None:
         """Attach velocity-autocorrelation property configuration."""
         ...
 

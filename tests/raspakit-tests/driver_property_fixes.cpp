@@ -25,6 +25,11 @@ import property_density_grid;
 import property_rdf;
 import mc_moves_move_types;
 import mc_moves_parallel_tempering_swap;
+import thermostat;
+import property_loading;
+import property_number_of_molecules_histogram;
+import simulation_schedule;
+import monte_carlo;
 
 namespace
 {
@@ -222,4 +227,67 @@ TEST(driver_property_fixes, energy_histogram_prints_its_range_in_kelvin)
   const std::size_t position = settings.find("valueRange: (");
   ASSERT_NE(position, std::string::npos);
   EXPECT_NEAR(std::stod(settings.substr(position + 13)), -1000.0, 1e-9);
+}
+
+// Out-of-range indices are refused (they aliased the next row of channels or read past the averages).
+TEST(driver_property_fixes, property_accessors_refuse_out_of_range_indices)
+{
+  const PropertyRadialDistributionFunction rdf(1, 2, 10, 5.0, 1, 1);
+  EXPECT_NO_THROW(static_cast<void>(rdf.result(1, 1)));
+  EXPECT_THROW(static_cast<void>(rdf.result(0, 2)), std::out_of_range);
+  EXPECT_THROW(static_cast<void>(rdf.result(2, 0)), std::out_of_range);
+
+  const PropertyLoading loading(5, 1);
+  EXPECT_NO_THROW(static_cast<void>(loading.averageLoadingNumberOfMolecules(0)));
+  EXPECT_THROW(static_cast<void>(loading.averageLoadingNumberOfMolecules(1)), std::out_of_range);
+}
+
+// An empty or reversed molecule-count range is refused (second - first wrapped around).
+TEST(driver_property_fixes, number_of_molecules_histogram_refuses_an_empty_range)
+{
+  EXPECT_THROW(PropertyNumberOfMoleculesHistogram(5, {10uz, 0uz}, 1, std::nullopt), std::invalid_argument);
+  EXPECT_THROW(PropertyNumberOfMoleculesHistogram(5, 1, {3uz, 3uz}, 1, std::nullopt), std::invalid_argument);
+  EXPECT_EQ(PropertyNumberOfMoleculesHistogram(5, {2uz, 12uz}, 1, std::nullopt).numberOfBins, 10uz);
+}
+
+// A driver with more blocks than its systems wrote past the block averages of the systems.
+TEST(driver_property_fixes, monte_carlo_refuses_a_block_count_different_from_its_systems)
+{
+  const ForceField forceField = makeZeroForceField();
+  const System system(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {},
+                      {makeDimer(forceField, false)}, {}, {0}, 5);
+  EXPECT_NO_THROW(MonteCarlo(SimulationSchedule{10}, {system}, 12, 5, false));
+  EXPECT_THROW(MonteCarlo(SimulationSchedule{10}, {system}, 12, 8, false), std::invalid_argument);
+}
+
+// None clears the thermostat and the movie, as it clears every other optional property; the property setters size
+// what they are given for the system.
+TEST(driver_property_fixes, system_setters_clear_on_none_and_size_for_the_system)
+{
+  const ForceField forceField = makeZeroForceField();
+  System system(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {makeDimer(forceField, false)},
+                {}, {0}, 5);
+
+  system.setThermostat(Thermostat(5, 5, 0.15));
+  ASSERT_TRUE(system.thermostat.has_value());
+  system.setThermostat(std::nullopt);
+  EXPECT_FALSE(system.thermostat.has_value());
+
+  system.setSamplePDBMovie(SampleMovie(0, 10, true, std::nullopt));
+  ASSERT_TRUE(system.samplePDBMovie.has_value());
+  system.setSamplePDBMovie(std::nullopt);
+  EXPECT_FALSE(system.samplePDBMovie.has_value());
+
+  system.setPropertyDensityGrid(PropertyDensityGrid(
+      0, 3, int3(4, 4, 4), 1, 1, {}, PropertyDensityGrid::Normalization::Max, PropertyDensityGrid::Binning::Standard));
+  ASSERT_TRUE(system.propertyDensityGrid.has_value());
+  EXPECT_EQ(system.propertyDensityGrid->numberOfComponents, 1uz);
+  EXPECT_THROW(system.setPropertyDensityGrid(PropertyDensityGrid(0, 1, int3(4, 4, 4), 1, 1, {7},
+                                                                 PropertyDensityGrid::Normalization::Max,
+                                                                 PropertyDensityGrid::Binning::Standard)),
+               std::out_of_range);
+
+  system.setAverageEnergyHistogram(PropertyEnergyHistogram(9, 16, {-1000.0, 0.0}, 1, std::nullopt));
+  ASSERT_TRUE(system.averageEnergyHistogram.has_value());
+  EXPECT_EQ(system.averageEnergyHistogram->histogram.numberOfBlocks, 5uz);
 }
