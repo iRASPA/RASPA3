@@ -15,6 +15,7 @@ import vdwparameters;
 import intra_molecular_potentials;
 import potential_pair_vdw;
 import potential_pair_derivatives;
+import potential_pair_coulomb;
 import interactions_internal;
 
 namespace
@@ -295,4 +296,45 @@ TEST(framework_vdw_replicas, framework_one_four_pairs_use_the_one_four_parameter
                        scaling * Potentials::potentialVDW<0>(forceField, 1.0, 1.0, double3::dot(dr, dr), 0, 0).energy),
               1.0);
   }
+}
+
+// The Coulomb pairs are replicated like the van der Waals pairs when the Coulomb cutoff is more than half the cell:
+// every pair image and every self image inside it, as the brute-force lattice sum. They were left at the single
+// minimum image (and without the self images) while the van der Waals pairs were replicated.
+TEST(framework_vdw_replicas, coulomb_replica_energy_matches_brute_force_lattice_sum)
+{
+  const double cutOff = 10.0;
+  ForceField forceField({{"C", false, 12.0, 0.0, 0.0, 6, false}}, {{100.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, cutOff, cutOff, cutOff, false, false, true);
+  forceField.chargeMethod = ForceField::ChargeMethod::Coulomb;
+  const SimulationBox box(8.0, 8.0, 8.0);
+  const std::vector<Atom> atoms{Atom({0.10, 0.15, 0.20}, 0.5, 1.0, 0, 0, 0, 0, true),
+                                Atom({0.60, 0.35, 0.80}, -0.3, 1.0, 0, 0, 0, 0, true),
+                                Atom({0.30, 0.70, 0.45}, -0.2, 1.0, 0, 0, 0, 0, true)};
+  Framework framework(forceField, "coulomb-replica-test", box, 1, atoms, atoms, int3(1, 1, 1));
+  framework.rigid = false;
+  seedMinimumImageVanDerWaals(framework, forceField, box);
+  framework.regenerateVanDerWaalsImageList(forceField, box, cutOff);
+
+  const double replicaEnergy =
+      Interactions::computeFrameworkIntraMolecularEnergy(forceField, framework, box, framework.atoms).intraCoul;
+  double referenceEnergy = 0.0;
+  for (std::size_t i = 0; i < framework.atoms.size(); ++i)
+    for (std::size_t j = 0; j < framework.atoms.size(); ++j)
+      for (int a = -4; a <= 4; ++a)
+        for (int b = -4; b <= 4; ++b)
+          for (int c = -4; c <= 4; ++c)
+          {
+            if (i == j && a == 0 && b == 0 && c == 0) continue;
+            const double3 dr =
+                framework.atoms[i].position - (framework.atoms[j].position + box.cell * double3(a, b, c));
+            const double r = dr.length();
+            if (r < cutOff)
+              referenceEnergy +=
+                  0.5 * Potentials::potentialCoulomb<0>(forceField, 1.0, 1.0, r, framework.atoms[i].charge,
+                                                        framework.atoms[j].charge)
+                            .energy;
+          }
+  ASSERT_GT(std::abs(referenceEnergy), 1.0);
+  EXPECT_NEAR(replicaEnergy, referenceEnergy, 1.0e-8 * std::abs(referenceEnergy));
 }

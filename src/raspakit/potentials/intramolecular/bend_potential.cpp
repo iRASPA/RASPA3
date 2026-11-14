@@ -21,9 +21,10 @@ BendPotential::BendPotential(std::array<std::size_t, 3> identifiers, BendType ty
   switch (type)
   {
     case BendType::Fixed:
-      parameters[0] *= Units::DegreesToRadians;
-      break;
     case BendType::Rigid:
+      // the angle in degrees, as given (generateBendAngle and logBoltzmannConeNormalization take it in radians; a
+      // Rigid bend used to keep the degrees, a cone at 109.47 rad and a normalization of log(sin(180 rad)) < 0: NaN)
+      parameters[0] *= Units::DegreesToRadians;
       break;
     case BendType::Harmonic:
       // (1/2)p_0*(theta-p_1)^2

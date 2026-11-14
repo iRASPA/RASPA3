@@ -149,7 +149,18 @@ Potentials::Internal::distancePotentialEnergyGradientHessianStrain(
   double f1{};
   double f2{};
   double3 du_dr{};
-  if (!zero_gradient && r > 0.0)
+  // A spring about the origin, U = (1/2) p_0 r^2 (a core-shell spring, a harmonic bond to r_0 = 0), has the constant
+  // f1 = (dU/dr)/r = p_0 and f2 = 0 at every r: its Hessian p_0 I also at r = 0, where a core and its shell sit at zero
+  // field (the general form gave nought there, and divided by an r rr that underflows to nought just above it).
+  const bool springAboutTheOrigin =
+      type == BondType::CoreShellSpring || (type == BondType::Harmonic && parameters[1] == 0.0);
+  if (!zero_gradient && springAboutTheOrigin)
+  {
+    f1 = parameters[0];
+    f2 = 0.0;
+    du_dr = f1 * dr;
+  }
+  else if (!zero_gradient && r > 0.0 && r * rr > 0.0)
   {
     f1 = derivatives.firstDerivative / r;
     f2 = derivatives.secondDerivative / rr - derivatives.firstDerivative / (r * rr);

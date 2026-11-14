@@ -401,3 +401,26 @@ TEST(vdw_potentials, second_order_taylor_shifted_energy_gradient_and_hessian_van
   EXPECT_NEAR(value.firstDerivativeFactor, 0.0, 1e-14);
   EXPECT_NEAR(hessian.secondDerivativeFactor, 0.0, 1e-14);
 }
+
+// RepulsiveHarmonic couples to lambda like the other forms without a soft core, U = s u with dU/ds = u, and is
+// shifted at a cutoff inside its range. It was returned unscaled, with dU/dlambda = 0 and without the shift: a
+// fractional molecule at lambda = 0 felt all of it.
+TEST(vdw_potentials, repulsive_harmonic_scales_with_lambda_and_is_shifted)
+{
+  PseudoAtom pseudoAtom("A", false, 12.0, 0.0, 0.0, 6, false);
+  const VDWParameters vdw(VDWParameters::Type::RepulsiveHarmonic, {500.0, 4.0});
+  const ForceField full({pseudoAtom}, {vdw}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false,
+                        false);
+  const double rr = 2.0 * 2.0;
+  const double u = Potentials::potentialVDW<0>(full, 1.0, 1.0, rr, 0, 0).energy;
+  ASSERT_GT(u, 0.0);
+  const Potentials::PairDerivatives<1> half = Potentials::potentialVDW<1>(full, 0.5, 1.0, rr, 0, 0);
+  EXPECT_NEAR(half.energy, 0.5 * u, 1e-12 * u);
+  EXPECT_NEAR(half.dUdlambda, u, 1e-12 * u);
+  EXPECT_EQ(Potentials::potentialVDW<0>(full, 0.0, 1.0, rr, 0, 0).energy, 0.0);
+
+  // shifted at a cutoff of 3 inside the range of 4: zero at the cutoff
+  const ForceField shifted({pseudoAtom}, {vdw}, ForceField::MixingRule::Lorentz_Berthelot, 3.0, 3.0, 3.0, true, false,
+                           false);
+  EXPECT_NEAR(Potentials::potentialVDW<0>(shifted, 1.0, 1.0, 3.0 * 3.0, 0, 0).energy, 0.0, 1e-12 * u);
+}

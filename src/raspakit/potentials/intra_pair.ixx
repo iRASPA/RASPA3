@@ -137,4 +137,42 @@ template <std::size_t Order>
   if constexpr (Order >= 2) result.secondDerivativeFactor *= pairScaling;
   return result;
 }
+
+/**
+ * \brief The scaled (1-4) Coulomb pair of a flexible framework, the framework's counterpart of intraMolecularCoulomb.
+ *
+ * The pair is among the excluded charge pairs of the framework (Interactions::frameworkExcludedChargePairs), whose
+ * correction the Ewald and real-space routines add on their own (Ewald: -C qA qB erf(alpha r)/r at every r; the
+ * real-space methods: C qA qB (V(r) - 1/r) inside the cutoff). This is the molecule's scaled pair less that
+ * correction, so that the two together are the molecule's: the bare s C qA qB / r inside the cutoff under Ewald and
+ * the real-space methods, C qA qB erf(alpha r)/r (the long-range part the Fourier sum counts) beyond it under Ewald and
+ * nothing under the real-space methods, and the scaled cut-off pair potential under a plain cut-off method.
+ */
+template <std::size_t Order>
+[[clang::always_inline]] inline PairDerivatives<Order> frameworkScaledPairCoulomb(const ForceField &forceField,
+                                                                                double pairScaling, double r,
+                                                                                double chargeA, double chargeB)
+{
+  PairDerivatives<Order> result = intraMolecularCoulomb<Order>(forceField, pairScaling, 1.0, 1.0, r, chargeA, chargeB);
+  result.dUdlambda = 0.0;
+  const double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+  if (prefactor == 0.0) return result;
+  const double rr = r * r;
+  if (forceField.usesEwaldFourier())
+  {
+    const EwaldExclusionFactors exclusion = ewaldExclusionFactors(forceField.EwaldAlpha, 1.0, r);
+    result.energy += prefactor * exclusion.potential;
+    if constexpr (Order >= 1) result.firstDerivativeFactor += prefactor * exclusion.firstDerivativeFactor;
+    if constexpr (Order >= 2) result.secondDerivativeFactor += prefactor * exclusion.secondDerivativeFactor;
+  }
+  else if (forceField.usesRealSpaceChargeCorrections() && rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
+  {
+    const CoulombRealSpaceFactors factors = coulombRealSpaceFactors(forceField, r);
+    result.energy -= prefactor * (factors.potential - 1.0 / r);
+    if constexpr (Order >= 1) result.firstDerivativeFactor -= prefactor * (factors.firstDerivativeFactor + 1.0 / (rr * r));
+    if constexpr (Order >= 2)
+      result.secondDerivativeFactor -= prefactor * (factors.secondDerivativeFactor - 3.0 / (rr * rr * r));
+  }
+  return result;
+}
 }  // namespace Potentials

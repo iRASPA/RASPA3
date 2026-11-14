@@ -366,7 +366,7 @@ std::pair<EnergyStatus, double3x3> computeEwaldFourierEnergyStrainDerivative(
     const std::vector<Component>& components, const std::vector<std::size_t>& numberOfMoleculesPerComponent,
     std::span<const Atom> atomData, std::span<AtomDynamics> atomDynamics, double netChargeFramework,
     std::vector<double> netChargePerComponent, std::span<const Atom> frameworkAtoms = {},
-    std::span<AtomDynamics> frameworkDynamics = {}) noexcept;
+    std::span<AtomDynamics> frameworkDynamics = {});
 
 /**
  * \brief Accepts a move by updating the stored Ewald Fourier components.

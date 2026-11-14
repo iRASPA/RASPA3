@@ -21,6 +21,8 @@ import framework;
 import component;
 import intra_molecular_exclusions;
 import coulomb_potential;
+import bond_potential;
+import bend_potential;
 import forcefield;
 import interactions_ewald_kvector;
 import simd_lanes;
@@ -409,31 +411,52 @@ void addChargeExclusionStrainDerivative(EnergyStatus& energy, double3x3& strainD
 std::set<std::array<std::size_t, 2>> frameworkExcludedChargePairs(const Framework& framework)
 {
   std::set<std::array<std::size_t, 2>> excludedPairs;
-  std::map<std::array<std::size_t, 2>, double> coulombScaling;
-  for (const CoulombPotential& potential : framework.intraMolecularPotentials.coulombs)
+  // A bonded pair is excluded when the construction leaves it out of the Coulomb pairs (Framework, the 1-2 / bond and
+  // 1-3 / bend exclusion flags, and a rigid group) or scales it (the 1-4 pairs at a scaling other than one); decided
+  // from the topology and not from the list, which holds a pair once per periodic image in a small cell
+  // (regenerateVanDerWaalsImageList) and so lists an excluded pair at its other images.
+  std::set<std::array<std::size_t, 2>> pairs12;
+  std::set<std::array<std::size_t, 2>> pairs13;
+  std::set<std::array<std::size_t, 2>> definedBondPairs;
+  std::set<std::array<std::size_t, 2>> definedBendPairs;
+  for (const BondPotential& bond : framework.intraMolecularPotentials.bonds)
   {
-    coulombScaling[{std::min(potential.identifiers[0], potential.identifiers[1]),
-                    std::max(potential.identifiers[0], potential.identifiers[1])}] = potential.scaling;
+    definedBondPairs.insert(
+        {std::min(bond.identifiers[0], bond.identifiers[1]), std::max(bond.identifiers[0], bond.identifiers[1])});
   }
-  const auto excludeIfAbsentOrScaled = [&](const std::array<std::size_t, 2>& pair)
+  for (const BendPotential& bend : framework.intraMolecularPotentials.bends)
+  {
+    definedBendPairs.insert(
+        {std::min(bend.identifiers[0], bend.identifiers[2]), std::max(bend.identifiers[0], bend.identifiers[2])});
+  }
+  const auto excludeIfLeftOutOrScaled = [&](const std::array<std::size_t, 2>& pair)
   {
     if (framework.isFixedAtom(pair[0]) && framework.isFixedAtom(pair[1])) return;
-    const auto scaling = coulombScaling.find(pair);
-    if (scaling == coulombScaling.end() || scaling->second != 1.0) excludedPairs.insert(pair);
+    const bool is12 = pairs12.contains(pair);
+    const bool is13 = !is12 && pairs13.contains(pair);
+    const bool leftOut = (framework.excludeIntra12Interactions && is12) ||
+                         (framework.excludeIntraBondInteractions && definedBondPairs.contains(pair)) ||
+                         (framework.excludeIntra13Interactions && is13) ||
+                         (framework.excludeIntraBendInteractions && definedBendPairs.contains(pair)) ||
+                         framework.isInsideFixedOrRigidGroup(pair);
+    const bool scaled14 = !is12 && !is13 && framework.intra14ChargeChargeScaling != 1.0;
+    if (leftOut || scaled14) excludedPairs.insert(pair);
   };
   if (!framework.connectivityTable.table.empty())
   {
     for (const std::array<std::size_t, 2>& bond : framework.connectivityTable.findAllBonds())
     {
-      excludeIfAbsentOrScaled({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
+      pairs12.insert({std::min(bond[0], bond[1]), std::max(bond[0], bond[1])});
     }
     for (const std::array<std::size_t, 3>& bend : framework.connectivityTable.findAllBends())
     {
-      excludeIfAbsentOrScaled({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
+      pairs13.insert({std::min(bend[0], bend[2]), std::max(bend[0], bend[2])});
     }
+    for (const std::array<std::size_t, 2>& pair : pairs12) excludeIfLeftOutOrScaled(pair);
+    for (const std::array<std::size_t, 2>& pair : pairs13) excludeIfLeftOutOrScaled(pair);
     for (const std::array<std::size_t, 4>& torsion : framework.connectivityTable.findAllTorsions())
     {
-      excludeIfAbsentOrScaled({std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])});
+      excludeIfLeftOutOrScaled({std::min(torsion[0], torsion[3]), std::max(torsion[0], torsion[3])});
     }
   }
   for (const FrameworkGroup& group : framework.groups)
@@ -475,8 +498,9 @@ void addFrameworkChargeExclusionStrainDerivative(double3x3& strainDerivative, co
     const double3 f = term.firstDerivativeFactor * dr;
     if (!frameworkDynamics.empty())
     {
-      frameworkDynamics[i].gradient += f;
-      frameworkDynamics[j].gradient -= f;
+      // a lab-fixed atom carries no gradient, as in the pair, bonded and Fourier routines
+      if (!framework.isFixedAtom(i)) frameworkDynamics[i].gradient += f;
+      if (!framework.isFixedAtom(j)) frameworkDynamics[j].gradient -= f;
     }
 
     strainDerivative.ax += f.x * dr.x;
@@ -729,8 +753,9 @@ double Interactions::computeEwaldFourierEnergySingleIon(
     }
   }
 
-  return -Units::CoulombicConversionFactor *
-         ((2.0 * std::numbers::pi / simulationBox.volume) * energy_sum - alpha / std::sqrt(std::numbers::pi));
+  // both terms are quadratic in the charge (the self term was taken at a unit charge)
+  return -Units::CoulombicConversionFactor * ((2.0 * std::numbers::pi / simulationBox.volume) * energy_sum -
+                                              charge * charge * alpha / std::sqrt(std::numbers::pi));
 }
 
 void Interactions::precomputeEwaldFourierRigid(std::vector<std::complex<double>>& eik_x,
@@ -1112,8 +1137,9 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
 
           const double gradientFactor = chargeProduct * (factors.firstDerivativeFactor + 1.0 / (rr * r));
           const double3 gradient = gradientFactor * dr;
-          frameworkDynamics[i].gradient += gradient;
-          frameworkDynamics[j].gradient -= gradient;
+          // a lab-fixed atom carries no gradient, as in the pair, bonded and Fourier routines
+          if (!framework->isFixedAtom(i)) frameworkDynamics[i].gradient += gradient;
+          if (!framework->isFixedAtom(j)) frameworkDynamics[j].gradient -= gradient;
         }
       }
     }
@@ -1294,8 +1320,9 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
         const double gaussTerm = 2.0 * alpha * std::numbers::inv_sqrtpi * std::exp(-alpha_squared * rr);
         const double f1 = -chargeProduct * (gaussTerm / rr - erfTerm / (r * rr));
         const double3 gradient = f1 * dr;
-        frameworkDynamics[i].gradient += gradient;
-        frameworkDynamics[j].gradient -= gradient;
+        // a lab-fixed atom carries no gradient, as in the pair, bonded and Fourier routines
+        if (!framework->isFixedAtom(i)) frameworkDynamics[i].gradient += gradient;
+        if (!framework->isFixedAtom(j)) frameworkDynamics[j].gradient -= gradient;
       }
     }
   }
@@ -2105,7 +2132,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
     const std::vector<Component>& components,
     [[maybe_unused]] const std::vector<std::size_t>& numberOfMoleculesPerComponent, std::span<const Atom> atomData,
     std::span<AtomDynamics> atomDynamics, double netChargeFramework, std::vector<double> netChargePerComponent,
-    std::span<const Atom> frameworkAtoms, std::span<AtomDynamics> frameworkDynamics) noexcept
+    std::span<const Atom> frameworkAtoms, std::span<AtomDynamics> frameworkDynamics)
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -2179,6 +2206,14 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
 
   // Live Fourier hosts are mobile framework atoms; lab-fixed atoms stay in fixedFrameworkStoredEik.
   const bool liveFramework = framework && framework->hasMobileAtoms() && !frameworkAtoms.empty();
+  // refused as in computeEwaldFourierEnergy: subtracting the whole live structure factor under 'omitInterInteractions'
+  // takes out the reciprocal terms of the mobile framework atoms as well
+  if (liveFramework && forceField.omitInterInteractions)
+  {
+    throw std::logic_error(
+        "'omitInterInteractions' is not supported with mobile (flexible or rigid-group) framework "
+        "atoms in the Ewald sum");
+  }
   const std::size_t fixedFrameworkAtomCount = framework ? framework->numberOfFixedAtoms() : 0;
   const std::size_t mobileFrameworkAtomCount = framework ? framework->numberOfMobileAtoms() : 0;
   const bool useFixedFrameworkEik = !liveFramework || fixedFrameworkAtomCount > 0;
@@ -2460,6 +2495,14 @@ void Interactions::computeEwaldFourierElectrostaticPotential(
   // The mobile framework atoms are live charges of the Fourier sum (as in computeEwaldFourierElectricField), the
   // lab-fixed ones enter through the stored structure factor; before, a flexible framework was left out entirely.
   const bool liveFramework = framework && framework->hasMobileAtoms() && !frameworkAtoms.empty();
+  // refused as in computeEwaldFourierEnergy: subtracting the whole live structure factor under 'omitInterInteractions'
+  // takes out the reciprocal terms of the mobile framework atoms as well
+  if (liveFramework && forceField.omitInterInteractions)
+  {
+    throw std::logic_error(
+        "'omitInterInteractions' is not supported with mobile (flexible or rigid-group) framework "
+        "atoms in the Ewald sum");
+  }
   const std::size_t fixedFrameworkAtomCount = liveFramework ? framework->numberOfFixedAtoms() : 0;
   const std::size_t frameworkOffset = liveFramework ? frameworkAtoms.size() - fixedFrameworkAtomCount : 0;
   std::vector<Atom> liveAtoms;
@@ -2624,6 +2667,14 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
   // Live Fourier hosts are the mobile framework atoms, as in computeEwaldFourierEnergy (which this function replaces
   // when the field is needed); lab-fixed atoms contribute through fixedFrameworkStoredEik.
   const bool liveFramework = framework && framework->hasMobileAtoms() && !frameworkAtoms.empty();
+  // refused as in computeEwaldFourierEnergy: subtracting the whole live structure factor under 'omitInterInteractions'
+  // takes out the reciprocal terms of the mobile framework atoms as well
+  if (liveFramework && forceField.omitInterInteractions)
+  {
+    throw std::logic_error(
+        "'omitInterInteractions' is not supported with mobile (flexible or rigid-group) framework "
+        "atoms in the Ewald sum");
+  }
   const std::size_t fixedFrameworkAtomCount = liveFramework ? framework->numberOfFixedAtoms() : 0;
   const std::size_t frameworkOffset = liveFramework ? frameworkAtoms.size() - fixedFrameworkAtomCount : 0;
   const bool useFixedFrameworkEik = !liveFramework || fixedFrameworkAtomCount > 0;

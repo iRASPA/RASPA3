@@ -978,10 +978,16 @@ void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, con
 
   const double3 widths = box.perpendicularWidths();
   const double smallestWidth = std::min({widths.x, widths.y, widths.z});
+  // The Coulomb pairs are replicated like the van der Waals pairs when their cutoff is the one a minimum image no
+  // longer covers (the real-space Ewald sum, and the Wolf/DSF/shifted pair, sum every image inside the cutoff).
+  const double cutOffCoulomb = forceField.cutOffCoulomb;
+  const bool replicateVanDerWaals = smallestWidth < 2.0 * cutOffFrameworkVDW;
+  const bool replicateCoulomb = forceField.useCharge && cutOffCoulomb > 0.0 && smallestWidth < 2.0 * cutOffCoulomb;
   // A single minimum image already covers the cutoff; keep the construction-time list untouched.
-  if (smallestWidth >= 2.0 * cutOffFrameworkVDW) return;
+  if (!replicateVanDerWaals && !replicateCoulomb) return;
 
   const double cutOffSquared = cutOffFrameworkVDW * cutOffFrameworkVDW;
+  const double cutOffCoulombSquared = cutOffCoulomb * cutOffCoulomb;
 
   // Topological classification (unordered pairs), reconstructed from the stored connectivity exactly as
   // in the construction-time nonbonded generation.
@@ -1020,17 +1026,28 @@ void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, con
 
   std::vector<VanDerWaalsPotential> vanDerWaals;
   std::vector<std::array<int3, 2>> vanDerWaalsImages;
+  std::vector<CoulombPotential> coulombs;
+  std::vector<std::array<int3, 2>> coulombImages;
 
   const auto emitPair = [&](std::size_t i, std::size_t j, const int3& shift, double scaling)
   {
+    if (!replicateVanDerWaals) return;
     const std::size_t typeA = static_cast<std::size_t>(atoms[i].type);
     const std::size_t typeB = static_cast<std::size_t>(atoms[j].type);
     vanDerWaals.emplace_back(std::array<std::size_t, 2>{i, j}, forceField(typeA, typeB), scaling);
     vanDerWaalsImages.push_back({int3{}, shift});
   };
+  const auto emitCoulomb = [&](std::size_t i, std::size_t j, const int3& shift, double scaling)
+  {
+    if (!replicateCoulomb) return;
+    coulombs.emplace_back(std::array<std::size_t, 2>{i, j}, CoulombType::Coulomb, atoms[i].charge, atoms[j].charge,
+                          scaling);
+    coulombImages.push_back({int3{}, shift});
+  };
 
   // Range of replica shells to scan; ceil(2 cutoff / width) is a safe upper bound per axis.
-  const int3 shells = box.smallestNumberOfUnitCellsForMinimumImagesConvention(cutOffFrameworkVDW);
+  const int3 shells = box.smallestNumberOfUnitCellsForMinimumImagesConvention(
+      std::max(cutOffFrameworkVDW, replicateCoulomb ? cutOffCoulomb : 0.0));
 
   // Distinct-atom pairs: atom i sits in the home cell, atom j roams over all periodic images. Fixing
   // i in the home cell and iterating i < j counts every unordered pair-image exactly once.
@@ -1063,12 +1080,14 @@ void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, con
             if (isBondedImage && scaled14)
             {
               if (intra14VanDerWaalsScaling > 0.0) emitPair(i, j, shift, intra14VanDerWaalsScaling);
+              if (intra14ChargeChargeScaling > 0.0) emitCoulomb(i, j, shift, intra14ChargeChargeScaling);
               continue;
             }
             const double3 dr = atoms[i].position - (atoms[j].position + box.cell * double3(static_cast<double>(a),
                                                                                            static_cast<double>(b),
                                                                                            static_cast<double>(c)));
             if (double3::dot(dr, dr) < cutOffSquared) emitPair(i, j, shift, 1.0);
+            if (double3::dot(dr, dr) < cutOffCoulombSquared) emitCoulomb(i, j, shift, 1.0);
           }
         }
       }
@@ -1092,13 +1111,22 @@ void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, con
           const double3 dr =
               box.cell * double3(static_cast<double>(-a), static_cast<double>(-b), static_cast<double>(-c));
           if (double3::dot(dr, dr) < cutOffSquared) emitPair(i, i, int3(a, b, c), 1.0);
+          if (double3::dot(dr, dr) < cutOffCoulombSquared) emitCoulomb(i, i, int3(a, b, c), 1.0);
         }
       }
     }
   }
 
-  intraMolecularPotentials.vanDerWaals = std::move(vanDerWaals);
-  intraMolecularImageShifts.vanDerWaals = std::move(vanDerWaalsImages);
+  if (replicateVanDerWaals)
+  {
+    intraMolecularPotentials.vanDerWaals = std::move(vanDerWaals);
+    intraMolecularImageShifts.vanDerWaals = std::move(vanDerWaalsImages);
+  }
+  if (replicateCoulomb)
+  {
+    intraMolecularPotentials.coulombs = std::move(coulombs);
+    intraMolecularImageShifts.coulombs = std::move(coulombImages);
+  }
 }
 
 void Framework::makeSuperCell()

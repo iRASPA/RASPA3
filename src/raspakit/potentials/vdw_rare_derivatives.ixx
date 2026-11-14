@@ -150,8 +150,9 @@ export [[clang::noinline]] [[clang::preserve_most]] inline RareVDWDerivatives ev
     double range = p.parameters.y;
     if (radius.value >= range) return RareVDWDerivatives{0.0, 0.0, 0.0, 0.0};
     RadialJet displacement = 1.0 - radius / range;
-    RadialJet term = 0.5 * p.parameters.x * displacement * displacement;
-    return RareVDWDerivatives{term.value, 0.0, term.first, term.second};
+    // finite at r = 0, so scaled linearly like the other forms without a soft core: U = s (u - shift), dU/ds = u - shift
+    RadialJet term = 0.5 * p.parameters.x * displacement * displacement - p.shift;
+    return linearScalingResult(term, scaling);
   }
 
   if (potentialType == VDWParameters::Type::WeeksChandlerAndersen)

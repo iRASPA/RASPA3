@@ -137,7 +137,9 @@ RunningEnergy Interactions::computeFrameworkMoleculeHessian(
           moleculeDynamics[static_cast<std::size_t>(it1 - moleculeAtoms.begin())].gradient +=
               factors.firstDerivativeFactor * dr;
         }
-        if (frameworkDynamics.size() == frameworkAtoms.size())
+        // a lab-fixed atom of a mixed framework carries no gradient, as in the gradient routines
+        if (frameworkDynamics.size() == frameworkAtoms.size() &&
+            !(framework != nullptr && framework->isFixedAtom(frameworkAtom)))
         {
           frameworkDynamics[frameworkAtom].gradient -= factors.firstDerivativeFactor * dr;
         }

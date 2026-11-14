@@ -24,7 +24,9 @@ import interactions_framework_molecule;
 import integrators_cputime;
 import json;
 import bond_potential;
+import distance_potential_gradient_hessian_strain;
 import bend_potential;
+import randomnumbers;
 import property_lambda_probability_histogram;
 import property_volume_evolution;
 import averages;
@@ -32,6 +34,7 @@ import mc_moves_cputime;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 import molecule;
+import potential_intra_pair;
 
 namespace
 {
@@ -277,4 +280,74 @@ TEST(latent_api_fixes, massless_probe_molecule_record_takes_the_geometric_centre
   EXPECT_EQ(std::to_string(com.x), std::to_string(1.0));
   EXPECT_EQ(std::to_string(com.y), std::to_string(2.0));
   EXPECT_EQ(std::to_string(com.z), std::to_string(3.0));
+}
+
+// The scaled 1-4 Coulomb pair of a flexible framework, with the framework's own exclusion correction (Ewald:
+// -C qq erf(alpha r)/r; real-space methods: C qq (V - 1/r) inside the cutoff) added on top, is the molecule's scaled
+// pair: s C qq / r inside the cutoff, beyond it the long-range erf part under Ewald and nothing under Wolf, the
+// scaled cut-off potential under a plain cut-off. The framework used the bare s C qq / r at every r and method.
+TEST(latent_api_fixes, framework_scaled_14_coulomb_is_the_molecule_pair)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(6.0, true, false, true);
+  forceField.EwaldAlpha = 0.3;
+  const double s = 0.5;
+  const double qA = 0.4;
+  const double qB = -0.6;
+  const double C = Units::CoulombicConversionFactor * qA * qB;
+  for (const double r : {3.0, 8.0})
+  {
+    const bool inside = r < forceField.cutOffCoulomb;
+    forceField.chargeMethod = ForceField::ChargeMethod::Ewald;
+    EXPECT_NEAR(Potentials::frameworkScaledPairCoulomb<0>(forceField, s, r, qA, qB).energy,
+                inside ? s * C / r : C * std::erf(0.3 * r) / r, 1e-10 * std::abs(C))
+        << "Ewald at r = " << r;
+    forceField.chargeMethod = ForceField::ChargeMethod::Wolf;
+    EXPECT_NEAR(Potentials::frameworkScaledPairCoulomb<0>(forceField, s, r, qA, qB).energy, inside ? s * C / r : 0.0,
+                1e-10 * std::abs(C))
+        << "Wolf at r = " << r;
+
+    // the gradient factor is the derivative of the energy, (dU/dr)/r
+    for (const ForceField::ChargeMethod method : {ForceField::ChargeMethod::Ewald, ForceField::ChargeMethod::Wolf})
+    {
+      forceField.chargeMethod = method;
+      const double h = 1e-6;
+      const double derivative = (Potentials::frameworkScaledPairCoulomb<0>(forceField, s, r + h, qA, qB).energy -
+                                 Potentials::frameworkScaledPairCoulomb<0>(forceField, s, r - h, qA, qB).energy) /
+                                (2.0 * h);
+      EXPECT_NEAR(r * Potentials::frameworkScaledPairCoulomb<1>(forceField, s, r, qA, qB).firstDerivativeFactor,
+                  derivative, 1e-6 * std::abs(C));
+    }
+  }
+}
+
+// A Rigid bend takes its angle in degrees, as a Fixed one: the growth places the bead at that angle (in radians) and
+// the cone normalization is log(2 pi sin theta0). The degrees were kept, the cone was at 109.47 rad and a bend at 180
+// degrees had the logarithm of a negative sine.
+TEST(latent_api_fixes, rigid_bend_angle_is_converted_to_radians)
+{
+  RandomNumber random(7);
+  for (const double degrees : {109.47, 180.0 - 1e-6})
+  {
+    const BendPotential bend({0, 1, 2}, BendType::Rigid, {degrees});
+    EXPECT_NEAR(bend.generateBendAngle(random, 1.0), degrees * Units::DegreesToRadians, 1e-12);
+    const double normalization = bend.logBoltzmannConeNormalization(1.0);
+    EXPECT_EQ(std::to_string(normalization),
+              std::to_string(std::log(2.0 * std::numbers::pi * std::sin(degrees * Units::DegreesToRadians))));
+  }
+}
+
+// A core-shell spring is (1/2) p_0 r^2: its Hessian is p_0 I at every separation, also with the shell on the core
+// (r = 0, its place at zero field) and at a separation whose cube underflows. It was nought at r = 0 and not a number
+// just above it.
+TEST(latent_api_fixes, core_shell_spring_hessian_is_p0_at_zero_separation)
+{
+  std::array<double, maximumNumberOfBondParameters> parameters{};
+  parameters[0] = 1500.0;
+  for (const double separation : {0.0, 1e-160, 0.3})
+  {
+    const auto [energy, gradient, strain, f1, f2] = Potentials::Internal::distancePotentialEnergyGradientHessianStrain(
+        BondType::CoreShellSpring, parameters, double3(separation, 0.0, 0.0), double3(0.0, 0.0, 0.0), false);
+    EXPECT_EQ(std::to_string(f1), std::to_string(1500.0)) << separation;
+    EXPECT_EQ(std::to_string(f2), std::to_string(0.0)) << separation;
+  }
 }

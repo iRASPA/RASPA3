@@ -35,6 +35,7 @@ import energy_dudlambda;
 import energy_status;
 import energy_status_inter;
 import energy_status_intra;
+import potential_intra_pair;
 import property_simulationbox;
 import average_energy_type;
 import property_energy;
@@ -1123,6 +1124,31 @@ void System::computeTotalElectrostaticPotential() noexcept
   Interactions::computeEwaldFourierElectrostaticPotential(
       eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, moleculeElectrostaticPotential, forceField, simulationBox,
       components, moleculeAtomPositions, netChargeFramework, framework, frameworkAtomPositions);
+
+  // The intramolecular pairs that are not excluded (the 1-4 pairs at their scaling, the 1-5 and further pairs): their
+  // real-space part and the correction of their Fourier part, Potentials::intraMolecularCoulomb, are terms of the
+  // energy like any other, and its charge derivative is the same pair function at a unit charge (it is bilinear in
+  // the two charges). Without them the potential depended on alpha under Ewald and missed the pairs under Wolf.
+  if (forceField.useCharge)
+  {
+    for (const Molecule& molecule : moleculeData)
+    {
+      const std::span<const Atom> atoms = moleculeAtomPositions.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+      std::span<double> potential = moleculeElectrostaticPotential.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+      components[molecule.componentId].intraMolecularPotentials.forEachCoulombPair(
+          [&](std::size_t A, std::size_t B, double scaling)
+          {
+            const double3 dr = simulationBox.applyPeriodicBoundaryConditions(atoms[A].position - atoms[B].position);
+            const double r = dr.length();
+            potential[A] += Potentials::intraMolecularCoulomb<0>(forceField, scaling, atoms[A].scalingCoulomb,
+                                                                 atoms[B].scalingCoulomb, r, 1.0, atoms[B].charge)
+                                .energy;
+            potential[B] += Potentials::intraMolecularCoulomb<0>(forceField, scaling, atoms[A].scalingCoulomb,
+                                                                 atoms[B].scalingCoulomb, r, atoms[A].charge, 1.0)
+                                .energy;
+          });
+    }
+  }
 }
 
 void System::computeTotalElectricField() noexcept

@@ -417,3 +417,23 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
     EXPECT_NEAR(spanOfMoleculeDynamics[i].gradient.z, gradient.z, tolerance) << "Wrong z-gradient";
   }
 }
+
+// The single-ion Fourier energy is quadratic in the charge, its self term too: nought for a neutral ion and four times
+// the unit-charge value for a charge of two (the self term was taken at a unit charge whatever the charge).
+TEST(Ewald, single_ion_fourier_energy_is_quadratic_in_the_charge)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  forceField.EwaldAlpha = 0.25;
+  forceField.numberOfWaveVectors = int3(8, 8, 8);
+  System system = System(forceField, SimulationBox(10.0, 10.0, 10.0), false, 300.0, 1e4, 1.0, {}, {}, {}, {}, 5);
+  auto energyAt = [&](double charge)
+  {
+    return Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                                            system.forceField, system.simulationBox,
+                                                            double3(0.0, 0.0, 0.0), charge);
+  };
+  const double unit = energyAt(1.0);
+  ASSERT_NE(unit, 0.0);
+  EXPECT_EQ(energyAt(0.0), 0.0);
+  EXPECT_NEAR(energyAt(2.0), 4.0 * unit, 1e-12 * std::abs(unit));
+}

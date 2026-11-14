@@ -13,6 +13,10 @@ import vdwparameters;
 import forcefield;
 import framework;
 import component;
+import connectivity_table;
+import intra_molecular_potentials;
+import bend_potential;
+import bond_potential;
 import system;
 import simulationbox;
 import running_energy;
@@ -582,6 +586,67 @@ TEST(electrostatic_potential, potential_is_the_charge_derivative_of_the_energy)
     const std::vector<double> potential(system.spanOfMoleculeElectrostaticPotential().begin(),
                                         system.spanOfMoleculeElectrostaticPotential().end());
 
+    const double delta = 1e-5;
+    for (std::size_t i = 0; i < atoms.size(); ++i)
+    {
+      atoms[i].charge += delta;
+      const double plus = system.computeTotalEnergies().potentialEnergy();
+      atoms[i].charge -= 2.0 * delta;
+      const double minus = system.computeTotalEnergies().potentialEnergy();
+      atoms[i].charge += delta;
+      const double numerical = (plus - minus) / (2.0 * delta);
+      EXPECT_NEAR(potential[i], numerical, 1e-6 * std::max(1.0, std::abs(numerical)))
+          << "method=" << static_cast<int>(method) << " atom=" << i;
+    }
+  }
+}
+
+// A flexible charged chain of five atoms has a 1-4 pair (scaled) and a 1-5 pair (full) that are not excluded: their
+// real-space Coulomb term and the correction of their Fourier part are energy terms too, and the potential is still
+// the charge derivative of the energy. The potential used to leave them out (alpha-dependent under Ewald, missing
+// under Wolf).
+TEST(electrostatic_potential, potential_includes_the_intramolecular_pairs_of_a_flexible_chain)
+{
+  for (const ForceField::ChargeMethod method : {ForceField::ChargeMethod::Ewald, ForceField::ChargeMethod::Wolf})
+  {
+    ForceField forceField = ForceField({PseudoAtom("a", false, 12.0, 0.0, 0.0, 6, false)}, {VDWParameters(0.0, 1.0)},
+                                       ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
+    forceField.chargeMethod = method;
+    if (method != ForceField::ChargeMethod::Ewald)
+    {
+      forceField.omitEwaldFourier = true;
+      forceField.EwaldAlpha = 0.2;
+    }
+    ConnectivityTable connectivity(5);
+    for (std::size_t i = 0; i + 1 < 5; ++i)
+    {
+      connectivity[i, i + 1] = true;
+      connectivity[i + 1, i] = true;
+    }
+    const std::vector<double> charges{0.4, -0.3, 0.2, -0.5, 0.35};
+    std::vector<Atom> beads;
+    for (std::size_t i = 0; i < 5; ++i)
+      beads.push_back(Atom(double3(1.5 * static_cast<double>(i), 0.3 * static_cast<double>(i % 2), 0.0), charges[i],
+                           1.0, 0, 0, 0, false, false));
+    Potentials::IntraMolecularPotentials potentials{};
+    for (std::size_t i = 0; i + 1 < 5; ++i)
+      potentials.bonds.push_back(BondPotential({i, i + 1}, BondType::Harmonic, {96500.0, 1.5}));
+    for (std::size_t i = 0; i + 2 < 5; ++i)
+      potentials.bends.push_back(BendPotential({i, i + 1, i + 2}, BendType::Harmonic, {62500.0, 114.0}));
+    Component chain = Component(forceField, "chain", 0.0, 0.0, 0.0, beads, connectivity, potentials, 5, 21);
+    ASSERT_FALSE(chain.rigid);
+    // the 1-4 pairs (0, 3), (1, 4) and the 1-5 pair (0, 4)
+    ASSERT_EQ(chain.intraMolecularPotentials.numberOfCoulombPairs(), 3uz);
+    System system =
+        System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {chain}, {}, {1}, 5);
+    std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+    const std::array<double3, 5> positions{double3(5.0, 5.0, 5.0), double3(6.4, 5.5, 5.0), double3(7.0, 6.8, 5.6),
+                                           double3(8.4, 7.2, 5.1), double3(8.9, 8.6, 5.9)};
+    for (std::size_t i = 0; i < 5; ++i) atoms[i].position = positions[i];
+
+    system.computeTotalElectrostaticPotential();
+    const std::vector<double> potential(system.spanOfMoleculeElectrostaticPotential().begin(),
+                                        system.spanOfMoleculeElectrostaticPotential().end());
     const double delta = 1e-5;
     for (std::size_t i = 0; i < atoms.size(); ++i)
     {

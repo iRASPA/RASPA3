@@ -26,6 +26,7 @@ import phonon_force_constants;
 import minimization_generalized_coordinates;
 import running_energy;
 import interactions_hessian_ewald;
+import interactions_ewald;
 import interactions_hessian_intramolecular;
 
 namespace
@@ -541,4 +542,26 @@ TEST(minimization_hessian_mixed_framework, molecular_pressure_matches_finite_dif
     EXPECT_NEAR(virial.trace() / (3.0 * system.simulationBox.volume), fd, 1.0e-4 * std::abs(fd) + 1.0e-8)
         << "charged " << charged;
   }
+}
+
+// The lab-fixed atom of a mixed framework carries no gradient: the pair, bonded and Fourier routines skip it, and so do
+// the Ewald exclusion corrections of the excluded pairs it is in (the fixed atom 0 is bonded to the rigid atom 1).
+// The exclusion force was left on it, which the force-based radial distribution function then read.
+TEST(minimization_hessian_mixed_framework, lab_fixed_atoms_carry_no_exclusion_gradient)
+{
+  System system = makeMixedFrameworkSystem(true);
+  ASSERT_TRUE(system.framework->isFixedAtom(0));
+  system.precomputeTotalRigidEnergy();
+  for (AtomDynamics& dynamics : system.spanOfFrameworkDynamics()) dynamics.gradient = double3(0.0, 0.0, 0.0);
+  static_cast<void>(Interactions::computeEwaldFourierGradient(
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.fixedFrameworkStoredEik,
+      system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+      system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.netChargeFramework, system.framework,
+      system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics()));
+  // the exclusion of the pair 0-1 acts on the mobile atom 1 and not on the fixed atom 0
+  EXPECT_NE(system.spanOfFrameworkDynamics()[1].gradient.x, 0.0);
+  const double3 gradient = system.spanOfFrameworkDynamics()[0].gradient;
+  EXPECT_EQ(gradient.x, 0.0);
+  EXPECT_EQ(gradient.y, 0.0);
+  EXPECT_EQ(gradient.z, 0.0);
 }

@@ -8,6 +8,7 @@ import energy_status;
 import potential_pair_derivatives;
 import potential_pair_vdw;
 import potential_pair_coulomb;
+import potential_intra_pair;
 import potential_correction_vdw;
 import potential_electrostatics;
 import simulationbox;
@@ -30,6 +31,20 @@ import coulomb_potential;
 import component;
 import units;
 import threadpool;
+
+namespace
+{
+// Whether a framework Coulomb pair is a scaled 1-4 pair (Potentials::frameworkScaledPairCoulomb): listed as a 1-4 pair,
+// with a scaling other than one, and at its bonded image only when that is the minimum image, as the 1-4 Van der
+// Waals pairs; otherwise it is a regular pair.
+bool scaledFramework14Pair(const std::set<std::array<std::size_t, 2>>& pairs14, std::size_t A, std::size_t B,
+                           double scaling, const double3& dr, const SimulationBox& simulationBox)
+{
+  if (scaling == 1.0 || !pairs14.contains({std::min(A, B), std::max(A, B)})) return false;
+  const double3 minimumImage = simulationBox.applyPeriodicBoundaryConditions(dr);
+  return double3::dot(dr, dr) <= double3::dot(minimumImage, minimumImage) * (1.0 + 1.0e-10);
+}
+}  // namespace
 
 RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const ForceField& forceField,
                                                                  const Framework& framework,
@@ -130,10 +145,11 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const ForceFiel
       const std::size_t B = potential.identifiers[1];
       const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
       const double rr = double3::dot(dr, dr);
-      if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+      if (scaledFramework14Pair(pairs14, A, B, potential.scaling, dr, simulationBox))
       {
-        energy.intraCoul += potential.calculateEnergy(shiftedPosition(A, images.coulombs[index][0]),
-                                                      shiftedPosition(B, images.coulombs[index][1]));
+        energy.intraCoul += Potentials::frameworkScaledPairCoulomb<0>(forceField, potential.scaling, std::sqrt(rr),
+                                                                      potential.chargeA, potential.chargeB)
+                                .energy;
       }
       else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
       {
@@ -273,11 +289,12 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
       const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
       const double rr = double3::dot(dr, dr);
       const double r = std::sqrt(rr);
-      if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+      if (scaledFramework14Pair(pairs14, A, B, potential.scaling, dr, simulationBox))
       {
-        const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
-        energy.intraCoul += k / r;
-        const double3 gradient = (-k / (r * rr)) * dr;
+        const Potentials::PairDerivatives<1> factor = Potentials::frameworkScaledPairCoulomb<1>(
+            forceField, potential.scaling, r, potential.chargeA, potential.chargeB);
+        energy.intraCoul += factor.energy;
+        const double3 gradient = factor.firstDerivativeFactor * dr;
         addMobileGradient(A, gradient);
         addMobileGradient(B, -gradient);
       }
@@ -428,11 +445,12 @@ std::pair<RunningEnergy, double3x3> Interactions::computeFrameworkIntraMolecular
       const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
       const double rr = double3::dot(dr, dr);
       const double r = std::sqrt(rr);
-      if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+      if (scaledFramework14Pair(pairs14, A, B, potential.scaling, dr, simulationBox))
       {
-        const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
-        energy.intraCoul += k / r;
-        const double3 gradient = (-k / (r * rr)) * dr;
+        const Potentials::PairDerivatives<1> factor = Potentials::frameworkScaledPairCoulomb<1>(
+            forceField, potential.scaling, r, potential.chargeA, potential.chargeB);
+        energy.intraCoul += factor.energy;
+        const double3 gradient = factor.firstDerivativeFactor * dr;
         addMobileGradient(A, gradient);
         addMobileGradient(B, -gradient);
         addPairStrain(gradient, dr);

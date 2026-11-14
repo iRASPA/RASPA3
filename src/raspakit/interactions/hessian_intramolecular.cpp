@@ -506,12 +506,19 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
       const std::size_t B = potential.identifiers[1];
       const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
       const double rr = double3::dot(dr, dr);
-      if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+      bool scaled14 = potential.scaling != 1.0 && pairs14.contains({std::min(A, B), std::max(A, B)});
+      if (scaled14)
       {
-        const double r = std::sqrt(rr);
-        const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
-        accumulateRadial(A, B, images.coulombs[index], k / r, -k / (r * rr), 3.0 * k / (r * rr * rr),
-                         energies.intraCoul);
+        // the 1-4 pair at its bonded image only when that is the minimum image, as the 1-4 Van der Waals pairs
+        const double3 minimumImage = simulationBox.applyPeriodicBoundaryConditions(dr);
+        scaled14 = rr <= double3::dot(minimumImage, minimumImage) * (1.0 + 1.0e-10);
+      }
+      if (scaled14)
+      {
+        const Potentials::PairDerivatives<2> factors = Potentials::frameworkScaledPairCoulomb<2>(
+            forceField, potential.scaling, std::sqrt(rr), potential.chargeA, potential.chargeB);
+        accumulateRadial(A, B, images.coulombs[index], factors.energy, factors.firstDerivativeFactor,
+                         factors.secondDerivativeFactor, energies.intraCoul);
       }
       else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
       {

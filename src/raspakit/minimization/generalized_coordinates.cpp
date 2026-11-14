@@ -190,6 +190,13 @@ void applyCellDisplacement(System& system, const MinimizationDofLayout& layout, 
   }
 
   system.simulationBox = SimulationBox(deformation * system.simulationBox.cell);
+  // which periodic images of the framework pairs lie inside the cutoffs follows the cell: an image a contraction
+  // brought inside them was missing from the list built for the starting cell
+  if (system.framework.has_value() && !system.framework->rigid)
+  {
+    system.framework->regenerateVanDerWaalsImageList(system.forceField, system.simulationBox,
+                                                     system.forceField.cutOffFrameworkVDW);
+  }
 }
 }  // namespace
 
