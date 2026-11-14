@@ -530,6 +530,9 @@ void System::initializeGibbsConventionalFractionalMolecules(bool complementaryBo
       atom.setScalingToFractional(lambda, groupId);
     }
   }
+  // the fractional molecules were created switched off: the effective pseudo-atom counts of the tail corrections and
+  // the net charge (refreshed with them) follow their scaling
+  computeTailCorrectionCounts();
 }
 
 // Fixed-lambda thermodynamic integration: pin the fractional molecule(s) of each component with a

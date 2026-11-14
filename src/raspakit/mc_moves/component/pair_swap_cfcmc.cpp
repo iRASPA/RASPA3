@@ -519,9 +519,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     const double preFactor = (system.beta * fugacityA * system.simulationBox.volume / static_cast<double>(1 + oldN_A)) *
                              (system.beta * fugacityB * sphereVolume / static_cast<double>(1 + oldN_B));
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
+    // the conformations were drawn at full coupling and are placed at the new lambda (see
+    // 'System::intraCoulombScalingEnergy')
     const double physicalPacc =
         preFactor *
-        std::exp(-system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
+        std::exp(-system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy() +
+                                 system.intraCoulombScalingEnergy(trialMoleculeA.second) +
+                                 system.intraCoulombScalingEnergy(trialMoleculeB.second)));
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN_A >= system.tmmc.maxMacrostate)
@@ -873,9 +877,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     const double preFactor = (static_cast<double>(oldN_A) / (system.beta * fugacityA * system.simulationBox.volume)) *
                              (static_cast<double>(oldN_B) / (system.beta * fugacityB * sphereVolume));
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
+    // the reverse insertion draws the removed conformations at full coupling and places them at the old lambda
     const double physicalPacc =
         preFactor *
-        std::exp(-system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
+        std::exp(-system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy() -
+                                 system.intraCoulombScalingEnergy(oldFractionalMoleculeA) -
+                                 system.intraCoulombScalingEnergy(oldFractionalMoleculeB)));
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN_A <= system.tmmc.minMacrostate)

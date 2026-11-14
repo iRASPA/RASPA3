@@ -839,7 +839,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy EwaldFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, system.components, trialPositions, molecule, system.ewaldMoveNetCharge());
+        system.simulationBox, system.components, trialPositions, molecule, system.ewaldMoveNetCharge(),
+        system.ewaldMoveChargeDerivative(molecule));
     EwaldFourierDifference += system.intraCoulombRescaleDifference(trialPositions, molecule);
     time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)

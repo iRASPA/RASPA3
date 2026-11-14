@@ -38,9 +38,11 @@ struct HybridMCEngine
   const System* owner{nullptr};
   std::size_t numberOfAtoms{0};
   std::size_t numberOfMolecules{0};
+  /// The Verlet skin the engine was built with (clamped to the box of that moment, see 'settingsFor').
+  double verletSkin{0.0};
 
   HybridMCEngine(const System& system, const SpatialDecompositionSettings& settings)
-      : engine(settingsFor(system, settings))
+      : engine(settingsFor(system, settings)), verletSkin(settingsFor(system, settings).verletSkin)
   {
   }
 
@@ -74,7 +76,11 @@ HybridMCEngine* hybridMCEngine(System& system)
   }
 
   std::shared_ptr<HybridMCEngine> holder = std::static_pointer_cast<HybridMCEngine>(system.hybridMCForceEngine);
-  if (!holder || holder->owner != &system)
+  // The skin was clamped to the box the engine was built for. A volume move (or the automatic cut-offs re-derived
+  // after one) can leave less room than that: cutoff + skin then exceeds half the box and the engine threw at its
+  // next list update. An engine whose skin no longer fits is rebuilt for the box as it is now.
+  const double fittingSkin = HybridMCEngine::settingsFor(system, system.forceEngineSettings).verletSkin;
+  if (!holder || holder->owner != &system || holder->verletSkin > fittingSkin)
   {
     holder = std::make_shared<HybridMCEngine>(system, system.forceEngineSettings);
     system.hybridMCForceEngine = holder;

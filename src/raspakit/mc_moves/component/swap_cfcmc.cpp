@@ -374,9 +374,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     double biasTerm = (system.tmmcTracks(selectedComponent) && system.tmmc.lambdaChain())
                           ? 0.0
                           : lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
+    // the conformation was drawn at full coupling and is placed at the new lambda: the change of its intramolecular
+    // Coulomb kernel with the scaling is not part of the generation probability
     double physicalPacc = preFactor * std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() +
                                                                energyDifferenceStep2.potentialEnergy() +
-                                                               polarizationDifference.potentialEnergy()));
+                                                               polarizationDifference.potentialEnergy() +
+                                                               system.intraCoulombScalingEnergy(trialMolecule.second)));
     double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
@@ -751,9 +754,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       double biasTerm = (system.tmmcTracks(selectedComponent) && system.tmmc.lambdaChain())
                             ? 0.0
                             : lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-      double physicalPacc = preFactor * std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() +
-                                                                 energyDifferenceStep2.potentialEnergy() +
-                                                                 polarizationDifference.potentialEnergy()));
+      // the reverse insertion draws the removed conformation at full coupling and places it at the old lambda
+      double physicalPacc =
+          preFactor *
+          std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() + energyDifferenceStep2.potentialEnergy() +
+                                   polarizationDifference.potentialEnergy() -
+                                   system.intraCoulombScalingEnergy(oldFractionalMolecule)));
       double samplingPacc = physicalPacc * std::exp(biasTerm);
 
       if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
@@ -888,7 +894,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     time_begin = std::chrono::steady_clock::now();
     RunningEnergy EwaldFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, system.components, trialPositions, molecule, system.ewaldMoveNetCharge());
+        system.simulationBox, system.components, trialPositions, molecule, system.ewaldMoveNetCharge(),
+        system.ewaldMoveChargeDerivative(molecule));
     EwaldFourierDifference += system.intraCoulombRescaleDifference(trialPositions, molecule);
     time_end = std::chrono::steady_clock::now();
     if (insertionDisabled || deletionDisabled)

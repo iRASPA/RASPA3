@@ -59,14 +59,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
               [&] { return CBMC::retraceMolecule(random, retraceContext, component, molecule); });
 
     // Compute the energy difference in Fourier space due to the deletion
-    RunningEnergy energyFourierDifference = timed(
-        system, component, move, Move::Timing::Ewald,
-        [&]
-        {
-          return Interactions::energyDifferenceEwaldFourier(
-              system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-              system.forceField, system.simulationBox, system.components, {}, molecule, system.ewaldMoveNetCharge());
-        });
+    RunningEnergy energyFourierDifference =
+        timed(system, component, move, Move::Timing::Ewald,
+              [&]
+              {
+                return Interactions::energyDifferenceEwaldFourier(
+                    system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                    system.forceField, system.simulationBox, system.components, {}, molecule,
+                    system.ewaldMoveNetCharge(), system.ewaldMoveChargeDerivative(molecule));
+              });
 
     // Compute the tail energy difference due to the deletion
     [[maybe_unused]] RunningEnergy tailEnergyDifference =

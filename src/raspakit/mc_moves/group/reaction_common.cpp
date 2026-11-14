@@ -82,7 +82,8 @@ void acceptChargedEwaldMove(System& system) noexcept
 {
   return Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, newAtoms, oldAtoms, system.ewaldMoveNetCharge());
+      system.simulationBox, system.components, newAtoms, oldAtoms, system.ewaldMoveNetCharge(),
+      system.ewaldMoveChargeDerivative(oldAtoms));
 }
 
 // Molecule-molecule tail-correction change of replacing 'oldAtoms' by 'newAtoms' against the background of the
@@ -503,7 +504,8 @@ void setReactionFractionalScaling(System& system, Reaction& reaction, double lam
   {
     RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-        system.simulationBox, system.components, newAtoms, oldAtoms, system.ewaldMoveNetCharge());
+        system.simulationBox, system.components, newAtoms, oldAtoms, system.ewaldMoveNetCharge(),
+        system.ewaldMoveChargeDerivative(oldAtoms));
     energyDifference += ewaldDifference;
   }
 

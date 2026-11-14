@@ -192,7 +192,8 @@ std::optional<RunningEnergy> computeMoleculeEnergyDifference(
 
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, trialAtoms, oldAtoms, runningNetCharge);
+      system.simulationBox, system.components, trialAtoms, oldAtoms, runningNetCharge,
+      system.ewaldMoveChargeDerivative(oldAtoms));
   // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
   if (!system.forceField.omitInterInteractions)
     runningNetCharge += Interactions::scaledNetChargeDifference(trialAtoms, oldAtoms);
@@ -276,7 +277,7 @@ RunningEnergy growEwaldTailDifference(
 {
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, growAtoms, {}, runningNetCharge);
+      system.simulationBox, system.components, growAtoms, {}, runningNetCharge, system.ewaldMoveChargeDerivative({}));
   RunningEnergy tailDifference = probeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, growAtoms, {});
   return ewaldDifference + tailDifference;
 }
@@ -288,7 +289,8 @@ RunningEnergy retraceEwaldTailDifference(
 {
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, {}, retraceAtoms, runningNetCharge);
+      system.simulationBox, system.components, {}, retraceAtoms, runningNetCharge,
+      system.ewaldMoveChargeDerivative(retraceAtoms));
   RunningEnergy tailDifference =
       probeTailEnergyDifference(system, tailEffectiveCounts, tailGroupCounts, {}, retraceAtoms);
   return ewaldDifference + tailDifference;
@@ -428,6 +430,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     RunningEnergy internalEnergy{};
     double logRosenbluthWeight{0.0};
     RunningEnergy retraceEwaldTail{};
+    /// Conventional variant: the reverse insertion draws the leaving conformation at full coupling and places it at
+    /// lambda_old (see 'System::intraCoulombScalingEnergy').
+    double intraCoulombScaling{0.0};
   };
   auto prepareDeletion = [&](System& system, const std::vector<double>& tailEffectiveCounts,
                              const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& tailGroupCounts,
@@ -436,6 +441,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
     DeletionPrelude prelude{};
     prelude.internalEnergy = component.intraMolecularPotentials.computeInternalEnergies(
         system.forceField, system.simulationBox, fractionalMolecule);
+    if (!useCBMC) prelude.intraCoulombScaling = system.intraCoulombScalingEnergy(fractionalMolecule);
     if (useCBMC)
     {
       const CBMC::GrowContext context = system.makeGrowContext();
@@ -600,8 +606,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       RunningEnergy internalEnergyNew = component.intraMolecularPotentials.computeInternalEnergies(
           system.forceField, system.simulationBox, trialAtoms);
       trial.energy = insertionEnergy.value() + internalEnergyNew;
+      // the conformation was drawn at full coupling and is placed at lambda_new
       trial.acceptanceFactor =
-          std::exp(-system.beta * insertionEnergy->potentialEnergy()) * volume / (integerCount + 1.0);
+          std::exp(-system.beta * (insertionEnergy->potentialEnergy() + system.intraCoulombScalingEnergy(trialAtoms))) *
+          volume / (integerCount + 1.0);
       return true;
     }
 
@@ -659,7 +667,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       return std::exp(std::log(idealGas) - prelude.logRosenbluthWeight -
                       system.beta * prelude.retraceEwaldTail.potentialEnergy());
     }
-    return std::exp(-system.beta * energyFirstStep.potentialEnergy());
+    return std::exp(-system.beta * (energyFirstStep.potentialEnergy() - prelude.intraCoulombScaling));
   };
 
   const double physicalAcceptance =

@@ -92,7 +92,8 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
 
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, newAtoms, oldAtoms, system.ewaldMoveNetCharge());
+      system.simulationBox, system.components, newAtoms, oldAtoms, system.ewaldMoveNetCharge(),
+      system.ewaldMoveChargeDerivative(oldAtoms));
 
   // Tail corrections of the molecule-molecule and of the framework-molecule interactions: both change with the
   // pseudo-atom composition of the adsorbate phase. Pairwise with the scalings of the present molecules, so that

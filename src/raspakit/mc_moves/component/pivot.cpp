@@ -119,9 +119,11 @@ std::optional<RunningEnergy> MC_Moves::pivotMove(RandomNumber &random, System &s
       timed(system, component, move, Move::Timing::MoleculeMolecule,
             [&]
             {
+              // a cross-linked molecule sits on its partner's bonded atoms: its raw pair energy is not an overlap
+              // (the excluded pairs are taken out below), as in the translation and rotation moves
               return Interactions::computeInterMolecularEnergyDifference(
                   system.forceField, system.simulationBox, system.cellList(), system.spanOfMoleculeAtoms(), movedNew,
-                  movedOld);
+                  movedOld, !system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule));
             });
   if (!interMolecule.has_value()) return std::nullopt;
 

@@ -122,3 +122,18 @@ TEST(TRANSITION_MATRIX, lnpi_does_not_infer_a_ratio_from_a_one_sided_link)
 
   EXPECT_NEAR(matrix.lnpi[1] - matrix.lnpi[0], 0.0, 1.0e-12);
 }
+
+// Clearing the collection matrix after initialization also clears the bias Wang-Landau built: its modification
+// factor starts over with it (left annealed near zero, the cleared bias could not be rebuilt).
+TEST(TRANSITION_MATRIX, clearing_the_bias_restarts_the_wang_landau_factor)
+{
+  TransitionMatrix tm{};
+  tm.doTMMC = true;
+  tm.rezeroAfterInitialization = true;
+  tm.bias.assign(4, -3.0);
+  tm.wangLandauHistogram.assign(4, 2.0);
+  tm.wangLandauFactor = 1.0e-5;
+  tm.clearCMatrix();
+  EXPECT_DOUBLE_EQ(tm.wangLandauFactor, 1.0);
+  for (double value : tm.bias) EXPECT_EQ(value, 0.0);
+}

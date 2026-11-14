@@ -227,10 +227,10 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
       timed(system, componentAData, move, Move::Timing::Ewald,
             [&]
             {
-              return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                                system.storedEik, system.trialEik, system.forceField,
-                                                                system.simulationBox, system.components, newAtoms,
-                                                                oldAtoms, system.ewaldMoveNetCharge());
+              return Interactions::energyDifferenceEwaldFourier(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, system.components, newAtoms, oldAtoms,
+                  system.ewaldMoveNetCharge(), system.ewaldMoveChargeDerivative(oldAtoms));
             });
 
   // Tail corrections cancel exactly: the multiset of atom types in the box is unchanged

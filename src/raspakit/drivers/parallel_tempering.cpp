@@ -29,6 +29,7 @@ import mc_moves_cputime;
 import mc_moves_statistics;
 import mc_moves_parallel_tempering_swap;
 import json;
+import equation_of_states;
 
 // The analysis-property writers (RDFs, density grid, histograms, molecule properties) gate
 // themselves on their own 'writeEvery'; a cycle argument of 0 forces the write (used for the
@@ -76,6 +77,50 @@ static void writeReplicaAnalysisOutputs(System& system, std::size_t replicaId, s
     system.propertyMoleculeBackbone->writeOutput(replicaId, system.components, cycle);
   }
 }
+
+namespace
+{
+// The state-point quantities of 'system' at temperature T (its pressure is kept): fugacities from the components'
+// 'ChemicalPotential' (f = kT exp(mu / kT), the reservoir an ideal-gas mixture of them), otherwise the Peng-Robinson
+// fugacity coefficients of the components that were not given one; the equation of state (bulk density, excess
+// amounts); and the log partition functions given as thermochemical species.
+void refreshStatePoint(System& system, double T)
+{
+  const bool hasChemicalPotentials = std::ranges::any_of(
+      system.components, [](const Component& component) { return component.chemicalPotential.has_value(); });
+  if (hasChemicalPotentials)
+  {
+    double totalFugacity = 0.0;
+    for (Component& component : system.components)
+    {
+      if (!component.chemicalPotential.has_value()) continue;
+      component.molFraction = Units::KB * T * std::exp(component.chemicalPotential.value() / (Units::KB * T));
+      component.fugacityCoefficient = 1.0;
+      totalFugacity += component.molFraction;
+    }
+    for (Component& component : system.components)
+    {
+      if (component.chemicalPotential.has_value()) component.molFraction /= totalFugacity;
+    }
+    system.pressure = totalFugacity;
+    system.input_pressure = totalFugacity * Units::PressureConversionFactor;
+    system.pressureTensorDiagonal = double3(system.pressure, system.pressure, system.pressure);
+    system.input_pressureTensorDiagonal = double3(system.input_pressure, system.input_pressure, system.input_pressure);
+  }
+  else
+  {
+    for (Component& component : system.components)
+    {
+      if (!component.fugacityCoefficientGiven) component.fugacityCoefficient = std::nullopt;
+    }
+  }
+  system.equationOfState =
+      EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MixingRules::VanDerWaals, T,
+                      system.input_pressure, system.simulationBox, system.heliumVoidFraction, system.components);
+
+  for (Component& component : system.components) component.updateLnPartitionFunction(T);
+}
+}  // namespace
 
 ParallelTempering::ParallelTempering(InputReader& reader)
     : random(reader.randomSeed),
@@ -169,6 +214,11 @@ ParallelTempering::ParallelTempering(InputReader& reader)
       system.forceField.preComputePotentialShift();
       system.forceField.preComputeTailCorrection();
     }
+
+    // The reservoir and the reaction constants of the replica at its own temperature: the reader derived them at the
+    // first temperature of the ladder, and every other replica sampled the wrong fugacities, excess amounts and
+    // equilibrium constants.
+    refreshStatePoint(system, T);
 
     // solute tempering: scale the solute Hamiltonian of this replica, lambda_k = T_k / T_eff,k
     // (before the conformation reservoirs are built, these sample the scaled intramolecular potentials)

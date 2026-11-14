@@ -14,6 +14,7 @@ import int3;
 import json;
 import thermobarostat;
 import units;
+import parallel_tempering;
 
 namespace
 {
@@ -1415,4 +1416,100 @@ TEST(INPUT_READER_MD, rejects_negative_counts_unknown_units_and_unknown_mixing_r
   nlohmann::json forceField = nlohmann::json::parse(input_reader_fixtures::kBoxForceFieldJson);
   forceField["MixingRule"] = "Geometric-Average";
   expectRejected(readNVTExample(), forceField.dump(2), "unknown_mixing_rule");
+}
+
+// 'PairComponent' is a zero-based index into 'Components': an index past the last component is refused (the pair
+// deletion moves indexed the partner unchecked).
+TEST(INPUT_READER_MD, rejects_a_pair_component_out_of_range)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  nlohmann::json input = readNVTExample();
+  input["Components"][0]["PairComponent"] = 1;
+  input["Components"][0]["MaximumPairDistance"] = 5.0;
+  TemporaryInput temporary(std::move(input), "pair_component_range", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+  EXPECT_THROW(
+      {
+        InputReader reader(temporary.path().filename().string());
+        static_cast<void>(reader);
+      },
+      std::runtime_error);
+}
+
+// The volume moves scale the molecules only: with a framework they are refused, as the barostats of molecular
+// dynamics and the Gibbs volume move are.
+TEST(INPUT_READER, rejects_volume_moves_on_a_framework)
+{
+  for (const char* key : {"VolumeMoveProbability", "AnisotropicVolumeMoveProbability"})
+  {
+    SCOPED_TRACE(key);
+    TemporaryDirectory workspace = makeTmmcWorkspace();
+    nlohmann::json input = readTMMCExample();
+    input["Systems"][0][key] = 0.1;
+    TemporaryInput temporary(std::move(input), std::string("framework_volume_") + key, workspace.path());
+    ScopedCurrentPath currentPath(workspace.path());
+    EXPECT_THROW(
+        {
+          InputReader reader(temporary.path().filename().string());
+          static_cast<void>(reader);
+        },
+        std::runtime_error);
+  }
+}
+
+namespace
+{
+nlohmann::json methaneMonteCarloInput(double temperature)
+{
+  nlohmann::json input = readNVTExample();
+  input["SimulationType"] = "MonteCarlo";
+  for (const char* key : {"Ensemble", "ComputeMSD", "SampleMSDEvery", "WriteMSDEvery"}) input["Systems"][0].erase(key);
+  input["Systems"][0]["ExternalTemperature"] = temperature;
+  input["Systems"][0]["ExternalPressure"] = 1.0e6;
+  input["Components"][0]["CreateNumberOfMolecules"] = 5;
+  // a swappable component: its fugacity coefficient is taken from the equation of state
+  input["Components"][0]["SwapProbability"] = 1.0;
+  return input;
+}
+}  // namespace
+
+// The replicas of a parallel-tempering run each run at their own temperature: their Peng-Robinson fugacity
+// coefficients are those of that temperature (the reader derived them at the first one, and every other replica
+// kept them), and a 'ChemicalPotential' imposes the fugacity kT exp(mu / kT) of each replica's temperature.
+TEST(INPUT_READER_MD, parallel_tempering_replicas_take_the_state_point_of_their_temperature)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+
+  nlohmann::json pt = methaneMonteCarloInput(250.0);
+  pt["SimulationType"] = "ParallelTempering";
+  pt["Systems"][0].erase("ExternalTemperature");
+  pt["Systems"][0]["ExternalTemperatures"] = {250.0, 350.0};
+  TemporaryInput ptInput(pt, "pt_state_point", workspace.path());
+  InputReader ptReader(ptInput.path().filename().string());
+  ParallelTempering simulation(ptReader);
+  ASSERT_EQ(simulation.systems.size(), 2uz);
+
+  TemporaryInput hotInput(methaneMonteCarloInput(350.0), "pt_reference_350", workspace.path());
+  InputReader hotReader(hotInput.path().filename().string());
+  const double expected = hotReader.systems[0].components[0].fugacityCoefficient.value();
+  const double cold = simulation.systems[0].components[0].fugacityCoefficient.value();
+  const double hot = simulation.systems[1].components[0].fugacityCoefficient.value();
+  EXPECT_GT(std::abs(hot - cold), 1.0e-6);
+  EXPECT_NEAR(hot, expected, 1.0e-12);
+
+  nlohmann::json mu = pt;
+  mu["Systems"][0].erase("ExternalPressure");
+  mu["Components"][0]["ChemicalPotential"] = -2500.0;
+  TemporaryInput muInput(mu, "pt_chemical_potential", workspace.path());
+  InputReader muReader(muInput.path().filename().string());
+  ParallelTempering muSimulation(muReader);
+  const System& coldReplica = muSimulation.systems[0];
+  const System& hotReplica = muSimulation.systems[1];
+  // the chemical potential in internal units, from the first replica's fugacity
+  const double kT0 = Units::KB * coldReplica.temperature;
+  const double kT1 = Units::KB * hotReplica.temperature;
+  const double muInternal = kT0 * std::log(coldReplica.pressure / kT0);
+  EXPECT_NEAR(hotReplica.pressure, kT1 * std::exp(muInternal / kT1), 1.0e-9 * hotReplica.pressure);
+  EXPECT_GT(std::abs(hotReplica.pressure - coldReplica.pressure), 1.0e-6 * coldReplica.pressure);
 }

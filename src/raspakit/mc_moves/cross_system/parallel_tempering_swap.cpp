@@ -30,6 +30,7 @@ import interactions_intermolecular;
 import interactions_internal;
 import molecule;
 import interactions_ewald;
+import interactions_cross_link;
 import interactions_external_field;
 import mc_moves_move_types;
 import mc_moves_cputime;
@@ -66,6 +67,20 @@ bool sameHamiltonian(const ForceField& forceFieldA, const ForceField& forceField
   {
     normalizedB.cutOffCoulomb = forceFieldA.cutOffCoulomb;
   }
+  // The same for the automatic Van der Waals cut-offs, whose shifts, tail corrections and switching constants follow
+  // them: after the first volume move every swap of an NPT run with 'CutOffVDW': 'Auto' was refused otherwise.
+  bool vdwCutOffNormalized = false;
+  if (forceFieldA.cutOffMoleculeVDWAutomatic && forceFieldB.cutOffMoleculeVDWAutomatic)
+  {
+    vdwCutOffNormalized = vdwCutOffNormalized || normalizedB.cutOffMoleculeVDW != forceFieldA.cutOffMoleculeVDW;
+    normalizedB.cutOffMoleculeVDW = forceFieldA.cutOffMoleculeVDW;
+  }
+  if (forceFieldA.cutOffFrameworkVDWAutomatic && forceFieldB.cutOffFrameworkVDWAutomatic)
+  {
+    vdwCutOffNormalized = vdwCutOffNormalized || normalizedB.cutOffFrameworkVDW != forceFieldA.cutOffFrameworkVDW;
+    normalizedB.cutOffFrameworkVDW = forceFieldA.cutOffFrameworkVDW;
+  }
+  if (vdwCutOffNormalized) normalizedB.preComputeCutOffDependentParameters();
   return forceFieldA == normalizedB;
 }
 
@@ -291,6 +306,14 @@ std::optional<double> soluteHamiltonianChange(const System& holder, const System
   if (numberOfSoluteMolecules == 0uz) return 0.0;
   const double chargeFactor = std::sqrt(target.soluteTemperingLambda / holder.soluteTemperingLambda);
 
+  // The target Hamiltonian evaluated in the holder's box: its automatic cut-offs and Ewald parameters are box-derived
+  // and were derived for the target's own box (NPT replicas differ in volume), so they are derived again for this one
+  // (a cut-off beyond half the holder's box broke the minimum image, and a real-space alpha differing from the
+  // holder's reciprocal one mixed two Ewald splittings).
+  ForceField targetForceField = target.forceField;
+  targetForceField.initializeAutomaticCutOff(holder.simulationBox);
+  targetForceField.initializeEwaldParameters(holder.simulationBox);
+
   // the configuration with the solute charges of the target Hamiltonian
   std::span<const Atom> atoms = holder.spanOfMoleculeAtoms();
   std::vector<Atom> atomsTarget(atoms.begin(), atoms.end());
@@ -315,13 +338,13 @@ std::optional<double> soluteHamiltonianChange(const System& holder, const System
     RunningEnergy soluteSolute = Interactions::computeInterMolecularEnergy(forceField, holder.simulationBox, solute);
     return withAll->potentialEnergy() - soluteSolute.potentialEnergy();
   };
-  const std::optional<double> interTarget = soluteInterEnergy(target.forceField, atomsTarget, soluteTarget);
+  const std::optional<double> interTarget = soluteInterEnergy(targetForceField, atomsTarget, soluteTarget);
   const std::optional<double> interHolder = soluteInterEnergy(holder.forceField, atoms, soluteHolder);
   if (!interTarget.has_value() || !interHolder.has_value()) return std::nullopt;
   double change = interTarget.value() - interHolder.value();
 
   // tail corrections: the solvent-solvent entries are equal in both force fields and cancel
-  change += Interactions::computeInterMolecularTailEnergy(target.forceField, holder.simulationBox, atoms).tail -
+  change += Interactions::computeInterMolecularTailEnergy(targetForceField, holder.simulationBox, atoms).tail -
             Interactions::computeInterMolecularTailEnergy(holder.forceField, holder.simulationBox, atoms).tail;
 
   if (holder.framework.has_value())
@@ -329,19 +352,18 @@ std::optional<double> soluteHamiltonianChange(const System& holder, const System
     std::span<const Atom> frameworkAtoms = holder.spanOfFrameworkAtoms();
     // the grids of a replica tabulate the framework interaction of its own Hamiltonian (System::copyInterpolationGridsFrom)
     std::optional<RunningEnergy> frameworkTarget = Interactions::computeFrameworkMoleculeEnergyDifference(
-        target.forceField, holder.simulationBox, target.interpolationGrids, holder.framework, frameworkAtoms,
+        targetForceField, holder.simulationBox, target.interpolationGrids, holder.framework, frameworkAtoms,
         soluteTarget, {});
     std::optional<RunningEnergy> frameworkHolder = Interactions::computeFrameworkMoleculeEnergyDifference(
         holder.forceField, holder.simulationBox, holder.interpolationGrids, holder.framework, frameworkAtoms,
         soluteHolder, {});
     if (!frameworkTarget.has_value() || !frameworkHolder.has_value()) return std::nullopt;
     change += frameworkTarget->potentialEnergy() - frameworkHolder->potentialEnergy();
-    change += Interactions::computeFrameworkMoleculeTailEnergy(target.forceField, holder.simulationBox,
-                                                                frameworkAtoms, atoms)
-                  .tail -
-              Interactions::computeFrameworkMoleculeTailEnergy(holder.forceField, holder.simulationBox,
-                                                                frameworkAtoms, atoms)
-                  .tail;
+    change +=
+        Interactions::computeFrameworkMoleculeTailEnergy(targetForceField, holder.simulationBox, frameworkAtoms, atoms)
+            .tail -
+        Interactions::computeFrameworkMoleculeTailEnergy(holder.forceField, holder.simulationBox, frameworkAtoms, atoms)
+            .tail;
   }
 
   // Ewald: Fourier, self, net-charge and intramolecular-exclusion terms of the rescaled solute charges
@@ -355,7 +377,8 @@ std::optional<double> soluteHamiltonianChange(const System& holder, const System
     EwaldStructureFactor trialEik{};
     change += Interactions::energyDifferenceEwaldFourier(eik_x, eik_y, eik_z, eik_xy, storedEik, trialEik,
                                                          holder.forceField, holder.simulationBox, holder.components,
-                                                         soluteTarget, soluteHolder, holder.ewaldMoveNetCharge())
+                                                         soluteTarget, soluteHolder, holder.ewaldMoveNetCharge(),
+                                                         holder.ewaldMoveChargeDerivative(soluteHolder))
                   .potentialEnergy();
   }
 
@@ -363,7 +386,7 @@ std::optional<double> soluteHamiltonianChange(const System& holder, const System
   std::size_t firstMolecule = 0uz;
   for (std::size_t i = 0; i < componentId; ++i) firstMolecule += holder.numberOfMoleculesPerComponent[i];
   std::span<const Molecule> soluteMolecules{&holder.moleculeData[firstMolecule], numberOfSoluteMolecules};
-  change += Interactions::computeIntraMolecularEnergy(target.forceField, holder.simulationBox,
+  change += Interactions::computeIntraMolecularEnergy(targetForceField, holder.simulationBox,
                                                       target.components[componentId].intraMolecularPotentials,
                                                       soluteMolecules, atomsTarget)
                 .potentialEnergy() -
@@ -371,6 +394,19 @@ std::optional<double> soluteHamiltonianChange(const System& holder, const System
                                                       holder.components[componentId].intraMolecularPotentials,
                                                       soluteMolecules, atoms)
                 .potentialEnergy();
+
+  // The cross-links of the configuration (their table travels with it): their bonded terms are not tempered, but the
+  // pairs they exclude carry the scaled solute pair parameters and charges, so their correction differs between the
+  // two Hamiltonians.
+  if (!holder.crossLinks.empty())
+  {
+    change += Interactions::computeCrossLinkEnergy(targetForceField, holder.simulationBox, target.components,
+                                                   holder.numberOfMoleculesPerComponent, atomsTarget, holder.crossLinks)
+                  .potentialEnergy() -
+              Interactions::computeCrossLinkEnergy(holder.forceField, holder.simulationBox, holder.components,
+                                                   holder.numberOfMoleculesPerComponent, atoms, holder.crossLinks)
+                  .potentialEnergy();
+  }
 
   return change;
 }

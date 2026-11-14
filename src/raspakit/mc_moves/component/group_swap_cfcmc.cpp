@@ -332,6 +332,9 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     // log of the product of W/W_ideal (CB variant only; 0 for conventional); kept in log space because
     // the raw Rosenbluth weights of long chains underflow to zero
     double logRosenbluthRatio = 0.0;
+    // the conventional variant draws its conformations at full coupling and places them at the new lambda (see
+    // 'System::intraCoulombScalingEnergy'); zero for the CB variant, which grows them at that lambda
+    double intraCoulombScaling = 0.0;
 
     // accumulated background: existing molecules plus already-created trial molecules
     std::vector<Atom> accumulatedBackground(system.spanOfMoleculeAtoms().begin(), system.spanOfMoleculeAtoms().end());
@@ -434,6 +437,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         // 'growData->energies'.
         trialGrowEnergies[i] = memberComponent.intraMolecularPotentials.computeInternalEnergies(
             system.forceField, system.simulationBox, trialMolecule.second);
+        intraCoulombScaling += system.intraCoulombScalingEnergy(trialMolecule.second);
 
         trialMolecules[i] = trialMolecule.first;
         trialAtoms[i] = std::move(trialMolecule.second);
@@ -591,7 +595,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     const double physicalPacc =
         std::exp(std::log(preFactor) + logRosenbluthRatio -
                  system.beta * (energyDifference.potentialEnergy() + trialExtraDifference.potentialEnergy() +
-                                polarizationDifference.potentialEnergy()));
+                                polarizationDifference.potentialEnergy() + intraCoulombScaling));
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
@@ -782,6 +786,9 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     // log of the product of W_ideal/W_retrace (CB variant only; 0 for conventional); kept in log space
     // because the raw Rosenbluth weights of long chains underflow to zero
     double logRosenbluthRatio = 0.0;
+    // the reverse conventional insertion draws the removed conformations at full coupling and places them at the
+    // old lambda (see 'System::intraCoulombScalingEnergy'); zero for the CB variant
+    double intraCoulombScaling = 0.0;
     std::vector<RunningEnergy> retraceEnergies(groupSize);
     if (useCBMC)
     {
@@ -882,6 +889,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         // retrace energies).
         retraceEnergies[i] = system.components[members[i].componentId].intraMolecularPotentials.computeInternalEnergies(
             system.forceField, system.simulationBox, oldFractionalMolecules[i]);
+        intraCoulombScaling -= system.intraCoulombScalingEnergy(oldFractionalMolecules[i]);
       }
     }
 
@@ -1014,7 +1022,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     const double physicalPacc =
         std::exp(std::log(preFactor) + logRosenbluthRatio -
                  system.beta * (energyDifference.potentialEnergy() + removalExtraDifference.potentialEnergy() +
-                                polarizationDifference.potentialEnergy()));
+                                polarizationDifference.potentialEnergy() + intraCoulombScaling));
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)

@@ -294,6 +294,9 @@ void TransitionMatrix::clearCMatrix()
   std::fill(bias.begin(), bias.end(), 0.0);
   std::fill(wangLandauHistogram.begin(), wangLandauHistogram.end(), 0.0);
   wangLandauVisits = 0uz;
+  // the bias Wang-Landau built is gone, so its modification factor starts over: left annealed, a cleared bias could
+  // not be rebuilt and the walk could not re-explore the macrostates
+  wangLandauFactor = TransitionMatrix{}.wangLandauFactor;
 };
 
 void TransitionMatrix::writeStatistics()

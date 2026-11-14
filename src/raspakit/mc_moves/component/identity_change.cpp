@@ -125,10 +125,10 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
       timed(system, startComponent, move, Move::Timing::Ewald,
             [&]
             {
-              return Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                                system.storedEik, system.trialEik, system.forceField,
-                                                                system.simulationBox, system.components, newMolecule,
-                                                                oldMoleculeAtoms, system.ewaldMoveNetCharge());
+              return Interactions::energyDifferenceEwaldFourier(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, system.components, newMolecule, oldMoleculeAtoms,
+                  system.ewaldMoveNetCharge(), system.ewaldMoveChargeDerivative(oldMoleculeAtoms));
             });
 
   // Tail correction from the scaled (scalingVDW) pseudo-atom composition of the box, so that coexisting

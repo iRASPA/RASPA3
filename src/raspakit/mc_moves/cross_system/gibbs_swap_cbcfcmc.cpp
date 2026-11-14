@@ -164,14 +164,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // System A, step 1: Ewald and tail contributions of removing the fractional molecule at lambda (the first Ewald
     // sub-step of the move in A: storedEik -> trialEik). Its short-range and intra-molecular energies come from the
     // CBMC retrace below.
-    RunningEnergy EwaldFourierDifferenceRetraceA = timed(
-        systemA, componentA, move, Move::Timing::LambdaInterchangeEwald,
-        [&]
-        {
-          return Interactions::energyDifferenceEwaldFourier(
-              systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
-              systemA.forceField, systemA.simulationBox, systemA.components, {}, oldFractionalMoleculeA, netChargeA);
-        });
+    RunningEnergy EwaldFourierDifferenceRetraceA =
+        timed(systemA, componentA, move, Move::Timing::LambdaInterchangeEwald,
+              [&]
+              {
+                return Interactions::energyDifferenceEwaldFourier(
+                    systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
+                    systemA.forceField, systemA.simulationBox, systemA.components, {}, oldFractionalMoleculeA,
+                    netChargeA, systemA.ewaldMoveChargeDerivative(oldFractionalMoleculeA));
+              });
     if (!systemA.forceField.omitInterInteractions)
       netChargeA += Interactions::scaledNetChargeDifference({}, oldFractionalMoleculeA);
 
@@ -241,7 +242,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                 return Interactions::energyDifferenceEwaldFourier(
                     systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.trialEik, systemA.trialEik,
                     systemA.forceField, systemA.simulationBox, systemA.components,
-                    std::span(growDataA->atoms.begin(), growDataA->atoms.end()), {}, netChargeA);
+                    std::span(growDataA->atoms.begin(), growDataA->atoms.end()), {}, netChargeA,
+                    systemA.ewaldMoveChargeDerivative({}));
               });
     if (!systemA.forceField.omitInterInteractions)
       netChargeA += Interactions::scaledNetChargeDifference(growDataA->atoms, {});
@@ -294,14 +296,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
               [&] { return CBMC::retraceMolecule(random, retraceContextB, componentB, selectedIntegerMoleculeB); });
 
-    RunningEnergy EwaldFourierDifferenceRetraceB = timed(
-        systemA, componentA, move, Move::Timing::LambdaInterchangeEwald,
-        [&]
-        {
-          return Interactions::energyDifferenceEwaldFourier(
-              systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
-              systemB.forceField, systemB.simulationBox, systemB.components, {}, selectedIntegerMoleculeB, netChargeB);
-        });
+    RunningEnergy EwaldFourierDifferenceRetraceB =
+        timed(systemA, componentA, move, Move::Timing::LambdaInterchangeEwald,
+              [&]
+              {
+                return Interactions::energyDifferenceEwaldFourier(
+                    systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
+                    systemB.forceField, systemB.simulationBox, systemB.components, {}, selectedIntegerMoleculeB,
+                    netChargeB, systemB.ewaldMoveChargeDerivative(selectedIntegerMoleculeB));
+              });
     if (!systemB.forceField.omitInterInteractions)
       netChargeB += Interactions::scaledNetChargeDifference({}, selectedIntegerMoleculeB);
 
@@ -359,7 +362,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                 return Interactions::energyDifferenceEwaldFourier(
                     systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.trialEik, systemB.trialEik,
                     systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB,
-                    oldFractionalMoleculeB, netChargeB);
+                    oldFractionalMoleculeB, netChargeB, systemB.ewaldMoveChargeDerivative(fractionalMoleculeB));
               });
     if (!systemB.forceField.omitInterInteractions)
       netChargeB += Interactions::scaledNetChargeDifference(fractionalMoleculeB, oldFractionalMoleculeB);
@@ -398,7 +401,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         EwaldFourierDifferenceGrowB + tailEnergyDifferenceGrowB + flagSwapOtherComponentsDifferenceB.value() -
         intraEnergyPlaceholderB;
 
-    double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin];
+    // the other components' fractional molecules change owner with the flag as well
+    double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin] +
+                      otherComponentsBiasChange(systemA, systemB, selectedComponent);
     // One integer molecule moves from B to A and the fractional molecule from A to B: the volume factors of the
     // two transfers cancel, leaving the molecule-count factor of the integer transfer.
     double preFactor = static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
@@ -510,14 +515,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // System A, step 1: Ewald and tail contributions of removing the fractional molecule at lambda (the first Ewald
     // sub-step of the move in A: storedEik -> trialEik). Its short-range and intra-molecular energies come from the
     // CBMC retrace below.
-    RunningEnergy EwaldFourierDifferenceRetraceA = timed(
-        systemA, componentA, move, Move::Timing::LambdaShuffleEwald,
-        [&]
-        {
-          return Interactions::energyDifferenceEwaldFourier(
-              systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
-              systemA.forceField, systemA.simulationBox, systemA.components, {}, oldFractionalMoleculeA, netChargeA);
-        });
+    RunningEnergy EwaldFourierDifferenceRetraceA =
+        timed(systemA, componentA, move, Move::Timing::LambdaShuffleEwald,
+              [&]
+              {
+                return Interactions::energyDifferenceEwaldFourier(
+                    systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
+                    systemA.forceField, systemA.simulationBox, systemA.components, {}, oldFractionalMoleculeA,
+                    netChargeA, systemA.ewaldMoveChargeDerivative(oldFractionalMoleculeA));
+              });
     if (!systemA.forceField.omitInterInteractions)
       netChargeA += Interactions::scaledNetChargeDifference({}, oldFractionalMoleculeA);
 
@@ -631,7 +637,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                 return Interactions::energyDifferenceEwaldFourier(
                     systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
                     systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB,
-                    oldFractionalMoleculeB, netChargeB);
+                    oldFractionalMoleculeB, netChargeB, systemB.ewaldMoveChargeDerivative(fractionalMoleculeB));
               });
     EwaldEnergyDifferenceB += systemB.intraCoulombRescaleDifference(fractionalMoleculeB, oldFractionalMoleculeB);
     if (!systemB.forceField.omitInterInteractions)
@@ -662,7 +668,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     componentA.mc_moves_statistics.addConstructed(move, 1);
 
-    double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin];
+    // the other components' fractional molecules change owner with the flag as well
+    double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin] +
+                      otherComponentsBiasChange(systemA, systemB, selectedComponent);
     double preFactor = systemB.simulationBox.volume / systemA.simulationBox.volume;
 
     // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero). The grow in B
@@ -767,7 +775,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                 return Interactions::energyDifferenceEwaldFourier(
                     systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
                     systemA.forceField, systemA.simulationBox, systemA.components, trialPositions, fractionalMoleculeA,
-                    systemA.ewaldMoveNetCharge());
+                    systemA.ewaldMoveNetCharge(), systemA.ewaldMoveChargeDerivative(fractionalMoleculeA));
               });
     EwaldFourierDifference += systemA.intraCoulombRescaleDifference(trialPositions, fractionalMoleculeA);
 

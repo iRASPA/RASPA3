@@ -154,6 +154,8 @@ HyperParallelTempering::HyperParallelTempering(InputReader& reader)
       system.equationOfState = EquationOfState(EquationOfState::Type::PengRobinson,
                                                EquationOfState::MixingRules::VanDerWaals, T, P, system.simulationBox,
                                                system.heliumVoidFraction, system.components);
+      // the log partition functions given as species, at the replica temperature
+      for (Component& component : system.components) component.updateLnPartitionFunction(T);
 
       // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature
       system.buildConformationReservoirs();

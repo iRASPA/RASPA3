@@ -30,7 +30,8 @@ MC_Moves::LongRangeDifference MC_Moves::longRangeDifference(System& system, std:
   LongRangeDifference difference;
   difference.fourier = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, inserted, removed, system.ewaldMoveNetCharge());
+      system.simulationBox, system.components, inserted, removed, system.ewaldMoveNetCharge(),
+      system.ewaldMoveChargeDerivative(removed));
   if (includeTail)
   {
     difference.tail = Interactions::computeInterMolecularTailEnergyDifference(

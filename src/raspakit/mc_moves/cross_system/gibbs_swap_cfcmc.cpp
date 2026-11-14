@@ -253,7 +253,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
               {
                 return Interactions::energyDifferenceEwaldFourier(
                     systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.trialEik, systemA.trialEik,
-                    systemA.forceField, systemA.simulationBox, systemA.components, newMolecule, {}, netChargeA);
+                    systemA.forceField, systemA.simulationBox, systemA.components, newMolecule, {}, netChargeA,
+                    systemA.ewaldMoveChargeDerivative({}));
               });
     // the old fractional conformation stays in A as a whole molecule: its intramolecular Coulomb kernel changes
     // from lambda to one with the Fourier term (its other internal energies are unchanged)
@@ -351,15 +352,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       return std::nullopt;
     }
 
-    RunningEnergy EwaldFourierDifferenceB =
-        timed(systemA, componentA, move, Move::Timing::LambdaInterchangeEwald,
-              [&]
-              {
-                return Interactions::energyDifferenceEwaldFourier(
-                    systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
-                    systemB.forceField, systemB.simulationBox, systemB.components, selectedIntegerMoleculeB,
-                    oldSelectedIntegerMoleculeB, netChargeB);
-              });
+    RunningEnergy EwaldFourierDifferenceB = timed(
+        systemA, componentA, move, Move::Timing::LambdaInterchangeEwald,
+        [&]
+        {
+          return Interactions::energyDifferenceEwaldFourier(
+              systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
+              systemB.forceField, systemB.simulationBox, systemB.components, selectedIntegerMoleculeB,
+              oldSelectedIntegerMoleculeB, netChargeB, systemB.ewaldMoveChargeDerivative(selectedIntegerMoleculeB));
+        });
     if (!systemB.forceField.omitInterInteractions)
       netChargeB += Interactions::scaledNetChargeDifference(selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
 
@@ -431,7 +432,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                 return Interactions::energyDifferenceEwaldFourier(
                     systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.trialEik, systemB.trialEik,
                     systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB,
-                    oldFractionalMoleculeB, netChargeB);
+                    oldFractionalMoleculeB, netChargeB, systemB.ewaldMoveChargeDerivative(fractionalMoleculeB));
               });
     // the selected conformation stays in B, now the fractional molecule at lambda instead of a whole one: its
     // intramolecular Coulomb kernel changes with the Fourier term (from scaling one to lambda)
@@ -462,7 +463,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                       moleculeDifferenceB2.value() + EwaldFourierDifferenceB2 + tailEnergyDifferenceB2 +
                                       intraFractionalDifferenceB + flagSwapOtherComponentsDifferenceB.value();
 
-    double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin];
+    // the other components' fractional molecules change owner with the flag as well
+    double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin] +
+                      otherComponentsBiasChange(systemA, systemB, selectedComponent);
 
     double preFactor = static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                        (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent]));
@@ -690,7 +693,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                 return Interactions::energyDifferenceEwaldFourier(
                     systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.trialEik,
                     systemB.forceField, systemB.simulationBox, systemB.components, fractionalMoleculeB,
-                    oldFractionalMoleculeB, netChargeB);
+                    oldFractionalMoleculeB, netChargeB, systemB.ewaldMoveChargeDerivative(fractionalMoleculeB));
               });
     EwaldEnergyDifferenceB += systemB.intraCoulombRescaleDifference(fractionalMoleculeB, oldFractionalMoleculeB);
     if (!systemB.forceField.omitInterInteractions)
@@ -718,16 +721,29 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     componentA.mc_moves_statistics.addConstructed(move, 1);
 
-    double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin];
+    // the other components' fractional molecules change owner with the flag as well
+    double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin] +
+                      otherComponentsBiasChange(systemA, systemB, selectedComponent);
 
     double preFactor = systemB.simulationBox.volume / systemA.simulationBox.volume;
 
+    // The ideal-gas conformation arriving in B was drawn at full coupling and ends at the fractional scaling of the
+    // molecule (lambda is unchanged); the conformation leaving A has that scaling, and the reverse move draws it at
+    // full coupling. The change of the intramolecular Coulomb kernel with the scaling is not part of the generation
+    // probabilities (see 'System::intraCoulombScalingEnergy').
+    std::vector<Atom> arrivingB(trialMolecule.second.begin(), trialMolecule.second.end());
+    for (std::size_t k = 0; k < arrivingB.size(); ++k)
+      arrivingB[k].scalingCoulomb = oldFractionalMoleculeA[k].scalingCoulomb;
+    const double intraCoulombScaling =
+        systemB.intraCoulombScalingEnergy(arrivingB) - systemA.intraCoulombScalingEnergy(oldFractionalMoleculeA);
+
     // apply acceptance/rejection rule (the intra-molecular terms are bookkeeping only, see above)
-    if (random.uniform() < preFactor * std::exp(-systemA.beta * (energyDifferenceA.potentialEnergy() +
-                                                                 energyDifferenceB.potentialEnergy() -
-                                                                 intraEnergyDifferenceA.potentialEnergy() -
-                                                                 intraEnergyDifferenceB.potentialEnergy()) +
-                                                biasTerm))
+    if (random.uniform() <
+        preFactor *
+            std::exp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy() -
+                                      intraEnergyDifferenceA.potentialEnergy() -
+                                      intraEnergyDifferenceB.potentialEnergy() + intraCoulombScaling) +
+                     biasTerm))
     {
       componentA.mc_moves_statistics.addAccepted(move, 1);
 
@@ -822,7 +838,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                 return Interactions::energyDifferenceEwaldFourier(
                     systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.trialEik,
                     systemA.forceField, systemA.simulationBox, systemA.components, trialPositions, fractionalMoleculeA,
-                    systemA.ewaldMoveNetCharge());
+                    systemA.ewaldMoveNetCharge(), systemA.ewaldMoveChargeDerivative(fractionalMoleculeA));
               });
     EwaldFourierDifference += systemA.intraCoulombRescaleDifference(trialPositions, fractionalMoleculeA);
 

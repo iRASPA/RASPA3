@@ -93,15 +93,15 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
                              return CBMC::retraceMolecule(random, growContext, oldComponentData, data.oldMoleculeAtoms,
                                                           {.firstBead = CBMC::FirstBeadScheme::Pinned});
                            });
-  data.energyFourierDifference =
-      MC_Moves::timed(system, oldComponentData, move, Move::Timing::Ewald,
-                      [&]
-                      {
-                        return Interactions::energyDifferenceEwaldFourier(
-                            system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-                            system.forceField, system.simulationBox, system.components, newMolecule,
-                            data.oldMoleculeAtoms, system.ewaldMoveNetCharge());
-                      });
+  data.energyFourierDifference = MC_Moves::timed(
+      system, oldComponentData, move, Move::Timing::Ewald,
+      [&]
+      {
+        return Interactions::energyDifferenceEwaldFourier(
+            system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+            system.forceField, system.simulationBox, system.components, newMolecule, data.oldMoleculeAtoms,
+            system.ewaldMoveNetCharge(), system.ewaldMoveChargeDerivative(data.oldMoleculeAtoms));
+      });
 
   // Tail correction from the scaled (scalingVDW) pseudo-atom composition of the box, so that coexisting
   // fractional molecules count with their coupling and their dU/dlambda is carried along.

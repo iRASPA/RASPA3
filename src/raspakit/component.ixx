@@ -531,6 +531,18 @@ export struct Component
 
   double lnPartitionFunction{0};  ///< Natural logarithm of the partition function [-].
 
+  // Inputs a driver derives anew at each state point (the replicas of 'ParallelTempering' run at their own
+  // temperatures; the reader derived them at the first): the 'ChemicalPotential' (energy units), the
+  // 'LnPartitionFunction' given as a species of the thermochemical database (JANAF or NASA), and whether the
+  // 'FugacityCoefficient' was given rather than taken from the Peng-Robinson equation of state.
+  std::optional<double> chemicalPotential{};
+  std::optional<std::string> lnPartitionFunctionSpecies{};
+  bool lnPartitionFunctionFromJANAF{false};
+  bool fugacityCoefficientGiven{false};
+
+  /// Evaluates 'lnPartitionFunction' at 'temperature' when it was given as a thermochemical species.
+  void updateLnPartitionFunction(double temperature);
+
   // Intra-molecular analyses requested for this component ('Compute...' keys of the 'Components'
   // block). Nullopt: not sampled. The accumulators are the 'Property...' members of the System.
   std::optional<MoleculePropertiesSettings> moleculePropertiesSettings{};

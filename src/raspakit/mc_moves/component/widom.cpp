@@ -64,14 +64,15 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   component.mc_moves_statistics.addConstructed(move);
 
   // Compute the energy difference in Ewald Fourier space due to the new molecule.
-  RunningEnergy energyFourierDifference = timed(
-      system, component, move, Move::Timing::Ewald,
-      [&]
-      {
-        return Interactions::energyDifferenceEwaldFourier(
-            system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
-            system.forceField, system.simulationBox, system.components, newMolecule, {}, system.ewaldMoveNetCharge());
-      });
+  RunningEnergy energyFourierDifference =
+      timed(system, component, move, Move::Timing::Ewald,
+            [&]
+            {
+              return Interactions::energyDifferenceEwaldFourier(
+                  system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik,
+                  system.forceField, system.simulationBox, system.components, newMolecule, {},
+                  system.ewaldMoveNetCharge(), system.ewaldMoveChargeDerivative({}));
+            });
 
   // Compute the tail corrections for the energy due to the new molecule.
   RunningEnergy tailEnergyDifference =

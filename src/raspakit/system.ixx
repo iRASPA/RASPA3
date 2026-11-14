@@ -551,6 +551,19 @@ export struct System
   /// same order (several molecules are split by their molecule id); only a molecule whose positions are unchanged
   /// is rescaled in place and counted (a slot that receives another conformation, as in the Gibbs transfers, has
   /// its internal energies accounted by the move itself); zero for rigid molecules.
+  /// The intramolecular Coulomb energy of 'atoms' at their own Coulomb scaling minus that at full coupling. With Ewald
+  /// the intramolecular kernel carries the scaling (-s^2 erf(alpha r)/r cancels the pair's share of the Fourier sum),
+  /// while the ideal-gas conformations the CFCMC moves draw are Boltzmann samples at full coupling: placed as a
+  /// fractional molecule at s(lambda), the kernel's change belongs in the acceptance (and its inverse in the reverse
+  /// deletion). Zero without charges and for rigid molecules.
+  [[nodiscard]] double intraCoulombScalingEnergy(std::span<const Atom> atoms) const
+  {
+    if (!forceField.useCharge) return 0.0;
+    std::vector<Atom> fullCoupling(atoms.begin(), atoms.end());
+    for (Atom& atom : fullCoupling) atom.scalingCoulomb = 1.0;
+    return intraCoulombRescaleDifference(atoms, fullCoupling).potentialEnergy();
+  }
+
   [[nodiscard]] RunningEnergy intraCoulombRescaleDifference(std::span<const Atom> newAtoms,
                                                             std::span<const Atom> oldAtoms) const
   {
@@ -588,6 +601,25 @@ export struct System
   [[nodiscard]] double ewaldMoveNetCharge() const
   {
     return forceField.omitInterInteractions ? netChargeFramework : netCharge;
+  }
+
+  /// The per-group charge of the dU/dlambda-tagged molecule atoms other than 'replaced', the atoms a move replaces
+  /// (they are still in place): the 'netChargeDerivativeExternal' of the Ewald energy difference. A move that changes
+  /// the net charge Q changes dU_Ion/dlambda_g = 2 u_Ion Q dQ/dlambda_g through the fractional molecules it leaves in
+  /// the box as well; without them the running dU/dlambda drifted whenever an ion moved beside a fractional molecule.
+  [[nodiscard]] std::array<double, maximumNumberOfDUDlambdaGroups> ewaldMoveChargeDerivative(
+      std::span<const Atom> replaced) const
+  {
+    std::array<double, maximumNumberOfDUDlambdaGroups> derivative{};
+    for (const Atom& atom : spanOfMoleculeAtoms())
+    {
+      if (atom.groupId != 0) derivative[atom.groupId - 1] += atom.charge;
+    }
+    for (const Atom& atom : replaced)
+    {
+      if (atom.groupId != 0) derivative[atom.groupId - 1] -= atom.charge;
+    }
+    return derivative;
   }
 
   // --- transition-matrix Monte Carlo (TMMC) ------------------------------------------------------

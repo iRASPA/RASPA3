@@ -2663,6 +2663,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].fugacityCoefficient = fugacity_coefficient;
+          jsonComponents[i][componentId].fugacityCoefficientGiven = true;
         }
       }
 
@@ -2723,6 +2724,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (item.contains("PairComponent") && item["PairComponent"].is_number_integer())
       {
         std::size_t pair_component = nonNegativeInteger(item, "PairComponent");
+        // a zero-based index into 'Components': out of range, the pair moves read past the components
+        if (pair_component >= jsonNumberOfComponents)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'PairComponent' {} is out of range ({} components; the index is zero-based)\n",
+              pair_component, jsonNumberOfComponents));
+        }
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].pairComponentId = pair_component;
@@ -3146,6 +3154,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].fugacityCoefficient = fugacity_coefficients[i];
+          jsonComponents[i][componentId].fugacityCoefficientGiven = true;
         }
       }
 
@@ -3741,6 +3750,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
               Units::KB * T * std::exp(jsonChemicalPotentials[systemId][i].value() / (Units::KB * T));
           jsonComponents[systemId][i].molFraction = fugacity;
           jsonComponents[systemId][i].fugacityCoefficient = 1.0;
+          jsonComponents[systemId][i].chemicalPotential = jsonChemicalPotentials[systemId][i];
           totalFugacity += fugacity;
         }
         for (std::size_t i = 0; i != jsonNumberOfComponents; ++i)
@@ -3788,6 +3798,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
           jsonComponents[systemId][i].lnPartitionFunction =
               PartitionFunction::logPartitionFunction(speciesName, T, thermochemicalDatabase);
+          jsonComponents[systemId][i].lnPartitionFunctionSpecies = speciesName;
+          jsonComponents[systemId][i].lnPartitionFunctionFromJANAF =
+              thermochemicalDatabase == PartitionFunction::Source::JANAF;
         }
       }
 
@@ -5292,6 +5305,25 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           "[Input reader]: system {}: 'ParallelTemperingSwapProbability' is not supported with a flexible or mixed "
           "framework\n",
           i));
+    }
+  }
+
+  // The volume moves scale the molecules by their centres of mass and leave every framework atom where it is: with a
+  // framework they would tear its periodicity at the first accepted move (the framework is not scaled, its grids and
+  // stored structure factor not rebuilt, and the Jacobian counts the guests only), as the molecular-dynamics
+  // barostats and the Gibbs volume move refuse as well.
+  for (std::size_t i = 0uz; i < systems.size(); ++i)
+  {
+    if (!systems[i].framework.has_value()) continue;
+    for (const auto& [move, name] :
+         {std::pair{Move::Types::VolumeChange, "VolumeMoveProbability"},
+          std::pair{Move::Types::AnisotropicVolumeChange, "AnisotropicVolumeMoveProbability"}})
+    {
+      if (systems[i].mc_moves_probabilities.getProbability(move) > 0.0)
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: system {} has a framework, which the volume move ('{}') would not scale\n", i, name));
+      }
     }
   }
 

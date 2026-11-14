@@ -106,7 +106,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   }
 
   const std::size_t componentB = componentA.pairComponentId.value();
-  if (selectedComponent >= componentB)
+  // an out-of-range partner is refused as in the pair insertion (the partner was indexed unchecked)
+  if (selectedComponent >= componentB || componentB >= system.components.size())
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
@@ -229,7 +230,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, {}, oldMoleculeB, system.ewaldMoveNetCharge());
+      system.simulationBox, system.components, {}, oldMoleculeB, system.ewaldMoveNetCharge(),
+      system.ewaldMoveChargeDerivative(oldMoleculeB));
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
@@ -353,7 +355,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   }
 
   const std::size_t componentB = componentA.pairComponentId.value();
-  if (selectedComponent >= componentB)
+  // an out-of-range partner is refused as in the pair insertion (the partner was indexed unchecked)
+  if (selectedComponent >= componentB || componentB >= system.components.size())
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
@@ -476,7 +479,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   time_begin = std::chrono::steady_clock::now();
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
-      system.simulationBox, system.components, {}, oldMoleculeB, system.ewaldMoveNetCharge());
+      system.simulationBox, system.components, {}, oldMoleculeB, system.ewaldMoveNetCharge(),
+      system.ewaldMoveChargeDerivative(oldMoleculeB));
   Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,

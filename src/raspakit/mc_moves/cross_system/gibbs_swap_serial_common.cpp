@@ -121,10 +121,19 @@ std::optional<RunningEnergy> computeFractionalMoleculesEnergyDifference(
       newBatchEnergy.value() -
       Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, oldAtomsCombined);
 
+  // the dU/dlambda-tagged charge outside the batch (see 'System::ewaldMoveChargeDerivative')
+  std::array<double, maximumNumberOfDUDlambdaGroups> chargeDerivativeOutsideBatch{};
+  for (const Atom& atom : system.spanOfMoleculeAtoms())
+  {
+    if (atom.groupId != 0 && !batchMoleculeIds.contains(atom.moleculeId))
+    {
+      chargeDerivativeOutsideBatch[atom.groupId - 1] += atom.charge;
+    }
+  }
   RunningEnergy ewaldDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, chainedOnTrialEik ? system.trialEik : system.storedEik,
       system.trialEik, system.forceField, system.simulationBox, system.components, newAtomsCombined, oldAtomsCombined,
-      runningNetCharge);
+      runningNetCharge, chargeDerivativeOutsideBatch);
   ewaldDifference += system.intraCoulombRescaleDifference(newAtomsCombined, oldAtomsCombined);
   // under 'omitInterInteractions' the handed-over charge is the framework's and stays fixed
   if (!system.forceField.omitInterInteractions)
@@ -281,6 +290,24 @@ void syncOtherComponentLambdaBins(System& systemBecomingInactive, System& system
     systemBecomingActive.components[componentId].lambdaGC.setCurrentBin(
         systemBecomingInactive.components[componentId].lambdaGC.currentBin);
   }
+}
+
+double otherComponentsBiasChange(const System& systemBecomingInactive, const System& systemBecomingActive,
+                                 std::size_t selectedComponent)
+{
+  double change = 0.0;
+  for (std::size_t componentId = 0; componentId < systemBecomingInactive.components.size(); ++componentId)
+  {
+    if (componentId == selectedComponent ||
+        systemBecomingInactive.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] == 0)
+    {
+      continue;
+    }
+    const std::size_t bin = systemBecomingInactive.components[componentId].lambdaGC.currentBin;
+    change += systemBecomingActive.components[componentId].lambdaGC.biasFactor[bin] -
+              systemBecomingInactive.components[componentId].lambdaGC.biasFactor[bin];
+  }
+  return change;
 }
 
 }  // namespace MC_Moves::GibbsSwapSerialCommon

@@ -8,6 +8,8 @@ module component;
 
 import std;
 
+import partition_function;
+
 import int3;
 import simd_quatd;
 import double3;
@@ -1558,6 +1560,14 @@ std::optional<std::size_t> Component::rigidFragmentContaining(std::size_t bead) 
     return f;
   }
   return std::nullopt;
+}
+
+void Component::updateLnPartitionFunction(double temperature)
+{
+  if (!lnPartitionFunctionSpecies.has_value()) return;
+  lnPartitionFunction = PartitionFunction::logPartitionFunction(
+      lnPartitionFunctionSpecies.value(), temperature,
+      lnPartitionFunctionFromJANAF ? PartitionFunction::Source::JANAF : PartitionFunction::Source::NASA);
 }
 
 bool Component::isSemiFlexible() const { return fragmentGraph.isSemiFlexible(); }

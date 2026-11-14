@@ -326,3 +326,64 @@ TEST(MC_CFCMC_FLEXIBLE_CHARGED_DRIFT, lambda_exchange)
     EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6);
   }
 }
+
+namespace
+{
+// butane with a net charge of +0.5: the net-charge Ewald correction then depends on the fractional scaling
+ForceField makeNetChargedAlkaneForceField()
+{
+  return ForceField({{"CH3", false, 15.04, 0.5, 0.0, 6, false}, {"CH2", false, 14.03, -0.25, 0.0, 6, false}},
+                    {{98.0, 3.75}, {46.0, 3.95}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true,
+                    false, true);
+}
+
+double recomputedNetCharge(const System& system)
+{
+  double charge = system.netChargeFramework;
+  for (const Atom& atom : system.spanOfMoleculeAtoms()) charge += atom.scalingCoulomb * atom.charge;
+  return charge;
+}
+}  // namespace
+
+// The fractional molecule of a conventional Gibbs CFCMC transfer is created switched off and then set to its lambda
+// in place: the effective pseudo-atom counts of the tail corrections and the net charge follow its scaling (both stayed
+// at their values of lambda zero, and the first energies of the run used them). The per-group charge of the tagged
+// atoms outside a move is what the Ewald difference needs for dU/dlambda.
+TEST(MC_CFCMC_FLEXIBLE_CHARGED_DRIFT, gibbs_conventional_fractional_molecule_sets_net_charge_and_tail_counts)
+{
+  const ForceField forceField = makeNetChargedAlkaneForceField();
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::GibbsConventionalCFCMC, 1.0);
+  Component butane = makeChargedButane(forceField, probabilities);
+  // the dU/dlambda group the input reader assigns
+  butane.lambdaGibbs.dUdlambdaGroupId = 1;
+  butane.lambdaGibbs.computeDUdlambda = true;
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {butane}, {}, {5}, 5);
+  ASSERT_TRUE(system.usesGibbsConventionalCFCMC());
+
+  // the fractional molecule as created, switched off (with consistent counts), then set to its lambda
+  const std::size_t slot = system.indexOfGibbsConventionalFractionalMoleculesPerComponent_CFCMC(0);
+  for (Atom& atom : system.spanOfMolecule(0, slot)) atom.setScalingToFractional(0.0, 1);
+  system.computeTailCorrectionCounts();
+  const std::vector<double> countsOff = system.effectiveNumberOfPseudoAtomsVDW;
+  system.initializeGibbsConventionalFractionalMolecules(false);
+
+  System recomputed = system;
+  recomputed.computeTailCorrectionCounts();
+  // the Van der Waals coupling is on at the starting lambda (the Coulomb coupling of lambda 1/2 is still zero)
+  ASSERT_GT(std::abs(recomputed.effectiveNumberOfPseudoAtomsVDW[0] - countsOff[0]), 1e-6);
+  EXPECT_NEAR(system.netCharge, recomputedNetCharge(system), 1e-12);
+  ASSERT_EQ(system.effectiveNumberOfPseudoAtomsVDW.size(), recomputed.effectiveNumberOfPseudoAtomsVDW.size());
+  for (std::size_t type = 0; type < system.effectiveNumberOfPseudoAtomsVDW.size(); ++type)
+  {
+    EXPECT_NEAR(system.effectiveNumberOfPseudoAtomsVDW[type], recomputed.effectiveNumberOfPseudoAtomsVDW[type], 1e-12);
+  }
+
+  // the tagged charge of the fractional molecule (unscaled), and none outside it
+  const std::span<const Atom> fractionalMolecule = system.spanOfMolecule(0, slot);
+  const std::uint8_t groupId = fractionalMolecule.front().groupId;
+  ASSERT_GT(groupId, 0);
+  EXPECT_NEAR(system.ewaldMoveChargeDerivative({})[groupId - 1], 0.5, 1e-12);
+  EXPECT_NEAR(system.ewaldMoveChargeDerivative(fractionalMolecule)[groupId - 1], 0.0, 1e-12);
+}

@@ -68,4 +68,12 @@ void applyFlagSwapScaling(System& system, std::size_t selectedComponent, bool sy
 /// The lambda bins of the other components travel with the activity flag.
 void syncOtherComponentLambdaBins(System& systemBecomingInactive, System& systemBecomingActive,
                                   std::size_t selectedComponent);
+
+/// The change of the lambda bias of the other components' fractional molecules when the ownership of the fractional
+/// molecules passes from 'systemBecomingInactive' to 'systemBecomingActive' (a flag swap or a shuffle of
+/// 'selectedComponent'): each keeps its bin (see 'syncOtherComponentLambdaBins'), but its bias becomes the one of the
+/// box that now owns it. Their energies follow the ownership through 'computeFlagSwapOtherComponentsEnergyDifference';
+/// without their biases the acceptance broke the balance whenever the two boxes had learned different biases.
+[[nodiscard]] double otherComponentsBiasChange(const System& systemBecomingInactive, const System& systemBecomingActive,
+                                               std::size_t selectedComponent);
 }  // namespace MC_Moves::GibbsSwapSerialCommon

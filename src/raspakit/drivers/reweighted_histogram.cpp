@@ -271,6 +271,8 @@ void ReweightedHistogram::initializeReplicas(System templateSystem)
       }
 
       pinSystemPengRobinsonPressure(system, P);
+      // the log partition functions given as species, at the replica temperature
+      for (Component& component : system.components) component.updateLnPartitionFunction(T);
 
       // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature,
       // and so is the recoil-growth openness reference (a no-op when recoil growth is off)
