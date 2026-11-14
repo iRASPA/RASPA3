@@ -113,7 +113,8 @@ BakerStep computeBakerStep(std::span<const double> hessian, std::span<const doub
     gradientNormSquared += value * value;
     result.maxGradient = std::max(result.maxGradient, std::abs(value));
   }
-  result.rmsGradient = std::sqrt(gradientNormSquared) / static_cast<double>(size);
+  // the root mean square, |g| / sqrt(N) (|g| / N was N^-1/2 of it and met the tolerance early on a large cell)
+  result.rmsGradient = std::sqrt(gradientNormSquared / static_cast<double>(size));
 
   const SymmetricEigenSystem eigenSystem = diagonalizeSymmetric(hessian, size);
   result.eigenvalues = eigenSystem.eigenvalues;
@@ -172,8 +173,12 @@ BakerStep computeBakerStep(std::span<const double> hessian, std::span<const doub
   result.shift = solveLambdaMethod2(activeEigenvalues, projectedGradient);
   for (std::size_t active = 0; active < activeModes.size(); ++active)
   {
+    // The shift lies strictly below the lowest active eigenvalue, so no denominator is nought. A small one is the
+    // unstable mode near a saddle, where the shift settles within g^2/|e| of the eigenvalue: that component is the
+    // escape and is kept (the step is limited to the trust radius below). Skipping every denominator up to
+    // 'minimumEigenvalue', the zero-mode threshold, relaxed the step onto the saddle.
     const double denominator = result.shift - activeEigenvalues[active];
-    if (std::abs(denominator) <= options.minimumEigenvalue)
+    if (denominator == 0.0)
     {
       continue;
     }

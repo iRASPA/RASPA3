@@ -338,8 +338,9 @@ void checkCellListAgainstBruteForce(const SimulationBox& box, std::size_t number
         const std::uint32_t sortedI = domain.ownedAtoms[k];
         const std::uint32_t i = cellList.sortedToOriginal[sortedI];
         EXPECT_EQ(cellList.ownerOfAtom[sortedI], d);
-        const double3 ri = atoms[i].position;
-        EXPECT_EQ(domain.positions[k].x, ri.x);
+        // the local positions are the positions less the integer box translation of the build
+        const double3 ri = atoms[i].position - CellList::shiftVector(box, cellList.wrap[sortedI]);
+        EXPECT_NEAR(domain.positions[k].x, ri.x, 1e-12 * std::max(1.0, std::abs(ri.x)));
         for (std::uint32_t n = domain.neighbourStart[k]; n < domain.neighbourStart[k + 1]; ++n)
         {
           const std::uint32_t local = domain.neighbourList[n];
@@ -349,14 +350,16 @@ void checkCellListAgainstBruteForce(const SimulationBox& box, std::size_t number
           if (local < owned)
           {
             sortedJ = domain.ownedAtoms[local];
-            rj = atoms[cellList.sortedToOriginal[sortedJ]].position;
+            rj =
+                atoms[cellList.sortedToOriginal[sortedJ]].position - CellList::shiftVector(box, cellList.wrap[sortedJ]);
           }
           else
           {
             const std::uint32_t slot = local - static_cast<std::uint32_t>(owned);
             sortedJ = domain.imageAtom[slot];
             EXPECT_EQ(domain.imageOwner[slot], cellList.ownerOfAtom[sortedJ]);
-            rj = atoms[cellList.sortedToOriginal[sortedJ]].position +
+            rj = atoms[cellList.sortedToOriginal[sortedJ]].position -
+                 CellList::shiftVector(box, cellList.wrap[sortedJ]) +
                  CellList::shiftVector(box, domain.imageShift[slot]);
             ++imagePairs;
           }
@@ -527,10 +530,13 @@ TEST(spatial_decomposition, cell_list_displacement_check_rebuilds_when_the_box_c
   EXPECT_TRUE(cellList.refreshPositionsAndCheck(0, atoms, scaled));
 }
 
-TEST(spatial_decomposition, cell_list_image_shift_follows_unwrapped_wrap_counts)
+TEST(spatial_decomposition, cell_list_local_positions_are_wrapped_however_far_an_atom_diffused)
 {
-  // two atoms a few Angstroms apart in the wrapped box, one of them 200 boxes from the origin: the image
-  // shift is wrap_i - wrap_j, which is outside the old 8-bit pack (n + 128 in one byte per axis)
+  // two atoms a few Angstroms apart in the wrapped box, one of them 200 boxes from the origin. The local positions
+  // drop the integer translation of the build, so the pair is between two owned atoms 3 Angstrom apart and needs no
+  // ghost: with the unwrapped positions it was a ghost shifted by 200 boxes, a local position 4000 Angstrom from the
+  // other (single-precision cluster positions about the domain mean lost their digits), and one ghost slot for
+  // every distinct wrap count of the atoms that saw it.
   const SimulationBox box(20.0, 20.0, 20.0);
   std::vector<Atom> atoms{Atom(double3(1.0, 1.0, 1.0), 0.0, 1.0, 0, 0, 0, false, false),
                           Atom(double3(4001.0, 4.0, 1.0), 0.0, 1.0, 1, 0, 0, false, false)};
@@ -543,17 +549,16 @@ TEST(spatial_decomposition, cell_list_image_shift_follows_unwrapped_wrap_counts)
   ASSERT_EQ(cellList.wrap[cellList.originalToSorted[1]], int3(200, 0, 0));
 
   const CellList::DomainLists& domain = cellList.domains[0];
-  ASSERT_EQ(domain.imageAtom.size(), 1u);
-  const int3 n = domain.imageShift[0];
-  EXPECT_EQ(std::abs(n.x), 200);
-  EXPECT_EQ(n.y, 0);
-  EXPECT_EQ(n.z, 0);
-
-  const std::size_t local = domain.ownedAtoms.size();
-  const double3 gathered(domain.positions[local].x, domain.positions[local].y, domain.positions[local].z);
-  const std::uint32_t imageOriginal = cellList.sortedToOriginal[domain.imageAtom[0]];
-  EXPECT_LT((gathered - (atoms[imageOriginal].position + CellList::shiftVector(box, n))).length(), 1e-9);
-  EXPECT_NEAR((gathered - atoms[1 - imageOriginal].position).length(), 3.0, 1e-9);
+  EXPECT_EQ(domain.imageAtom.size(), 0u);
+  ASSERT_EQ(domain.ownedAtoms.size(), 2u);
+  ASSERT_EQ(domain.neighbourList.size(), 1u);
+  for (std::size_t k = 0; k < 2; ++k)
+  {
+    EXPECT_LT(std::abs(domain.positions[k].x), 20.0);
+  }
+  const double3 a(domain.positions[0].x, domain.positions[0].y, domain.positions[0].z);
+  const double3 b(domain.positions[1].x, domain.positions[1].y, domain.positions[1].z);
+  EXPECT_NEAR((a - b).length(), 3.0, 1e-9);
 }
 
 TEST(spatial_decomposition, cell_list_displacement_check_still_sees_thermal_motion)
@@ -1080,6 +1085,48 @@ TEST(spatial_decomposition, engine_mixed_precision_agrees_with_double_rigid_wate
                                {.vdw = 1e-6, .charge = 1e-4, .total = 1e-5, .gradient = 1e-5, .pressure = 1e-5});
 }
 
+// Molecules that diffused hundreds of boxes in opposite directions (unwrapped MD coordinates): the mixed-precision
+// cluster kernel takes its single-precision positions about the domain origin from the wrapped positions, so it
+// agrees with double as for a configuration in the box. With the unwrapped positions they were 15,000 Angstrom from
+// the origin and kept a millionth of an Angstrom of digits less than that.
+TEST(spatial_decomposition, engine_mixed_precision_agrees_with_double_after_unwrapped_diffusion)
+{
+  ForceField forceField = makeWaterForceField();
+  Component water = makeWater(forceField);
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {water}, {}, {343}, 5);
+  RandomNumber random(13);
+  randomizeConfiguration(system, random);
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  for (std::size_t m = 0; m < system.moleculeData.size(); ++m)
+  {
+    Molecule& molecule = system.moleculeData[m];
+    const double sign = (m % 2 == 0) ? 1.0 : -1.0;
+    const double3 translation = system.simulationBox.cell * double3(500.0 * sign, -300.0 * sign, 400.0);
+    molecule.centerOfMassPosition += translation;
+    for (std::size_t k = 0; k < molecule.numberOfAtoms; ++k) atoms[molecule.atomIndex + k].position += translation;
+  }
+
+  SpatialDecompositionForceEngine reference(settingsFor(1));
+  reference.initialize(system);
+  const RunningEnergy referenceEnergy = reference.computeGradients(system, true);
+  const std::vector<double3> referenceGradient = gradientsOf(system);
+
+  SpatialDecompositionSettings settings = settingsFor(1);
+  settings.pairPrecision = PairPrecision::Mixed;
+  SpatialDecompositionForceEngine engine(settings);
+  engine.initialize(system);
+  const RunningEnergy energy = engine.computeGradients(system, true);
+  const std::vector<double3> gradient = gradientsOf(system);
+
+  // the tolerances of engine_mixed_precision_agrees_with_double_rigid_water
+  EXPECT_NEAR(energy.moleculeMoleculeVDW, referenceEnergy.moleculeMoleculeVDW,
+              1e-6 * std::abs(referenceEnergy.moleculeMoleculeVDW));
+  EXPECT_NEAR(energy.moleculeMoleculeCharge, referenceEnergy.moleculeMoleculeCharge,
+              1e-4 * std::abs(referenceEnergy.moleculeMoleculeCharge));
+  EXPECT_LT(rmsDifference(gradient, referenceGradient), 1e-5 * rmsNorm(referenceGradient));
+}
+
 /// The device backends: every device test runs on each available one (skipped where the device is missing).
 class SpatialDecompositionDevice : public testing::TestWithParam<PairDevice>
 {
@@ -1542,7 +1589,8 @@ System makeChainSystem(bool withBondBond, RandomNumber& random, std::size_t numb
 // bends 114 degrees, torsion 70 degrees: away from the trans configuration where the torsion types that divide
 // by sin(phi) are ill-conditioned) with the given intramolecular terms, 64 molecules on a lattice; for the
 // comparison of the device term formulas with the host ones type by type.
-System makeTermChainSystem(const Potentials::IntraMolecularPotentials& potentials, RandomNumber& random)
+System makeTermChainSystem(const Potentials::IntraMolecularPotentials& potentials, RandomNumber& random,
+                           double torsionDegrees = 70.0)
 {
   ForceField forceField = ForceField(
       {{"CH3", false, 15.03452, 0.0, 0.0, 6, false}, {"CH2", false, 14.02658, 0.0, 0.0, 6, false}},
@@ -1564,7 +1612,7 @@ System makeTermChainSystem(const Potentials::IntraMolecularPotentials& potential
   // rotated by the torsion angle out of the plane (0 = cis)
   const double bond = 1.54;
   const double bend = 114.0 * Units::DegreesToRadians;
-  const double torsion = 70.0 * Units::DegreesToRadians;
+  const double torsion = torsionDegrees * Units::DegreesToRadians;
   const double3 positions[4] = {double3(bond * std::cos(bend), bond * std::sin(bend), 0.0), double3(0.0, 0.0, 0.0),
                                 double3(bond, 0.0, 0.0),
                                 double3(bond - bond * std::cos(bend), bond * std::sin(bend) * std::cos(torsion),
@@ -1976,6 +2024,55 @@ TEST_P(SpatialDecompositionDevice, engine_device_molecular_terms_every_bond_bend
     EXPECT_LT(maxAbsDifference(device.molecularPressureTensor(), host.molecularPressureTensor()),
               1e-5 * maxAbs(host.molecularPressureTensor()))
         << c.label;
+  }
+}
+
+// Torsions written in phi (Harmonic, ModifiedTraPPE, CVFF) within 0.01 degrees of cis and of trans, where in single
+// precision cos(phi) rounds to +-1: the device divided dU/dphi by a sin(phi) clamped to 1e-8 while the geometric
+// factor still carried the true sin(phi), and the forces came out up to 34,500 times too large. phi from atan2 and
+// the gradient from dphi/dx agree with the host.
+TEST_P(SpatialDecompositionDevice, engine_device_torsions_in_phi_near_cis_and_trans)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+
+  const std::vector<std::pair<TorsionType, std::vector<double>>> torsions{
+      {TorsionType::Harmonic, {5000.0, 30.0}},
+      {TorsionType::ModifiedTraPPE, {0.0, 355.03, -68.19, 791.32, 20.0}},
+      {TorsionType::CVFF, {500.0, 3.0, 30.0}}};
+  for (const double torsionDegrees : {0.01, 179.99})
+  {
+    for (const auto& [type, parameters] : torsions)
+    {
+      Potentials::IntraMolecularPotentials potentials{};
+      for (std::size_t i = 0; i < 3; ++i)
+        potentials.bonds.push_back(BondPotential({i, i + 1}, BondType::Harmonic, {96500.0, 1.54}));
+      for (std::size_t i = 0; i < 2; ++i)
+        potentials.bends.push_back(BendPotential({i, i + 1, i + 2}, BendType::Harmonic, {62500.0, 114.0}));
+      potentials.torsions.push_back(TorsionPotential({0, 1, 2, 3}, type, parameters));
+      RandomNumber random(29);
+      System system = makeTermChainSystem(potentials, random, torsionDegrees);
+
+      SpatialDecompositionSettings hostSettings = settingsFor(4, 1.5, 0.5);
+      hostSettings.pairDevice = pairDevice;
+      hostSettings.deviceBonded = false;
+      SpatialDecompositionForceEngine host(hostSettings);
+      host.initialize(system);
+      const RunningEnergy hostEnergy = host.computeGradients(system, true);
+      const std::vector<double3> hostGradient = gradientsOf(system);
+
+      SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+      settings.pairDevice = pairDevice;
+      SpatialDecompositionForceEngine device(settings);
+      device.initialize(system);
+      ASSERT_TRUE(device.usesDeviceBonded());
+      const RunningEnergy energy = device.computeGradients(system, true);
+      const std::vector<double3> gradient = gradientsOf(system);
+
+      const std::string label = std::format("type {} at {} degrees", static_cast<int>(type), torsionDegrees);
+      EXPECT_NEAR(energy.torsion, hostEnergy.torsion, 1e-4 * std::abs(hostEnergy.torsion) + 1e-3) << label;
+      EXPECT_LT(rmsDifference(gradient, hostGradient), 1e-4 * rmsNorm(hostGradient)) << label;
+    }
   }
 }
 
@@ -3779,6 +3876,39 @@ TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_matches_host)
     EXPECT_EQ(system.polymerLinks.chiralForceConstant, 0.0);
     expectPolymerOverlayMatchesHost(pairDevice, system, "no ramp");
   }
+}
+
+// A cut-off change (automatic cut-offs follow the cell in NPT) re-derives the Lennard-Jones shifts, which the device
+// polymer overlay bakes into its pair corrections: the overlay is built again, as the bonded topology is. It kept the
+// shifts of the old cut-off.
+TEST_P(SpatialDecompositionDevice, engine_device_polymer_overlay_follows_a_cutoff_change)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  System system = makePolymerSystem(7, 20, 6, 1000, 100, 2000.0);
+  // shifted Lennard-Jones: the shift is what follows the cut-off
+  std::fill(system.forceField.shiftPotentials.begin(), system.forceField.shiftPotentials.end(), true);
+  system.forceField.preComputePotentialShift();
+
+  SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+  settings.pairDevice = pairDevice;
+  SpatialDecompositionForceEngine device(settings);
+  device.initialize(system);
+  ASSERT_TRUE(device.usesDevicePolymerOverlay()) << device.writeStatus();
+  const RunningEnergy before = device.computeGradients(system, true);
+
+  system.forceField.cutOffMoleculeVDW -= 1.5;
+  system.forceField.preComputePotentialShift();
+  const RunningEnergy changed = device.computeGradients(system, true);
+
+  SpatialDecompositionForceEngine fresh(settings);
+  fresh.initialize(system);
+  const RunningEnergy expected = fresh.computeGradients(system, true);
+  EXPECT_NEAR(changed.crossLink, expected.crossLink, 1e-6 * std::abs(expected.crossLink));
+  EXPECT_NEAR(changed.intraVDW, expected.intraVDW, 1e-6 * std::abs(expected.intraVDW) + 1e-6);
+  EXPECT_NEAR(changed.potentialEnergy(), expected.potentialEnergy(), 1e-6 * std::abs(expected.potentialEnergy()));
+  // the cut-off change moved the overlay's pair corrections
+  EXPECT_GT(std::abs(expected.intraVDW - before.intraVDW), 1e-4 * std::abs(expected.intraVDW));
 }
 
 // The overlay without the Fourier sum: its scaled pairs are their scaled real-space term and its excluded pairs carry

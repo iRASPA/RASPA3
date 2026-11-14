@@ -190,6 +190,16 @@ std::vector<std::complex<double>> ewaldReciprocalCartesianMatrix(const System& s
   std::vector<std::complex<double>> matrix(dimension * dimension, std::complex<double>{});
   const std::vector<ChargedSite> staticCharges = gatherStaticFrameworkCharges(system);
 
+  // 'omitInterInteractions': the reciprocal energy keeps only the cross term of the molecules with the static
+  // framework charges, 2 Re[S_framework^* S_molecules], as Interactions::computeEwaldFourierHessian does: no pair
+  // term among the sites and a self term from the static charges alone. A mobile framework is refused there too.
+  const bool omitInter = forceField.omitInterInteractions;
+  if (omitInter && system.framework.has_value() && !system.framework->rigid)
+  {
+    throw std::runtime_error(
+        "ewaldReciprocalCartesianMatrix: 'omitInterInteractions' is not supported with a flexible framework\n");
+  }
+
   const SimulationBox& simulationBox = system.simulationBox;
   const double alpha = forceField.EwaldAlpha;
   const double alphaSquared = alpha * alpha;
@@ -241,7 +251,7 @@ std::vector<std::complex<double>> ewaldReciprocalCartesianMatrix(const System& s
         {
           const double weight = coefficientPrefactor * std::exp(-0.25 * gSquared / alphaSquared) / gSquared;
           std::complex<double> structureFactor(0.0, 0.0);
-          for (std::size_t site = 0; site < numberOfAtoms; ++site)
+          for (std::size_t site = 0; site < numberOfAtoms && !omitInter; ++site)
           {
             const double argument = double3::dot(gVector, sites[site].position);
             structureFactor += sites[site].charge * std::polar(1.0, argument);
@@ -271,7 +281,7 @@ std::vector<std::complex<double>> ewaldReciprocalCartesianMatrix(const System& s
         // --- Pair term (uses q = k + G).
         const double3 qVector = kCartesian + gVector;
         const double qSquared = double3::dot(qVector, qVector);
-        if (qSquared < 1.0e-12 || qSquared >= reciprocalCutOffSquared)
+        if (omitInter || qSquared < 1.0e-12 || qSquared >= reciprocalCutOffSquared)
         {
           continue;
         }

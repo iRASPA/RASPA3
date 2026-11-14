@@ -269,15 +269,18 @@ DEVICE_FUNCTION float torsionTerm(uint type, PRIVATE const float* P, float3 posA
   ds /= s;
   const float cos_phi = clamp(dot(dr, ds), -1.0f, 1.0f);
   const float cos_phi2 = cos_phi * cos_phi;
-  const float3 Pb = cross(Dab, Dcb_unit);
-  const float3 Pc = cross(Dcb_unit, Ddc);
   // IUPAC sign: positive when, looking from B to C, A turns clockwise onto D (sign of b1 . (b2 x b3), with
-  // b1 = B - A, b2 = C - B, b3 = D - C); as AMBER, CHARMM and LAMMPS. The dot product below is minus that.
-  const float orientation = -dot(Dcb_unit, cross(Pb, Pc));
-  float phi = copysign(acos(cos_phi), orientation);
-  const float sin_phi = copysign(max(1.0e-8f, fabs(sin(phi))), sin(phi));
+  // b1 = B - A, b2 = C - B, b3 = D - C); as AMBER, CHARMM and LAMMPS.
+  // That is the sign of Dcb_unit . (dr x ds), and phi is taken from atan2 rather than from acos of cos_phi: in
+  // single precision cos_phi rounds to +-1 within 3.5e-4 rad of a cis or trans geometry, where acos lost phi.
+  float phi = atan2(dot(Dcb_unit, cross(dr, ds)), dot(dr, ds));
   float U = 0.0f;
+  // DF is dU/dcos(phi) for the forms written in cos(phi); the forms written in phi give dUdphi instead, and their
+  // gradient is taken from dphi/dx, which is finite at every geometry (dividing dU/dphi by sin(phi) to make a
+  // dU/dcos blew the forces up near phi = 0 and +-pi)
   float DF = 0.0f;
+  float dUdphi = 0.0f;
+  bool angular = false;
   float temp, shifted_cos_phi, shifted_cos_phi2, shifted_sin_phi;
   switch (type)
   {
@@ -285,7 +288,8 @@ DEVICE_FUNCTION float torsionTerm(uint type, PRIVATE const float* P, float3 posA
       phi -= P[1];
       phi -= rint(phi / TWO_PI) * TWO_PI;
       U = 0.5f * P[0] * phi * phi;
-      DF = -P[0] * phi / sin_phi;
+      dUdphi = P[0] * phi;
+      angular = true;
       break;
     case 2:  // HarmonicCosine
       U = 0.5f * P[0] * (cos_phi - P[1]) * (cos_phi - P[1]);
@@ -321,14 +325,15 @@ DEVICE_FUNCTION float torsionTerm(uint type, PRIVATE const float* P, float3 posA
       shifted_cos_phi2 = shifted_cos_phi * shifted_cos_phi;
       U = P[0] + P[1] + 2.0f * P[2] + P[3] + (P[1] - 3.0f * P[3]) * shifted_cos_phi - 2.0f * P[2] * shifted_cos_phi2 +
           4.0f * P[3] * shifted_cos_phi * shifted_cos_phi2;
-      DF = ((P[1] - 3.0f * P[3]) * shifted_sin_phi - 4.0f * P[2] * shifted_cos_phi * shifted_sin_phi +
-            12.0f * P[3] * shifted_cos_phi2 * shifted_sin_phi) /
-           sin_phi;
+      dUdphi = -((P[1] - 3.0f * P[3]) * shifted_sin_phi - 4.0f * P[2] * shifted_cos_phi * shifted_sin_phi +
+                 12.0f * P[3] * shifted_cos_phi2 * shifted_sin_phi);
+      angular = true;
       break;
     case 8:  // CVFF
       temp = P[1] * phi - P[2];
       U = P[0] * (1.0f + cos(temp));
-      DF = P[0] * P[1] * sin(temp) / sin_phi;
+      dUdphi = -P[0] * P[1] * sin(temp);
+      angular = true;
       break;
     case 9:  // CFF
       U = P[0] * (1.0f - cos_phi) + 2.0f * P[1] * (1.0f - cos_phi2) +
@@ -377,14 +382,17 @@ DEVICE_FUNCTION float torsionTerm(uint type, PRIVATE const float* P, float3 posA
   }
   const float d = dot_ab / rbc;
   const float e = dot_cd / rbc;
-  const float3 dtA = (ds - cos_phi * dr) / r;
-  const float3 dtD = (dr - cos_phi * ds) / s;
+  // d/dA and d/dD of cos(phi), or of phi itself for the forms in phi (A turns dr about Dcb_unit, D turns ds); the
+  // derivatives with respect to B and C follow from both by translation and rotation invariance
+  const float3 dtA = angular ? -cross(Dcb_unit, dr) / r : (ds - cos_phi * dr) / r;
+  const float3 dtD = angular ? cross(Dcb_unit, ds) / s : (dr - cos_phi * ds) / s;
   const float3 dtB = dtA * (d - 1.0f) + e * dtD;
   const float3 dtC = -dtD * (e + 1.0f) - d * dtA;
-  *gA = DF * dtA;
-  *gB = DF * dtB;
-  *gC = DF * dtC;
-  *gD = DF * dtD;
+  const float factor = angular ? dUdphi : DF;
+  *gA = factor * dtA;
+  *gB = factor * dtB;
+  *gC = factor * dtC;
+  *gD = factor * dtD;
   return U;
 }
 

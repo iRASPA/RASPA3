@@ -404,3 +404,32 @@ TEST(minimization_driver, baker_shift_solves_the_secular_equation_on_a_soft_posi
       gradient[0] * gradient[0] / (step.shift - 0.01) + gradient[1] * gradient[1] / (step.shift - 2.0) - step.shift;
   EXPECT_NEAR(residual, 0.0, 1e-8 * std::max(1.0, std::abs(step.shift)));
 }
+
+// Near a saddle the shift settles within g^2/|e| of the negative eigenvalue: g = 0.01 along e = -1 puts it 1e-4
+// below. That component of the step is the escape from the saddle; it was skipped as a zero mode (the denominator
+// under 'minimumEigenvalue') and the step relaxed along the stable mode only, onto the saddle.
+TEST(minimization_driver, baker_step_near_a_saddle_moves_along_the_unstable_mode)
+{
+  MinimizationOptions options{};
+  options.maximumStepLength = 0.1;
+  options.convergenceFactor = 0.0;
+  const std::array<double, 4> hessian = {-1.0, 0.0, 0.0, 2.0};
+  const std::array<double, 2> gradient = {0.01, 0.5};
+  const BakerStep step = computeBakerStep(hessian, gradient, options);
+  ASSERT_EQ(step.negativeModes, 1u);
+  EXPECT_LT(std::abs(step.shift + 1.0), options.minimumEigenvalue);
+  // downhill along the unstable mode (against its gradient), and that is most of the step
+  EXPECT_LT(step.displacement[0], 0.0);
+  EXPECT_GT(std::abs(step.displacement[0]), std::abs(step.displacement[1]));
+}
+
+// The root mean square of the gradient is |g| / sqrt(N), not |g| / N.
+TEST(minimization_driver, baker_rms_gradient_is_the_root_mean_square)
+{
+  MinimizationOptions options{};
+  const std::array<double, 16> hessian = {1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                                          0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0};
+  const std::array<double, 4> gradient = {1.0, -1.0, 1.0, -1.0};
+  const BakerStep step = computeBakerStep(hessian, gradient, options);
+  EXPECT_NEAR(step.rmsGradient, 1.0, 1e-14);
+}

@@ -18,6 +18,7 @@ import simulationbox;
 import minimization_options;
 import minimization;
 import normal_modes;
+import phonon_dynamical_matrix;
 
 namespace
 {
@@ -176,4 +177,33 @@ TEST(normal_modes, writes_one_pdb_movie_per_mode)
   EXPECT_EQ(frames, periods * pointsPerPeriod);
 
   std::filesystem::remove_all(directory);
+}
+
+// Under 'omitInterInteractions' two molecules do not interact, in the energy, its gradient and its Hessian alike:
+// every normal mode is free. The phonon route used to keep the molecule-molecule Van der Waals, real-space Coulomb
+// and Ewald reciprocal blocks, so its spectrum at Gamma had the pair's stiffness the Hessian did not.
+TEST(normal_modes, phonons_omit_the_intermolecular_blocks_as_the_hessian_does)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  forceField.omitInterInteractions = true;
+  Component methane = Component::makeMethane(forceField, 0);
+  System system =
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {2}, 5);
+  for (std::size_t i = 0; i < 2; ++i)
+  {
+    const double3 position(10.0 + 4.0 * static_cast<double>(i), 12.5, 12.5);
+    system.moleculeData[i].centerOfMassPosition = position;
+    system.spanOfMoleculeAtoms()[i].position = position;
+    system.spanOfMoleculeAtoms()[i].charge = i == 0 ? 0.5 : -0.5;
+  }
+
+  const NormalModesResult modes = computeNormalModes(system);
+  const std::vector<PhononModes> dispersion = computePhononDispersion(system, std::array<double3, 1>{double3(0, 0, 0)});
+  ASSERT_EQ(dispersion.size(), 1u);
+  ASSERT_EQ(dispersion[0].eigenvalues.size(), modes.eigenvalues.size());
+  for (std::size_t mode = 0; mode < modes.eigenvalues.size(); ++mode)
+  {
+    EXPECT_NEAR(modes.eigenvalues[mode], 0.0, 1e-9) << "mode=" << mode;
+    EXPECT_NEAR(dispersion[0].eigenvalues[mode], 0.0, 1e-9) << "mode=" << mode;
+  }
 }

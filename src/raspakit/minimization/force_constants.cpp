@@ -514,21 +514,23 @@ ForceConstants computeRealSpaceForceConstants(const System& system)
     forceConstants.addBlock(j, i, -latticeVector, negativeBlock);
   };
 
-  // Molecule-molecule intermolecular pairs.
-  Interactions::forEachMoleculeMoleculePair<2>(
-      system.forceField, system.simulationBox, moleculeAtoms,
-      [&](std::size_t indexA, std::size_t indexB, const Atom& atomA, const Atom& atomB,
-          const Potentials::PairDerivatives<2>& factors, const double3& dr)
-      {
-        addNonbondedPair(numberOfFrameworkSites + indexA, numberOfFrameworkSites + indexB, factors,
-                         atomA.position - atomB.position, dr, true);
-      },
-      [&](std::size_t indexA, std::size_t indexB, const Atom& atomA, const Atom& atomB,
-          const Potentials::PairDerivatives<2>& factors, const double3& dr)
-      {
-        addNonbondedPair(numberOfFrameworkSites + indexA, numberOfFrameworkSites + indexB, factors,
-                         atomA.position - atomB.position, dr, true);
-      });
+  // Molecule-molecule intermolecular pairs; none under 'omitInterInteractions', as in the energy and its gradient.
+  const bool omitInter = system.forceField.omitInterInteractions;
+  if (!omitInter)
+    Interactions::forEachMoleculeMoleculePair<2>(
+        system.forceField, system.simulationBox, moleculeAtoms,
+        [&](std::size_t indexA, std::size_t indexB, const Atom& atomA, const Atom& atomB,
+            const Potentials::PairDerivatives<2>& factors, const double3& dr)
+        {
+          addNonbondedPair(numberOfFrameworkSites + indexA, numberOfFrameworkSites + indexB, factors,
+                           atomA.position - atomB.position, dr, true);
+        },
+        [&](std::size_t indexA, std::size_t indexB, const Atom& atomA, const Atom& atomB,
+            const Potentials::PairDerivatives<2>& factors, const double3& dr)
+        {
+          addNonbondedPair(numberOfFrameworkSites + indexA, numberOfFrameworkSites + indexB, factors,
+                           atomA.position - atomB.position, dr, true);
+        });
 
   // Framework-molecule pairs. dr = moleculeAtom - frameworkAtom, so the molecule atom is the home site.
   if (!frameworkAtoms.empty() && !moleculeAtoms.empty())
@@ -565,8 +567,10 @@ ForceConstants computeRealSpaceForceConstants(const System& system)
   addMoleculeIntramolecular(system, forceConstants, numberOfFrameworkSites);
 
   // Ewald intramolecular exclusion correction (removes the reciprocal-counted intramolecular charge
-  // pairs). Its short-ranged Hessian folds directly into the image-resolved force constants.
-  addMoleculeEwaldExclusion(system, forceConstants, numberOfFrameworkSites);
+  // pairs). Its short-ranged Hessian folds directly into the image-resolved force constants. Under
+  // 'omitInterInteractions' the reciprocal sum holds no molecule-molecule (nor intramolecular) charge pair, so there
+  // is nothing to remove, as in Interactions::computeEwaldFourierHessian.
+  if (!omitInter) addMoleculeEwaldExclusion(system, forceConstants, numberOfFrameworkSites);
 
   // Polarization (non-self-consistent induced-dipole) Hessian, resolved by periodic image so the Bloch
   // phase is applied per lattice vector. The real-space field-gradient blocks connecting a home-cell

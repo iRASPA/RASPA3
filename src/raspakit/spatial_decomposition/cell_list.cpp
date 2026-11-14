@@ -384,8 +384,9 @@ void CellList::buildLists(std::size_t domainIndex, const SimulationBox& box)
       domain.neighbourList.push_back(domain.localIndexOfAtom[j]);
       return;
     }
-    // the image as a ghost: reuse its slot when an earlier owned atom already found it.
-    // n is wrap_i - wrap_j plus the stencil wrap, so it grows with unwrapped diffusion and is stored as int3.
+    // the image as a ghost: reuse its slot when an earlier owned atom already found it. The local positions are the
+    // positions with the integer translation of the build removed (r - cell * wrap), so n is the box translation
+    // between the wrapped positions: the same for every owned atom that sees the image, and bounded by the stencil.
     const int3 n(nx, ny, nz);
     std::uint32_t slot = domain.imageHead[j];
     while (slot != noIndex && domain.imageShift[slot] != n) slot = domain.imageNext[slot];
@@ -451,7 +452,7 @@ void CellList::buildLists(std::size_t domainIndex, const SimulationBox& box)
       const double dy = yi - wy[j];
       const double dz = zi - wz[j];
       if (dx * dx + dy * dy + dz * dz >= listCutoffSquared || skipped(j)) continue;
-      add(j, wrapI.x - wrap[j].x, wrapI.y - wrap[j].y, wrapI.z - wrap[j].z);
+      add(j, 0, 0, 0);
     }
 
     // the neighbour cells this cell evaluates (half stencil): every pair of the system is built exactly once
@@ -474,9 +475,8 @@ void CellList::buildLists(std::size_t domainIndex, const SimulationBox& box)
           const double dy = ys - wy[j];
           const double dz = zs - wz[j];
           if (dx * dx + dy * dy + dz * dz >= listCutoffSquared || skipped(j)) continue;
-          // unwrapped: r_i - (r_j + cell n) with n = w + wrap_i - wrap_j
-          add(j, entry.wrapX + wrapI.x - wrap[j].x, entry.wrapY + wrapI.y - wrap[j].y,
-              entry.wrapZ + wrapI.z - wrap[j].z);
+          // wrapped: (r_i - cell wrap_i) - (r_j - cell wrap_j + cell w)
+          add(j, entry.wrapX, entry.wrapY, entry.wrapZ);
         }
       }
       else
@@ -490,7 +490,9 @@ void CellList::buildLists(std::size_t domainIndex, const SimulationBox& box)
           const double3 nv(std::round(sv.x), std::round(sv.y), std::round(sv.z));
           const double3 dr = cell * (sv - nv);
           if (double3::dot(dr, dr) >= listCutoffSquared) continue;
-          add(j, static_cast<int>(nv.x), static_cast<int>(nv.y), static_cast<int>(nv.z));
+          // nv is the translation between the unwrapped positions; between the wrapped ones it is nv - wrap_i + wrap_j
+          add(j, static_cast<int>(nv.x) - wrapI.x + wrap[j].x, static_cast<int>(nv.y) - wrapI.y + wrap[j].y,
+              static_cast<int>(nv.z) - wrapI.z + wrap[j].z);
         }
       }
     }
@@ -525,19 +527,23 @@ void CellList::gatherPositions(std::size_t domainIndex, const SimulationBox& box
   DomainLists& domain = domains[domainIndex];
   const std::size_t owned = domain.ownedAtoms.size();
   LocalAtom* positions = domain.positions.data();
+  // The current positions less the integer box translation of the build, r - cell * wrap: near the box however far
+  // a molecule has diffused, so the single-precision cluster positions about the domain origin keep their digits and
+  // the spatial order sees where the atoms are; continuous between builds (the translation is that of the build).
+  const double3x3& cell = box.cell;
   for (std::size_t k = 0; k < owned; ++k)
   {
     const std::uint32_t i = domain.ownedAtoms[k];
-    positions[k].x = x[i];
-    positions[k].y = y[i];
-    positions[k].z = z[i];
+    const double3 translation = cell * shiftOf(wrap[i]);
+    positions[k].x = x[i] - translation.x;
+    positions[k].y = y[i] - translation.y;
+    positions[k].z = z[i] - translation.z;
   }
   const std::size_t images = domain.imageAtom.size();
-  const double3x3& cell = box.cell;
   for (std::size_t slot = 0; slot < images; ++slot)
   {
     const std::uint32_t j = domain.imageAtom[slot];
-    const double3 shift = cell * shiftOf(domain.imageShift[slot]);
+    const double3 shift = cell * shiftOf(domain.imageShift[slot] - wrap[j]);
     positions[owned + slot].x = x[j] + shift.x;
     positions[owned + slot].y = y[j] + shift.y;
     positions[owned + slot].z = z[j] + shift.z;

@@ -593,6 +593,8 @@ void SpatialDecompositionForceEngine::refreshCutoffs(System& system)
     cellList.numberOfBuilds = 0;
     // the device bonded topology bakes the shift of every 1-4 pair at the cutoff: built again at the new one
     if (deviceBonded) devicePairs.refreshBondedTopology(system);
+    // and so does the polymer overlay, for the pairs the polymer bonds exclude or scale (rebuilt at the next step)
+    polymerOverlayOutdated = true;
   }
 }
 
