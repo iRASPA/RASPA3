@@ -147,26 +147,35 @@ export class HDF5Writer
   template <typename T>
   H5::PredType getH5Type()
   {
-    if (std::is_same<T, int>::value)
-    {
-      return H5::PredType::NATIVE_INT;
-    }
-    else if (std::is_same<T, float>::value)
-    {
-      return H5::PredType::NATIVE_FLOAT;
-    }
-    else if (std::is_same<T, double>::value)
-    {
-      return H5::PredType::NATIVE_DOUBLE;
-    }
-    else if (std::is_same<T, bool>::value)
+    // Integers by their width and signedness, not by their name: std::uint64_t is 'unsigned long long' on macOS and
+    // 'unsigned long' elsewhere, and only std::size_t (and int) were known, so a std::uint64_t was refused on macOS.
+    if constexpr (std::is_same_v<T, bool>)
     {
       return H5::PredType::NATIVE_HBOOL;
     }
-    else if (std::is_same<T, size_t>::value)
+    else if constexpr (std::is_same_v<T, float>)
     {
-      static_assert(sizeof(std::size_t) == 8 || sizeof(std::size_t) == 4);
-      return sizeof(std::size_t) == 8 ? H5::PredType::NATIVE_UINT64 : H5::PredType::NATIVE_UINT32;
+      return H5::PredType::NATIVE_FLOAT;
+    }
+    else if constexpr (std::is_same_v<T, double>)
+    {
+      return H5::PredType::NATIVE_DOUBLE;
+    }
+    else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>)
+    {
+      static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8);
+      if constexpr (sizeof(T) == 1) return H5::PredType::NATIVE_INT8;
+      else if constexpr (sizeof(T) == 2) return H5::PredType::NATIVE_INT16;
+      else if constexpr (sizeof(T) == 4) return H5::PredType::NATIVE_INT32;
+      else return H5::PredType::NATIVE_INT64;
+    }
+    else if constexpr (std::is_integral_v<T>)
+    {
+      static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8);
+      if constexpr (sizeof(T) == 1) return H5::PredType::NATIVE_UINT8;
+      else if constexpr (sizeof(T) == 2) return H5::PredType::NATIVE_UINT16;
+      else if constexpr (sizeof(T) == 4) return H5::PredType::NATIVE_UINT32;
+      else return H5::PredType::NATIVE_UINT64;
     }
     else
     {

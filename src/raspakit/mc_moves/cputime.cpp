@@ -63,6 +63,24 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
     }
   }
 
+  // the reactions are moves of the system (their times are booked on it, not on a component): left out here, they were
+  // reported nowhere
+  for (const Move::Types& moveType : groupMoves)
+  {
+    const TimingRow& moveTimings = timingMap.at(std::to_underlying(moveType));
+    if (moveTimings[std::to_underlying(Move::Timing::Total)] > std::chrono::duration<double>::zero())
+    {
+      std::print(stream, "\n");
+      std::print(stream, "{:<32} {:14f} [s]\n", Move::moveNames[std::to_underlying(moveType)],
+                 moveTimings[std::to_underlying(Move::Timing::Total)].count());
+      for (const Move::Timing& timing : Move::timingKeys[std::to_underlying(moveType)])
+      {
+        std::print(stream, "    {:<28s} {:14f} [s]\n", Move::timingNames[std::to_underlying(timing)],
+                   moveTimings[std::to_underlying(timing)].count());
+      }
+    }
+  }
+
   std::print(stream, "\n");
   std::print(stream, "Property sampling               {:14f} [s]\n", propertySampling.count());
   std::print(stream, "Energy/pressure sampling:       {:14f} [s]\n", energyPressureComputation.count());
@@ -163,6 +181,10 @@ const nlohmann::json MCMoveCpuTime::jsonSystemMCMoveCPUTimeStatistics() const
     writeMove(moveType);
   }
   for (const Move::Types& moveType : crossSystemMoves)
+  {
+    writeMove(moveType);
+  }
+  for (const Move::Types& moveType : groupMoves)
   {
     writeMove(moveType);
   }

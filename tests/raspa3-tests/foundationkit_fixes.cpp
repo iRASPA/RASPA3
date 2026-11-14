@@ -28,6 +28,24 @@ import opencl;
 import units;
 import json;
 
+// A number is the whole token: '3.5' is no integer and '2x' no number (the library parsers stopped at the first
+// character they could not read and gave 3 and 2), and a refused token stays to be scanned as something else.
+TEST(FOUNDATIONKIT_FIXES, scanner_takes_a_number_from_the_whole_token_only)
+{
+  Scanner scanner("3.5 2x", CharacterSet::whitespaceAndNewlineCharacterSet());
+  int n = -1;
+  double x = -1.0;
+  EXPECT_FALSE(scanner.scanInt(n));
+  EXPECT_EQ(n, -1);
+  EXPECT_TRUE(scanner.scanDouble(x));  // the refused token is still there
+  EXPECT_DOUBLE_EQ(x, 3.5);
+  EXPECT_FALSE(scanner.scanDouble(x));
+  EXPECT_DOUBLE_EQ(x, 3.5);
+  std::string token;
+  EXPECT_TRUE(scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), token));
+  EXPECT_EQ(token, "2x");
+}
+
 TEST(FOUNDATIONKIT_FIXES, scanner_reads_numbers_and_the_last_token_and_line)
 {
   Scanner numbers("1.5 -7 2.25", CharacterSet::whitespaceAndNewlineCharacterSet());
@@ -244,6 +262,29 @@ TEST(FOUNDATIONKIT_FIXES, a_restart_file_shorter_than_its_header_is_reported_as_
     EXPECT_NE(message.find(file.string()), std::string::npos) << message;
     EXPECT_NE(message.find("truncated"), std::string::npos) << message;
   }
+}
+
+// The integer types by width and signedness: std::uint64_t (unsigned long long on macOS, not the unsigned long of
+// std::size_t) and std::int64_t were refused as unsupported.
+TEST(FOUNDATIONKIT_FIXES, hdf5_writer_takes_fixed_width_integers)
+{
+  TemporaryDirectory workspace;
+  const std::filesystem::path file = workspace.path() / "integers.h5";
+  {
+    HDF5Writer writer(file.string());
+    writer.createGroup("/g");
+    writer.createDataset<std::uint64_t>("/g", "u", {2}, {});
+    writer.createDataset<std::int64_t>("/g", "s", {2}, {});
+    writer.writeVector<std::uint64_t>("/g", "u", std::vector<std::uint64_t>{1, 18446744073709551615ull});
+    writer.writeVector<std::int64_t>("/g", "s", std::vector<std::int64_t>{-3, 9223372036854775807ll});
+  }
+  H5::H5File reader(file.string(), H5F_ACC_RDONLY);
+  std::vector<std::uint64_t> u(2);
+  reader.openDataSet("/g/u").read(u.data(), H5::PredType::NATIVE_UINT64);
+  EXPECT_EQ(u, (std::vector<std::uint64_t>{1, 18446744073709551615ull}));
+  std::vector<std::int64_t> s(2);
+  reader.openDataSet("/g/s").read(s.data(), H5::PredType::NATIVE_INT64);
+  EXPECT_EQ(s, (std::vector<std::int64_t>{-3, 9223372036854775807ll}));
 }
 
 TEST(FOUNDATIONKIT_FIXES, hdf5_writer_refuses_short_buffers_and_writes_bools_as_hbool)

@@ -28,6 +28,8 @@ import bend_potential;
 import property_lambda_probability_histogram;
 import property_volume_evolution;
 import averages;
+import mc_moves_cputime;
+import mc_moves_move_types;
 
 namespace
 {
@@ -230,4 +232,17 @@ TEST(latent_api_fixes, mean_confidence_uses_the_student_t_of_its_blocks)
   const double standardError = std::sqrt(2.0 / 6.0);
   EXPECT_NEAR(confidence, studentTCriticalValue(2) * standardError, 1e-12);
   EXPECT_GT(confidence, 4.0 * standardError);
+}
+
+// The reaction moves book their times on the system, but the system report listed the system and the cross-system
+// moves only (and a component never holds them): their times were reported nowhere.
+TEST(latent_api_fixes, reaction_move_times_are_reported_with_the_system)
+{
+  MCMoveCpuTime timings;
+  timings[Move::Types::ReactionCFCMC][Move::Timing::Total] = std::chrono::duration<double>(1.25);
+  EXPECT_NE(
+      timings.writeMCMoveCPUTimeStatistics().find(Move::moveNames[std::to_underlying(Move::Types::ReactionCFCMC)]),
+      std::string::npos);
+  EXPECT_TRUE(timings.jsonSystemMCMoveCPUTimeStatistics().contains(
+      Move::moveNames[std::to_underlying(Move::Types::ReactionCFCMC)]));
 }

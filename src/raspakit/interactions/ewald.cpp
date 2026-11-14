@@ -2610,6 +2610,13 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
       addRealSpaceSelfEnergy(energySum, forceField, moleculeAtomPositions);
       // Intramolecular exclusion / completion of the shifted pair sum (see addChargeExclusionEnergy).
       addChargeExclusionEnergy(energySum, forceField, simulationBox, components, moleculeAtomPositions);
+      // the mobile framework atoms as in computeEwaldFourierEnergy (left out here, the energy with polarization
+      // differed from the energy without it by their self term and their excluded pairs)
+      if (framework && framework->hasMobileAtoms() && !frameworkAtoms.empty())
+      {
+        addRealSpaceSelfEnergy(energySum, forceField, frameworkAtoms.subspan(framework->numberOfFixedAtoms()));
+        addFrameworkChargeExclusionEnergy(energySum, forceField, simulationBox, *framework, frameworkAtoms);
+      }
     }
     return energySum;
   }

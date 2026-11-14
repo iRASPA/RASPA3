@@ -412,3 +412,43 @@ TEST(minimization_hessian_wolf, flexible_framework_excluded_pairs_match_finite_d
         << "position-strain " << i;
   }
 }
+
+// With polarization the Fourier-and-corrections energy comes from the field routine instead of the energy routine;
+// under a shifted method (Wolf) the two must agree. The field routine left out the self term and the excluded pairs
+// of the mobile framework atoms.
+TEST(minimization_hessian_wolf, field_routine_energy_includes_the_flexible_framework_corrections)
+{
+  ForceField forceField = makeWolfForceField();
+  const SimulationBox box(25.0, 25.0, 25.0);
+  const std::uint16_t typeP = static_cast<std::uint16_t>(*forceField.findPseudoAtom("P"));
+  const std::uint16_t typeN = static_cast<std::uint16_t>(*forceField.findPseudoAtom("N"));
+  std::vector<Atom> frameworkAtoms = {Atom(double3(0.30, 0.40, 0.50), 0.8, 1.0, 0, typeP, 0, 0, 1),
+                                      Atom(double3(0.34, 0.40, 0.50), -0.4, 1.0, 0, typeN, 0, 0, 1),
+                                      Atom(double3(0.39, 0.41, 0.50), -0.4, 1.0, 0, typeN, 0, 0, 1)};
+  Framework framework(forceField, "wolf-flexible-framework", box, 1, frameworkAtoms, frameworkAtoms, int3(1, 1, 1));
+  framework.rigid = false;
+  ConnectivityTable connectivity(3);
+  connectivity[0, 1] = true;
+  connectivity[1, 0] = true;
+  connectivity[1, 2] = true;
+  connectivity[2, 1] = true;
+  framework.connectivityTable = connectivity;
+  Component component(forceField, "ion", 100.0, 1e6, 0.2, {Atom(double3(0.0, 0.0, 0.0), -0.4, 1.0, 0, typeN, 0, 0, 0)},
+                      ConnectivityTable(1), Potentials::IntraMolecularPotentials{}, 5, 21);
+  System system(forceField, box, false, 300.0, 1e4, 1.0, {framework}, {component}, {}, {1}, 5);
+
+  std::vector<std::complex<double>> ex, ey, ez, exy;
+  EwaldStructureFactor stored, fixed;
+  const RunningEnergy energy = Interactions::computeEwaldFourierEnergy(
+      ex, ey, ez, exy, fixed, stored, system.forceField, system.simulationBox, system.components,
+      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.netChargeFramework, system.framework,
+      system.spanOfFrameworkAtoms());
+  std::vector<double3> field(system.spanOfMoleculeAtoms().size());
+  const RunningEnergy fieldEnergy = Interactions::computeEwaldFourierElectricField(
+      ex, ey, ez, exy, fixed, stored, system.forceField, system.simulationBox, field, system.components,
+      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.netChargeFramework, system.framework,
+      system.spanOfFrameworkAtoms());
+  ASSERT_NE(energy.ewald_exclusion, 0.0);
+  EXPECT_NEAR(fieldEnergy.ewald_self, energy.ewald_self, 1e-10 * std::abs(energy.ewald_self));
+  EXPECT_NEAR(fieldEnergy.ewald_exclusion, energy.ewald_exclusion, 1e-10 * std::abs(energy.ewald_exclusion));
+}

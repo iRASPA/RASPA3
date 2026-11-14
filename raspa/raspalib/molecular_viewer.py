@@ -78,7 +78,9 @@ def create_molecular_movie(view, pdb_path, framework=None, interval=200):
 
   view.setCameraParameters({'orthographic': True})
 
-  initial_orientation = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+  # 3Dmol.js setView takes [x, y, z, zoom, qx, qy, qz, qw] (centre, camera distance, rotation quaternion), not a
+  # 4x4 matrix: the identity rotation, the camera distance is set by the zoomTo that follows
+  initial_orientation = [0, 0, 0, 0, 0, 0, 0, 1]
 
   play_btn = widgets.Button(description="Play", icon="play")
   stop_btn = widgets.Button(description="Stop", icon="stop")

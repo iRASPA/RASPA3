@@ -197,7 +197,20 @@ void CellList::setup(const SimulationBox& box, double cutoffValue, double skinVa
 void CellList::updateCellGrid(const SimulationBox& box)
 {
   const int3 cells = cellGridFor(box);
-  if (cells.x == numberOfCells.x && cells.y == numberOfCells.y && cells.z == numberOfCells.z) return;
+  if (cells.x == numberOfCells.x && cells.y == numberOfCells.y && cells.z == numberOfCells.z)
+  {
+    // The same grid needs no other stencil unless its cells got narrower than the stencil reaches: a cell is at least
+    // a third of the list cutoff wide, except where the count is held at its maximum of 1024 along an axis, and a
+    // contraction of such a box narrows the cells while their number stays (a wider stencil than needed is exact).
+    const double3 widths = box.perpendicularWidths();
+    auto range = [&](double width, int n)
+    { return std::max(1, static_cast<int>(std::ceil(listCutoff / (width / static_cast<double>(n)) - 1e-9))); };
+    if (range(widths.x, cells.x) <= stencilRange.x && range(widths.y, cells.y) <= stencilRange.y &&
+        range(widths.z, cells.z) <= stencilRange.z)
+    {
+      return;
+    }
+  }
   numberOfCells = cells;
   buildStencil(box);
 }

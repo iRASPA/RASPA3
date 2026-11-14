@@ -811,6 +811,13 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
   std::vector<std::size_t> liveStart(N + 1, 0);
   std::vector<double> liveLogWeight;
   std::vector<std::uint16_t> liveOrient;
+  // the live orientations are kept as 16-bit indices: more orientations than that wrapped silently
+  if (molecular && M > static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max()) + 1)
+  {
+    throw std::invalid_argument(std::format("NLDFT: {} orientations is more than the {} the orientation index holds\n",
+                                            M,
+                                            static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max()) + 1));
+  }
   if (molecular)
   {
     for (std::size_t i = 0; i < N; ++i)

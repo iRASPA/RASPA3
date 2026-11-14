@@ -126,23 +126,36 @@ bool Scanner::scanDouble(double& value)
   const char* first = std::to_address(_scanLocation);
   const char* last = std::to_address(found);
   _scanLocation = found;
-  if (const std::from_chars_result result = std::from_chars(first, last, value);
+  // into a local: from_chars writes what it read of a token it then turns out not to take whole
+  double parsed{};
+  if (const std::from_chars_result result = std::from_chars(first, last, parsed);
       result.ec == std::errc{} && result.ptr == last)
   {
+    value = parsed;
     return true;
   }
+  // the whole token or nothing: the library parser stops at the first character it cannot read ('3.5' scanned as
+  // the integer 3, '3abc' as 3), and a token that is not a number is left to be scanned as something else
   std::string into = std::string(first, last);
+  const auto refuse = [&]
+  {
+    _scanLocation = std::next(_string.cbegin(), first - std::to_address(_string.cbegin()));
+    return false;
+  };
   try
   {
-    value = std::stod(into);
+    std::size_t used = 0;
+    const double converted = std::stod(into, &used);
+    if (into.find_first_not_of(" \t\n\r\f\v", used) != std::string::npos) return refuse();
+    value = converted;
   }
   catch ([[maybe_unused]] std::invalid_argument const& e)
   {
-    return false;
+    return refuse();
   }
   catch ([[maybe_unused]] std::out_of_range const& e)
   {
-    return false;
+    return refuse();
   }
   return true;
 }
@@ -166,23 +179,36 @@ bool Scanner::scanInt(int& value)
   const char* first = std::to_address(_scanLocation);
   const char* last = std::to_address(found);
   _scanLocation = found;
-  if (const std::from_chars_result result = std::from_chars(first, last, value);
+  // into a local: from_chars writes what it read of a token it then turns out not to take whole
+  int parsed{};
+  if (const std::from_chars_result result = std::from_chars(first, last, parsed);
       result.ec == std::errc{} && result.ptr == last)
   {
+    value = parsed;
     return true;
   }
+  // the whole token or nothing: the library parser stops at the first character it cannot read ('3.5' scanned as
+  // the integer 3, '3abc' as 3), and a token that is not a number is left to be scanned as something else
   std::string into = std::string(first, last);
+  const auto refuse = [&]
+  {
+    _scanLocation = std::next(_string.cbegin(), first - std::to_address(_string.cbegin()));
+    return false;
+  };
   try
   {
-    value = std::stoi(into);
+    std::size_t used = 0;
+    const int converted = std::stoi(into, &used);
+    if (into.find_first_not_of(" \t\n\r\f\v", used) != std::string::npos) return refuse();
+    value = converted;
   }
   catch ([[maybe_unused]] std::invalid_argument const& e)
   {
-    return false;
+    return refuse();
   }
   catch ([[maybe_unused]] std::out_of_range const& e)
   {
-    return false;
+    return refuse();
   }
   return true;
 }

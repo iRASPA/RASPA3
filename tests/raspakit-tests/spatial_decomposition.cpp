@@ -407,6 +407,22 @@ TEST(spatial_decomposition, cell_grid_is_capped_per_axis)
   EXPECT_EQ(small.x, 3);
 }
 
+// A box held at the 1024-cell cap along an axis has cells narrower than a third of the list cutoff, and a
+// contraction that keeps the count narrows them further: the stencil has to reach farther. The grid update returned
+// when the count was unchanged and kept the old stencil, losing the pairs beyond its reach.
+TEST(spatial_decomposition, contracted_box_at_the_cell_cap_widens_the_stencil)
+{
+  CellList cells;
+  cells.setup(SimulationBox(4000.0, 30.0, 30.0), 4.0, 1.0, 1, int3(1, 1, 1));
+  ASSERT_EQ(cells.numberOfCells.x, 1024);
+  EXPECT_EQ(cells.stencilRange.x, 2);  // cells of 3.9 A for a list cutoff of 5 A
+
+  const SimulationBox contracted(1750.0, 30.0, 30.0);
+  ASSERT_EQ(cells.cellGridFor(contracted).x, 1024);
+  cells.updateCellGrid(contracted);
+  EXPECT_EQ(cells.stencilRange.x, 3);  // cells of 1.7 A
+}
+
 TEST(spatial_decomposition, cell_list_matches_brute_force_pairs_triclinic)
 {
   const SimulationBox box(28.0, 31.0, 26.0, 100.0 * (std::numbers::pi / 180.0), 95.0 * (std::numbers::pi / 180.0),

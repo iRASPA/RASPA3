@@ -13,7 +13,7 @@ int narrowed(std::int64_t value)
 {
   if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max())
   {
-    throw std::overflow_error("RingMatrix: an entry of the Hermite normal form does not fit in an int\n");
+    throw std::overflow_error("RingMatrix: an entry of the Hermite or Smith normal form does not fit in an int\n");
   }
   return static_cast<int>(value);
 }
@@ -710,7 +710,7 @@ void RingMatrix::Smith_Theorem5(RingMatrix& A, RingMatrix& U, RingMatrix& V, std
         A(i, j) = divmod.second;
         for (std::size_t k = 0; k < m; k++)
         {
-          V(k, j) = V(k, j) - divmod.first * V(k, i);
+          V(k, j) = narrowed(wide(V(k, j)) - wide(divmod.first) * V(k, i));
         }
       }
     }
@@ -729,14 +729,14 @@ void RingMatrix::Smith_Theorem5(RingMatrix& A, RingMatrix& U, RingMatrix& V, std
     for (std::size_t i = (j + 1); i < n; i++)
     {
       int temp = A(i, j);
-      A(i, j) = std::get<1>(extendedGCD) * A(i, j) + std::get<2>(extendedGCD) * A(i, col);
-      A(i, col) = ss * temp + tt * A(i, col);
+      A(i, j) = narrowed(wide(std::get<1>(extendedGCD)) * A(i, j) + wide(std::get<2>(extendedGCD)) * A(i, col));
+      A(i, col) = narrowed(wide(ss) * temp + wide(tt) * A(i, col));
     }
     for (std::size_t i = 0; i < m; i++)
     {
       int temp = V(i, j);
-      V(i, j) = std::get<1>(extendedGCD) * V(i, j) + std::get<2>(extendedGCD) * V(i, col);
-      V(i, col) = ss * temp + tt * V(i, col);
+      V(i, j) = narrowed(wide(std::get<1>(extendedGCD)) * V(i, j) + wide(std::get<2>(extendedGCD)) * V(i, col));
+      V(i, col) = narrowed(wide(ss) * temp + wide(tt) * V(i, col));
     }
 
     // Clear column j in rows below
@@ -747,11 +747,11 @@ void RingMatrix::Smith_Theorem5(RingMatrix& A, RingMatrix& U, RingMatrix& V, std
       {
         for (std::size_t jj = 0; jj < m; jj++)
         {
-          A(i, jj) = A(i, jj) - mul * A(j, jj);
+          A(i, jj) = narrowed(wide(A(i, jj)) - wide(mul) * A(j, jj));
         }
         for (std::size_t jj = 0; jj < n; jj++)
         {
-          U(i, jj) = U(i, jj) - mul * U(j, jj);
+          U(i, jj) = narrowed(wide(U(i, jj)) - wide(mul) * U(j, jj));
         }
       }
     }
@@ -766,7 +766,7 @@ void RingMatrix::Smith_Theorem5(RingMatrix& A, RingMatrix& U, RingMatrix& V, std
         A(j, jj) = divmod.second;
         for (std::size_t k = 0; k < m; k++)
         {
-          V(k, jj) = V(k, jj) - divmod.first * V(k, j);
+          V(k, jj) = narrowed(wide(V(k, jj)) - wide(divmod.first) * V(k, j));
         }
       }
     }
@@ -795,7 +795,7 @@ void RingMatrix::Smith_Theorem5(RingMatrix& A, RingMatrix& U, RingMatrix& V, std
       A(col, j) = divmod.second;
       for (std::size_t k = 0; k < m; k++)
       {
-        V(k, j) = V(k, j) - divmod.first * V(k, col);
+        V(k, j) = narrowed(wide(V(k, j)) - wide(divmod.first) * V(k, col));
       }
     }
   }
@@ -820,14 +820,14 @@ void RingMatrix::Smith_Theorem8(RingMatrix& A, RingMatrix& U, RingMatrix& V, std
       for (std::size_t i = (row + 1); i < n; i++)
       {
         int temp = A(i, row);
-        A(i, row) = std::get<1>(extendedGCD) * A(i, row) + std::get<2>(extendedGCD) * A(i, j);
-        A(i, j) = ss * temp + tt * A(i, j);
+        A(i, row) = narrowed(wide(std::get<1>(extendedGCD)) * A(i, row) + wide(std::get<2>(extendedGCD)) * A(i, j));
+        A(i, j) = narrowed(wide(ss) * temp + wide(tt) * A(i, j));
       }
       for (std::size_t i = 0; i < m; i++)
       {
         int temp = V(i, row);
-        V(i, row) = std::get<1>(extendedGCD) * V(i, row) + std::get<2>(extendedGCD) * V(i, j);
-        V(i, j) = ss * temp + tt * V(i, j);
+        V(i, row) = narrowed(wide(std::get<1>(extendedGCD)) * V(i, row) + wide(std::get<2>(extendedGCD)) * V(i, j));
+        V(i, j) = narrowed(wide(ss) * temp + wide(tt) * V(i, j));
       }
 
       // Reduce column row
@@ -838,11 +838,11 @@ void RingMatrix::Smith_Theorem8(RingMatrix& A, RingMatrix& U, RingMatrix& V, std
         {
           for (std::size_t jj = 0; jj < m; jj++)
           {
-            A(i, jj) = A(i, jj) - d * A(row, jj);
+            A(i, jj) = narrowed(wide(A(i, jj)) - wide(d) * A(row, jj));
           }
           for (std::size_t jj = 0; jj < n; jj++)
           {
-            U(i, jj) = U(i, jj) - d * U(row, jj);
+            U(i, jj) = narrowed(wide(U(i, jj)) - wide(d) * U(row, jj));
           }
         }
       }
