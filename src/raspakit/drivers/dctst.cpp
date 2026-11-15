@@ -28,6 +28,8 @@ import cbmc;
 import cbmc_constants;
 import mc_moves;
 import mc_moves_move_types;
+import move_statistics;
+import mc_moves_statistics;
 import mc_moves_translation;
 import mc_moves_random_translation;
 import mc_moves_rotation;
@@ -158,8 +160,8 @@ void reverseVelocities(std::span<Molecule> moleculeData, std::span<AtomDynamics>
   for (Molecule& molecule : moleculeData)
   {
     molecule.velocity = -molecule.velocity;
-    molecule.orientationMomentum = simd_quatd(-molecule.orientationMomentum.r, -molecule.orientationMomentum.ix,
-                                              -molecule.orientationMomentum.iy, -molecule.orientationMomentum.iz);
+    molecule.orientationMomentum = simd_quatd(-molecule.orientationMomentum.ix, -molecule.orientationMomentum.iy,
+                                              -molecule.orientationMomentum.iz, -molecule.orientationMomentum.r);
   }
   for (AtomDynamics& dynamic : dynamics)
   {
@@ -168,8 +170,8 @@ void reverseVelocities(std::span<Molecule> moleculeData, std::span<AtomDynamics>
   for (GroupState& state : groupData)
   {
     state.velocity = -state.velocity;
-    state.orientationMomentum = simd_quatd(-state.orientationMomentum.r, -state.orientationMomentum.ix,
-                                           -state.orientationMomentum.iy, -state.orientationMomentum.iz);
+    state.orientationMomentum = simd_quatd(-state.orientationMomentum.ix, -state.orientationMomentum.iy,
+                                           -state.orientationMomentum.iz, -state.orientationMomentum.r);
   }
 }
 
@@ -325,12 +327,79 @@ std::pair<double, double> meanAndError(std::span<const double> values)
 // Construction and setup
 // =================================================================================================
 
+namespace
+{
+// Runs 'body' on a replica thread and keeps the exception it throws (an exception that leaves a std::jthread calls
+// std::terminate); the caller rethrows it after the threads have joined.
+template <typename F>
+auto keepingException(std::exception_ptr& error, F body)
+{
+  return [&error, body = std::move(body)]() mutable
+  {
+    try
+    {
+      body();
+    }
+    catch (...)
+    {
+      error = std::current_exception();
+    }
+  };
+}
+
+void rethrowWorkerException(const std::vector<std::exception_ptr>& errors)
+{
+  for (const std::exception_ptr& error : errors)
+  {
+    if (error) std::rethrow_exception(error);
+  }
+}
+
+// The physics the drivers support, checked here so that programmatic construction is held to the same rules as the
+// input reader. Both drivers: a rigid framework (the barrier and the cages are fixed in the laboratory frame). The
+// transmission driver integrates trajectories with the molecular-dynamics integrator, which evaluates neither
+// polarization nor external-field forces (the Monte Carlo stages would include them) and does not give the
+// reaction-bead velocity of a semi-flexible tagged molecule.
+void validateDcTSTSystem(const System& system, std::size_t taggedComponent, std::string_view driverName,
+                         bool integratesTrajectories)
+{
+  if (taggedComponent >= system.components.size())
+  {
+    throw std::runtime_error(std::format("dcTST: '{}': the tagged component {} does not exist\n", driverName,
+                                         taggedComponent));
+  }
+  if (system.framework.has_value() && system.framework->hasMobileAtoms())
+  {
+    throw std::runtime_error(std::format("dcTST: '{}' supports rigid frameworks only\n", driverName));
+  }
+  if (!integratesTrajectories) return;
+  if (system.forceField.computePolarization)
+  {
+    throw std::runtime_error(std::format("dcTST: '{}' does not support polarization (the trajectories are "
+                                         "integrated without polarization forces)\n",
+                                         driverName));
+  }
+  if (system.components[taggedComponent].isSemiFlexible())
+  {
+    throw std::runtime_error(std::format("dcTST: '{}': the tagged component '{}' is semi-flexible, which is not "
+                                         "supported (rigid or fully flexible molecules only)\n",
+                                         driverName, system.components[taggedComponent].name));
+  }
+  if (system.hasExternalField)
+  {
+    throw std::runtime_error(std::format("dcTST: '{}' does not support an external field (the trajectories are "
+                                         "integrated without its forces)\n",
+                                         driverName));
+  }
+}
+}  // namespace
+
 DynamicallyCorrectedTST::DynamicallyCorrectedTST(InputReader& reader)
     : random(reader.randomSeed),
       settings(reader.dctstSettings),
       numberOfInitializationCycles(reader.numberOfInitializationCycles),
-      printEvery(reader.printEvery),
-      optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
+      printEvery(std::max(1uz, reader.printEvery)),
+      optimizeMCMovesEvery(std::max(1uz, reader.optimizeMCMovesEvery)),
       numberOfBlocks(reader.numberOfBlocks),
       numberOfReplicas(std::max(1uz, reader.dctstSettings.numberOfReplicas))
 {
@@ -339,6 +408,7 @@ DynamicallyCorrectedTST::DynamicallyCorrectedTST(InputReader& reader)
 
   barrier = DcTSTBarrier(templateSystem.simulationBox, settings.barrierPosition, settings.barrierNormal,
                          settings.latticeDistance);
+  validateDcTSTSystem(templateSystem, settings.taggedComponent, "DynamicallyCorrectedTST", true);
 
   // the constrained ensemble moves the guests with the single-molecule moves below only (any other move type would
   // silently run as a translation), and a polyatomic tagged molecule changes its orientation and conformation only
@@ -392,42 +462,33 @@ DynamicallyCorrectedTST::DynamicallyCorrectedTST(InputReader& reader)
   }
   if (templateSystem.framework.has_value())
   {
-    cageLattice =
-        DcTSTCageLattice(templateSystem.framework->simulationBox, templateSystem.framework->numberOfUnitCells, lattice_origin);
+    cageLattice = DcTSTCageLattice(templateSystem.framework->simulationBox, templateSystem.framework->numberOfUnitCells,
+                                   lattice_origin, settings.cagesPerUnitCell);
   }
   else
   {
     cageLattice = DcTSTCageLattice(templateSystem.simulationBox, int3(1, 1, 1), lattice_origin);
   }
 
-  // the event-terminated estimator classifies the hops by lattice axis: the barrier normal must be a
-  // lattice direction with at least two cells along it (cages A and B distinct). With two cells the column
-  // A', A, B, B' closes on itself (A' = B, B' = A) and the two windows of the ring are W(A|B) and the far
-  // window; with three cells A' = B'. The hops are tracked from unwrapped displacements, so the ring length
-  // does not enter the detection.
-  if (settings.trajectoryTermination == DcTSTSettings::TrajectoryTermination::Event)
+  // the cages must partition space along the barrier: the normal perpendicular to the cage planes of one axis
+  // (the reciprocal vector, not the lattice vector, in a non-orthogonal cell), 'LatticeDistance' their spacing
+  // (one cage per unit cell unless 'CagesPerUnitCell' says otherwise) and the barrier midway between centers.
+  // The occupancy-resolved and event-terminated modes are built on the cages; otherwise the occupancy classes
+  // are left out. The event-terminated estimator classifies the hops by cage axis; with two cells along the
+  // normal the column A', A, B, B' closes on itself (A' = B, B' = A), with three A' = B'.
+  cageLatticeInconsistency = cageLattice.inconsistencyWith(templateSystem.simulationBox, barrier);
+  if (!templateSystem.framework.has_value() && !cageLatticeInconsistency.has_value())
   {
-    const DcTSTCageLattice::AxisAlignment alignment = cageLattice.axisAlongDirection(barrier.normal);
-    if (alignment.cosine < 0.999)
-    {
-      throw std::runtime_error(
-          std::format("dcTST: 'TrajectoryTermination' \"Event\" requires the barrier normal along a lattice vector "
-                      "of the framework unit cell (best alignment |cos| = {:.4f})\n",
-                      alignment.cosine));
-    }
-    if (cageLattice.numberOfUnitCells[alignment.axis] < 2)
-    {
-      throw std::runtime_error(
-          "dcTST: 'TrajectoryTermination' \"Event\" needs at least two unit cells along the barrier normal (the "
-          "cages A and B of the window)\n");
-    }
-    if (std::abs(cageLattice.axisLength(alignment.axis) - barrier.lambda) > 1e-3 * barrier.lambda)
-    {
-      throw std::runtime_error(
-          std::format("dcTST: 'TrajectoryTermination' \"Event\" requires 'LatticeDistance' ({}) equal to the unit-cell "
-                      "length along the normal ({})\n",
-                      barrier.lambda, cageLattice.axisLength(alignment.axis)));
-    }
+    cageLatticeInconsistency = "no framework";
+  }
+  if (cageLatticeInconsistency.has_value() &&
+      (settings.trajectoryTermination == DcTSTSettings::TrajectoryTermination::Event ||
+       settings.cageOccupancies.has_value()))
+  {
+    throw std::runtime_error(std::format("dcTST: {} requires a cage lattice consistent with the barrier: {}\n",
+                                         settings.cageOccupancies.has_value() ? "'CageOccupancies'"
+                                                                              : "'TrajectoryTermination' \"Event\"",
+                                         cageLatticeInconsistency.value()));
   }
 
   // the trajectories are integrated with the system time step; the transmission functions are stored
@@ -884,6 +945,15 @@ void DynamicallyCorrectedTST::loadFreeEnergyInput()
                  "WARNING: 'HandoverTimes' given but no free-energy profile is available for the committor "
                  "('FreeEnergyInput' with 'results.profile' is required); the hybrid estimator is disabled\n\n");
     }
+    else if (settings.trajectoryTermination == DcTSTSettings::TrajectoryTermination::Event &&
+             cageLattice.numberOfUnitCells[cageLattice.axisAlongDirection(barrier.normal).axis] < 4)
+    {
+      // the Markov model of the hybrid estimator resolves the column A', A, B, B' as four distinct cages; on a
+      // ring of two (A' = B, B' = A) or three (A' = B') cages along the normal its occupancies alias
+      std::print(stream,
+                 "WARNING: 'HandoverTimes' given but the cage lattice has fewer than four cages along the barrier "
+                 "normal (the column A', A, B, B' would alias); the hybrid estimator is disabled\n\n");
+    }
     else
     {
       const double timeStep = front.timeStep;
@@ -946,16 +1016,33 @@ void DynamicallyCorrectedTST::buildCommittorTable(const std::vector<double>& qGr
   }
   if (minimum == std::numeric_limits<double>::max()) return;
 
-  // linear interpolation between the filled bins
+  // a profile that does not cover the whole period around the barrier (the conditioned profile over cage A
+  // ends a quarter cage into B) takes the missing bins from their mirror images about the barrier, so that the
+  // committor does not drop to the minimum discontinuously where the profile ends
   std::vector<double> f(numberOfPoints, minimum);
-  std::vector<std::size_t> filled;
+  std::vector<char> measured(numberOfPoints, 0);
   for (std::size_t i = 0; i < numberOfPoints; ++i)
   {
     if (count[i] > 0uz)
     {
       f[i] = sum[i] / static_cast<double>(count[i]);
-      filled.push_back(i);
+      measured[i] = 1;
     }
+  }
+  for (std::size_t i = 0; i < numberOfPoints; ++i)
+  {
+    const std::size_t mirror = numberOfPoints - 1uz - i;
+    if (!measured[i] && measured[mirror])
+    {
+      f[i] = f[mirror];
+      count[i] = 1uz;
+    }
+  }
+  // linear interpolation between the filled bins
+  std::vector<std::size_t> filled;
+  for (std::size_t i = 0; i < numberOfPoints; ++i)
+  {
+    if (count[i] > 0uz) filled.push_back(i);
   }
   if (filled.size() < 2uz) return;
   for (std::size_t k = 0; k + 1 < filled.size(); ++k)
@@ -1172,13 +1259,14 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
       (stage == SimulationStage::Transmission) ? settings.numberOfConstrainedEquilibrationCycles : 0uz;
   const std::size_t productionCycles = numberOfCycles - std::min(numberOfCycles, equilibrationCycles);
 
+  std::vector<std::exception_ptr> workerErrors(numberOfReplicas);
   {
     std::vector<std::jthread> threads;
     threads.reserve(numberOfReplicas);
     for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
     {
       threads.emplace_back(
-          [this, replicaId, stage, numberOfCycles, equilibrationCycles, productionCycles]()
+          keepingException(workerErrors[replicaId], [this, replicaId, stage, numberOfCycles, equilibrationCycles, productionCycles]()
           {
             System& system = systems[replicaId];
             std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
@@ -1354,9 +1442,10 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
               std::print(replicaStream, "\n{}\n", system.writeMCMoveStatistics());
             }
             std::flush(replicaStream);
-          });
+          }));
     }
   }
+  rethrowWorkerException(workerErrors);
 
   if (stoppedEarly.load(std::memory_order_relaxed))
   {
@@ -1425,6 +1514,8 @@ void DynamicallyCorrectedTST::performMonteCarloCycle(std::size_t replicaId)
     {
       Component& component = system.components[selectedComponent];
       const Move::Types moveType = component.mc_moves_probabilities.sample(rng);
+      // a component without any move (all probabilities zero, e.g. immobile cations) samples 'Count'
+      if (moveType == Move::Types::Count) continue;
       component.mc_moves_statistics.addAllCounts(moveType);
 
       // occupancy-resolved mode: the old configuration of the molecule, to undo an accepted move that changes
@@ -1436,8 +1527,12 @@ void DynamicallyCorrectedTST::performMonteCarloCycle(std::size_t replicaId)
       std::vector<Atom> oldAtoms;
       Molecule oldMolecule;
       std::vector<double3> oldElectricField;
+      std::variant<MoveStatistics<double>, MoveStatistics<double3>> oldMoveStatistics;
+      SubMoveStatistics oldSubMoveStatistics;
       if (occupancyMode)
       {
+        oldMoveStatistics = component.mc_moves_statistics.stats[std::to_underlying(moveType)];
+        oldSubMoveStatistics = component.mc_moves_statistics.subMoveStatistics(moveType);
         oldAtoms.assign(moleculeAtoms.begin(), moleculeAtoms.end());
         oldMolecule = system.moleculeData[moleculeIndex];
         // an accepted move commits the electric field (of the molecule and, with molecule-molecule polarization,
@@ -1497,6 +1592,7 @@ void DynamicallyCorrectedTST::performMonteCarloCycle(std::size_t replicaId)
               system.electricField = oldElectricField;
             }
             energyDifference = std::nullopt;
+            component.mc_moves_statistics.revokeAccepted(moveType, oldMoveStatistics, oldSubMoveStatistics);
             ++state.rejectedMoves;
           }
           else
@@ -2235,7 +2331,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     // hysteresis keeps a bead oscillating about a window from generating spurious events.
     for (std::size_t i = 0; i < 3; ++i)
     {
-      hopThreshold[i] = 0.5 + commitDistance / cageLattice.axisLength(static_cast<int>(i));
+      hopThreshold[i] = 0.5 + commitDistance / cageLattice.planeSpacing(static_cast<int>(i));
     }
     for (std::size_t j = 0; j < numberOfMolecules; ++j)
     {
@@ -2257,15 +2353,12 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     if (from == cageC && alongNormal < 0) return 2uz;
     return std::nullopt;
   };
-  auto inColumn = [&](std::size_t cage)
-  { return cage != noCage && (cage == cageAPrime || cage == cageA || cage == cageB || cage == cageC); };
 
   // --- hybrid estimator: committor-smoothed displacements and column occupancies at the handover times ----------
   using ColumnState = DcTSTTransmissionAccumulator::ColumnState;
   using NeighbourhoodState = DcTSTTransmissionAccumulator::NeighbourhoodState;
   const bool hybridMode = eventMode && hybridEnabled();
   const std::size_t numberOfHandovers = hybridMode ? handoverSteps.size() : 0uz;
-  const std::size_t maximumHandoverSteps = hybridMode ? handoverSteps.back() : 0uz;
   // the smooth cage coordinate is clamped to the column (A' = -3/2 ... B' = +3/2): displacements beyond it are
   // not column crossings, exactly as in Q_local
   auto smoothCoordinate = [&](double q) { return std::clamp(smoothCageCoordinate(q), -1.5, 1.5); };
@@ -2397,9 +2490,43 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     std::optional<std::size_t> firstEventStep{};
     double firstEventTagged{0.0}, firstEventOthers{0.0};
     std::size_t nextHandover{0};
+    // hybrid mode: the column index of a cage (A' = -2, A = -1, B = 0, B' = +1 in the lab frame; unique with four
+    // or more cages along the normal), the smooth coordinate of the center of such a cage, and the smooth
+    // coordinate of another molecule from its displacement along the normal from the center of its committed cage
+    auto columnIndex = [&](std::size_t cage) -> std::optional<int>
+    {
+      if (cage == noCage) return std::nullopt;
+      if (cage == cageAPrime) return -2;
+      if (cage == cageA) return -1;
+      if (cage == cageB) return 0;
+      if (cage == cageC) return 1;
+      return std::nullopt;
+    };
+    auto columnCenter = [](int index) { return static_cast<double>(index) + 0.5; };
+    auto smoothOtherCoordinate = [&](std::size_t j, int index)
+    {
+      const double x = double3::dot(cageLattice.cell * cageOffset[j], barrier.normal);
+      return smoothCageCoordinate((static_cast<double>(index) + 0.5) * barrier.lambda + x);
+    };
+    std::vector<char> inColumnBefore(numberOfMolecules, 0);
+    std::vector<int> columnIndexBefore(numberOfMolecules, 0);
     if (hybridMode)
     {
-      for (std::size_t j = 0; j < numberOfMolecules; ++j) smoothQ[j] = smoothCoordinate(unwrappedQ[j]);
+      for (std::size_t j = 0; j < numberOfMolecules; ++j)
+      {
+        if (j == taggedIndex)
+        {
+          smoothQ[j] = smoothCoordinate(unwrappedQ[j]);
+          continue;
+        }
+        const std::optional<int> index = columnIndex(committedCage[j]);
+        inColumnBefore[j] = index.has_value();
+        if (index.has_value())
+        {
+          columnIndexBefore[j] = index.value();
+          smoothQ[j] = smoothOtherCoordinate(j, index.value());
+        }
+      }
     }
     auto columnState = [&]() -> ColumnState
     {
@@ -2550,17 +2677,6 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
         previousPosition[j] = position;
       }
 
-      // hybrid mode: the smoothed axial displacement of the other molecules while they are in the column
-      if (hybridMode)
-      {
-        for (std::size_t j = 0; j < numberOfMolecules; ++j)
-        {
-          const double c = smoothCoordinate(unwrappedQ[j]);
-          if (j != taggedIndex && inColumn(committedCage[j])) smoothOthers += c - smoothQ[j];
-          smoothQ[j] = c;
-        }
-      }
-
       // commitment and long-jump detection of the tagged molecule (checked every step)
       const double qTagged = unwrappedQ[taggedIndex];
       if (!committed && std::abs(qTagged) >= commitDistance)
@@ -2586,11 +2702,16 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       {
         for (std::size_t j = 0; j < numberOfMolecules; ++j)
         {
-          const std::size_t cage = committedCage[j];
-          if (cage == noCage) continue;
-          const double3& f = cageOffset[j];
-          for (std::size_t i = 0; i < 3; ++i)
+          if (committedCage[j] == noCage) continue;
+          // the axial direction first, then the lateral ones, and every axis crossed in this step (a diagonal
+          // crossing used to drop the axial hop when a lateral axis came first)
+          const std::array<std::size_t, 3> axisOrder{
+              static_cast<std::size_t>(axis.axis), static_cast<std::size_t>(axis.axis == 0 ? 1 : 0),
+              static_cast<std::size_t>(axis.axis == 2 ? 1 : 2)};
+          for (const std::size_t i : axisOrder)
           {
+            const std::size_t cage = committedCage[j];
+            const double3& f = cageOffset[j];
             const int hop = (f[i] >= hopThreshold[i]) ? 1 : (f[i] <= -hopThreshold[i]) ? -1 : 0;
             if (hop == 0) continue;
             const std::size_t newCage = cageLattice.neighborAlongAxis(cage, static_cast<int>(i), hop);
@@ -2638,8 +2759,36 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
             }
             committedCage[j] = newCage;
             cageOffset[j][i] -= static_cast<double>(hop);  // now measured from the center of the new cage
-            break;  // at most one hop per molecule per step
           }
+        }
+      }
+
+      // hybrid mode: the smoothed axial displacement of the other molecules while they are in the column,
+      // evaluated from the cage each molecule is committed to (so that it does not depend on where in the
+      // periodic box the molecule started, and stays unique on a ring of four or more cages). A molecule that
+      // leaves the column (laterally, or along the normal beyond A' or B') takes its contribution back to the
+      // center of the cage it left, and one that enters starts from the center of the cage it enters: like
+      // Q_local, only hops between cages of the column count, not the position inside a cage at the entry or
+      // the exit.
+      if (hybridMode)
+      {
+        smoothQ[taggedIndex] = smoothCoordinate(unwrappedQ[taggedIndex]);
+        for (std::size_t j = 0; j < numberOfMolecules; ++j)
+        {
+          if (j == taggedIndex) continue;
+          const std::optional<int> index = columnIndex(committedCage[j]);
+          if (index.has_value())
+          {
+            const double c = smoothOtherCoordinate(j, index.value());
+            smoothOthers += c - (inColumnBefore[j] ? smoothQ[j] : columnCenter(index.value()));
+            smoothQ[j] = c;
+          }
+          else if (inColumnBefore[j])
+          {
+            smoothOthers += columnCenter(columnIndexBefore[j]) - smoothQ[j];
+          }
+          inColumnBefore[j] = index.has_value();
+          if (index.has_value()) columnIndexBefore[j] = index.value();
         }
       }
 
@@ -2673,7 +2822,9 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       {
         for (std::size_t t = step / sampleEvery + 1uz; t < numberOfTimes; ++t) storeSample(t);
       }
-      if (terminated && !(hybridMode && step < outcome.commitStep + maximumHandoverSteps)) break;
+      // after the terminating event every remaining handover takes the values of the first event (termination
+      // needs at least one event after commitment), so the hybrid estimator needs no further integration
+      if (terminated) break;
     }
 
     const std::size_t lastStep = std::min(step, numberOfTrajectorySteps);
@@ -2729,11 +2880,9 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     Integrators::createCartesianPositions(moleculeData, atoms, system.components, groupSpan);
     Integrators::initializeVelocities(rng, moleculeData, atoms, dynamics, system.components, system.temperature,
                                       system.framework, frameworkAtoms, {}, &system.forceField, groupSpan);
-    if (system.numberOfFrameworkAtoms == 0uz)
-    {
-      Integrators::removeCenterOfMassVelocityDrift(moleculeData, atoms, dynamics, system.components, system.framework,
-                                                   frameworkAtoms, {}, &system.forceField, groupSpan);
-    }
+    // the guest center-of-mass velocity is not removed, not even without a framework: the dividing plane is fixed
+    // in the laboratory frame, and subtracting the drift would scale the velocity of the tagged bead along the
+    // normal by sqrt(1 - 1/N) (zero for a single molecule), and with it <|qdot|>, k^TST and kappa
 
     // orient the initial velocity of the reaction bead towards B
     const double3 velocity =
@@ -2801,10 +2950,22 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       collective[i] += qdot * (forwardCollective[i] - deltaCollective[i]);
     }
 
-    // occupancy classes: the forward member hops A -> B with (m_A + 1, m_B), the time-reversed member B -> A
+    // occupancy classes: the pair sits on the boundary between (m_A + 1, m_B) (the forward member hops A -> B)
+    // and (m_B + 1, m_A) (the time-reversed member hops B -> A); by microscopic reversibility both share the
+    // recrossing factor <|qdot| (Delta^+ - Delta^-)> / <|qdot|> of the pair, so both classes take the pair
+    // difference. Splitting the members (Delta^+ into one class, -Delta^- into the other) gave 2 p^+ - 1 =
+    // kappa + P(B -> B) - P(A -> A): every non-reactive bounce added to one class and subtracted from the other.
     {
-      auto addClass = [&](std::size_t nFrom, std::size_t nTo, double sign, const std::vector<double>& memberSelf,
-                          const std::vector<double>& memberSmooth, const std::vector<double>& memberCommitted)
+      auto plateau = [&](const std::vector<double>& forwardValues, const std::vector<double>& backwardValues)
+      {
+        double sum{0.0};
+        for (std::size_t t : plateauIndices) sum += forwardValues[t] - backwardValues[t];
+        return sum / static_cast<double>(std::max(1uz, plateauIndices.size()));
+      };
+      const double pairSelf = plateau(forwardSelf, deltaSelf);
+      const double pairSmooth = smoothMode ? plateau(forwardSelfSmooth, deltaSelfSmooth) : 0.0;
+      const double pairCommitted = plateau(forwardSelfCommitted, deltaSelfCommitted);
+      auto addClass = [&](std::size_t nFrom, std::size_t nTo)
       {
         DcTSTTransmissionAccumulator::ClassSums& sums = accumulator.classes[{nFrom, nTo}];
         if (sums.speed.empty())
@@ -2814,20 +2975,17 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
           sums.selfSmooth.assign(accumulator.numberOfBlocks, 0.0);
           sums.selfCommitted.assign(accumulator.numberOfBlocks, 0.0);
         }
-        auto plateau = [&](const std::vector<double>& values)
-        {
-          double sum{0.0};
-          for (std::size_t t : plateauIndices) sum += values[t];
-          return sum / static_cast<double>(std::max(1uz, plateauIndices.size()));
-        };
         sums.speed[block] += qdot;
-        sums.self[block] += qdot * sign * plateau(memberSelf);
-        if (smoothMode) sums.selfSmooth[block] += qdot * sign * plateau(memberSmooth);
-        sums.selfCommitted[block] += qdot * sign * plateau(memberCommitted);
+        sums.self[block] += qdot * pairSelf;
+        if (smoothMode) sums.selfSmooth[block] += qdot * pairSmooth;
+        sums.selfCommitted[block] += qdot * pairCommitted;
         ++sums.members;
       };
-      addClass(othersInA + 1uz, othersInB, +1.0, forwardSelf, forwardSelfSmooth, forwardSelfCommitted);
-      addClass(othersInB + 1uz, othersInA, -1.0, deltaSelf, deltaSelfSmooth, deltaSelfCommitted);
+      if (!cageLatticeInconsistency.has_value())
+      {
+        addClass(othersInA + 1uz, othersInB);
+        addClass(othersInB + 1uz, othersInA);
+      }
     }
 
     // event-terminated estimator at every order k = 1..n: the values of the members at their k-th event (at
@@ -2888,13 +3046,14 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       for (const TrajectoryOutcome* outcome : {&forward, &backward})
       {
         const Handover& handover = outcome->handover[h];
-        if (!handover.reached)
+        if (handover.eventBefore)
+        {
+          // also when the handover time lies beyond the end of the trajectory: the event came first
+          ++accumulator.hybridEventBefore[h];
+        }
+        else if (!handover.reached)
         {
           ++accumulator.hybridTruncated[h];
-        }
-        else if (handover.eventBefore)
-        {
-          ++accumulator.hybridEventBefore[h];
         }
         else
         {
@@ -3565,8 +3724,8 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
           entry.selfCommitted += sums.selfCommitted[b];
           if (sums.speed[b] > 0.0)
           {
-            entry.blockKappa.push_back(2.0 * sums.self[b] / sums.speed[b]);
-            if (result.smoothAvailable) entry.blockKappaSmooth.push_back(2.0 * sums.selfSmooth[b] / sums.speed[b]);
+            entry.blockKappa.push_back(sums.self[b] / sums.speed[b]);
+            if (result.smoothAvailable) entry.blockKappaSmooth.push_back(sums.selfSmooth[b] / sums.speed[b]);
           }
         }
       }
@@ -3579,11 +3738,11 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
       item.nTo = pair.second;
       item.members = entry.members;
       item.weightFraction = (memberSpeed > 0.0) ? entry.speed / memberSpeed : 0.0;
-      item.kappa = (entry.speed > 0.0) ? 2.0 * entry.self / entry.speed : 0.0;
+      item.kappa = (entry.speed > 0.0) ? entry.self / entry.speed : 0.0;
       item.kappaError = meanAndError(entry.blockKappa).second;
-      item.kappaSmooth = (entry.speed > 0.0) ? 2.0 * entry.selfSmooth / entry.speed : 0.0;
+      item.kappaSmooth = (entry.speed > 0.0) ? entry.selfSmooth / entry.speed : 0.0;
       item.kappaSmoothError = meanAndError(entry.blockKappaSmooth).second;
-      item.kappaCommitted = (entry.speed > 0.0) ? 2.0 * entry.selfCommitted / entry.speed : 0.0;
+      item.kappaCommitted = (entry.speed > 0.0) ? entry.selfCommitted / entry.speed : 0.0;
       if (auto it = occupancyWeights.find(pair); it != occupancyWeights.end()) item.pilotWeight = it->second;
       if (auto itB = barrierOccupancyWeights.find(pair);
           itB != barrierOccupancyWeights.end() && item.pilotWeight > 0.0)
@@ -3633,10 +3792,15 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
       order.collectiveExcess = order.collectiveEvent / selfCommittedFinal - 1.0;
       // block errors of the differences; epsilon = (kappa_C^event - kappa_S^event)/kappa_S^committed + (f - 1)
       const double backCorrelationError = meanAndError(blockEventBackCorrelation[o]).second;
-      const double excessError = meanAndError(blockEventExcess[o]).second;
       order.backCorrelationFactorError = backCorrelationError / std::abs(selfCommittedFinal);
-      order.collectiveExcessError = std::sqrt(excessError * excessError + backCorrelationError * backCorrelationError) /
-                                    std::abs(selfCommittedFinal);
+      // the two differences are strongly anti-correlated (the same kappa_S^event enters both with opposite signs):
+      // the error of their sum, kappa_C^event - kappa_S^committed, from the block values of the sum itself
+      std::vector<double> blockSum(blockEventExcess[o].size());
+      for (std::size_t b = 0; b < blockSum.size(); ++b)
+      {
+        blockSum[b] = blockEventExcess[o][b] + blockEventBackCorrelation[o][b];
+      }
+      order.collectiveExcessError = meanAndError(blockSum).second / std::abs(selfCommittedFinal);
       order.backCorrelationFactorConditioned = order.selfEventConditioned / selfCommittedFinal;
       order.collectiveExcessConditioned = order.collectiveEventConditioned / selfCommittedFinal - 1.0;
       // a capped trajectory contributes Delta = +-1 and Q_local = 0, i.e. exactly kappa_S^committed; the
@@ -4284,8 +4448,11 @@ void DynamicallyCorrectedTST::output()
       std::print(stream, "Rates and diffusion coefficients ({}):\n", label);
       std::print(stream, "    k^TST:                               {:.6e} +/- {:.2e} [1/ps]\n", kTST, kTSTError);
       const double kS = kappa.selfPlateau * kTST;
-      const double kSError = kS * std::sqrt(std::pow(kTSTError / std::max(kTST, 1e-300), 2) +
-                                            std::pow(kappa.selfPlateauError / std::max(kappa.selfPlateau, 1e-300), 2));
+      // relative errors from the magnitudes (a noisy kappa_S can be negative: max(kappa, 1e-300) then blew the
+      // error up by 1e300, and a negative prefactor printed a negative error)
+      const double kSError =
+          std::abs(kS) * std::sqrt(std::pow(kTSTError / std::max(kTST, 1e-300), 2) +
+                                   std::pow(kappa.selfPlateauError / std::max(std::abs(kappa.selfPlateau), 1e-300), 2));
       std::print(stream, "    k_(A->B) = kappa_S k^TST:            {:.6e} +/- {:.2e} [1/ps]\n", kS, kSError);
       std::print(stream, "    D_S = kappa_S k^TST lambda^2:        {:.6e} +/- {:.2e} [m^2/s]\n",
                  kS * lambdaSquared * conversion, kSError * lambdaSquared * conversion);
@@ -4294,21 +4461,23 @@ void DynamicallyCorrectedTST::output()
       {
         kSSmooth = kappa.selfSmoothPlateau * kTST;
         kSSmoothError =
-            kSSmooth *
+            std::abs(kSSmooth) *
             std::sqrt(std::pow(kTSTError / std::max(kTST, 1e-300), 2) +
                       std::pow(kappa.selfSmoothPlateauError / std::max(std::abs(kappa.selfSmoothPlateau), 1e-300), 2));
         std::print(stream, "    k_(A->B) = kappa_S^smooth k^TST:     {:.6e} +/- {:.2e} [1/ps]\n", kSSmooth, kSSmoothError);
         std::print(stream, "    D_S = kappa_S^smooth k^TST lambda^2: {:.6e} +/- {:.2e} [m^2/s]\n",
                    kSSmooth * lambdaSquared * conversion, kSSmoothError * lambdaSquared * conversion);
       }
+      std::vector<double> kCErrors(numberOfShells, 0.0);
       for (std::size_t s = 0; s < numberOfShells; ++s)
       {
         const double kC = kappa.collectivePlateau[s] * kTST;
         const double kCError =
-            kC *
+            std::abs(kC) *
             std::sqrt(
                 std::pow(kTSTError / std::max(kTST, 1e-300), 2) +
                 std::pow(kappa.collectivePlateauError[s] / std::max(std::abs(kappa.collectivePlateau[s]), 1e-300), 2));
+        kCErrors[s] = kCError;
         if (s + 1 == numberOfShells)
           std::print(stream, "    D_C = kappa_C k^TST lambda^2 (all):  {:.6e} +/- {:.2e} [m^2/s]\n",
                      kC * lambdaSquared * conversion, kCError * lambdaSquared * conversion);
@@ -4392,7 +4561,8 @@ void DynamicallyCorrectedTST::output()
       {
         const std::string key = (s + 1 == numberOfShells) ? "all" : std::to_string(s);
         json["DCollective"][key] = kappa.collectivePlateau[s] * kTST * lambdaSquared * conversion;
-        json["DCollectiveError"][key] = kappa.collectivePlateauError[s] * kTST * lambdaSquared * conversion;
+        // the same error as the text output (the k^TST error included)
+        json["DCollectiveError"][key] = kCErrors[s] * lambdaSquared * conversion;
       }
       if (eventMode)
       {

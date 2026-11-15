@@ -229,6 +229,30 @@ export struct MCMoveStatistics
   {
     subMoves[std::to_underlying(move)].addAccepted(index);
   }
+  /// Turns an accepted move that was undone afterwards (a constraint applied after the move) into a rejected
+  /// one: the accepted counters of 'move' are restored to the snapshot 'before', taken before the move, so that
+  /// the step-size optimization does not count it as accepted; the trial counts are kept.
+  void revokeAccepted(const Move::Types& move,
+                      const std::variant<MoveStatistics<double>, MoveStatistics<double3>>& before,
+                      const SubMoveStatistics& subBefore)
+  {
+    std::visit(
+        [&](auto& now)
+        {
+          using T = std::decay_t<decltype(now)>;
+          if (const T* old = std::get_if<T>(&before))
+          {
+            now.accepted = old->accepted;
+            now.totalAccepted = old->totalAccepted;
+          }
+        },
+        stats[std::to_underlying(move)]);
+    std::vector<std::uint64_t>& accepted = subMoves[std::to_underlying(move)].accepted;
+    for (std::size_t i = 0; i != accepted.size(); ++i)
+    {
+      accepted[i] = i < subBefore.accepted.size() ? subBefore.accepted[i] : 0;
+    }
+  }
   const SubMoveStatistics& subMoveStatistics(const Move::Types& move) const
   {
     return subMoves[std::to_underlying(move)];

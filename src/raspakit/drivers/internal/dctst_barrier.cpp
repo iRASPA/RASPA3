@@ -23,11 +23,72 @@ DcTSTBarrier::DcTSTBarrier(const SimulationBox& simulationBox, double3 fractiona
                                                               : double3(0.0, 0.0, 1.0);
   inPlaneU = double3::normalize(double3::cross(normal, seed));
   inPlaneV = double3::cross(normal, inPlaneU);
+
+  // the Miller indices of the plane in the basis of the box: n . (cell m) = (cell^T n) . m for a lattice
+  // translation cell m (m integer), so the normal of the lattice plane (h k l) is G = h1 b1 + h2 b2 + h3 b3
+  // (cell^T G = h) and n . (cell m) = (h . m) / |G|: for coprime h the box repeats every 1 / |G| along it. The
+  // given normal is snapped onto the lowest-index plane normal within ~0.8 degrees (e.g. the x axis of a nearly
+  // orthogonal triclinic cell, which is not exactly normal to a lattice plane)
+  const double3 h = transposedMultiply(simulationBox.cell, normal);
+  const double largest = std::max({std::abs(h.x), std::abs(h.y), std::abs(h.z)});
+  constexpr int maximumIndex = 12;
+  constexpr double alignmentTolerance = 1e-4;  // 1 - cos of the largest accepted angle
+  bool found = false;
+  for (int c = 1; c <= maximumIndex && !found; ++c)
+  {
+    const double3 scaled = (static_cast<double>(c) / largest) * h;
+    int3 rounded(static_cast<int>(std::lround(scaled.x)), static_cast<int>(std::lround(scaled.y)),
+                 static_cast<int>(std::lround(scaled.z)));
+    const int divisor = std::gcd(std::gcd(std::abs(rounded.x), std::abs(rounded.y)), std::abs(rounded.z));
+    if (divisor == 0) continue;
+    rounded = int3(rounded.x / divisor, rounded.y / divisor, rounded.z / divisor);
+    const double3 reciprocal = transposedMultiply(
+        simulationBox.inverseCell,
+        double3(static_cast<double>(rounded.x), static_cast<double>(rounded.y), static_cast<double>(rounded.z)));
+    const double cosine = double3::dot(reciprocal, normal) / reciprocal.length();
+    if (cosine > 1.0 - alignmentTolerance)
+    {
+      millerIndices = rounded;
+      period = 1.0 / reciprocal.length();
+      normal = double3::normalize(reciprocal);
+      found = true;
+    }
+  }
+  if (!found)
+  {
+    throw std::invalid_argument(std::format(
+        "dcTST: the barrier normal ({:.6f}, {:.6f}, {:.6f}) is not the normal of a lattice plane (h k l) of the "
+        "periodic box (|h|, |k|, |l| <= {}); its periodic images would not be planes\n",
+        normal.x, normal.y, normal.z, maximumIndex));
+  }
+  // the in-plane vectors of the (possibly snapped) normal
+  {
+    const double3 seed = (std::abs(normal.x) <= std::abs(normal.y) && std::abs(normal.x) <= std::abs(normal.z))
+                             ? double3(1.0, 0.0, 0.0)
+                         : (std::abs(normal.y) <= std::abs(normal.z)) ? double3(0.0, 1.0, 0.0)
+                                                                      : double3(0.0, 0.0, 1.0);
+    inPlaneU = double3::normalize(double3::cross(normal, seed));
+    inPlaneV = double3::cross(normal, inPlaneU);
+  }
+  const double cagesPerPeriod = period / lambda;
+  if (!(lambda > 0.0) || std::abs(cagesPerPeriod - std::round(cagesPerPeriod)) > 1e-3 || std::round(cagesPerPeriod) < 1.0)
+  {
+    throw std::invalid_argument(
+        std::format("dcTST: the periodic box repeats every {:.6f} [A] along the barrier normal (plane ({} {} {})), "
+                    "which is not a whole number of 'LatticeDistance' {:.6f} [A]\n",
+                    period, millerIndices.x, millerIndices.y, millerIndices.z, lambda));
+  }
 }
 
-double DcTSTBarrier::projection(const SimulationBox& simulationBox, double3 r) const
+double DcTSTBarrier::projection([[maybe_unused]] const SimulationBox& simulationBox, double3 r) const
 {
-  return double3::dot(simulationBox.applyPeriodicBoundaryConditions(r - point), normal);
+  // the scalar distance from the plane, wrapped on the repeat distance of the box along the normal (the
+  // scalar s . h wrapped in one dimension, not a component-wise minimum image)
+  const double q = double3::dot(r - point, normal);
+  double reduced = q - period * std::floor(q / period + 0.5);
+  if (reduced >= 0.5 * period) reduced -= period;
+  if (reduced < -0.5 * period) reduced += period;
+  return reduced;
 }
 
 double DcTSTBarrier::displacement(const SimulationBox& simulationBox, double3 rOld, double3 rNew) const
@@ -105,13 +166,19 @@ double3 DcTSTBarrier::projectOntoPlane(const SimulationBox& simulationBox, doubl
 // Cage lattice
 // =================================================================================================
 
-DcTSTCageLattice::DcTSTCageLattice(const SimulationBox& unitCell, int3 numberOfUnitCells, double3 cageCenter)
-    : cell(unitCell.cell),
-      inverseCell(unitCell.inverseCell),
-      numberOfUnitCells(std::max(1, numberOfUnitCells.x), std::max(1, numberOfUnitCells.y),
-                        std::max(1, numberOfUnitCells.z)),
-      origin(cageCenter)
+DcTSTCageLattice::DcTSTCageLattice(const SimulationBox& unitCell, int3 numberOfUnitCells, double3 cageCenter,
+                                   int3 cagesPerUnitCell)
+    : origin(cageCenter)
 {
+  const int3 divisions(std::max(1, cagesPerUnitCell.x), std::max(1, cagesPerUnitCell.y),
+                       std::max(1, cagesPerUnitCell.z));
+  cell = double3x3(unitCell.cell[0] / static_cast<double>(divisions.x),
+                   unitCell.cell[1] / static_cast<double>(divisions.y),
+                   unitCell.cell[2] / static_cast<double>(divisions.z));
+  inverseCell = cell.inverse();
+  this->numberOfUnitCells = int3(std::max(1, numberOfUnitCells.x) * divisions.x,
+                                 std::max(1, numberOfUnitCells.y) * divisions.y,
+                                 std::max(1, numberOfUnitCells.z) * divisions.z);
 }
 
 std::size_t DcTSTCageLattice::numberOfCages() const
@@ -154,11 +221,14 @@ double3 DcTSTCageLattice::fractionalOffset(const SimulationBox& simulationBox, d
 
 DcTSTCageLattice::AxisAlignment DcTSTCageLattice::axisAlongDirection(double3 direction) const
 {
+  // the reciprocal vectors b_i are the rows of the inverse cell: the cage boundaries s_i = const are
+  // perpendicular to them
   const double3 unit = double3::normalize(direction);
+  const double3x3 reciprocal = inverseCell.transpose();
   AxisAlignment best{0, 1, -1.0};
   for (int axis = 0; axis < 3; ++axis)
   {
-    const double3 vector = cell[static_cast<std::size_t>(axis)];
+    const double3 vector = reciprocal[static_cast<std::size_t>(axis)];
     const double cosine = double3::dot(vector, unit) / vector.length();
     if (std::abs(cosine) > best.cosine)
     {
@@ -168,7 +238,40 @@ DcTSTCageLattice::AxisAlignment DcTSTCageLattice::axisAlongDirection(double3 dir
   return best;
 }
 
-double DcTSTCageLattice::axisLength(int axis) const { return cell[static_cast<std::size_t>(axis)].length(); }
+double DcTSTCageLattice::planeSpacing(int axis) const
+{
+  return 1.0 / inverseCell.transpose()[static_cast<std::size_t>(axis)].length();
+}
+
+std::optional<std::string> DcTSTCageLattice::inconsistencyWith(const SimulationBox& simulationBox,
+                                                               const DcTSTBarrier& barrier) const
+{
+  const AxisAlignment alignment = axisAlongDirection(barrier.normal);
+  if (alignment.cosine < 0.999)
+  {
+    return std::format("the barrier normal is not perpendicular to the cage planes of any cage axis (best "
+                       "|cos| = {:.4f}); for a non-orthogonal cell use the reciprocal-lattice direction",
+                       alignment.cosine);
+  }
+  const double spacing = planeSpacing(alignment.axis);
+  if (std::abs(spacing - barrier.lambda) > 1e-3 * barrier.lambda)
+  {
+    return std::format("'LatticeDistance' {:.5f} [A] is not the spacing {:.5f} [A] of the cage planes along the "
+                       "normal (set 'CagesPerUnitCell' to the number of cages per unit cell along each axis)",
+                       barrier.lambda, spacing);
+  }
+  if (numberOfUnitCells[alignment.axis] < 2)
+  {
+    return std::string("the cage lattice has a single cage along the normal (cages A and B coincide)");
+  }
+  const double offset = std::abs(barrier.reducedCoordinate(barrier.projection(simulationBox, origin)));
+  if (std::abs(offset - 0.5 * barrier.lambda) > 1e-3 * barrier.lambda)
+  {
+    return std::format("the cage centers lie {:.4f} [A] from the barrier plane, not half a 'LatticeDistance'",
+                       offset);
+  }
+  return std::nullopt;
+}
 
 int3 DcTSTCageLattice::indices(std::size_t cage) const
 {
@@ -183,7 +286,15 @@ double3 DcTSTCageLattice::center(std::size_t cage) const
   return origin + cell * double3(static_cast<double>(n.x), static_cast<double>(n.y), static_cast<double>(n.z));
 }
 
-std::size_t DcTSTCageLattice::neighbor(std::size_t cage, double3 shift) const { return cageOf(center(cage) + shift); }
+std::size_t DcTSTCageLattice::neighbor(std::size_t cage, double3 shift) const
+{
+  // integer steps along the cage axis whose planes are perpendicular to 'shift' (cageOf(center + shift) rounds
+  // the components along the other axes too, and lands on a diagonal cage in a non-orthogonal cell)
+  const AxisAlignment alignment = axisAlongDirection(shift);
+  const double distance = shift.length() * alignment.cosine;
+  const int steps = static_cast<int>(std::lround(distance / planeSpacing(alignment.axis)));
+  return neighborAlongAxis(cage, alignment.axis, alignment.sign * steps);
+}
 
 double3 DcTSTCageLattice::randomPointInCage(RandomNumber& random, std::size_t cage) const
 {

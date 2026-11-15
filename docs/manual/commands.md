@@ -881,6 +881,23 @@ reported separately at the end of the simulation.
     of unit cells in the plane); the summary prints the unit-cell fractional
     centre actually used, which should be checked.
 
+    `"BarrierNormal"` must be the normal of a lattice plane (h k l) of the
+    simulation box (a normal within about 0.8° of one, e.g. the x axis of a
+    nearly orthogonal triclinic cell, is snapped onto it), and the box must
+    repeat a whole number of `"LatticeDistance"`s along it. The cage lattice
+    has one cage per unit cell unless `"CagesPerUnitCell" : [n1, n2, n3]`
+    divides the unit cell into sub-cells (e.g. `[2, 2, 2]` for the eight
+    α-cages of the conventional LTA cell; a centred cell such as hexagonal
+    CHA needs its primitive cell instead). The cages partition space along
+    the barrier only when the normal is perpendicular to the cage planes of
+    one axis (in a non-orthogonal cell the reciprocal-lattice direction, not
+    the lattice vector), `"LatticeDistance"` equals their spacing and the
+    barrier lies midway between cage centres. The occupancy-resolved
+    (`"CageOccupancies"`) and event-terminated modes require this and are
+    refused otherwise; in the other modes the occupancy classes are then
+    left out. The hybrid estimator (`"HandoverTimes"`) needs at least four
+    cages along the normal.
+
     In a rigid framework at low loading a molecule that crosses the window
     keeps its excess energy: nothing thermalizes it in the next cage, so it
     runs on to a second window or bounces back through the first one and

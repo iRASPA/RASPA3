@@ -4,6 +4,7 @@ export module dctst_free_energy_settings;
 
 import std;
 
+import int3;
 import double3;
 
 /**
@@ -39,6 +40,9 @@ export struct DcTSTFreeEnergySettings
   double3 barrierNormal{1.0, 0.0, 0.0};
   double latticeDistance{0.0};
   std::optional<double3> cageCenter{};
+  /// Number of cages per framework unit cell along each of its axes ('CagesPerUnitCell', default [1, 1, 1]; e.g.
+  /// [2, 2, 2] for the conventional LTA cell): the cage lattice divides the unit cell into these sub-cells.
+  int3 cagesPerUnitCell{1, 1, 1};
   /// Occupancy-resolved mode ('CageOccupancies': [n_A, n_B]): the profile over cage A conditioned on n_A
   /// molecules in A (the tagged one included) and n_B in B.
   std::optional<std::pair<std::size_t, std::size_t>> cageOccupancies{};

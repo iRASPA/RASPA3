@@ -26,6 +26,8 @@ import simd_quatd;
 import cbmc;
 import mc_moves;
 import mc_moves_move_types;
+import move_statistics;
+import mc_moves_statistics;
 import mc_moves_translation;
 import mc_moves_random_translation;
 import mc_moves_rotation;
@@ -249,6 +251,73 @@ double dctstSampleReinsertionCoordinate(RandomNumber& rng, double low, double hi
 // Construction and setup
 // =================================================================================================
 
+namespace
+{
+// Runs 'body' on a replica thread and keeps the exception it throws (an exception that leaves a std::jthread calls
+// std::terminate); the caller rethrows it after the threads have joined.
+template <typename F>
+auto keepingException(std::exception_ptr& error, F body)
+{
+  return [&error, body = std::move(body)]() mutable
+  {
+    try
+    {
+      body();
+    }
+    catch (...)
+    {
+      error = std::current_exception();
+    }
+  };
+}
+
+void rethrowWorkerException(const std::vector<std::exception_ptr>& errors)
+{
+  for (const std::exception_ptr& error : errors)
+  {
+    if (error) std::rethrow_exception(error);
+  }
+}
+
+// The physics the drivers support, checked here so that programmatic construction is held to the same rules as the
+// input reader. Both drivers: a rigid framework (the barrier and the cages are fixed in the laboratory frame). The
+// transmission driver integrates trajectories with the molecular-dynamics integrator, which evaluates neither
+// polarization nor external-field forces (the Monte Carlo stages would include them) and does not give the
+// reaction-bead velocity of a semi-flexible tagged molecule.
+void validateDcTSTSystem(const System& system, std::size_t taggedComponent, std::string_view driverName,
+                         bool integratesTrajectories)
+{
+  if (taggedComponent >= system.components.size())
+  {
+    throw std::runtime_error(std::format("dcTST: '{}': the tagged component {} does not exist\n", driverName,
+                                         taggedComponent));
+  }
+  if (system.framework.has_value() && system.framework->hasMobileAtoms())
+  {
+    throw std::runtime_error(std::format("dcTST: '{}' supports rigid frameworks only\n", driverName));
+  }
+  if (!integratesTrajectories) return;
+  if (system.forceField.computePolarization)
+  {
+    throw std::runtime_error(std::format("dcTST: '{}' does not support polarization (the trajectories are "
+                                         "integrated without polarization forces)\n",
+                                         driverName));
+  }
+  if (system.components[taggedComponent].isSemiFlexible())
+  {
+    throw std::runtime_error(std::format("dcTST: '{}': the tagged component '{}' is semi-flexible, which is not "
+                                         "supported (rigid or fully flexible molecules only)\n",
+                                         driverName, system.components[taggedComponent].name));
+  }
+  if (system.hasExternalField)
+  {
+    throw std::runtime_error(std::format("dcTST: '{}' does not support an external field (the trajectories are "
+                                         "integrated without its forces)\n",
+                                         driverName));
+  }
+}
+}  // namespace
+
 DynamicallyCorrectedTSTFreeEnergy::DynamicallyCorrectedTSTFreeEnergy(InputReader& reader)
     : DynamicallyCorrectedTSTFreeEnergy(
           std::move(reader.systems.front()), reader.dctstFreeEnergySettings,
@@ -267,15 +336,17 @@ DynamicallyCorrectedTSTFreeEnergy::DynamicallyCorrectedTSTFreeEnergy(System temp
     : random(parameters.randomSeed),
       settings(std::move(settings_)),
       numberOfInitializationCycles(parameters.numberOfInitializationCycles),
-      printEvery(parameters.printEvery),
-      optimizeMCMovesEvery(parameters.optimizeMCMovesEvery),
+      printEvery(std::max(1uz, parameters.printEvery)),
+      optimizeMCMovesEvery(std::max(1uz, parameters.optimizeMCMovesEvery)),
       numberOfBlocks(parameters.numberOfBlocks),
       numberOfReplicas(std::max(1uz, settings.numberOfReplicas))
 {
   occupancyMode = settings.cageOccupancies.has_value();
+  settings.sampleEvery = std::max(1uz, settings.sampleEvery);
 
   barrier = DcTSTBarrier(templateSystem.simulationBox, settings.barrierPosition, settings.barrierNormal,
                          settings.latticeDistance);
+  validateDcTSTSystem(templateSystem, settings.taggedComponent, "DynamicallyCorrectedTSTFreeEnergy", false);
 
   // the constrained ensemble moves the guests with the single-molecule moves below only (any other move type would
   // silently run as a translation), and a polyatomic tagged molecule changes its orientation and conformation only
@@ -326,11 +397,24 @@ DynamicallyCorrectedTSTFreeEnergy::DynamicallyCorrectedTSTFreeEnergy(System temp
   if (templateSystem.framework.has_value())
   {
     cageLattice = DcTSTCageLattice(templateSystem.framework->simulationBox, templateSystem.framework->numberOfUnitCells,
-                                   lattice_origin);
+                                   lattice_origin, settings.cagesPerUnitCell);
   }
   else
   {
     cageLattice = DcTSTCageLattice(templateSystem.simulationBox, int3(1, 1, 1), lattice_origin);
+  }
+  // the cages must partition space along the barrier (see DynamicallyCorrectedTST): required by the
+  // occupancy-resolved mode, otherwise the occupancy statistics are left out
+  cageLatticeInconsistency = cageLattice.inconsistencyWith(templateSystem.simulationBox, barrier);
+  if (!templateSystem.framework.has_value() && !cageLatticeInconsistency.has_value())
+  {
+    cageLatticeInconsistency = "no framework";
+  }
+  if (cageLatticeInconsistency.has_value() && occupancyMode)
+  {
+    throw std::runtime_error(std::format(
+        "dcTST: 'CageOccupancies' requires a cage lattice consistent with the barrier: {}\n",
+        cageLatticeInconsistency.value()));
   }
 
   // grids: the period for the pilot; the period or the frame of cage A (extended a quarter cage into B so
@@ -580,13 +664,14 @@ void DynamicallyCorrectedTSTFreeEnergy::runInitialization()
   std::print(stream, "\nInitialization stage: {} MC cycles on {} replicas/threads\n", numberOfInitializationCycles,
              numberOfReplicas);
   std::flush(stream);
+  std::vector<std::exception_ptr> workerErrors(numberOfReplicas);
   {
     std::vector<std::jthread> threads;
     threads.reserve(numberOfReplicas);
     for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
     {
       threads.emplace_back(
-          [this, replicaId]()
+          keepingException(workerErrors[replicaId], [this, replicaId]()
           {
             System& system = systems[replicaId];
             std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
@@ -606,9 +691,10 @@ void DynamicallyCorrectedTSTFreeEnergy::runInitialization()
                 std::flush(replicaStream);
               }
             }
-          });
+          }));
     }
   }
+  rethrowWorkerException(workerErrors);
   const std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
   totalInitializationTime += (t2 - t1);
   totalSimulationTime += (t2 - t1);
@@ -620,13 +706,14 @@ void DynamicallyCorrectedTSTFreeEnergy::runPilot()
   std::print(stream, "\nPilot stage: {} MC cycles on {} replicas/threads\n", settings.numberOfPilotCycles,
              numberOfReplicas);
   std::flush(stream);
+  std::vector<std::exception_ptr> workerErrors(numberOfReplicas);
   {
     std::vector<std::jthread> threads;
     threads.reserve(numberOfReplicas);
     for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
     {
       threads.emplace_back(
-          [this, replicaId]()
+          keepingException(workerErrors[replicaId], [this, replicaId]()
           {
             System& system = systems[replicaId];
             std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
@@ -662,9 +749,10 @@ void DynamicallyCorrectedTSTFreeEnergy::runPilot()
             std::print(replicaStream, "\n{}\n{}\n", recomputed.printMCDiff(system.runningEnergies),
                        system.writeMCMoveStatistics());
             std::flush(replicaStream);
-          });
+          }));
     }
   }
+  rethrowWorkerException(workerErrors);
   const std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
   totalPilotTime += (t2 - t1);
   totalSimulationTime += (t2 - t1);
@@ -839,13 +927,14 @@ void DynamicallyCorrectedTSTFreeEnergy::runWindows()
   std::print(stream, "\nWindow stage: {} windows on {} replicas/threads, {} + {} cycles per window\n", windows.size(),
              numberOfReplicas, settings.numberOfWindowEquilibrationCycles, settings.numberOfWindowCycles);
   std::flush(stream);
+  std::vector<std::exception_ptr> workerErrors(numberOfReplicas);
   {
     std::vector<std::jthread> threads;
     threads.reserve(numberOfReplicas);
     for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
     {
       threads.emplace_back(
-          [this, replicaId]()
+          keepingException(workerErrors[replicaId], [this, replicaId]()
           {
             System& system = systems[replicaId];
             std::ostream replicaStream(replicaStreams[replicaId].rdbuf());
@@ -925,9 +1014,10 @@ void DynamicallyCorrectedTSTFreeEnergy::runWindows()
               std::print(replicaStream, "\n{}\n", recomputed.printMCDiff(system.runningEnergies));
               std::flush(replicaStream);
             }
-          });
+          }));
     }
   }
+  rethrowWorkerException(workerErrors);
   const std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
   totalWindowTime += (t2 - t1);
   totalSimulationTime += (t2 - t1);
@@ -1188,6 +1278,8 @@ void DynamicallyCorrectedTSTFreeEnergy::performWindowCycle(std::size_t replicaId
     {
       Component& component = system.components[selectedComponent];
       const Move::Types moveType = component.mc_moves_probabilities.sample(rng);
+      // a component without any move (all probabilities zero, e.g. immobile cations) samples 'Count'
+      if (moveType == Move::Types::Count) continue;
       component.mc_moves_statistics.addAllCounts(moveType);
 
       const std::size_t moleculeIndex =
@@ -1196,8 +1288,12 @@ void DynamicallyCorrectedTSTFreeEnergy::performWindowCycle(std::size_t replicaId
       std::vector<Atom> oldAtoms;
       Molecule oldMolecule;
       std::vector<double3> oldElectricField;
+      std::variant<MoveStatistics<double>, MoveStatistics<double3>> oldMoveStatistics;
+      SubMoveStatistics oldSubMoveStatistics;
       if (occupancyMode)
       {
+        oldMoveStatistics = component.mc_moves_statistics.stats[std::to_underlying(moveType)];
+        oldSubMoveStatistics = component.mc_moves_statistics.subMoveStatistics(moveType);
         oldAtoms.assign(moleculeAtoms.begin(), moleculeAtoms.end());
         oldMolecule = system.moleculeData[moleculeIndex];
         // an accepted move commits the electric field (of the molecule and, with molecule-molecule polarization,
@@ -1255,6 +1351,7 @@ void DynamicallyCorrectedTSTFreeEnergy::performWindowCycle(std::size_t replicaId
               system.electricField = oldElectricField;
             }
             energyDifference = std::nullopt;
+            component.mc_moves_statistics.revokeAccepted(moveType, oldMoveStatistics, oldSubMoveStatistics);
             ++accumulator.rejectedByOccupancy;
           }
           else
@@ -1584,16 +1681,19 @@ void DynamicallyCorrectedTSTFreeEnergy::samplePilot(std::size_t replicaId, std::
       accumulator.histogram[block][pilotGrid.bin(x)] += 1.0;
     }
 
-    const std::size_t cage = cageLattice.cageOf(position);
-    const std::size_t neighbor = cageLattice.neighbor(cage, 2.0 * windowShift);
-    const std::size_t nA = occupancy[cage];
-    const std::size_t nB = occupancy[neighbor];
-    accumulator.occupancyPairs[block][DcTSTPilotAccumulator::occupancyIndex(nA, nB)] += 1.0;
-    if (occupancyMode && nA == settings.cageOccupancies->first && nB == settings.cageOccupancies->second)
+    if (!cageLatticeInconsistency.has_value())
     {
-      const double xc = double3::dot(
-          system.simulationBox.applyPeriodicBoundaryConditions(position - cageLattice.center(cage)), barrier.normal);
-      if (grid.contains(xc)) accumulator.conditionedHistogram[block][grid.bin(xc)] += 1.0;
+      const std::size_t cage = cageLattice.cageOf(position);
+      const std::size_t neighbor = cageLattice.neighbor(cage, 2.0 * windowShift);
+      const std::size_t nA = occupancy[cage];
+      const std::size_t nB = occupancy[neighbor];
+      accumulator.occupancyPairs[block][DcTSTPilotAccumulator::occupancyIndex(nA, nB)] += 1.0;
+      if (occupancyMode && nA == settings.cageOccupancies->first && nB == settings.cageOccupancies->second)
+      {
+        const double xc = double3::dot(
+            system.simulationBox.applyPeriodicBoundaryConditions(position - cageLattice.center(cage)), barrier.normal);
+        if (grid.contains(xc)) accumulator.conditionedHistogram[block][grid.bin(xc)] += 1.0;
+      }
     }
   }
 }
@@ -1618,14 +1718,21 @@ void DynamicallyCorrectedTSTFreeEnergy::sampleWindow(std::size_t replicaId, std:
   {
     accumulator.histogram[block][grid.bin(x)] += 1.0;
   }
-  const double xf = foldedCoordinate(x);
+  // the diagnostics <x> and sigma of the window: on the periodic coordinate, unwrapped about the window center
+  // (the window at the seam, center -lambda/2, averaged x over both ends of the period: <x> ~ 0, sigma ~ lambda/2)
+  double xf = foldedCoordinate(x);
+  if (!occupancyMode && !mirror)
+  {
+    xf = windows[windowIndex].center + barrier.reducedCoordinate(xf - windows[windowIndex].center);
+  }
   accumulator.count[block] += 1.0;
   accumulator.sumX[block] += xf;
   accumulator.sumXSquared[block] += xf * xf;
   accumulator.sumBias[block] += windowBias(windowIndex, x);
 
   // occupancies of the two cages sharing the window while the tagged molecule is on the dividing plane
-  if (!occupancyMode && std::abs(x) < DcTSTWindowAccumulator::barrierOccupancyHalfWidth)
+  if (!occupancyMode && !cageLatticeInconsistency.has_value() &&
+      std::abs(x) < DcTSTWindowAccumulator::barrierOccupancyHalfWidth)
   {
     const double3 position = atoms[component.startingBead].position;
     const std::vector<std::size_t> occupancy = countOccupancies(system);
@@ -1636,9 +1743,23 @@ void DynamicallyCorrectedTSTFreeEnergy::sampleWindow(std::size_t replicaId, std:
     // the other molecules only; the tagged molecule is then counted in whichever cage plays A
     std::size_t mBehind = occupancy[behind] - ((own == behind) ? 1uz : 0uz);
     std::size_t mAhead = occupancy[ahead] - ((own == ahead) ? 1uz : 0uz);
-    accumulator.barrierOccupancyPairs[DcTSTPilotAccumulator::occupancyIndex(mBehind + 1uz, mAhead)] += 0.5;
-    accumulator.barrierOccupancyPairs[DcTSTPilotAccumulator::occupancyIndex(mAhead + 1uz, mBehind)] += 0.5;
-    accumulator.barrierOccupancySamples += 1.0;
+    // the window samples exp(-beta U - w_k(x)): weighting each sample by exp(w_k(x) - w_k(0)) removes the
+    // variation of the bias over the slab, so that every window estimates the unbiased P(n_A, n_B | |x| < w)
+    // and the windows can be pooled (the bias depends on x only, so no window free energy is needed)
+    const double reference = grid.contains(0.0) ? windowBias(windowIndex, 0.0) : windowBias(windowIndex, x);
+    const double weight = std::exp(std::clamp(windowBias(windowIndex, x) - reference, -500.0, 500.0));
+    if (settings.mirrorSymmetry)
+    {
+      // mirror-symmetric barrier: the configuration is the transition state of both directions
+      accumulator.barrierOccupancyPairs[DcTSTPilotAccumulator::occupancyIndex(mBehind + 1uz, mAhead)] += 0.5 * weight;
+      accumulator.barrierOccupancyPairs[DcTSTPilotAccumulator::occupancyIndex(mAhead + 1uz, mBehind)] += 0.5 * weight;
+    }
+    else
+    {
+      // the hop along +normal (from the cage behind into the cage ahead), the direction of the pilot pairs
+      accumulator.barrierOccupancyPairs[DcTSTPilotAccumulator::occupancyIndex(mBehind + 1uz, mAhead)] += weight;
+    }
+    accumulator.barrierOccupancySamples += weight;
   }
 }
 
@@ -1652,9 +1773,20 @@ double DynamicallyCorrectedTSTFreeEnergy::beadThermalSpeed() const
     count += accumulator.beadSpeedCount;
   }
   if (count > 0.0) return sum / count;
+  // no pilot samples ('NumberOfPilotCycles': 0): the effective mass of the reaction bead of the tagged molecule
+  // in its current configuration (the bead itself for a flexible molecule, not the mass of the whole molecule)
   const System& system = systems.front();
   const Component& tagged = system.components[settings.taggedComponent];
-  return std::sqrt(2.0 * Units::KB * system.temperature / tagged.totalMass / std::numbers::pi);
+  if (system.numberOfMoleculesPerComponent[settings.taggedComponent] > 0uz)
+  {
+    const std::size_t index = taggedComponentOffset(system);
+    const std::span<const Atom> atoms = system.spanOfMolecule(settings.taggedComponent, 0uz);
+    const double inverseMass =
+        beadInverseEffectiveMass(tagged, system.moleculeData[index], atoms, tagged.startingBead, barrier.normal);
+    return std::sqrt(2.0 * Units::KB * system.temperature * inverseMass / std::numbers::pi);
+  }
+  const double mass = tagged.rigid ? tagged.totalMass : tagged.definedAtoms[tagged.startingBead].second;
+  return std::sqrt(2.0 * Units::KB * system.temperature / mass / std::numbers::pi);
 }
 
 // =================================================================================================
@@ -1729,8 +1861,11 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
   {
     bool available{false};
     std::vector<double> density;  ///< P per fine bin (normalized over the cage), 0 where undefined.
+    std::vector<double> logDensity;  ///< ln P per fine bin (finite where defined, also where P underflows).
     std::vector<bool> defined;
     double barrierProbabilityBin{0.0};
+    double logBarrierProbabilityBin{0.0};
+    double logBarrierProbability{0.0};  ///< ln P(q*), finite also when P(q*) underflows
     QuadraticFit fit;
     double barrierProbability{0.0};
     double barrierOffset{0.0};
@@ -1755,6 +1890,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     solution.connected = wham.connected;
     solution.converged = wham.converged;
     solution.density.assign(numberOfBins, 0.0);
+    solution.logDensity.assign(numberOfBins, DcTSTWham::logZero);
     solution.defined.assign(numberOfBins, false);
     double largest = DcTSTWham::logZero;
     for (std::size_t b = 0; b < numberOfBins; ++b)
@@ -1773,6 +1909,13 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     }
     if (norm <= 0.0) return solution;
     for (double& p : solution.density) p /= norm;
+    // ln P kept in log space: exp(ln P - largest) underflows to zero for barriers above ~745 kT, and the log of
+    // that zero poisoned the fit, the profile and the block errors
+    const double logNorm = largest + std::log(norm);
+    for (std::size_t b = 0; b < numberOfBins; ++b)
+    {
+      if (solution.defined[b]) solution.logDensity[b] = wham.logDensity[b] - logNorm;
+    }
     solution.available = true;
 
     // the bin estimate: the mean density of the bins whose centers are within 1.5 bin widths of the plane (the
@@ -1781,15 +1924,25 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     {
       double sum{0.0};
       std::size_t n{0};
+      double logLargest = DcTSTWham::logZero;
       for (std::size_t b = 0; b < numberOfBins; ++b)
       {
         if (solution.defined[b] && std::abs(grid.center(b) - grid.barrier) < 1.5 * grid.width)
         {
-          sum += solution.density[b];
+          logLargest = std::max(logLargest, solution.logDensity[b]);
+        }
+      }
+      for (std::size_t b = 0; b < numberOfBins; ++b)
+      {
+        if (solution.defined[b] && std::abs(grid.center(b) - grid.barrier) < 1.5 * grid.width)
+        {
+          sum += std::exp(solution.logDensity[b] - logLargest);
           ++n;
         }
       }
-      solution.barrierProbabilityBin = (n > 0) ? sum / static_cast<double>(n) : 0.0;
+      solution.barrierProbabilityBin = (n > 0) ? std::exp(logLargest) * sum / static_cast<double>(n) : 0.0;
+      solution.logBarrierProbabilityBin =
+          (n > 0) ? logLargest + std::log(sum / static_cast<double>(n)) : DcTSTWham::logZero;
     }
     // the parabolic fit of ln P over |x - x*| <= fit range
     {
@@ -1799,19 +1952,21 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
         const double dx = grid.center(b) - grid.barrier;
         if (!solution.defined[b] || std::abs(dx) > settings.barrierFitRange) continue;
         t.push_back(dx);
-        y.push_back(std::log(solution.density[b]));
+        y.push_back(solution.logDensity[b]);
         w.push_back(fitWeights.empty() ? 1.0 : fitWeights[b]);
       }
       solution.fit = fitQuadratic(t, y, w);
       if (solution.fit.valid)
       {
         solution.barrierProbability = std::exp(solution.fit.a);
+        solution.logBarrierProbability = solution.fit.a;
         // ln P = a + b t + c t^2 has its minimum (the maximum of beta F) at t = -b / (2c) when c > 0
         solution.barrierOffset = (solution.fit.c > 0.0) ? -solution.fit.b / (2.0 * solution.fit.c) : 0.0;
       }
       else
       {
         solution.barrierProbability = solution.barrierProbabilityBin;
+        solution.logBarrierProbability = solution.logBarrierProbabilityBin;
       }
     }
     return solution;
@@ -1830,7 +1985,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
   for (std::size_t j = 0; j < numberOfBlocks; ++j)
   {
     Solution s = solveFor(countsOf(j), full.freeEnergies, {});
-    if (s.available) blockSolutions.push_back(std::move(s));
+    if (s.available && s.converged) blockSolutions.push_back(std::move(s));
   }
   // per-bin errors of beta F from the blocks (relative to each block's own minimum region: use ln P directly,
   // the normalization is common)
@@ -1841,7 +1996,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     std::vector<double> values;
     for (const Solution& s : blockSolutions)
     {
-      if (s.defined[b]) values.push_back(-std::log(s.density[b]));
+      if (s.defined[b]) values.push_back(-s.logDensity[b]);
     }
     fineError[b] = meanAndError(values).second;
     if (values.size() >= 2 && fineError[b] > 0.0) fitWeights[b] = 1.0 / (fineError[b] * fineError[b]);
@@ -1852,7 +2007,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
   for (std::size_t j = 0; j < numberOfBlocks; ++j)
   {
     Solution s = solveFor(countsOf(j), full.freeEnergies, fitWeights);
-    if (s.available) blockSolutions.push_back(std::move(s));
+    if (s.available && s.converged) blockSolutions.push_back(std::move(s));
   }
 
   result.available = true;
@@ -1871,7 +2026,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
   {
     if (full.defined[b])
     {
-      result.fineFreeEnergy[b] = -std::log(full.density[b]);
+      result.fineFreeEnergy[b] = -full.logDensity[b];
       minimum = std::min(minimum, result.fineFreeEnergy[b]);
     }
   }
@@ -1887,15 +2042,15 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
   result.fitPoints = full.fit.points;
   result.barrierOffset = full.barrierOffset;
   result.curvature = -2.0 * full.fit.c;  // beta F'' = -(ln P)''
-  result.barrierFreeEnergy = -std::log(std::max(full.barrierProbability, 1e-300)) - minimum;
-  result.barrierFreeEnergyBin = -std::log(std::max(full.barrierProbabilityBin, 1e-300)) - minimum;
+  result.barrierFreeEnergy = -full.logBarrierProbability - minimum;
+  result.barrierFreeEnergyBin = -full.logBarrierProbabilityBin - minimum;
   {
     std::vector<double> pBin, pFit, fBin, fFit, offsets;
     for (const Solution& s : blockSolutions)
     {
       pBin.push_back(s.barrierProbabilityBin);
       pFit.push_back(s.barrierProbability);
-      fFit.push_back(-std::log(std::max(s.barrierProbability, 1e-300)));
+      fFit.push_back(-s.logBarrierProbability);
       offsets.push_back(s.barrierOffset);
     }
     result.barrierProbabilityBinError = meanAndError(pBin).second;
@@ -1915,7 +2070,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     for (const std::vector<std::size_t>& group : groups)
     {
       Solution s = solveFor(countsOfBlocks(group), full.freeEnergies, fitWeights);
-      if (s.available) pFit.push_back(s.barrierProbability);
+      if (s.available && s.converged) pFit.push_back(s.barrierProbability);
     }
     result.barrierProbabilityErrorHalfBlocks = meanAndError(pFit).second;
     result.numberOfHalfBlocks = pFit.size();
@@ -1941,25 +2096,54 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
                                 : barrier.binCenter(i, numberOfReportBins);
   }
   {
-    std::vector<double> density(numberOfReportBins, 0.0);
-    std::vector<double> errorSum(numberOfReportBins, 0.0);
-    std::vector<std::size_t> errorCount(numberOfReportBins, 0uz);
-    for (std::size_t b = 0; b < numberOfBins; ++b)
+    // ln of the mean density over the defined fine bins of each report bin (divided by the width they cover,
+    // not by the report width: when the fine bins do not divide evenly, report bins hold 11 or 12 of them and a
+    // constant width put a ln(12/11) sawtooth into the profile), from the log densities (no underflow)
+    auto coarseFreeEnergies = [&](const Solution& solution) -> std::vector<std::optional<double>>
     {
-      if (!full.defined[b]) continue;
-      const std::size_t i = reportBin(grid.center(b));
-      density[i] += full.density[b] * grid.width;
-      errorSum[i] += fineError[b];
-      ++errorCount[i];
+      std::vector<double> largest(numberOfReportBins, DcTSTWham::logZero);
+      std::vector<double> sum(numberOfReportBins, 0.0);
+      std::vector<std::size_t> count(numberOfReportBins, 0uz);
+      for (std::size_t b = 0; b < numberOfBins; ++b)
+      {
+        if (!solution.defined[b]) continue;
+        const std::size_t i = reportBin(grid.center(b));
+        largest[i] = std::max(largest[i], solution.logDensity[b]);
+      }
+      for (std::size_t b = 0; b < numberOfBins; ++b)
+      {
+        if (!solution.defined[b]) continue;
+        const std::size_t i = reportBin(grid.center(b));
+        sum[i] += std::exp(solution.logDensity[b] - largest[i]);
+        ++count[i];
+      }
+      std::vector<std::optional<double>> freeEnergy(numberOfReportBins);
+      for (std::size_t i = 0; i < numberOfReportBins; ++i)
+      {
+        if (count[i] > 0uz) freeEnergy[i] = -(largest[i] + std::log(sum[i] / static_cast<double>(count[i])));
+      }
+      return freeEnergy;
+    };
+    const std::vector<std::optional<double>> coarse = coarseFreeEnergies(full);
+    std::vector<std::vector<double>> blockValues(numberOfReportBins);
+    for (const Solution& block : blockSolutions)
+    {
+      const std::vector<std::optional<double>> values = coarseFreeEnergies(block);
+      for (std::size_t i = 0; i < numberOfReportBins; ++i)
+      {
+        if (values[i].has_value()) blockValues[i].push_back(values[i].value());
+      }
     }
     double reportMinimum = std::numeric_limits<double>::max();
     for (std::size_t i = 0; i < numberOfReportBins; ++i)
     {
-      if (density[i] > 0.0)
+      if (coarse[i].has_value())
       {
-        result.freeEnergy[i] = -std::log(density[i] / reportWidth);
+        result.freeEnergy[i] = coarse[i].value();
         result.defined[i] = true;
-        result.freeEnergyError[i] = errorSum[i] / static_cast<double>(std::max(1uz, errorCount[i]));
+        // the block error of the coarse free energy itself (the mean of the fine errors reported zero when the
+        // sparse hits fell into different fine bins in different blocks)
+        result.freeEnergyError[i] = meanAndError(blockValues[i]).second;
         reportMinimum = std::min(reportMinimum, result.freeEnergy[i]);
       }
     }
@@ -1980,11 +2164,13 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     if (norm > 0.0)
     {
       std::vector<double> density(numberOfReportBins, 0.0);
+      std::vector<double> coveredWidth(numberOfReportBins, 0.0);
       double sum{0.0};
       std::size_t n{0};
       for (std::size_t b = 0; b < numberOfBins; ++b)
       {
         density[reportBin(grid.center(b))] += histogram[b] / norm * grid.width;
+        coveredWidth[reportBin(grid.center(b))] += grid.width;
         if (std::abs(grid.center(b) - grid.barrier) < 1.5 * grid.width)
         {
           sum += histogram[b] / norm;
@@ -1996,7 +2182,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
       {
         if (density[i] > 0.0)
         {
-          result.pilotFreeEnergy[i] = -std::log(density[i] / reportWidth);
+          result.pilotFreeEnergy[i] = -std::log(density[i] / coveredWidth[i]);
           result.pilotDefined[i] = true;
           pilotMinimum = std::min(pilotMinimum, result.pilotFreeEnergy[i]);
         }

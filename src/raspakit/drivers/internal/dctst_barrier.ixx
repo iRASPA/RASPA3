@@ -19,10 +19,17 @@ import randomnumbers;
  * floor(q / lambda). The barrier plane itself separates cage A (index -1, q < 0) from cage B
  * (index 0, q > 0).
  *
- * All projections apply the minimum-image convention to the vector from 'point' to the bead, so
- * wrapped and unwrapped positions give the same result as long as the box is at least two cages
- * wide along the normal. Net cage changes along a trajectory are accumulated from the
- * minimum-image displacements between consecutive integration steps ('displacement').
+ * The normal must be a crystallographic direction of the periodic box: normal ~ h1 b1 + h2 b2 + h3 b3
+ * with integer (h1, h2, h3) and b_i the reciprocal vectors of the box, so that the barrier and its
+ * periodic images are lattice planes s . h = const (s the fractional coordinates). Along the normal the
+ * box then repeats every 'period' = 1 / |h1 b1 + h2 b2 + h3 b3| (coprime h), which must be a whole
+ * number of lattice distances. The reaction coordinate is the scalar distance from the plane wrapped
+ * into [-period/2, period/2): it is continuous across the faces of the box for every such normal
+ * (a component-wise minimum image followed by a dot product jumps by O(L) for an oblique normal), and
+ * the projection onto the plane maps a uniform point of the box onto a uniform point of the periodic
+ * plane (every point of the plane collects the same segment of length 'period'). Net cage changes
+ * along a trajectory are accumulated from the minimum-image displacements between consecutive
+ * integration steps ('displacement').
  */
 export struct DcTSTBarrier
 {
@@ -35,9 +42,11 @@ export struct DcTSTBarrier
   double3 inPlaneU{0, 1, 0};  ///< First unit vector spanning the plane.
   double3 inPlaneV{0, 0, 1};  ///< Second unit vector spanning the plane.
   double lambda{1.0};         ///< Distance between equivalent barrier planes (the cage-to-cage distance).
+  int3 millerIndices{1, 0, 0};  ///< Coprime (h1, h2, h3) of the barrier plane in the basis of the box.
+  double period{1.0};           ///< Repeat distance of the periodic box along the normal (a multiple of lambda).
 
-  /// Reaction coordinate of a bead at 'r': the minimum-image distance to the barrier plane along
-  /// the normal.
+  /// Reaction coordinate of a bead at 'r': the signed distance to the barrier plane along the normal,
+  /// wrapped into [-period/2, period/2).
   [[nodiscard]] double projection(const SimulationBox& simulationBox, double3 r) const;
 
   /// The component of the minimum-image displacement from 'rOld' to 'rNew' along the normal.
@@ -79,19 +88,24 @@ export struct DcTSTBarrier
 /**
  * \brief The three-dimensional cage lattice used by the occupancy-resolved mode.
  *
- * One cage per unit cell of the framework: cage (i, j, k) is the unit-cell parallelepiped centered on
- * 'origin' + cell (i, j, k), with (i, j, k) taken modulo the number of unit cells of the supercell. A
- * bead belongs to the cage whose center is nearest in fractional coordinates, so that along the barrier
- * normal the cage boundaries coincide with the periodic images of the barrier plane.
+ * The unit cell of the framework is divided into 'cagesPerUnitCell' (c1, c2, c3) cages along its
+ * axes (one cage per cell by default; e.g. [2, 2, 2] for the eight alpha cages of the conventional
+ * LTA cell): cage (i, j, k) is the parallelepiped of the cage cell (the unit-cell vectors divided by
+ * c) centered on 'origin' + cell (i, j, k), with (i, j, k) taken modulo the number of cages of the
+ * supercell. A bead belongs to the cage whose center is nearest in fractional coordinates. The cage
+ * boundaries along axis i are the lattice planes s_i = const, perpendicular to the reciprocal vector
+ * b_i and 'planeSpacing(i)' apart: the cages are consistent with a barrier only when its normal is
+ * b_i / |b_i| for some axis and its lattice distance is that spacing ('inconsistencyWith').
  */
 export struct DcTSTCageLattice
 {
   DcTSTCageLattice() = default;
-  DcTSTCageLattice(const SimulationBox& unitCell, int3 numberOfUnitCells, double3 cageCenter);
+  DcTSTCageLattice(const SimulationBox& unitCell, int3 numberOfUnitCells, double3 cageCenter,
+                   int3 cagesPerUnitCell = int3(1, 1, 1));
 
-  double3x3 cell{};         ///< Unit cell (columns are the lattice vectors).
+  double3x3 cell{};         ///< Cage cell (columns are the unit-cell vectors divided by 'cagesPerUnitCell').
   double3x3 inverseCell{};  ///< Its inverse.
-  int3 numberOfUnitCells{1, 1, 1};
+  int3 numberOfUnitCells{1, 1, 1};  ///< Number of cages along each axis of the supercell.
   double3 origin{};  ///< Cartesian center of cage (0, 0, 0).
 
   [[nodiscard]] std::size_t numberOfCages() const;
@@ -118,8 +132,9 @@ export struct DcTSTCageLattice
   /// convention of the supercell 'simulationBox'; a bead inside its cage has all components in [-1/2, 1/2).
   [[nodiscard]] double3 fractionalOffset(const SimulationBox& simulationBox, double3 r, std::size_t cage) const;
 
-  /// The lattice axis most aligned with 'direction', the sign of the alignment (+1 if the lattice vector
-  /// points along 'direction') and |cos| of the angle between them.
+  /// The cage axis whose boundary planes are most nearly perpendicular to 'direction' (the reciprocal vector
+  /// b_axis most aligned with it), the sign of the alignment (+1 if b_axis points along 'direction', so that a
+  /// step +sign along the axis moves along 'direction') and |cos| of the angle between them.
   struct AxisAlignment
   {
     int axis{0};
@@ -128,6 +143,13 @@ export struct DcTSTCageLattice
   };
   [[nodiscard]] AxisAlignment axisAlongDirection(double3 direction) const;
 
-  /// Length of lattice vector 'axis'.
-  [[nodiscard]] double axisLength(int axis) const;
+  /// Distance between consecutive cage boundary planes s_axis = const (1 / |b_axis|; the length of the cage
+  /// vector for an orthogonal cell).
+  [[nodiscard]] double planeSpacing(int axis) const;
+
+  /// Why the cages do not partition space along the barrier ('normal', 'lambda'), or nothing when they do: the
+  /// normal is perpendicular to the cage planes of one axis, the lattice distance is their spacing, and the
+  /// barrier plane passes midway between cage centers.
+  [[nodiscard]] std::optional<std::string> inconsistencyWith(const SimulationBox& simulationBox,
+                                                             const DcTSTBarrier& barrier) const;
 };

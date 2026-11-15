@@ -4,6 +4,7 @@ export module dctst_settings;
 
 import std;
 
+import int3;
 import double3;
 
 /**
@@ -59,6 +60,9 @@ export struct DcTSTSettings
   /// 'BarrierPosition' -- correct only when that supercell fraction happens to fall on a cage centre (e.g. an
   /// odd number of unit cells in the plane for LTA).
   std::optional<double3> cageCenter{};
+  /// Number of cages per framework unit cell along each of its axes ('CagesPerUnitCell', default [1, 1, 1]; e.g.
+  /// [2, 2, 2] for the conventional LTA cell): the cage lattice divides the unit cell into these sub-cells.
+  int3 cagesPerUnitCell{1, 1, 1};
 
   /// Monte Carlo cycles of the transmission stage (tagged molecule constrained to the barrier plane,
   /// trajectories launched periodically) ('NumberOfTransmissionCycles').

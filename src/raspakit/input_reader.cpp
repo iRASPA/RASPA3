@@ -4480,7 +4480,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         const auto &block = value["dcTST"];
         static const std::set<std::string, InsensitiveCompare> geometryOptions = {
-            "TaggedComponent", "BarrierPosition", "BarrierNormal", "LatticeDistance", "CageCenter",
+            "TaggedComponent", "BarrierPosition", "BarrierNormal", "LatticeDistance", "CageCenter", "CagesPerUnitCell",
             "CageOccupancies", "NumberOfReplicas"};
         static const std::set<std::string, InsensitiveCompare> transmissionOptions = {
             "NumberOfTransmissionCycles",    "NumberOfConstrainedEquilibrationCycles",
@@ -4593,6 +4593,19 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             double3 center{};
             readDouble3("CageCenter", center);
             s.cageCenter = center;
+          }
+          if (block.contains("CagesPerUnitCell"))
+          {
+            const auto &cages = block["CagesPerUnitCell"];
+            if (!cages.is_array() || cages.size() != 3 || !cages[0].is_number_unsigned() ||
+                !cages[1].is_number_unsigned() || !cages[2].is_number_unsigned() || cages[0].get<int>() < 1 ||
+                cages[1].get<int>() < 1 || cages[2].get<int>() < 1)
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'CagesPerUnitCell' must be an array of three positive integers (the "
+                  "number of cages per framework unit cell along each of its axes)\n");
+            }
+            s.cagesPerUnitCell = int3(cages[0].get<int>(), cages[1].get<int>(), cages[2].get<int>());
           }
           if (s.barrierNormal.length() <= 0.0)
           {
@@ -5956,6 +5969,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     if (system.forceField.computePolarization)
     {
       throw std::runtime_error(std::format("[Input reader]: '{}' does not support polarization\n", driverName));
+    }
+    // the trajectories are integrated without external-field forces (as in 'MolecularDynamics'), while the Monte
+    // Carlo stages would include the field
+    if (!freeEnergyDriver && system.hasExternalField)
+    {
+      throw std::runtime_error(
+          "[Input reader]: 'DynamicallyCorrectedTST' does not support an external field (the trajectories are "
+          "integrated without its forces)\n");
     }
     // the trajectories include the link forces, but the moves of the tagged molecule leave the link energy out
     if (!system.crossLinks.empty() ||

@@ -191,13 +191,14 @@ export struct DcTSTTransmissionAccumulator
   /// Per trajectory member, classified by the occupancies (n_from, n_to) of its departure cage (the tagged
   /// molecule included) and its arrival cage at launch: the forward member of a pair hops A -> B with
   /// (m_A + 1, m_B), the time-reversed member B -> A with (m_B + 1, m_A), m the numbers of other molecules at
-  /// launch. kappa(n, n') = 2 sum s |qdot| Delta / sum |qdot| over the members of the class (s = +-1 the launch
-  /// direction, Delta the plateau value of the member) is the occupancy-resolved recrossing factor without a
+  /// launch. Both classes of a pair take its difference: kappa(n, n') = sum |qdot| (Delta^+ - Delta^-) / sum |qdot|
+  /// over the pairs in the class (Delta the plateau values of the members) is the occupancy-resolved recrossing
+  /// factor without a
   /// constrained run, and with the conditioned k^TST(n -> n') of the free-energy input gives k(n -> n').
   struct ClassSums
   {
     std::vector<double> speed;          ///< [block] sum |qdot|
-    std::vector<double> self;           ///< [block] sum s |qdot| Delta (net cage count, plateau)
+    std::vector<double> self;           ///< [block] sum |qdot| (Delta^+ - Delta^-) (pair, plateau)
     std::vector<double> selfSmooth;     ///< [block] committor-smoothed
     std::vector<double> selfCommitted;  ///< [block]
     std::size_t members{0};
@@ -278,6 +279,10 @@ export struct DynamicallyCorrectedTST
   DcTSTSettings settings;
   DcTSTBarrier barrier;
   DcTSTCageLattice cageLattice;
+  /// Why the cage lattice does not partition space along the barrier (see DcTSTCageLattice::inconsistencyWith),
+  /// or nothing; the occupancy-resolved and event-terminated modes require a consistent lattice, otherwise the
+  /// occupancy statistics are not collected.
+  std::optional<std::string> cageLatticeInconsistency;
 
   std::size_t numberOfInitializationCycles;
   std::size_t printEvery;

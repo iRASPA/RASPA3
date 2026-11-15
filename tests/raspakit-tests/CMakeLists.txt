@@ -99,6 +99,7 @@ add_executable(unit_tests_raspakit
   polymer_network_statistics.cpp
   connectivity_table.cpp
   dctst_window.cpp
+  dctst_geometry_fixes.cpp
   external_field.cpp
   opencl_device.cpp
   main.cpp)

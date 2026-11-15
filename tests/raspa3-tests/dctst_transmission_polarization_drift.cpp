@@ -58,7 +58,9 @@ TEST(DCTST_TRANSMISSION_POLARIZATION_DRIFT,
   input["Systems"][0]["dcTST"] = {{"TaggedComponent", "methane"},
                                   {"BarrierPosition", {0.25, 0.0, 0.0}},
                                   {"BarrierNormal", {1.0, 0.0, 0.0}},
-                                  {"LatticeDistance", 11.8671}};
+                                  // the (100) plane spacing of the (nearly orthogonal, triclinic) tobacco-667 cell:
+                                  // the box must repeat a whole number of lattice distances along the normal
+                                  {"LatticeDistance", 30.69253}};
   {
     std::ofstream stream("simulation.json");
     stream << input.dump(2);

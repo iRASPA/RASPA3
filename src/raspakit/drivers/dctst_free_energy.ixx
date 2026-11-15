@@ -206,6 +206,10 @@ export struct DynamicallyCorrectedTSTFreeEnergy
   DcTSTFreeEnergySettings settings;
   DcTSTBarrier barrier;
   DcTSTCageLattice cageLattice;
+  /// Why the cage lattice does not partition space along the barrier (see DcTSTCageLattice::inconsistencyWith),
+  /// or nothing; the occupancy-resolved and event-terminated modes require a consistent lattice, otherwise the
+  /// occupancy statistics are not collected.
+  std::optional<std::string> cageLatticeInconsistency;
   DcTSTGrid grid;  ///< The grid of the reweighting (unconditioned or conditioned, see 'DcTSTGrid').
   DcTSTGrid pilotGrid;  ///< The unconditioned period grid of the pilot histogram.
   bool occupancyMode{false};
