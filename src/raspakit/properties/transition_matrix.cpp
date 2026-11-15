@@ -134,7 +134,26 @@ double TransitionMatrix::biasFactor(std::size_t newN, std::size_t oldN, std::siz
 
   const std::size_t newIndex = chainIndex(newN, newLambdaBin);
   const std::size_t oldIndex = chainIndex(oldN, oldLambdaBin);
-  if ((newIndex >= bias.size()) || (oldIndex >= bias.size()))
+  if (oldIndex >= bias.size())
+  {
+    // A walk that starts outside the chain (an initial loading past a bound, a restart from a run whose chain
+    // reached (maxN, k > 0)) is let back in: a step toward the chain is taken unbiased, any other is refused.
+    // Refusing every step left such a walk where it was for the whole run.
+    if (!rejectOutOfBound) return 1.0;
+    const std::size_t nLambda = lambdaBinCount();
+    auto position = [&](std::size_t N, std::size_t lambdaBin) -> double
+    {
+      return (static_cast<double>(N) - static_cast<double>(minMacrostate)) * static_cast<double>(nLambda) +
+             static_cast<double>(lambdaChain() ? lambdaBin : 0uz);
+    };
+    const double top = static_cast<double>((maxMacrostate - minMacrostate) * nLambda);
+    const double oldPosition = position(oldN, oldLambdaBin);
+    const double newPosition = position(newN, newLambdaBin);
+    const bool towardChain =
+        (oldPosition > top && newPosition < oldPosition) || (oldPosition < 0.0 && newPosition > oldPosition);
+    return towardChain ? 1.0 : 0.0;
+  }
+  if (newIndex >= bias.size())
   {
     return rejectOutOfBound ? 0.0 : 1.0;
   }
@@ -216,9 +235,7 @@ void TransitionMatrix::recomputeLnPiAndBias()
   {
     const double forwardTotal = cmatrix[i].x + cmatrix[i].y + cmatrix[i].z;
     const double reverseTotal = cmatrix[i + 1].x + cmatrix[i + 1].y + cmatrix[i + 1].z;
-    const bool supportedLink =
-        cmatrix[i].z > 0.0 && cmatrix[i + 1].x > 0.0 && forwardTotal > 0.0 && reverseTotal > 0.0;
-    if (supportedLink)
+    if (linkSupported(i))
     {
       const double forward = std::log(cmatrix[i].z) - std::log(forwardTotal);
       const double reverse = std::log(cmatrix[i + 1].x) - std::log(reverseTotal);
@@ -231,6 +248,8 @@ void TransitionMatrix::recomputeLnPiAndBias()
       // A one-sided link does not identify a detailed-balance ratio. Keep the live bias flat
       // across it until both directions have support; applying only the reverse term invents a
       // free-energy step and can create a wall before the walker has sampled the forward hop.
+      // The plateau is a bias, not an estimate: the statistics file numbers the supported runs ('segment') and
+      // the reweighted loading keeps to one of them (supportedMoleculeRange).
       lnpi[i + 1] = lnpi[i];
       forward_lnpi[i + 1] = forward_lnpi[i];
       reverse_lnpi[i + 1] = reverse_lnpi[i];
@@ -319,24 +338,63 @@ void TransitionMatrix::clearCMatrix()
   wangLandauFactor = TransitionMatrix{}.wangLandauFactor;
 };
 
-std::optional<std::pair<double, double>> TransitionMatrix::reweightedMoleculeCountMeanAndVariance() const
+std::optional<std::pair<std::size_t, std::size_t>> TransitionMatrix::visitedMoleculeRange() const
 {
-  if (!doTMMC || lnpi.size() != numberOfChainStates() || histogram.size() != numberOfChainStates()) return std::nullopt;
+  if (!doTMMC || histogram.size() != numberOfChainStates()) return std::nullopt;
   const std::size_t nLambda = lambdaBinCount();
-  std::vector<std::size_t> visited;
+  std::optional<std::pair<std::size_t, std::size_t>> range{};
   for (std::size_t N = minMacrostate; N <= maxMacrostate; ++N)
   {
     std::size_t visits = 0uz;
-    for (std::size_t k = 0; k < nLambda; ++k) visits += histogram[chainIndex(N, k)];
-    if (visits > 0uz) visited.push_back(N);
+    for (std::size_t k = 0; k < nLambda; ++k)
+    {
+      const std::size_t index = chainIndex(N, k);
+      if (index < histogram.size()) visits += histogram[index];
+    }
+    if (visits == 0uz) continue;
+    if (!range.has_value()) range = std::make_pair(N, N);
+    range->second = N;
   }
-  if (visited.empty()) return std::nullopt;
+  return range;
+}
+
+std::optional<std::pair<std::size_t, std::size_t>> TransitionMatrix::supportedMoleculeRange() const
+{
+  const std::optional<std::pair<std::size_t, std::size_t>> visited = visitedMoleculeRange();
+  if (!visited.has_value() || cmatrix.size() != numberOfChainStates()) return visited;
+  const std::size_t nLambda = lambdaBinCount();
+  // the step N -> N + 1 is the walk from (N, 0) to (N + 1, 0): one link, or the nLambda links of an (N, lambda) chain
+  auto stepSupported = [&](std::size_t N) -> bool
+  {
+    const std::size_t first = chainIndex(N, 0uz);
+    for (std::size_t k = 0; k < nLambda; ++k)
+    {
+      if (!linkSupported(first + k)) return false;
+    }
+    return true;
+  };
+  std::pair<std::size_t, std::size_t> longest{visited->first, visited->first};
+  std::size_t runStart = visited->first;
+  for (std::size_t N = visited->first; N <= visited->second; ++N)
+  {
+    if (N - runStart > longest.second - longest.first) longest = {runStart, N};
+    if (N < visited->second && !stepSupported(N)) runStart = N + 1uz;
+  }
+  return longest;
+}
+
+std::optional<std::pair<double, double>> TransitionMatrix::reweightedMoleculeCountMeanAndVariance() const
+{
+  if (!doTMMC || lnpi.size() != numberOfChainStates() || histogram.size() != numberOfChainStates()) return std::nullopt;
+  // ln Pi is one estimate only inside a run of supported links: across an unsupported one it is carried flat
+  const std::optional<std::pair<std::size_t, std::size_t>> range = supportedMoleculeRange();
+  if (!range.has_value()) return std::nullopt;
   double largest = -1e300;
-  for (std::size_t N = visited.front(); N <= visited.back(); ++N) largest = std::max(largest, lnpi[chainIndex(N, 0uz)]);
+  for (std::size_t N = range->first; N <= range->second; ++N) largest = std::max(largest, lnpi[chainIndex(N, 0uz)]);
   double sum = 0.0;
   double sumN = 0.0;
   double sumNN = 0.0;
-  for (std::size_t N = visited.front(); N <= visited.back(); ++N)
+  for (std::size_t N = range->first; N <= range->second; ++N)
   {
     const double weight = std::exp(lnpi[chainIndex(N, 0uz)] - largest);
     const double n = static_cast<double>(N);
@@ -351,6 +409,26 @@ std::optional<std::pair<double, double>> TransitionMatrix::reweightedMoleculeCou
 
 void TransitionMatrix::writeStatistics()
 {
+  // the supported runs of the chain: states joined by supported links share a number, counted from the lowest
+  // visited state; -1 outside the visited range. Differences of ln Pi mean something only inside one run.
+  std::vector<std::int64_t> segment(cmatrix.size(), -1);
+  {
+    const auto visited = [](const std::size_t& visits) { return visits != 0uz; };
+    const auto first = std::find_if(histogram.begin(), histogram.end(), visited);
+    if (first != histogram.end() && histogram.size() == cmatrix.size())
+    {
+      const std::size_t lowest = static_cast<std::size_t>(std::distance(histogram.begin(), first));
+      const std::size_t highest = static_cast<std::size_t>(
+          std::distance(histogram.begin(), std::find_if(histogram.rbegin(), histogram.rend(), visited).base()) - 1);
+      std::int64_t current = 0;
+      for (std::size_t index = lowest; index <= highest; ++index)
+      {
+        segment[index] = current;
+        if (index < highest && !linkSupported(index)) ++current;
+      }
+    }
+  }
+
   std::ofstream textTMMCFile{};
   std::filesystem::path cwd = std::filesystem::current_path();
 
@@ -381,12 +459,15 @@ void TransitionMatrix::writeStatistics()
       std::print(textTMMCFile, "# column 7: forward lnpi\n");
       std::print(textTMMCFile, "# column 8: reverse lnpi\n");
       std::print(textTMMCFile, "# column 9: histogram\n");
-      std::print(textTMMCFile, "N CM[-1] CM[0] CM[1] bias lnpi Forward_lnpi Reverse_lnpi histogram\n");
+      std::print(textTMMCFile, "# column 10: segment (states joined by links with accepted transitions in both\n");
+      std::print(textTMMCFile, "#            directions; lnpi is carried flat across an unsupported link, and its\n");
+      std::print(textTMMCFile, "#            differences are estimates only inside one segment; -1: not visited)\n");
+      std::print(textTMMCFile, "N CM[-1] CM[0] CM[1] bias lnpi Forward_lnpi Reverse_lnpi histogram segment\n");
       for (std::size_t j = minMacrostate; j < maxMacrostate + 1; j++)
       {
         std::size_t newj = j - minMacrostate;
-        std::print(textTMMCFile, "{} {} {} {} {} {} {} {} {}\n", j, cmatrix[newj].x, cmatrix[newj].y, cmatrix[newj].z,
-                   bias[newj], lnpi[newj], forward_lnpi[newj], reverse_lnpi[newj], histogram[newj]);
+        std::print(textTMMCFile, "{} {} {} {} {} {} {} {} {} {}\n", j, cmatrix[newj].x, cmatrix[newj].y, cmatrix[newj].z,
+                   bias[newj], lnpi[newj], forward_lnpi[newj], reverse_lnpi[newj], histogram[newj], segment[newj]);
       }
     }
     else
@@ -401,7 +482,11 @@ void TransitionMatrix::writeStatistics()
       std::print(textTMMCFile, "# column 8: forward lnpi\n");
       std::print(textTMMCFile, "# column 9: reverse lnpi\n");
       std::print(textTMMCFile, "# column 10: histogram\n");
-      std::print(textTMMCFile, "N k CM[-1] CM[0] CM[1] bias lnpi Forward_lnpi Reverse_lnpi histogram\n");
+      std::print(textTMMCFile, "# column 11: segment (states joined by links with accepted transitions in both\n");
+      std::print(textTMMCFile, "#            directions; lnpi is carried flat across an unsupported link, and its\n");
+      std::print(textTMMCFile, "#            differences are estimates only inside one segment; -1: not visited)\n");
+      std::print(textTMMCFile, "# the chain ends at (maximum, 0): the window bounds are integer states\n");
+      std::print(textTMMCFile, "N k CM[-1] CM[0] CM[1] bias lnpi Forward_lnpi Reverse_lnpi histogram segment\n");
       const std::size_t nLambda = lambdaBinCount();
       for (std::size_t j = minMacrostate; j < maxMacrostate + 1; j++)
       {
@@ -409,9 +494,9 @@ void TransitionMatrix::writeStatistics()
         {
           const std::size_t index = chainIndex(j, k);
           if (index >= cmatrix.size()) continue;
-          std::print(textTMMCFile, "{} {} {} {} {} {} {} {} {} {}\n", j, k, cmatrix[index].x, cmatrix[index].y,
+          std::print(textTMMCFile, "{} {} {} {} {} {} {} {} {} {} {}\n", j, k, cmatrix[index].x, cmatrix[index].y,
                      cmatrix[index].z, bias[index], lnpi[index], forward_lnpi[index], reverse_lnpi[index],
-                     histogram[index]);
+                     histogram[index], segment[index]);
         }
       }
     }

@@ -1369,9 +1369,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   {
     tmmcNumberOfWindows = std::max(1uz, parsed_data["NumberOfWindows"].get<std::size_t>());
   }
-  if (parsed_data.contains("TMMCUpdateEvery") && parsed_data["TMMCUpdateEvery"].is_number_unsigned())
+  if (parsed_data.contains("TMMCUpdateEvery"))
   {
+    // a value of another type (a negative number, 1e5, a string) was skipped without a word, and the run kept
+    // the default interval
+    if (!parsed_data["TMMCUpdateEvery"].is_number_unsigned())
+    {
+      throw std::runtime_error("[Input reader]: 'TMMCUpdateEvery' must be a positive unsigned integer\n");
+    }
     tmmcUpdateEvery = std::max(1uz, parsed_data["TMMCUpdateEvery"].get<std::size_t>());
+    tmmcUpdateEveryGiven = true;
   }
 
   // NLDFT: grid / orientation / backend controls
@@ -5300,6 +5307,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                                 parsed_data["Systems"][i].contains("MacroStateUseBias");
       if (!useBiasGiven) systems[i].tmmc.useBias = true;
       systems[i].tmmc.useTMBias = true;
+      // 'TMMCUpdateEvery' reached only ParallelTMMC: here it was read and dropped, and the bias was rebuilt every
+      // million steps whatever was asked (never, in a shorter run)
+      if (tmmcUpdateEveryGiven) systems[i].tmmc.updateTMEvery = tmmcUpdateEvery;
       // per-box statistics files: with several boxes (Gibbs TMMC) each wrote over the one before
       if (systems.size() > 1uz)
       {
@@ -5627,14 +5637,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         // The CFCMC pair and group swaps walk their lambda inside one macrostate of the N chain, biased by their
         // own Wang-Landau factors, which the matrix cannot see; only as a direct crossing (a single bin) are they
         // its steps (System::cfcmcSwapFitsTMMC).
-        // The Gibbs CFCMC swap transfers the fractional molecule at any lambda of the GC histogram in the same way.
         const std::array cfcmcPairGroupMoves{
             std::tuple{Move::Types::PairSwapCFCMC, "CFCMC_PairSwapProbability", &tracked.lambdaPairSwap},
             std::tuple{Move::Types::PairSwapCBCFCMC, "CFCMC_CBMC_PairSwapProbability", &tracked.lambdaPairSwapCB},
             std::tuple{Move::Types::GroupSwapCFCMC, "CFCMC_GroupSwapProbability", &tracked.lambdaGroupSwap},
-            std::tuple{Move::Types::GroupSwapCBCFCMC, "CFCMC_CBMC_GroupSwapProbability", &tracked.lambdaGroupSwapCB},
-            std::tuple{Move::Types::GibbsSwapCFCMC, "GibbsSwapCFCMCProbability", &tracked.lambdaGC},
-            std::tuple{Move::Types::GibbsSwapCBCFCMC, "GibbsSwapCBCFCMCProbability", &tracked.lambdaGC}};
+            std::tuple{Move::Types::GroupSwapCBCFCMC, "CFCMC_CBMC_GroupSwapProbability", &tracked.lambdaGroupSwapCB}};
         for (const auto& [move, keyword, histogram] : cfcmcPairGroupMoves)
         {
           if (tracked.mc_moves_probabilities.getProbability(move) != 0.0 && histogram->numberOfSamplePoints > 1uz)
@@ -5659,9 +5666,28 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             throw std::runtime_error(std::format(
                 "Error [TMMC, system {}, component {} ('{}')]: '{}' must be zero under TMMC; the conventional Gibbs "
                 "CFCMC move transfers molecules at the lambda crossings of a Wang-Landau biased walk the transition "
-                "matrix cannot see. Use 'GibbsSwapCBMCProbability', or 'GibbsSwapCFCMCProbability' with "
-                "'NumberOfLambdaBins' 1.\n",
+                "matrix cannot see. Use 'GibbsSwapCBMCProbability'.\n",
                 i, trackedComponent, tracked.name, keyword));
+          }
+        }
+        // The serial Gibbs CFCMC swaps share one fractional molecule between the boxes. A molecule enters a box only
+        // while that box holds the fractional molecule, and leaves it only while the other box does, so a row of the
+        // matrix estimates p(chi | N) times the acceptance, chi being the box that holds it. The walk over chi is
+        // flattened by the Wang-Landau factors of the two lambda histograms, with a single bin as well, and the
+        // flattened p(chi | N) has lost the ratio of the box volumes the physical one carries: ln Pi(N) came out
+        // without it (System::serialGibbsCFCMCFitsTMMC).
+        for (const auto& [move, keyword] :
+             {std::pair{Move::Types::GibbsSwapCFCMC, "GibbsSwapCFCMCProbability"},
+              std::pair{Move::Types::GibbsSwapCBCFCMC, "GibbsSwapCBCFCMCProbability"}})
+        {
+          if (tracked.mc_moves_probabilities.getProbability(move) != 0.0)
+          {
+            throw std::runtime_error(std::format(
+                "Error [TMMC, system {}, component {} ('{}')]: '{}' must be zero under TMMC, at any "
+                "'NumberOfLambdaBins'; move '{}' transfers molecules into the box that holds the shared fractional "
+                "molecule only, and which box holds it is a Wang-Landau biased coordinate the transition matrix "
+                "cannot see (ln Pi(N) would lose the ratio of the box volumes). Use 'GibbsSwapCBMCProbability'.\n",
+                i, trackedComponent, tracked.name, keyword, Move::moveNames[std::to_underlying(move)]));
           }
         }
         const bool lambdaChain = (tracked.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
@@ -5701,29 +5727,63 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      // a pair swap changes the count of its partner too: when the partner is the TMMC component and the
-      // driving component is not, the macrostate moves on a move the matrix neither biases nor records
-      for (std::size_t componentId = 0uz; componentId < systems[i].components.size(); ++componentId)
+      // A pair swap changes the count of both members of the pair by one, so it is the ordinary step of the matrix
+      // whichever member is the TMMC component (System::pairSwapTMMCMember). The lower index of the two drives the
+      // move. Driven by the partner of the TMMC component (a cation listed before the adsorbate), it was refused
+      // here with the advice to put it on the TMMC component, where it is inert: such a pair could not be swapped.
       {
-        const Component& component = systems[i].components[componentId];
-        if (!component.pairComponentId.has_value() || componentId == trackedComponent ||
-            component.pairComponentId.value() != trackedComponent)
+        const std::array pairSwapMoves{
+            std::tuple{Move::Types::PairSwap, "PairSwapConventionalProbability", false, false},
+            std::tuple{Move::Types::PairSwapCBMC, "PairSwapProbability", false, false},
+            std::tuple{Move::Types::PairSwapCFCMC, "CFCMC_PairSwapProbability", true, false},
+            std::tuple{Move::Types::PairSwapCBCFCMC, "CFCMC_CBMC_PairSwapProbability", true, true}};
+        const bool lambdaChainOfTracked =
+            trackedComponent < systems[i].components.size() &&
+            (systems[i].components[trackedComponent].mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) >
+                 0.0 ||
+             systems[i].components[trackedComponent].mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) >
+                 0.0) &&
+            systems[i].components[trackedComponent].lambdaGC.numberOfSamplePoints > 1uz;
+        for (std::size_t componentId = 0uz; componentId < systems[i].components.size(); ++componentId)
         {
-          continue;
-        }
-        const std::array pairSwapMoves{std::pair{Move::Types::PairSwap, "PairSwapConventionalProbability"},
-                                       std::pair{Move::Types::PairSwapCBMC, "PairSwapProbability"},
-                                       std::pair{Move::Types::PairSwapCFCMC, "CFCMC_PairSwapProbability"},
-                                       std::pair{Move::Types::PairSwapCBCFCMC, "CFCMC_CBMC_PairSwapProbability"}};
-        for (const auto& [move, keyword] : pairSwapMoves)
-        {
-          if (component.mc_moves_probabilities.getProbability(move) != 0.0)
+          const Component& component = systems[i].components[componentId];
+          if (!component.pairComponentId.has_value()) continue;
+          const std::size_t partner = component.pairComponentId.value();
+          if (partner >= systems[i].components.size() || partner == componentId) continue;
+          if (componentId != trackedComponent && partner != trackedComponent) continue;
+          const bool drives = componentId < partner;
+          for (const auto& [move, keyword, fractional, configurationalBias] : pairSwapMoves)
           {
-            throw std::runtime_error(std::format(
-                "Error [TMMC, system {}, component {} ('{}')]: '{}' must be zero; the partner of this pair swap is "
-                "the TMMC component '{}', whose count then changes on a move the transition matrix does not see. "
-                "Put the pair swap on the TMMC component instead.\n",
-                i, componentId, component.name, keyword, systems[i].components[trackedComponent].name));
+            if (component.mc_moves_probabilities.getProbability(move) == 0.0) continue;
+            if (!drives)
+            {
+              // the lower index of a pair performs its swaps; on the other member the move does nothing
+              if (systems[i].components[partner].mc_moves_probabilities.getProbability(move) != 0.0) continue;
+              throw std::runtime_error(std::format(
+                  "Error [TMMC, system {}, component {} ('{}')]: '{}' is inert here; the pair swap is performed by "
+                  "the member of the pair with the lower index, component {} ('{}'). Set '{}' on that component "
+                  "(the transition matrix follows the count of '{}' whichever member drives the pair).\n",
+                  i, componentId, component.name, keyword, partner, systems[i].components[partner].name, keyword,
+                  systems[i].components[trackedComponent].name));
+            }
+            if (componentId == trackedComponent) continue;  // checked with the moves of the tracked component above
+            if (lambdaChainOfTracked)
+            {
+              throw std::runtime_error(std::format(
+                  "Error [TMMC, system {}, component {} ('{}')]: '{}' must be zero together with a CFCMC swap of "
+                  "its partner '{}' on several lambda bins; the pair swap changes N with the chain's lambda "
+                  "unchanged, a jump the (N, lambda) transition matrix cannot hold.\n",
+                  i, componentId, component.name, keyword, systems[i].components[trackedComponent].name));
+            }
+            const auto& histogram = configurationalBias ? component.lambdaPairSwapCB : component.lambdaPairSwap;
+            if (fractional && histogram.numberOfSamplePoints > 1uz)
+            {
+              throw std::runtime_error(std::format(
+                  "Error [TMMC, system {}, component {} ('{}')]: '{}' needs 'NumberOfLambdaBins' 1 under TMMC (its "
+                  "partner '{}' is the TMMC component); the move walks its lambda inside one macrostate of the N "
+                  "chain, biased by its own Wang-Landau factors, which the transition matrix cannot see.\n",
+                  i, componentId, component.name, keyword, systems[i].components[trackedComponent].name));
+            }
           }
         }
       }

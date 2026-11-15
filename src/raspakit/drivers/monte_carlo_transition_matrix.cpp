@@ -920,6 +920,23 @@ void MonteCarloTransitionMatrix::output()
                    system.components[trackedComponent].name, reweighted->first, reweighted->second);
         outputJsons[system_id]["output"]["tmmcReweighted"]["meanNumberOfMolecules"] = reweighted->first;
         outputJsons[system_id]["output"]["tmmcReweighted"]["varianceNumberOfMolecules"] = reweighted->second;
+        // ln Pi is one estimate only over a run of links with accepted transitions in both directions
+        const std::optional<std::pair<std::size_t, std::size_t>> visited = system.tmmc.visitedMoleculeRange();
+        const std::optional<std::pair<std::size_t, std::size_t>> supported = system.tmmc.supportedMoleculeRange();
+        if (visited.has_value() && supported.has_value())
+        {
+          outputJsons[system_id]["output"]["tmmcReweighted"]["supportedRange"] = {supported->first, supported->second};
+          if (supported.value() != visited.value())
+          {
+            std::print(stream,
+                       "    WARNING: the visited range N = {}-{} is not connected: a link between neighbouring states\n"
+                       "    has no accepted transition in one of its directions, and ln Pi is carried flat across it.\n"
+                       "    The loading above is over the longest connected run, N = {}-{} (column 'segment' of\n"
+                       "    '{}').\n\n",
+                       visited->first, visited->second, supported->first, supported->second,
+                       system.tmmc.statisticsFileName);
+          }
+        }
       }
       else
       {

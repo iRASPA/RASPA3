@@ -758,13 +758,23 @@ export struct System
   {
     return !tmmc.doTMMC || groupSwapFitsTMMC(centralComponent, tmmcComponent());
   }
-  /// Whether a pair swap driven by 'centralComponent' fits the matrix: its partner must not be the tracked
-  /// component, whose count would then move on a move the matrix neither biases nor records (a pair driven by
-  /// the tracked component changes that count by its own molecule, the ordinary step). True when TMMC is off.
-  [[nodiscard]] bool pairSwapFitsTMMC(std::size_t centralComponent) const
+  /// The member of the pair driven by 'drivingComponent' whose count is the TMMC macrostate: the driving component
+  /// itself or its partner; empty when TMMC is off, when the component does not drive a pair (the lower index of
+  /// the two does), or when neither member is the tracked component. A pair swap changes the count of both
+  /// members by one, so it is the ordinary N -> N +/- 1 step of the matrix whichever member is tracked. Only the
+  /// driving component was looked at: an adsorbate paired with a cation listed before it (the cation then drives)
+  /// could not be swapped under TMMC at all, the pair swap being refused on the cation and inert on the adsorbate.
+  [[nodiscard]] std::optional<std::size_t> pairSwapTMMCMember(std::size_t drivingComponent) const
   {
-    const std::optional<std::size_t>& partner = components[centralComponent].pairComponentId;
-    return !tmmc.doTMMC || !partner.has_value() || partner.value() != tmmcComponent();
+    if (!tmmc.doTMMC || drivingComponent >= components.size()) return std::nullopt;
+    const std::optional<std::size_t>& partner = components[drivingComponent].pairComponentId;
+    if (!partner.has_value() || partner.value() >= components.size() || drivingComponent >= partner.value())
+    {
+      return std::nullopt;
+    }
+    const std::size_t tracked = tmmcComponent();
+    if (drivingComponent == tracked || partner.value() == tracked) return tracked;
+    return std::nullopt;
   }
   /// Whether a CFCMC pair or group swap of 'componentId' walking the histogram 'lambda' is a step of the
   /// matrix: only on a plain N chain with a single bin, where the swap is a direct crossing. With more bins the
@@ -777,6 +787,14 @@ export struct System
   {
     return !tmmcTracks(componentId) || (lambda.numberOfSamplePoints <= 1uz && !tmmc.lambdaChain());
   }
+  /// Whether the serial Gibbs CFCMC swaps (GibbsSwapCFCMC, GibbsSwapCBCFCMC) of 'componentId' fit the matrix: only
+  /// when it does not track the component. One fractional molecule is shared by the two boxes, and the box that
+  /// holds it, chi, is a coordinate of the walk: a molecule enters a box only while that box holds the fractional
+  /// molecule and leaves it only while the other does. A row of the collection matrix therefore estimates
+  /// p(chi | N) times the acceptance, and the walk over chi is flattened by the Wang-Landau factors of the two
+  /// lambda histograms, at a single bin as well (there they are the two weights of chi). The physical p(chi | N)
+  /// carries the ratio of the box volumes, which the flattened one loses: ln Pi(N) came out without it.
+  [[nodiscard]] bool serialGibbsCFCMCFitsTMMC(std::size_t componentId) const { return !tmmcTracks(componentId); }
   std::size_t randomMoleculeOfComponent(RandomNumber& random, std::size_t selectedComponent);
   std::size_t randomIntegerMoleculeOfComponent(RandomNumber& random, std::size_t selectedComponent);
 

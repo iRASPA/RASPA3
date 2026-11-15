@@ -82,11 +82,14 @@ TEST(TRANSITION_MATRIX, lambda_chain_indexes_and_adjacent_bias)
   matrix.numberOfLambdaBins = 3;
   matrix.initialize();
 
-  EXPECT_EQ(matrix.numberOfChainStates(), 9uz);
+  // the chain runs from (0, 0) to (2, 0): both window bounds are integer states
+  EXPECT_EQ(matrix.numberOfChainStates(), 7uz);
   EXPECT_EQ(matrix.chainIndex(1, 2), 5uz);
+  EXPECT_EQ(matrix.chainIndex(2, 0), 6uz);
+  EXPECT_EQ(matrix.chainIndex(2, 1), TransitionMatrix::outsideChain);
   EXPECT_EQ(matrix.lastLambdaBin(), 2uz);
 
-  matrix.bias.assign(9, 0.0);
+  matrix.bias.assign(7, 0.0);
   matrix.bias[matrix.chainIndex(1, 0)] = std::log(4.0);
   EXPECT_DOUBLE_EQ(matrix.biasFactor(1, 0), 4.0);
 

@@ -38,21 +38,44 @@ export struct TransitionMatrix
   /// Lambda bin of the selected component *before* the current move (for updateMatrix).
   std::size_t currentLambdaBin = {0};
 
+  /// The index 'chainIndex' returns for a state outside the chain (not below the size of any array).
+  static constexpr std::size_t outsideChain = std::numeric_limits<std::size_t>::max();
+
   [[nodiscard]] bool lambdaChain() const { return numberOfLambdaBins > 1uz; }
   [[nodiscard]] std::size_t lambdaBinCount() const { return std::max(1uz, numberOfLambdaBins); }
   [[nodiscard]] std::size_t lastLambdaBin() const { return lambdaBinCount() - 1uz; }
   [[nodiscard]] std::size_t numberOfMoleculeStates() const { return maxMacrostate - minMacrostate + 1uz; }
-  [[nodiscard]] std::size_t numberOfChainStates() const { return numberOfMoleculeStates() * lambdaBinCount(); }
+  /// The states of the chain. An (N, λ) chain runs from (minN, 0) to (maxN, 0): the window bounds are integer
+  /// states. The states (maxN, k > 0) hold maxN molecules and a partly coupled one more, which is past the
+  /// ceiling: at a ceiling set by the physical packing they cannot be reached, a Wang-Landau histogram that
+  /// counted them never turned flat, and the walk was held against them.
+  [[nodiscard]] std::size_t numberOfChainStates() const
+  {
+    return lambdaChain() ? (maxMacrostate - minMacrostate) * lambdaBinCount() + 1uz : numberOfMoleculeStates();
+  }
 
-  /// Flatten (N, k) onto the 1D chain: index = (N - minN) * nλ + k. Out of range returns numberOfChainStates().
+  /// Flatten (N, k) onto the 1D chain: index = (N - minN) * nλ + k. Outside the chain returns 'outsideChain'.
   [[nodiscard]] std::size_t chainIndex(std::size_t N, std::size_t lambdaBin) const
   {
-    if (N < minMacrostate || N > maxMacrostate) return numberOfChainStates();
+    if (N < minMacrostate || N > maxMacrostate) return outsideChain;
     const std::size_t nLambda = lambdaBinCount();
     const std::size_t k = lambdaChain() ? lambdaBin : 0uz;
-    if (k >= nLambda) return numberOfChainStates();
+    if (k >= nLambda || (N == maxMacrostate && k > 0uz)) return outsideChain;
     return (N - minMacrostate) * nLambda + k;
   }
+  /// Whether the link between the chain states 'index' and 'index + 1' is supported: accepted transitions were
+  /// recorded in both directions. Only then does the collection matrix give a detailed-balance ratio; ln Pi is
+  /// carried flat across an unsupported link (to keep the bias continuous), which is not an estimate.
+  [[nodiscard]] bool linkSupported(std::size_t index) const
+  {
+    if (index + 1uz >= cmatrix.size()) return false;
+    return cmatrix[index].z > 0.0 && cmatrix[index + 1uz].x > 0.0;
+  }
+  /// The lowest and highest molecule count with a visited chain state; empty when nothing was visited.
+  [[nodiscard]] std::optional<std::pair<std::size_t, std::size_t>> visitedMoleculeRange() const;
+  /// The longest run of visited molecule counts joined by supported links (for an (N, λ) chain every link from
+  /// (N, 0) to (N + 1, 0)): the range over which ln Pi(N) is one estimate. Empty when nothing was visited.
+  [[nodiscard]] std::optional<std::pair<std::size_t, std::size_t>> supportedMoleculeRange() const;
   std::size_t updateTMEvery = {1000000};  ///< Number of steps between bias updates.
   std::size_t numberOfUpdates = {0};      ///< Rebuilds of ln Pi from the current statistics (reset with them).
 
@@ -206,8 +229,8 @@ export struct TransitionMatrix
   void writeStatistics();
 
   /// The grand-canonical mean and variance of the molecule count at the fugacity the walk ran at, reweighted from
-  /// ln Pi over the visited macrostates (the integer states (N, 0) of an (N, lambda) chain); empty when nothing was
-  /// visited. The averages a biased walk samples directly are flat-histogram averages, not these.
+  /// ln Pi over 'supportedMoleculeRange' (the integer states (N, 0) of an (N, lambda) chain); empty when nothing
+  /// was visited. The averages a biased walk samples directly are flat-histogram averages, not these.
   [[nodiscard]] std::optional<std::pair<double, double>> reweightedMoleculeCountMeanAndVariance() const;
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const TransitionMatrix& m);

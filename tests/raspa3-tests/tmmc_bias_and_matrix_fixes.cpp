@@ -121,6 +121,8 @@ TEST(TMMC_BIAS_AND_MATRIX_FIXES, reweighted_loading_from_ln_pi)
   matrix.initialize();
   matrix.lnpi = {0.0, std::log(2.0), 0.0};
   matrix.histogram = {1, 1, 1};
+  // both links carry accepted transitions in both directions
+  matrix.cmatrix = {double3(0.0, 0.5, 0.5), double3(0.5, 0.0, 0.5), double3(0.5, 0.5, 0.0)};
   const std::optional<std::pair<double, double>> moments = matrix.reweightedMoleculeCountMeanAndVariance();
   ASSERT_TRUE(moments.has_value());
   EXPECT_NEAR(moments->first, 1.0, 1e-12);

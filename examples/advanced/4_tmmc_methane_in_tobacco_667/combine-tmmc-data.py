@@ -57,6 +57,17 @@ def peng_robinson_fugacity(temperature, pressure, tc=CRITICAL_TEMPERATURE, pc=CR
 def read_window(directory):
     """ln Pi(N) of one window: the integer states (lambda bin 0 of an (N, lambda) chain)."""
     data = pd.read_csv(os.path.join(directory, STATISTICS_FILE), comment="#", sep=r"\s+")
+    if "segment" in data.columns:
+        # ln Pi is carried flat across a link without accepted transitions in both directions: only the states of
+        # one 'segment' are tied to each other. Keep the longest one.
+        visited = data[data["segment"] >= 0]
+        if visited.empty:
+            raise ValueError(f"window '{directory}' visited no macrostate")
+        longest = visited["segment"].value_counts().idxmax()
+        if visited["segment"].nunique() > 1:
+            print(f"window '{directory}': ln Pi is not connected, keeping segment {longest} "
+                  f"({(visited['segment'] == longest).sum()} of {len(visited)} visited states)")
+        data = visited[visited["segment"] == longest]
     if "k" in data.columns:
         data = data[data["k"] == 0]
     return data[["N", "lnpi"]].reset_index(drop=True)

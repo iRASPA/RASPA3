@@ -122,12 +122,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
-  // a partner that is the TMMC component moves the macrostate on a move the matrix does not see: refused and not
-  // recorded (the input reader refuses such a pair up front)
-  if (!system.pairSwapFitsTMMC(selectedComponent))
-  {
-    return {std::nullopt, double3(0.0, 0.0, 0.0)};
-  }
+  // the member of the pair whose count is the TMMC macrostate, the driving component or its partner: the pair
+  // changes that count by one either way, the ordinary step of the matrix (System::pairSwapTMMCMember)
+  const std::optional<std::size_t> tmmcMember = system.pairSwapTMMCMember(selectedComponent);
   Component& componentBRef = system.components[componentB];
 
   if (!componentA.maximumPairDistance.has_value())
@@ -144,7 +141,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
   // both fractional molecules of the pair are coupled to the lambda histogram of component A
   PropertyLambdaProbabilityHistogram& lambda = componentA.lambdaPairSwap;
   // on an N chain only a direct crossing (a single bin) is a step of the matrix (System::cfcmcSwapFitsTMMC)
-  if (!system.cfcmcSwapFitsTMMC(selectedComponent, lambda))
+  if (tmmcMember.has_value() && !system.cfcmcSwapFitsTMMC(tmmcMember.value(), lambda))
   {
     return {std::nullopt, double3(0.0, 0.0, 0.0)};
   }
@@ -155,6 +152,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
 
   const std::size_t oldN_A = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
   const std::size_t oldN_B = system.numberOfIntegerMoleculesPerComponent[componentB];
+  // the count that is the TMMC macrostate (of the driving component or of its partner)
+  const std::size_t oldN_T = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 
   const std::size_t indexFractionalA = system.indexOfFractionalMoleculeForMove(move, selectedComponent);
   const std::size_t indexFractionalB = system.indexOfFractionalMoleculeForMove(move, componentB);
@@ -518,14 +517,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
                                  system.intraCoulombScalingEnergy(trialMoleculeB.second)));
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
-    if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN_A >= system.tmmc.maxMacrostate)
+    if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && oldN_T >= system.tmmc.maxMacrostate)
     {
       restoreFractionalPair();
       return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     }
 
-    const std::size_t newN_A = oldN_A == std::numeric_limits<std::size_t>::max() ? oldN_A : oldN_A + 1;
-    const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN_A, oldN_A);
+    const double biasTransitionMatrix =
+        tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), oldN_T + 1uz, oldN_T) : 1.0;
 
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {
@@ -876,14 +875,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
                                  system.intraCoulombScalingEnergy(oldFractionalMoleculeB)));
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
-    if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN_A <= system.tmmc.minMacrostate)
+    if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && oldN_T <= system.tmmc.minMacrostate)
     {
       restoreMolecules();
       return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
     }
 
-    const std::size_t newN_A = oldN_A == 0 ? 0 : oldN_A - 1;
-    const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN_A, oldN_A);
+    const double biasTransitionMatrix =
+        tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), oldN_T - 1uz, oldN_T) : 1.0;
 
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {

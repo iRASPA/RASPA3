@@ -258,7 +258,26 @@ reported separately at the end of the simulation.
 
 -   `"SimulationType" : "MonteCarloTransitionMatrix"`\
     Runs Monte Carlo with transition-matrix (TMMC) biasing enabled for every
-    system. See the macro-state keywords in the system options.
+    system. See the macro-state keywords in the system options. The bias is
+    rebuilt from the collection matrix every `"TMMCUpdateEvery"` steps.
+
+    The macrostate is the molecule count of the first adsorbate. With a CFCMC
+    swap on several lambda bins the chain is (N, λ) and runs from
+    (minimum, 0) to (maximum, 0): both bounds are integer states. A pair swap
+    is a step of the matrix whichever member of the pair is that adsorbate
+    (the member with the lower index performs the move, so with a cation
+    listed first the probability goes on the cation). The serial Gibbs CFCMC
+    swaps (`"GibbsSwapCFCMCProbability"`, `"GibbsSwapCBCFCMCProbability"`) and
+    the conventional Gibbs CFCMC moves of that adsorbate are refused; use
+    `"GibbsSwapCBMCProbability"`.
+
+    `tmmc/tmmc_statistics.txt` lists the collection matrix, the bias and
+    ln Π per state. Its last column, `segment`, numbers the runs of states
+    joined by links with accepted transitions in both directions. Across a
+    link without them ln Π is carried flat, to keep the bias continuous; that
+    step is not an estimate, so differences of ln Π mean something only inside
+    one segment. The reweighted loading in the output uses the longest
+    segment and says so when that is not the whole visited range.
 
 -   `"SimulationType" : "ParallelTempering"`\
     Runs a multithreaded parallel-tempering (replica-exchange) Monte Carlo
@@ -1407,9 +1426,11 @@ reported separately at the end of the simulation.
     window) pair. Default: `1`.
 
 -   `"TMMCUpdateEvery" : integer`\
-    For `"SimulationType" : "ParallelTMMC"`: the number of Monte Carlo steps
-    between updates of the flattening transition-matrix bias (re-derived from
-    the collection matrix). Default: `100000`.
+    For `"SimulationType" : "ParallelTMMC"` and
+    `"MonteCarloTransitionMatrix"`: the number of Monte Carlo steps between
+    updates of the flattening transition-matrix bias (re-derived from the
+    collection matrix). Default: `100000` (`ParallelTMMC`), `1000000`
+    (`MonteCarloTransitionMatrix`).
 
 ### Threading and reproducibility <a name="threading-and-reproducibility"></a>
 
@@ -3645,6 +3666,9 @@ molecules; do not combine it with insertion/deletion moves.
 
 -   `"GibbsSwapCFCMCProbability" : floating-point-number`\
     The relative probability of a Gibbs swap move using the `CFCMC` scheme.
+    Not available for the TMMC component under
+    `"MonteCarloTransitionMatrix"`: which box holds the shared fractional
+    molecule is a biased coordinate the transition matrix does not see.
 
 -   `"WidomProbability" : floating-point-number`\
     The relative probability of a Widom particle-insertion move, which measures

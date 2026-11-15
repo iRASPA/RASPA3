@@ -182,6 +182,7 @@ export struct InputReader
   std::size_t tmmcNumberOfWindows{1};
   /// Parallel TMMC: number of Monte Carlo steps between updates of the transition-matrix bias.
   std::size_t tmmcUpdateEvery{100000};
+  bool tmmcUpdateEveryGiven{false};  ///< 'TMMCUpdateEvery' was given (MonteCarloTransitionMatrix keeps its own default)
 
   /// NLDFT: energy-grid size (0 means use ForceField NumberOfVDWGridPoints, else 128³).
   uint3 nldftGridSize{0, 0, 0};

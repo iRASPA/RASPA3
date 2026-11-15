@@ -163,22 +163,78 @@ TEST(TMMC_COMPONENT_TRACKING, a_group_with_tracked_satellites_does_not_fit_the_m
   EXPECT_TRUE(system.groupSwapFitsTMMC(1));
 }
 
-// A pair swap changes the count of its partner too: driven by a cation with the adsorbate as partner, it moves
-// the tracked count on a move the matrix neither biases nor records, so it does not fit; driven by the adsorbate
-// it is the ordinary step.
-TEST(TMMC_COMPONENT_TRACKING, a_pair_swap_with_the_tracked_partner_does_not_fit_the_matrix)
+// A pair swap changes the count of both members by one: it is the ordinary step of the matrix whichever member is
+// tracked. The lower index of the pair drives the move, so with the cation listed first the cation drives and the
+// tracked member is its partner (that pair was refused, and on the adsorbate the move is inert).
+TEST(TMMC_COMPONENT_TRACKING, a_pair_swap_follows_the_tracked_member_of_the_pair)
 {
   System system = makeCationAdsorbateSystem(translating(), translating(), 4, 2, 1e4);
   enableTMMC(system, 0, 10);
   system.components[0].pairComponentId = 1;
-  EXPECT_FALSE(system.pairSwapFitsTMMC(0));
-  system.components[0].pairComponentId = std::nullopt;
   system.components[1].pairComponentId = 0;
-  EXPECT_TRUE(system.pairSwapFitsTMMC(1));
-  EXPECT_TRUE(system.pairSwapFitsTMMC(0));
-  system.tmmc.doTMMC = false;
+  ASSERT_EQ(system.tmmcComponent(), 1uz);
+  EXPECT_EQ(system.pairSwapTMMCMember(0), std::optional<std::size_t>{1uz});
+  // the adsorbate does not drive the pair
+  EXPECT_FALSE(system.pairSwapTMMCMember(1).has_value());
+  // no pair, or TMMC off: nothing to follow
+  system.components[0].pairComponentId = std::nullopt;
+  EXPECT_FALSE(system.pairSwapTMMCMember(0).has_value());
   system.components[0].pairComponentId = 1;
-  EXPECT_TRUE(system.pairSwapFitsTMMC(0));
+  system.tmmc.doTMMC = false;
+  EXPECT_FALSE(system.pairSwapTMMCMember(0).has_value());
+}
+
+// A cation listed before the adsorbate drives their pair swap. The swap moves the adsorbate count, the TMMC
+// macrostate, by one: it is biased, confined to the window and recorded like any other step (it was refused).
+TEST(TMMC_COMPONENT_TRACKING, a_pair_swap_driven_by_the_cation_walks_and_records_the_adsorbate_count)
+{
+  MCMoveProbabilities pairSwapping;
+  pairSwapping.setProbability(Move::Types::Translation, 1.0);
+  pairSwapping.setProbability(Move::Types::PairSwap, 1.0);
+  // the pair is declared on the components before the system is built: the system derives the mole fractions of a
+  // pair from it
+  const ForceField forceField = makeForceField();
+  Component cation = makeCation(forceField, pairSwapping);
+  Component adsorbate = makeMethane(forceField, translating());
+  cation.pairComponentId = 1uz;
+  adsorbate.pairComponentId = 0uz;
+  cation.maximumPairDistance = 8.0;
+  adsorbate.maximumPairDistance = 8.0;
+  std::vector<System> systems{System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e7, 1.0, {},
+                                     {cation, adsorbate}, {}, {5, 2}, 5)};
+  enableTMMC(systems[0], 0, 4);
+  ASSERT_EQ(systems[0].tmmcComponent(), 1uz);
+
+  RandomNumber random(5);
+  SimulationSchedule schedule{0, 0, 20, 0, 1000, 10000, 5000, 5000};
+  MonteCarloTransitionMatrix tmmc(schedule, systems, random, 5);
+  for (System& walker : tmmc.systems) walker.runningEnergies = walker.computeTotalEnergies();
+  tmmc.simulationStage = MonteCarloTransitionMatrix::SimulationStage::Initialization;
+  std::set<std::size_t> visited;
+  for (std::size_t cycle = 0; cycle < 20; ++cycle)
+  {
+    tmmc.performCycle();
+    const System& walker = tmmc.systems[0];
+    visited.insert(walker.numberOfIntegerMoleculesPerComponent[1]);
+    // the pair keeps the difference of the two counts, and the adsorbate stays inside its window
+    EXPECT_EQ(walker.numberOfIntegerMoleculesPerComponent[0], walker.numberOfIntegerMoleculesPerComponent[1] + 3uz);
+    EXPECT_LE(walker.numberOfIntegerMoleculesPerComponent[1], 4uz);
+  }
+  // at this pressure the pairs fill the window from the two adsorbates it started with
+  EXPECT_FALSE(visited.contains(2uz) && visited.size() == 1uz) << "no pair swap was accepted";
+
+  const System& system = tmmc.systems[0];
+  EXPECT_FALSE(allZero(system.tmmc.cmatrix)) << "the pair swaps were not recorded";
+  // insertions out of the ceiling are recorded but never taken; deletions out of the floor likewise
+  double insertions = 0.0;
+  double deletions = 0.0;
+  for (const double3& row : system.tmmc.cmatrix)
+  {
+    insertions += row.z;
+    deletions += row.x;
+  }
+  EXPECT_GT(insertions, 0.0);
+  EXPECT_GT(deletions, 0.0);
 }
 
 // The CFCMC pair and group swaps walk their lambda inside one macrostate of the N chain, biased by their own
@@ -324,7 +380,9 @@ TEST(TMMC_COMPONENT_TRACKING, gibbs_cfcmc_transfers_on_a_lambda_chain_are_refuse
       enableTMMC(system, 0, 40, numberOfLambdaBins);
     }
     const bool chain = numberOfLambdaBins > 1uz;
-    const bool directCrossing = !chain && histogramBins == 1uz;
+    // refused at a single bin as well: which box holds the shared fractional molecule is a Wang-Landau biased
+    // coordinate the matrix does not see (a row estimates p(box | N) times the acceptance)
+    const bool directCrossing = false;
     ASSERT_EQ(systems[0].tmmc.lambdaChain(), chain);
 
     RandomNumber random(13);

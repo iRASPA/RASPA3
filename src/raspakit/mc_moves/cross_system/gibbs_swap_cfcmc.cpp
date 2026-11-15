@@ -109,11 +109,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   Move::Types move = Move::Types::GibbsSwapCFCMC;
   Component& componentA = systemA.components[selectedComponent];
   Component& componentB = systemB.components[selectedComponent];
-  // Under TMMC on an N chain only a direct crossing (a single lambda bin) is a step of the matrix: with more bins
-  // the transfers happen at any lambda, biased by the Wang-Landau factors of the two boxes, which the matrix does
-  // not see (the input reader refuses the mix up front; System::cfcmcSwapFitsTMMC)
-  if (!systemA.cfcmcSwapFitsTMMC(selectedComponent, componentA.lambdaGC) ||
-      !systemB.cfcmcSwapFitsTMMC(selectedComponent, componentB.lambdaGC))
+  // Not a step of a transition matrix, at any number of lambda bins (the input reader refuses the mix up front;
+  // System::serialGibbsCFCMCFitsTMMC): the box that holds the fractional molecule is a coordinate of the walk the
+  // matrix does not see.
+  if (!systemA.serialGibbsCFCMCFitsTMMC(selectedComponent) || !systemB.serialGibbsCFCMCFitsTMMC(selectedComponent))
   {
     return std::nullopt;
   }

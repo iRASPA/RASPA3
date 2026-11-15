@@ -2363,8 +2363,19 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
         return std::make_pair(logLiquidWeight - logVaporWeight, split->first);
       };
 
-      // bracket search over the (log-spaced) scanned pressure range
+      // Bracket search over the fugacity, the variable ln Pi is reweighted in. The scan ran over the pressure
+      // and took the fugacity of each from the stable Peng-Robinson root: past the saturation pressure of that
+      // equation of state the root switches to the liquid, whose fugacity hardly rises with the pressure, so the
+      // scan stalled at the Peng-Robinson saturation fugacity. A model that coexists above it (the force field
+      // and the equation of state rarely agree to better than a few percent) was never bracketed, at any
+      // pressure range. The scan runs from the fugacity of the dilute end to the larger of the ideal-gas and the
+      // Peng-Robinson fugacity of the upper end, evenly in ln f.
       constexpr std::size_t numberOfScanPoints = 200uz;
+      const double scanLowerDelta = logBetaFugacityToDelta(fugacityOfPressure(std::exp(logPressureMinimum)));
+      const double scanUpperDelta =
+          std::max(logBetaFugacityToDelta(fugacityOfPressure(std::exp(logPressureMaximum))),
+                   logBetaFugacityToDelta(frontComponent.molFraction * std::exp(logPressureMaximum) /
+                                          Units::PressureConversionFactor));
       double lowerDelta = 0.0;
       double upperDelta = 0.0;
       double lowerDifference = 0.0;
@@ -2372,10 +2383,8 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
       bool haveBracket = false;
       for (std::size_t scanIndex = 0; scanIndex < numberOfScanPoints; ++scanIndex)
       {
-        const double pressure =
-            std::exp(logPressureMinimum + static_cast<double>(scanIndex) * (logPressureMaximum - logPressureMinimum) /
-                                              static_cast<double>(numberOfScanPoints - 1uz));
-        const double delta = logBetaFugacityToDelta(fugacityOfPressure(pressure));
+        const double delta = scanLowerDelta + static_cast<double>(scanIndex) * (scanUpperDelta - scanLowerDelta) /
+                                                  static_cast<double>(numberOfScanPoints - 1uz);
         const std::optional<std::pair<double, std::size_t>> difference = weightDifference(delta);
         if (!difference.has_value())
         {

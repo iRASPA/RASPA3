@@ -111,12 +111,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
-  // a partner that is the TMMC component moves the macrostate on a move the matrix does not see: refused and not
-  // recorded (the input reader refuses such a pair up front)
-  if (!system.pairSwapFitsTMMC(selectedComponent))
-  {
-    return {std::nullopt, double3(0.0, 0.0, 0.0)};
-  }
+  // the member of the pair whose count is the TMMC macrostate, the driving component or its partner: the pair
+  // changes that count by one either way, the ordinary step of the matrix (System::pairSwapTMMCMember)
+  const std::optional<std::size_t> tmmcMember = system.pairSwapTMMCMember(selectedComponent);
 
   Component& componentBRef = system.components[componentB];
   const double R_max = componentA.maximumPairDistance.value();
@@ -300,15 +297,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   const double Pacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasA * idealGasB) -
                                logRosenbluthWeight);
 
-  const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 
-  if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
+  if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
   {
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
 
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-  const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
+  const double biasTransitionMatrix =
+      tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, oldN) : 1.0;
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwapCBMC, 1);
 
@@ -364,12 +362,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
-  // a partner that is the TMMC component moves the macrostate on a move the matrix does not see: refused and not
-  // recorded (the input reader refuses such a pair up front)
-  if (!system.pairSwapFitsTMMC(selectedComponent))
-  {
-    return {std::nullopt, double3(0.0, 0.0, 0.0)};
-  }
+  // the member of the pair whose count is the TMMC macrostate, the driving component or its partner: the pair
+  // changes that count by one either way, the ordinary step of the matrix (System::pairSwapTMMCMember)
+  const std::optional<std::size_t> tmmcMember = system.pairSwapTMMCMember(selectedComponent);
 
   Component& componentBRef = system.components[componentB];
   const double R_max = componentA.maximumPairDistance.value();
@@ -551,15 +546,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   const double Pacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasA * idealGasB) -
                                logRosenbluthWeight);
 
-  const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 
-  if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
+  if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
   {
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
 
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-  const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
+  const double biasTransitionMatrix =
+      tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, oldN) : 1.0;
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwap, 1);
 

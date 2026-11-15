@@ -58,6 +58,7 @@ add_executable(unit_tests_raspa3
   parallel_tempering_unsupported.cpp
   wham_and_bet_setup_fixes.cpp
   tmmc_bias_and_matrix_fixes.cpp
+  tmmc_chain_ceiling_and_links.cpp
   cbmc_thread_pool_grids.cpp
   gibbs_empty_box_statistics.cpp
   mc_move_probabilities_normalized.cpp

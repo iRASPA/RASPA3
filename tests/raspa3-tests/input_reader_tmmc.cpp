@@ -7,6 +7,7 @@
 import std;
 
 import input_reader;
+import transition_matrix;
 import component;
 import system;
 import forcefield;
@@ -1528,4 +1529,58 @@ TEST(INPUT_READER, zero_fugacity_coefficient_asks_for_peng_robinson)
   const Component& component = reader.systems[0].components[0];
   EXPECT_FALSE(component.fugacityCoefficientGiven);
   if (component.fugacityCoefficient.has_value()) EXPECT_NE(*component.fugacityCoefficient, 0.0);
+}
+
+// 'TMMCUpdateEvery' reached only ParallelTMMC: MonteCarloTransitionMatrix read it and kept rebuilding the bias every
+// million steps. A value of another type was skipped without a word.
+TEST(INPUT_READER_TMMC, tmmc_update_every_reaches_the_serial_driver)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+  {
+    nlohmann::json input = readTMMCExample();
+    input["TMMCUpdateEvery"] = 2500;
+    TemporaryInput temporary(std::move(input), "update_every", workspace.path());
+    InputReader reader(temporary.path().filename().string());
+    ASSERT_EQ(reader.systems.size(), 1uz);
+    EXPECT_EQ(reader.systems[0].tmmc.updateTMEvery, 2500uz);
+  }
+  {
+    // not given: the default of the transition matrix stays
+    TemporaryInput temporary(readTMMCExample(), "update_every_default", workspace.path());
+    InputReader reader(temporary.path().filename().string());
+    EXPECT_EQ(reader.systems[0].tmmc.updateTMEvery, TransitionMatrix{}.updateTMEvery);
+  }
+  for (const nlohmann::json& value : {nlohmann::json(-5), nlohmann::json(2500.5), nlohmann::json("often")})
+  {
+    nlohmann::json input = readTMMCExample();
+    input["TMMCUpdateEvery"] = value;
+    EXPECT_NE(refusalOf(std::move(input), "update_every_type", workspace.path()).find("TMMCUpdateEvery"),
+              std::string::npos)
+        << value.dump();
+  }
+}
+
+// The serial Gibbs CFCMC swap of the TMMC component is refused at a single lambda bin as well (it was the
+// recommended setting): which box holds the shared fractional molecule is a biased coordinate the matrix cannot see.
+TEST(INPUT_READER_TMMC, rejects_the_serial_gibbs_cfcmc_swap_at_any_number_of_lambda_bins)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+  for (const char* keyword : {"GibbsSwapCFCMCProbability", "GibbsSwapCBCFCMCProbability"})
+  {
+    for (const std::size_t bins : {1uz, 7uz})
+    {
+      nlohmann::json input = readTMMCExample();
+      input["Systems"][1] = input["Systems"][0];
+      input["NumberOfLambdaBins"] = bins;
+      input["Components"][0].erase("CreateNuMberofmolecules");
+      input["Components"][0]["CreateNumberOfMolecules"] = nlohmann::json::array({10, 10});
+      input["Components"][0]["SwapProbability"] = 0.0;
+      input["Components"][0][keyword] = 1.0;
+      const std::string refusal = refusalOf(std::move(input), "gibbs_cfcmc", workspace.path());
+      EXPECT_NE(refusal.find("at any 'NumberOfLambdaBins'"), std::string::npos)
+          << keyword << ", " << bins << " bins: " << refusal;
+    }
+  }
 }
