@@ -53,6 +53,7 @@ import running_energy;
 import minimization_cell_layout;
 import phonon_kpath;
 import spatial_decomposition_settings;
+import dctst_moves;
 import spatial_decomposition_device_step;
 
 int3 parseInt3(const std::string& item, auto json)
@@ -6014,17 +6015,19 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       "out of range\n",
                       driverName, tagged.startingBead, tagged.name));
     }
-    for (const Component& component : system.components)
+    // the moves the drivers perform (the constructors hold programmatic construction to the same list); only the
+    // three plain swaps were refused here, every other unsupported move by the constructor after the reader had
+    // accepted the input
+    try
     {
-      if (component.mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) > 0.0 ||
-          component.mc_moves_probabilities.getProbability(Move::Types::SwapMultiTrialCBMC) > 0.0 ||
-          component.mc_moves_probabilities.getProbability(Move::Types::Swap) > 0.0)
-      {
-        throw std::runtime_error(
-            std::format("[Input reader]: '{}' is a fixed-loading (NVT) method; remove the swap "
-                        "moves of component '{}'\n",
-                        driverName, component.name));
-      }
+      DcTSTMoves::validate(system, taggedComponent, driverName,
+                           freeEnergyDriver ? dctstFreeEnergySettings.reinsertionTaggedProbability
+                                            : dctstSettings.reinsertionInPlaneProbability,
+                           cageOccupancies.has_value());
+    }
+    catch (const std::runtime_error& error)
+    {
+      throw std::runtime_error(std::format("[Input reader]: {}", error.what()));
     }
     if (system.forceField.computePolarization)
     {

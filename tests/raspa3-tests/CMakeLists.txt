@@ -41,6 +41,7 @@ add_executable(unit_tests_raspa3
   tmmc_logpi_reconstruction.cpp
   dctst_mirror_reinsertion.cpp
   dctst_polarization_drift.cpp
+  dctst_moves.cpp
   tmmc_component_tracking.cpp
   tmmc_restart_state.cpp
   parallel_tmmc_wang_landau_switch.cpp

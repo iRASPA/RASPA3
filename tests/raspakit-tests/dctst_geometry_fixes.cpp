@@ -132,3 +132,65 @@ TEST(DCTST_GEOMETRY_FIXES, revoked_acceptance_counts_as_a_rejected_trial)
   EXPECT_EQ(translation.accepted.y, 0.0);
   EXPECT_EQ(translation.totalAccepted.y, 0.0);
 }
+
+// The two cages on either side of the dividing plane a bead is at share the lateral indices of the bead. A step
+// along the Cartesian normal changes the lateral fractional coordinates of an oblique cell: for a bead near a
+// lateral cage wall it landed in the cages beside the column.
+TEST(DCTST_GEOMETRY_FIXES, cages_across_the_plane_stay_in_the_column_of_the_bead)
+{
+  const double a = 10.0;
+  const double gamma = 2.0 * std::numbers::pi / 3.0;
+  const SimulationBox unitCell(a, a, 12.0, 0.5 * std::numbers::pi, 0.5 * std::numbers::pi, gamma);
+  const SimulationBox supercell(4.0 * a, 4.0 * a, 12.0, 0.5 * std::numbers::pi, 0.5 * std::numbers::pi, gamma);
+  const double3 normal = double3::cross(unitCell.cell[1], unitCell.cell[2]);
+  const double spacing = a * std::sin(std::numbers::pi / 3.0);
+  const DcTSTBarrier barrier(supercell, double3(0.5, 0.5, 0.5), normal, spacing);
+  const DcTSTCageLattice lattice(unitCell, int3(4, 4, 1), barrier.point + 0.5 * barrier.lambda * barrier.normal);
+  ASSERT_FALSE(lattice.inconsistencyWith(supercell, barrier).has_value());
+
+  const std::size_t cage = lattice.index(int3(1, 2, 0));
+  const std::size_t ahead = lattice.neighborAlongAxis(cage, 0, 1);
+  const std::size_t behind = lattice.neighborAlongAxis(cage, 0, -1);
+
+  // on the plane between 'cage' and the cage ahead, close to the lateral wall of the column
+  const double3 onPlane = lattice.center(cage) + lattice.cell * double3(0.5, 0.45, 0.0);
+  EXPECT_NEAR(barrier.reducedCoordinate(barrier.projection(supercell, onPlane)), 0.0, 1e-9);
+  const auto pair = lattice.cagesAcrossNearestPlane(onPlane, barrier.normal);
+  EXPECT_TRUE((pair == std::pair{cage, ahead}));
+  // the quarter-cage steps along the normal leave the column there
+  const double3 step = 0.25 * barrier.lambda * barrier.normal;
+  EXPECT_NE(lattice.indices(lattice.cageOf(onPlane + step)).y, 2);
+
+  // inside the cage: the nearest plane is the one on the side the bead is on
+  EXPECT_TRUE((lattice.cagesAcrossNearestPlane(lattice.center(cage) + lattice.cell * double3(0.4, 0.45, 0.0),
+                                               barrier.normal) == std::pair{cage, ahead}));
+  EXPECT_TRUE((lattice.cagesAcrossNearestPlane(lattice.center(cage) + lattice.cell * double3(-0.4, -0.45, 0.0),
+                                               barrier.normal) == std::pair{behind, cage}));
+  // against the normal the roles of the two cages exchange
+  EXPECT_TRUE((lattice.cagesAcrossNearestPlane(onPlane, -1.0 * barrier.normal) == std::pair{ahead, cage}));
+}
+
+// A plane slightly inclined to the cage planes passes a cosine test ((2 1 0) in a cell with b >> a here, |cos| =
+// 0.99955; (12 1 0) with b = 2a is the same case) but cuts across the cages beside the column: only a plane with a
+// single non-zero Miller index is a cage boundary.
+TEST(DCTST_GEOMETRY_FIXES, an_inclined_plane_is_not_a_cage_boundary)
+{
+  const SimulationBox box(6.0, 100.0, 6.0);
+  const double3 reciprocal(2.0 / 6.0, 1.0 / 100.0, 0.0);
+  const DcTSTBarrier barrier(box, double3(0.5, 0.5, 0.5), reciprocal, 1.0 / reciprocal.length());
+  ASSERT_EQ(barrier.millerIndices, int3(2, 1, 0));
+
+  const DcTSTCageLattice lattice(box, int3(1, 1, 1), barrier.point + 0.5 * barrier.lambda * barrier.normal,
+                                 int3(2, 1, 1));
+  ASSERT_GT(lattice.axisAlongDirection(barrier.normal).cosine, 0.999);
+  ASSERT_LT(std::abs(lattice.planeSpacing(0) - barrier.lambda), 1e-3 * barrier.lambda);
+  const std::optional<std::string> inconsistency = lattice.inconsistencyWith(box, barrier);
+  ASSERT_TRUE(inconsistency.has_value());
+  EXPECT_NE(inconsistency->find("(2 1 0)"), std::string::npos) << *inconsistency;
+
+  // the plane (1 0 0) of the same box is one
+  const DcTSTBarrier axial(box, double3(0.5, 0.5, 0.5), double3(1.0, 0.0, 0.0), 3.0);
+  const DcTSTCageLattice axialLattice(box, int3(1, 1, 1), axial.point + 0.5 * axial.lambda * axial.normal,
+                                      int3(2, 1, 1));
+  EXPECT_FALSE(axialLattice.inconsistencyWith(box, axial).has_value());
+}

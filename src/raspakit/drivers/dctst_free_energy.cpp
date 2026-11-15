@@ -43,11 +43,15 @@ import json;
 import graceful_shutdown;
 import dctst_free_energy_settings;
 import dctst_barrier;
+import dctst_moves;
 import dctst_wham;
 
 // =================================================================================================
 // Accumulators
 // =================================================================================================
+
+static_assert(DcTSTWindowAccumulator::numberOfOccupancyPairs ==
+              (DcTSTPilotAccumulator::maximumOccupancy + 1uz) * (DcTSTPilotAccumulator::maximumOccupancy + 1uz));
 
 DcTSTWindowAccumulator::DcTSTWindowAccumulator(std::size_t numberOfBlocks, std::size_t numberOfBins,
                                                double maximumTranslation)
@@ -59,8 +63,7 @@ DcTSTWindowAccumulator::DcTSTWindowAccumulator(std::size_t numberOfBlocks, std::
       sumXSquared(numberOfBlocks, 0.0),
       sumBias(numberOfBlocks, 0.0),
       maximumTranslation(maximumTranslation),
-      barrierOccupancyPairs(
-          (DcTSTPilotAccumulator::maximumOccupancy + 1uz) * (DcTSTPilotAccumulator::maximumOccupancy + 1uz), 0.0)
+      barrierOccupancyPairs(numberOfOccupancyPairs, 0.0)
 {
 }
 
@@ -347,34 +350,10 @@ DynamicallyCorrectedTSTFreeEnergy::DynamicallyCorrectedTSTFreeEnergy(System temp
   barrier = DcTSTBarrier(templateSystem.simulationBox, settings.barrierPosition, settings.barrierNormal,
                          settings.latticeDistance);
   validateDcTSTSystem(templateSystem, settings.taggedComponent, "DynamicallyCorrectedTSTFreeEnergy", false);
+  // the moves the drivers perform, and a tagged molecule that can change its orientation and conformation
+  DcTSTMoves::validate(templateSystem, settings.taggedComponent, "DynamicallyCorrectedTSTFreeEnergy",
+                       settings.reinsertionTaggedProbability, settings.cageOccupancies.has_value());
 
-  // the constrained ensemble moves the guests with the single-molecule moves below only (any other move type would
-  // silently run as a translation), and a polyatomic tagged molecule changes its orientation and conformation only
-  // through its reinsertion
-  for (const Component& component : templateSystem.components)
-  {
-    for (std::size_t type = 0; type != component.mc_moves_probabilities.probabilities.size(); ++type)
-    {
-      const Move::Types move = static_cast<Move::Types>(type);
-      if (component.mc_moves_probabilities.probabilities[type] > 0.0 && move != Move::Types::Translation &&
-          move != Move::Types::RandomTranslation && move != Move::Types::Rotation &&
-          move != Move::Types::RandomRotation && move != Move::Types::ReinsertionCBMC &&
-          move != Move::Types::PartialReinsertionCBMC)
-      {
-        throw std::runtime_error(std::format(
-            "dcTST: component '{}' uses the '{}' move; the constrained ensemble supports translation, random "
-            "translation, rotation, random rotation, reinsertion and partial reinsertion only\n",
-            component.name, Move::moveNames[type]));
-      }
-    }
-  }
-  if (templateSystem.components[settings.taggedComponent].atoms.size() > 1uz &&
-      !(settings.reinsertionTaggedProbability > 0.0))
-  {
-    throw std::runtime_error(
-        "dcTST: 'ReinsertionTaggedProbability' must be positive for a polyatomic tagged molecule (its orientation and "
-        "conformation are otherwise frozen)\n");
-  }
 
   double3 lattice_origin = barrier.point + 0.5 * barrier.lambda * barrier.normal;
   if (settings.cageCenter.has_value())
@@ -610,9 +589,14 @@ double DynamicallyCorrectedTSTFreeEnergy::coordinate(const System& system, const
 {
   if (occupancyMode)
   {
-    return double3::dot(
-        system.simulationBox.applyPeriodicBoundaryConditions(position - cageLattice.center(state.cageA)),
-        barrier.normal);
+    // The distance along the normal from the center of cage A, wrapped onto the period of the box about the
+    // plane between A and B: [lambda/2 - period/2, lambda/2 + period/2), which holds both cages. The scalar is
+    // invariant under the lattice translations of the box up to the period, for any cell; a component-wise
+    // minimum image followed by the dot product jumps for an oblique normal, and folded the far half of cage B
+    // back with two cages along the normal.
+    double x = double3::dot(position - cageLattice.center(state.cageA), barrier.normal) - 0.5 * barrier.lambda;
+    x -= barrier.period * std::floor(x / barrier.period + 0.5);
+    return x + 0.5 * barrier.lambda;
   }
   return barrier.reducedCoordinate(barrier.projection(system.simulationBox, position));
 }
@@ -644,14 +628,21 @@ std::optional<double3> DynamicallyCorrectedTSTFreeEnergy::pointInCageFrame(Rando
                                                                            const DcTSTWindowState& state,
                                                                            double x) const
 {
-  // a random point of the box shifted along the normal to coordinate x in the frame of cage A; it is kept
-  // when it lies laterally within cage A (the cage of its projection onto the plane through the center of A)
-  const double3 centerA = cageLattice.center(state.cageA);
+  // A random point of the box shifted along the normal to coordinate x in the frame of cage A (uniform on that
+  // plane); it is kept when it lies in the column of cages A and B, the domain the translation move keeps the
+  // bead in ('inCageColumn'). The test was on the cage of the projection onto the plane through the center of A:
+  // in an oblique cell the lateral fractional coordinates change along the normal, so that test accepted a
+  // sheared copy of the column. The reinsertion then never proposed the corners of the true column the
+  // translations reach, while it did take the bead out of them.
   const double3 r = system.simulationBox.randomPosition(rng);
-  const double q = double3::dot(system.simulationBox.applyPeriodicBoundaryConditions(r - centerA), barrier.normal);
-  const double3 point = r + (x - q) * barrier.normal;
-  if (cageLattice.cageOf(point - x * barrier.normal) != state.cageA) return std::nullopt;
+  const double3 point = r + (x - coordinate(system, state, r)) * barrier.normal;
+  if (!inCageColumn(state, point, x)) return std::nullopt;
   return point;
+}
+
+bool DynamicallyCorrectedTSTFreeEnergy::inCageColumn(const DcTSTWindowState& state, double3 position, double x) const
+{
+  return cageLattice.cageOf(position) == ((x < 0.5 * barrier.lambda) ? state.cageA : state.cageB);
 }
 
 // =================================================================================================
@@ -1304,28 +1295,9 @@ void DynamicallyCorrectedTSTFreeEnergy::performWindowCycle(std::size_t replicaId
         }
       }
 
-      switch (moveType)
-      {
-        case Move::Types::RandomTranslation:
-          energyDifference = MC_Moves::randomTranslationMove(rng, system, selectedComponent, selectedMolecule);
-          break;
-        case Move::Types::Rotation:
-          energyDifference = MC_Moves::rotationMove(rng, system, selectedComponent, selectedMolecule);
-          break;
-        case Move::Types::RandomRotation:
-          energyDifference = MC_Moves::randomRotationMove(rng, system, selectedComponent, selectedMolecule);
-          break;
-        case Move::Types::ReinsertionCBMC:
-          energyDifference = MC_Moves::reinsertionMove(rng, system, selectedComponent, selectedMolecule);
-          break;
-        case Move::Types::PartialReinsertionCBMC:
-          energyDifference = MC_Moves::partialReinsertionMove(rng, system, selectedComponent, selectedMolecule);
-          break;
-        case Move::Types::Translation:
-        default:
-          energyDifference = MC_Moves::translationMove(rng, system, selectedComponent, selectedMolecule);
-          break;
-      }
+      // every single-molecule move of the component, the conformational ones of flexible molecules included
+      // ('DcTSTMoves::validate' refuses the rest up front; there is no fall-back to a translation)
+      energyDifference = DcTSTMoves::perform(rng, system, selectedComponent, selectedMolecule, moveType);
 
       if (occupancyMode && energyDifference.has_value())
       {
@@ -1402,8 +1374,7 @@ std::optional<RunningEnergy> DynamicallyCorrectedTSTFreeEnergy::biasedTranslatio
   if (occupancyMode)
   {
     // laterally the bead must stay in the column of cages A and B
-    const std::size_t cage = cageLattice.cageOf(trialMolecule.second[component.startingBead].position);
-    if (cage != ((xNew < 0.5 * barrier.lambda) ? state.cageA : state.cageB))
+    if (!inCageColumn(state, trialMolecule.second[component.startingBead].position, xNew))
     {
       ++statistics.rejectedByRange;
       return std::nullopt;
@@ -1528,6 +1499,9 @@ std::optional<RunningEnergy> DynamicallyCorrectedTSTFreeEnergy::biasedReinsertio
   const bool oldInside = periodicSupport ? barrier.inPeriodicWindow(xOld, window.center, window.supportHalfWidth)
                                          : (xOldFolded >= low && xOldFolded < high);
   if (!oldInside) return std::nullopt;
+  // the same domain for the old bead as for the new one: a bead outside the column cannot be put back by the
+  // reverse move
+  if (occupancyMode && !inCageColumn(state, moleculeAtoms[component.startingBead].position, xOld)) return std::nullopt;
 
   double xNew;
   if (periodicSupport)
@@ -1565,8 +1539,7 @@ std::optional<RunningEnergy> DynamicallyCorrectedTSTFreeEnergy::biasedReinsertio
   if (system.insideBlockedPockets(component, growData->atoms)) return std::nullopt;
   if (occupancyMode)
   {
-    const std::size_t cage = cageLattice.cageOf(growData->atoms[component.startingBead].position);
-    if (cage != ((xNew < 0.5 * barrier.lambda) ? state.cageA : state.cageB))
+    if (!inCageColumn(state, growData->atoms[component.startingBead].position, xNew))
     {
       ++statistics.rejectedByRange;
       return std::nullopt;
@@ -1736,30 +1709,41 @@ void DynamicallyCorrectedTSTFreeEnergy::sampleWindow(std::size_t replicaId, std:
   {
     const double3 position = atoms[component.startingBead].position;
     const std::vector<std::size_t> occupancy = countOccupancies(system);
-    const double3 windowShift = 0.5 * barrier.lambda * barrier.normal;
-    const std::size_t behind = cageLattice.cageOf(position - windowShift);
-    const std::size_t ahead = cageLattice.cageOf(position + windowShift);
+    // the two cages of the column of the bead on either side of the plane it is at; one of them is its own
+    // (half-cage steps along the normal left the column in an oblique cell, and the tagged molecule was then
+    // not taken out of either count)
+    const auto [behind, ahead] = cageLattice.cagesAcrossNearestPlane(position, barrier.normal);
     const std::size_t own = cageLattice.cageOf(position);
     // the other molecules only; the tagged molecule is then counted in whichever cage plays A
     std::size_t mBehind = occupancy[behind] - ((own == behind) ? 1uz : 0uz);
     std::size_t mAhead = occupancy[ahead] - ((own == ahead) ? 1uz : 0uz);
-    // the window samples exp(-beta U - w_k(x)): weighting each sample by exp(w_k(x) - w_k(0)) removes the
-    // variation of the bias over the slab, so that every window estimates the unbiased P(n_A, n_B | |x| < w)
-    // and the windows can be pooled (the bias depends on x only, so no window free energy is needed)
-    const double reference = grid.contains(0.0) ? windowBias(windowIndex, 0.0) : windowBias(windowIndex, x);
-    const double weight = std::exp(std::clamp(windowBias(windowIndex, x) - reference, -500.0, 500.0));
+    // Counted per fine bin of the slab, unweighted. The bias of a window depends on x only and is constant over
+    // a fine bin, so inside one bin every window samples the unbiased P(n_A, n_B | x) and their counts can be
+    // added; the analysis weights the bins with the reweighted density ('analyzeOccupancies'). Each sample used
+    // to carry exp(w_k(x) - w_k(0)) and the windows were summed as they came: one sample in the tail of a window
+    // centered a few A away weighs e^20 and more, and outweighed everything the window on the barrier sampled.
+    const std::size_t pairs = DcTSTWindowAccumulator::numberOfOccupancyPairs;
+    const std::size_t slabBegin = barrierSlabBegin();
+    const std::size_t slabBins = barrierSlabEnd() - slabBegin;
+    if (accumulator.barrierOccupancyPairs.size() != slabBins * pairs)
+    {
+      accumulator.barrierOccupancyPairs.assign(slabBins * pairs, 0.0);
+      accumulator.barrierOccupancySamples = 0.0;
+    }
+    const std::size_t slabBin = std::min(slabBins - 1uz, grid.bin(x) - std::min(grid.bin(x), slabBegin));
+    double* counts = accumulator.barrierOccupancyPairs.data() + slabBin * pairs;
     if (settings.mirrorSymmetry)
     {
       // mirror-symmetric barrier: the configuration is the transition state of both directions
-      accumulator.barrierOccupancyPairs[DcTSTPilotAccumulator::occupancyIndex(mBehind + 1uz, mAhead)] += 0.5 * weight;
-      accumulator.barrierOccupancyPairs[DcTSTPilotAccumulator::occupancyIndex(mAhead + 1uz, mBehind)] += 0.5 * weight;
+      counts[DcTSTPilotAccumulator::occupancyIndex(mBehind + 1uz, mAhead)] += 0.5;
+      counts[DcTSTPilotAccumulator::occupancyIndex(mAhead + 1uz, mBehind)] += 0.5;
     }
     else
     {
       // the hop along +normal (from the cage behind into the cage ahead), the direction of the pilot pairs
-      accumulator.barrierOccupancyPairs[DcTSTPilotAccumulator::occupancyIndex(mBehind + 1uz, mAhead)] += weight;
+      counts[DcTSTPilotAccumulator::occupancyIndex(mBehind + 1uz, mAhead)] += 1.0;
     }
-    accumulator.barrierOccupancySamples += weight;
+    accumulator.barrierOccupancySamples += 1.0;
   }
 }
 
@@ -2308,7 +2292,8 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
   return result;
 }
 
-DynamicallyCorrectedTSTFreeEnergy::OccupancyDistribution DynamicallyCorrectedTSTFreeEnergy::analyzeOccupancies() const
+DynamicallyCorrectedTSTFreeEnergy::OccupancyDistribution DynamicallyCorrectedTSTFreeEnergy::analyzeOccupancies(
+    const ProfileResult& profile) const
 {
   OccupancyDistribution result;
   result.size = DcTSTPilotAccumulator::maximumOccupancy + 1uz;
@@ -2358,22 +2343,68 @@ DynamicallyCorrectedTSTFreeEnergy::OccupancyDistribution DynamicallyCorrectedTST
     result.requestedProbabilityError = meanAndError(blockRequested).second;
   }
 
-  // P(n_A, n_B | q*) from the window stage
-  result.jointAtBarrier.assign(result.size * result.size, 0.0);
+  // P(n_A, n_B | q*) from the window stage: the counts of all windows pooled per fine bin of the slab (inside a
+  // bin every window samples the same P(n_A, n_B | x)), the bins then weighted with the reweighted density
+  // exp(-beta F) of the profile. Without a profile the bins are weighted by their counts, which is the
+  // distribution over the slab as the windows sampled it.
+  const std::size_t pairs = result.size * result.size;
+  result.jointAtBarrier.assign(pairs, 0.0);
+  const std::size_t slabBegin = barrierSlabBegin();
+  const std::size_t slabBins = barrierSlabEnd() - slabBegin;
+  std::vector<double> pooled(slabBins * pairs, 0.0);
   for (const DcTSTWindowAccumulator& accumulator : windowData)
   {
-    for (std::size_t i = 0; i < result.jointAtBarrier.size(); ++i)
-    {
-      result.jointAtBarrier[i] += accumulator.barrierOccupancyPairs[i];
-    }
+    if (accumulator.barrierOccupancyPairs.size() != pooled.size()) continue;
+    for (std::size_t i = 0; i < pooled.size(); ++i) pooled[i] += accumulator.barrierOccupancyPairs[i];
     result.totalAtBarrier += accumulator.barrierOccupancySamples;
   }
-  if (result.totalAtBarrier > 0.0)
+  const bool useProfile = profile.available && profile.fineFreeEnergy.size() == grid.numberOfBins &&
+                          profile.fineDefined.size() == grid.numberOfBins;
+  double lowestFreeEnergy = std::numeric_limits<double>::max();
+  std::vector<double> binCount(slabBins, 0.0);
+  for (std::size_t b = 0; b < slabBins; ++b)
+  {
+    binCount[b] = std::accumulate(pooled.begin() + static_cast<std::ptrdiff_t>(b * pairs),
+                                  pooled.begin() + static_cast<std::ptrdiff_t>((b + 1uz) * pairs), 0.0);
+    if (useProfile && binCount[b] > 0.0 && profile.fineDefined[slabBegin + b])
+    {
+      lowestFreeEnergy = std::min(lowestFreeEnergy, profile.fineFreeEnergy[slabBegin + b]);
+    }
+  }
+  double norm{0.0};
+  for (std::size_t b = 0; b < slabBins; ++b)
+  {
+    if (!(binCount[b] > 0.0)) continue;
+    double weight = binCount[b];
+    if (useProfile)
+    {
+      if (!profile.fineDefined[slabBegin + b]) continue;
+      weight = std::exp(-(profile.fineFreeEnergy[slabBegin + b] - lowestFreeEnergy));
+    }
+    for (std::size_t i = 0; i < pairs; ++i)
+    {
+      result.jointAtBarrier[i] += weight * pooled[b * pairs + i] / binCount[b];
+    }
+    norm += weight;
+  }
+  if (norm > 0.0)
   {
     result.availableAtBarrier = true;
-    for (double& p : result.jointAtBarrier) p /= result.totalAtBarrier;
+    for (double& p : result.jointAtBarrier) p /= norm;
   }
   return result;
+}
+
+std::size_t DynamicallyCorrectedTSTFreeEnergy::barrierSlabBegin() const
+{
+  return grid.bin(std::max(grid.begin, -DcTSTWindowAccumulator::barrierOccupancyHalfWidth));
+}
+
+std::size_t DynamicallyCorrectedTSTFreeEnergy::barrierSlabEnd() const
+{
+  // one past the last fine bin that reaches into |x| < half-width
+  const double last = std::min(DcTSTWindowAccumulator::barrierOccupancyHalfWidth, grid.end - 0.5 * grid.width);
+  return std::max(barrierSlabBegin(), grid.bin(last)) + 1uz;
 }
 
 // =================================================================================================
@@ -2385,7 +2416,7 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
   const System& system = systems.front();
   const Component& tagged = system.components[settings.taggedComponent];
   const ProfileResult profile = analyzeProfile();
-  const OccupancyDistribution occupancies = analyzeOccupancies();
+  const OccupancyDistribution occupancies = analyzeOccupancies(profile);
 
   const std::string suffix = std::format("{}_{}", system.temperature, system.input_pressure);
   const std::string label = occupancyMode ? "conditioned_" : "";
@@ -2554,14 +2585,16 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
           const std::size_t index = nA * occupancies.size + nB;
           const double p = occupancies.joint[index];
           const double pBarrier = occupancies.jointAtBarrier[index];
-          consistency += pBarrier;
+          // the conditioned rates exist for the pairs the pilot sampled only
+          if (p > 0.0) consistency += pBarrier;
           if (p < 0.005) continue;
           std::print(stream, "    {:>4} {:>4} {:>12.6f} {:>14.6f} {:>10.4f} {:>8.0f}\n", nA, nB, p, pBarrier,
                      pBarrier / p, pBarrier * occupancies.totalAtBarrier);
         }
       }
       std::print(stream,
-                 "    (sum_(n_A,n_B) P(n_A,n_B) k^TST(n_A -> n_B) / k^TST = {:.4f}, exactly 1 by construction)\n",
+                 "    (sum_(n_A,n_B) P(n_A,n_B) k^TST(n_A -> n_B) / k^TST = {:.4f}: the part of P(n_A, n_B | q*) in pairs\n"
+                 "    the pilot sampled; 1 when it sampled every pair found at the barrier)\n",
                  consistency);
     }
     std::print(stream, "\n");

@@ -119,6 +119,13 @@ export struct DcTSTCageLattice
   /// The cage whose center is 'shift' away from the center of 'cage'.
   [[nodiscard]] std::size_t neighbor(std::size_t cage, double3 shift) const;
 
+  /// The cages behind and ahead (along 'direction') of the cage boundary plane nearest to 'r', in the column of
+  /// cages that holds 'r': the pair a hop along 'direction' through that plane connects. Taken from the
+  /// fractional coordinates, so that the two share the lateral indices of 'r' in any cell. Stepping from 'r'
+  /// along a Cartesian normal changes the lateral fractional coordinates of an oblique cell and lands, for a
+  /// point near a lateral cage wall, in the cages beside the column.
+  [[nodiscard]] std::pair<std::size_t, std::size_t> cagesAcrossNearestPlane(double3 r, double3 direction) const;
+
   /// A uniformly distributed random point inside cage 'cage'.
   [[nodiscard]] double3 randomPointInCage(RandomNumber& random, std::size_t cage) const;
 

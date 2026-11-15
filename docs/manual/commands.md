@@ -865,7 +865,12 @@ reported separately at the end of the simulation.
     of the tagged component has its reaction bead held on the barrier plane
     (in-plane translation and in-plane CBMC reinsertion moves with
     `"MaximumTranslationInPlane"` and `"ReinsertionInPlaneProbability"`)
-    while all other molecules are sampled with their ordinary moves. The
+    while all other molecules are sampled with their ordinary
+    single-molecule moves: translation, rotation, (multi-trial and partial)
+    reinsertion, pivot, crankshaft, reptation, concerted rotation, bead
+    displacement and bead flip. Any other move (swaps of every kind, Widom,
+    identity changes, volume and connectivity-altering moves) is refused by
+    both dcTST drivers, as is reptation together with `"CageOccupancies"`. The
     starting configuration is built in the order used by RASPA2: the
     molecules created with the system are discarded, the tagged molecule is
     grown first with its bead on the plane into the empty framework (a
@@ -910,7 +915,8 @@ reported separately at the end of the simulation.
     CHA needs its primitive cell instead). The cages partition space along
     the barrier only when the normal is perpendicular to the cage planes of
     one axis (in a non-orthogonal cell the reciprocal-lattice direction, not
-    the lattice vector), `"LatticeDistance"` equals their spacing and the
+    the lattice vector; the barrier plane must have a single non-zero Miller
+    index), `"LatticeDistance"` equals their spacing and the
     barrier lies midway between cage centres. The occupancy-resolved
     (`"CageOccupancies"`) and event-terminated modes require this and are
     refused otherwise; in the other modes the occupancy classes are then

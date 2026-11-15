@@ -103,15 +103,18 @@ export struct DcTSTWindowAccumulator
   std::size_t cageChanges{0};
   double startCoordinate{0.0};  ///< x of the tagged molecule when the window started.
   double endCoordinate{0.0};
-  /// Joint occupancy histogram (n_A, n_B) of the two cages sharing the window while the tagged molecule is
-  /// within 'barrierOccupancyHalfWidth' of the dividing plane, the tagged molecule counted in A and the two
-  /// assignments (A, B) = (behind, ahead) and (ahead, behind) each with weight 1/2. The umbrella bias acts on
-  /// the coordinate of the tagged molecule only, so conditioned on it the sample is unbiased: this is
-  /// P(n_A, n_B | q*), which with the pilot's P(n_A, n_B) gives the conditioned transition-state rates
-  /// k^TST(n_A -> n_B) = k^TST P(n_A, n_B | q*) / P(n_A, n_B) without constrained runs. Index as in the pilot.
+  /// Joint occupancy counts (n_A, n_B) of the two cages sharing the window while the tagged molecule is
+  /// within 'barrierOccupancyHalfWidth' of the dividing plane, per fine bin of that slab:
+  /// [slab bin * numberOfOccupancyPairs + pair index as in the pilot], unweighted. The tagged molecule is counted
+  /// in A; with mirror symmetry the two assignments (A, B) = (behind, ahead) and (ahead, behind) get 1/2 each.
+  /// The umbrella bias acts on the coordinate of the tagged molecule only and is constant over a fine bin, so
+  /// inside a bin the sample is unbiased and the windows add; weighted over the bins with the reweighted density
+  /// this is P(n_A, n_B | q*), which with the pilot's P(n_A, n_B) gives the conditioned transition-state rates
+  /// k^TST(n_A -> n_B) = k^TST P(n_A, n_B | q*) / P(n_A, n_B) without constrained runs.
   std::vector<double> barrierOccupancyPairs;
-  double barrierOccupancySamples{0.0};
+  double barrierOccupancySamples{0.0};  ///< Number of samples in the slab.
   static constexpr double barrierOccupancyHalfWidth = 0.25;  ///< [A]
+  static constexpr std::size_t numberOfOccupancyPairs = 32uz * 32uz;  ///< (maximumOccupancy + 1)^2 of the pilot.
 
   DcTSTWindowAccumulator() = default;
   DcTSTWindowAccumulator(std::size_t numberOfBlocks, std::size_t numberOfBins, double maximumTranslation);
@@ -277,6 +280,9 @@ export struct DynamicallyCorrectedTSTFreeEnergy
   /// Occupancy-resolved mode: a point with coordinate x in the frame of cage A, uniform laterally over cage A.
   [[nodiscard]] std::optional<double3> pointInCageFrame(RandomNumber& rng, const System& system,
                                                         const DcTSTWindowState& state, double x) const;
+  /// Whether a bead at 'position' with coordinate 'x' lies in the column of cages A and B (in cage A below the
+  /// plane between them, in cage B above it): the domain of the tagged molecule in occupancy mode.
+  [[nodiscard]] bool inCageColumn(const DcTSTWindowState& state, double3 position, double x) const;
 
   // --- analysis ----------------------------------------------------------------------------------
 
@@ -348,7 +354,10 @@ export struct DynamicallyCorrectedTSTFreeEnergy
   };
 
   [[nodiscard]] ProfileResult analyzeProfile() const;
-  [[nodiscard]] OccupancyDistribution analyzeOccupancies() const;
+  [[nodiscard]] OccupancyDistribution analyzeOccupancies(const ProfileResult& profile) const;
+  /// The fine bins [begin, end) of the slab within 'barrierOccupancyHalfWidth' of the dividing plane.
+  [[nodiscard]] std::size_t barrierSlabBegin() const;
+  [[nodiscard]] std::size_t barrierSlabEnd() const;
   /// Thermal speed <|qdot|> of the reaction bead along the normal from the pilot orientations (falls back to
   /// sqrt(2 kT / pi M) of the molecular mass when the pilot did not sample).
   [[nodiscard]] double beadThermalSpeed() const;

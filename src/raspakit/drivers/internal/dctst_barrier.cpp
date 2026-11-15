@@ -253,6 +253,17 @@ std::optional<std::string> DcTSTCageLattice::inconsistencyWith(const SimulationB
                        "|cos| = {:.4f}); for a non-orthogonal cell use the reciprocal-lattice direction",
                        alignment.cosine);
   }
+  // The barrier is a lattice plane (h1 h2 h3) of the box, whose axes are those of the cages: it is a cage boundary
+  // only as (h 0 0), (0 h 0) or (0 0 h). The cosine alone lets a high-index plane through ((12 1 0) in a cell with
+  // b = 2a is 2.4 degrees from (1 0 0), |cos| = 0.99913), which cuts across the cages beside the column.
+  const int transverse1 = barrier.millerIndices[(alignment.axis + 1) % 3];
+  const int transverse2 = barrier.millerIndices[(alignment.axis + 2) % 3];
+  if (transverse1 != 0 || transverse2 != 0)
+  {
+    return std::format("the barrier plane ({} {} {}) is not a boundary plane of the cages (it is inclined to the "
+                       "cage planes of axis {}: only one Miller index may differ from zero)",
+                       barrier.millerIndices.x, barrier.millerIndices.y, barrier.millerIndices.z, alignment.axis);
+  }
   const double spacing = planeSpacing(alignment.axis);
   if (std::abs(spacing - barrier.lambda) > 1e-3 * barrier.lambda)
   {
@@ -294,6 +305,23 @@ std::size_t DcTSTCageLattice::neighbor(std::size_t cage, double3 shift) const
   const double distance = shift.length() * alignment.cosine;
   const int steps = static_cast<int>(std::lround(distance / planeSpacing(alignment.axis)));
   return neighborAlongAxis(cage, alignment.axis, alignment.sign * steps);
+}
+
+std::pair<std::size_t, std::size_t> DcTSTCageLattice::cagesAcrossNearestPlane(double3 r, double3 direction) const
+{
+  const AxisAlignment alignment = axisAlongDirection(direction);
+  const double3 f = inverseCell * (r - origin);
+  const int3 n(static_cast<int>(std::floor(f.x + 0.5)), static_cast<int>(std::floor(f.y + 0.5)),
+               static_cast<int>(std::floor(f.z + 0.5)));
+  const std::size_t own = index(n);
+  // where the point sits in its cage along the axis, in [-1/2, 1/2): toward 'direction' the nearest boundary
+  // plane is the one ahead, and the cage is the one behind it
+  const double within = f[alignment.axis] - static_cast<double>(n[alignment.axis]);
+  if (static_cast<double>(alignment.sign) * within >= 0.0)
+  {
+    return {own, neighborAlongAxis(own, alignment.axis, alignment.sign)};
+  }
+  return {neighborAlongAxis(own, alignment.axis, -alignment.sign), own};
 }
 
 double3 DcTSTCageLattice::randomPointInCage(RandomNumber& random, std::size_t cage) const

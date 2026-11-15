@@ -49,6 +49,7 @@ import json;
 import graceful_shutdown;
 import dctst_settings;
 import dctst_barrier;
+import dctst_moves;
 
 // =================================================================================================
 // Accumulators
@@ -409,34 +410,10 @@ DynamicallyCorrectedTST::DynamicallyCorrectedTST(InputReader& reader)
   barrier = DcTSTBarrier(templateSystem.simulationBox, settings.barrierPosition, settings.barrierNormal,
                          settings.latticeDistance);
   validateDcTSTSystem(templateSystem, settings.taggedComponent, "DynamicallyCorrectedTST", true);
+  // the moves the drivers perform, and a tagged molecule that can change its orientation and conformation
+  DcTSTMoves::validate(templateSystem, settings.taggedComponent, "DynamicallyCorrectedTST",
+                       settings.reinsertionInPlaneProbability, settings.cageOccupancies.has_value());
 
-  // the constrained ensemble moves the guests with the single-molecule moves below only (any other move type would
-  // silently run as a translation), and a polyatomic tagged molecule changes its orientation and conformation only
-  // through its reinsertion
-  for (const Component& component : templateSystem.components)
-  {
-    for (std::size_t type = 0; type != component.mc_moves_probabilities.probabilities.size(); ++type)
-    {
-      const Move::Types move = static_cast<Move::Types>(type);
-      if (component.mc_moves_probabilities.probabilities[type] > 0.0 && move != Move::Types::Translation &&
-          move != Move::Types::RandomTranslation && move != Move::Types::Rotation &&
-          move != Move::Types::RandomRotation && move != Move::Types::ReinsertionCBMC &&
-          move != Move::Types::PartialReinsertionCBMC)
-      {
-        throw std::runtime_error(std::format(
-            "dcTST: component '{}' uses the '{}' move; the constrained ensemble supports translation, random "
-            "translation, rotation, random rotation, reinsertion and partial reinsertion only\n",
-            component.name, Move::moveNames[type]));
-      }
-    }
-  }
-  if (templateSystem.components[settings.taggedComponent].atoms.size() > 1uz &&
-      !(settings.reinsertionInPlaneProbability > 0.0))
-  {
-    throw std::runtime_error(
-        "dcTST: 'ReinsertionInPlaneProbability' must be positive for a polyatomic tagged molecule (its orientation and "
-        "conformation are otherwise frozen)\n");
-  }
 
   // the cage lattice of the occupancy-resolved and event-terminated modes: one cage per unit cell. Its origin
   // is 'CageCenter' (unit-cell fractional) when given; otherwise the barrier point shifted half a lattice
@@ -1543,28 +1520,9 @@ void DynamicallyCorrectedTST::performMonteCarloCycle(std::size_t replicaId)
         }
       }
 
-      switch (moveType)
-      {
-        case Move::Types::RandomTranslation:
-          energyDifference = MC_Moves::randomTranslationMove(rng, system, selectedComponent, selectedMolecule);
-          break;
-        case Move::Types::Rotation:
-          energyDifference = MC_Moves::rotationMove(rng, system, selectedComponent, selectedMolecule);
-          break;
-        case Move::Types::RandomRotation:
-          energyDifference = MC_Moves::randomRotationMove(rng, system, selectedComponent, selectedMolecule);
-          break;
-        case Move::Types::ReinsertionCBMC:
-          energyDifference = MC_Moves::reinsertionMove(rng, system, selectedComponent, selectedMolecule);
-          break;
-        case Move::Types::PartialReinsertionCBMC:
-          energyDifference = MC_Moves::partialReinsertionMove(rng, system, selectedComponent, selectedMolecule);
-          break;
-        case Move::Types::Translation:
-        default:
-          energyDifference = MC_Moves::translationMove(rng, system, selectedComponent, selectedMolecule);
-          break;
-      }
+      // every single-molecule move of the component, the conformational ones of flexible molecules included
+      // ('DcTSTMoves::validate' refuses the rest up front; there is no fall-back to a translation)
+      energyDifference = DcTSTMoves::perform(rng, system, selectedComponent, selectedMolecule, moveType);
 
       if (occupancyMode && energyDifference.has_value())
       {
@@ -2031,9 +1989,10 @@ void DynamicallyCorrectedTST::createConstrainedConfiguration(std::size_t replica
 
 std::pair<std::size_t, std::size_t> DynamicallyCorrectedTST::cagesOfWindow(double3 beadPosition) const
 {
-  // the bead is on the plane, equidistant from the centers of A and B: step a quarter cage to either side
-  const double3 step = 0.25 * barrier.lambda * barrier.normal;
-  return {cageLattice.cageOf(beadPosition - step), cageLattice.cageOf(beadPosition + step)};
+  // the bead is on the plane, the boundary between A and B: the two cages of its column on either side of it
+  // (a quarter-cage step along the normal to either side left the column in an oblique cell, for a bead near a
+  // lateral cage wall)
+  return cageLattice.cagesAcrossNearestPlane(beadPosition, barrier.normal);
 }
 
 bool DynamicallyCorrectedTST::occupanciesSatisfied(const DcTSTOccupancyState& state, std::size_t cageA,
@@ -2661,7 +2620,11 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       }
       else
       {
-        const double drift = std::abs((energies.conservedEnergy() - conservedReference) / conservedReference);
+        // relative to the conserved energy at launch, or absolute when that is zero (a free particle at rest on
+        // the barrier): the quotient was 0/0 or x/0 there, which -ffast-math leaves undefined and JSON writes as
+        // null
+        const double driftScale = (std::abs(conservedReference) > 1.0e-12) ? std::abs(conservedReference) : 1.0;
+        const double drift = std::abs(energies.conservedEnergy() - conservedReference) / driftScale;
         driftSum += drift;
         outcome.maxDrift = std::max(outcome.maxDrift, drift);
       }
