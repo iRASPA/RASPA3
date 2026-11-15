@@ -495,6 +495,9 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
         system.pairSwapLambdaClearBookkeeping();
         system.reactionLambdaFinalize();
         system.reactionLambdaClearBookkeeping();
+        // Wang-Landau only lowers the bias: left as it ended, exp(-bias) in System::weight() overflows and
+        // every weighted average of the production run becomes inf / inf
+        system.normalizeLambdaBiasFactors();
       }
       std::fill(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
     }
@@ -629,7 +632,7 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
               }
 
               // Wang-Landau biasing-factor adjustment (all state is owned by this replica)
-              if (stage == SimulationStage::Equilibration && cycle % rescaleWangLandauEvery == 0uz)
+              if (stage == SimulationStage::Equilibration && (cycle + 1uz) % rescaleWangLandauEvery == 0uz)
               {
                 for (Component& component : system.components)
                 {

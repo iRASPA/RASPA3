@@ -13,20 +13,48 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
   if (numberOfStates == 0uz) return result;
   const std::size_t numberOfBins = counts.front().size();
 
+  // A bin is usable when at least one state with samples can reach it (its reduced potential there is not the
+  // forbidden ~1e30). Samples in a bin that every sampled state forbids can not be weighted: they are left out
+  // of ln M_b and of ln n_k alike. Leaving a state without samples can strand further bins, hence the loop.
+  std::vector<double> stateTotals(numberOfStates, 0.0);
+  std::vector<bool> binUsable(numberOfBins, true);
+  for (bool changed = true; changed;)
+  {
+    changed = false;
+    for (std::size_t k = 0; k < numberOfStates; ++k)
+    {
+      stateTotals[k] = 0.0;
+      for (std::size_t b = 0; b < numberOfBins; ++b)
+      {
+        if (binUsable[b]) stateTotals[k] += counts[k][b];
+      }
+    }
+    for (std::size_t b = 0; b < numberOfBins; ++b)
+    {
+      if (!binUsable[b]) continue;
+      bool reachable = false;
+      for (std::size_t k = 0; k < numberOfStates && !reachable; ++k)
+      {
+        reachable = stateTotals[k] > 0.0 && -reducedPotential[k][b] > forbiddenLogWeight;
+      }
+      if (!reachable)
+      {
+        binUsable[b] = false;
+        changed = true;
+      }
+    }
+  }
+
   // ln n_k and ln M_b
   std::vector<double> logStateCounts(numberOfStates, logZero);
   std::vector<double> logBinCounts(numberOfBins, logZero);
   for (std::size_t k = 0; k < numberOfStates; ++k)
   {
-    double total{0.0};
-    for (std::size_t b = 0; b < numberOfBins; ++b)
-    {
-      total += counts[k][b];
-    }
-    if (total > 0.0) logStateCounts[k] = std::log(total);
+    if (stateTotals[k] > 0.0) logStateCounts[k] = std::log(stateTotals[k]);
   }
   for (std::size_t b = 0; b < numberOfBins; ++b)
   {
+    if (!binUsable[b]) continue;
     double total{0.0};
     for (std::size_t k = 0; k < numberOfStates; ++k)
     {
@@ -70,11 +98,25 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
         if (logStateCounts[k] <= logZeroThreshold) continue;
         largest = std::max(largest, logStateCounts[k] + result.freeEnergies[k] - reducedPotential[k][b]);
       }
+      // A bin no sampled state can reach: every one of them carries a forbidden bias there (a reduced potential
+      // of 1e30, see the callers), so that 'largest' is about -1e30. That is far above the 'log of zero', and
+      // the bin got the density ln M_b + 1e30: it then entered every g_k as the difference of two numbers of
+      // 1e30, which double precision resolves to 1e14 at best. Its samples can not be weighted and are left out.
+      if (largest <= forbiddenLogWeight)
+      {
+        result.logDensity[b] = logZero;
+        continue;
+      }
       double sum{0.0};
       for (std::size_t k = 0; k < numberOfStates; ++k)
       {
         if (logStateCounts[k] <= logZeroThreshold) continue;
         sum += std::exp(logStateCounts[k] + result.freeEnergies[k] - reducedPotential[k][b] - largest);
+      }
+      if (!(sum > 0.0))
+      {
+        result.logDensity[b] = logZero;
+        continue;
       }
       result.logDensity[b] = logBinCounts[b] - largest - std::log(sum);
     }
@@ -168,12 +210,13 @@ bool DcTSTWham::statesAreConnected(const std::vector<double>& logStateCounts, co
       logShare[k] = logStateCounts[k] + freeEnergies[k] - reducedPotential[k][b];
       largest = std::max(largest, logShare[k]);
     }
-    if (largest <= logZeroThreshold) continue;
+    if (largest <= forbiddenLogWeight) continue;
     double sum{0.0};
     for (std::size_t k = 0; k < numberOfStates; ++k)
     {
       if (logShare[k] > logZeroThreshold) sum += std::exp(logShare[k] - largest);
     }
+    if (!(sum > 0.0)) continue;
     const double logNormalization = largest + std::log(sum);
     std::optional<std::size_t> first;
     for (std::size_t k = 0; k < numberOfStates; ++k)

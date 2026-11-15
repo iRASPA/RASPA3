@@ -1147,6 +1147,11 @@ export struct System
   void pairSwapLambdaWriteBiasingFiles(std::size_t systemId);
   [[nodiscard]] double reactionLambdaMinBias() const noexcept;
   void reactionLambdaNormalize(double minBias) noexcept;
+  /// Shifts every lambda bias of this system (GC, pair and group swaps, reactions) so that its smallest value
+  /// is zero, each histogram by its own minimum: a shift common to all of them would underflow the weight of
+  /// a shallow histogram next to a deep one. The histograms of one serial Rx/CFC reaction share a shift, the
+  /// side-switch acceptance comparing the two. For the drivers whose systems do not exchange lambda biases.
+  void normalizeLambdaBiasFactors() noexcept;
   void reactionLambdaWriteBiasingFiles(std::size_t systemId);
   void reactionLambdaSampleProductionHistograms(std::size_t blockIndex, double weight) noexcept;
   void rescaleMolarFractions();

@@ -5816,10 +5816,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      // check initial number of molecules is in the range of the TMMC macrostates
+      // check initial number of molecules is in the range of the TMMC macrostates: of the component whose count
+      // is the macrostate (every adsorbate was held against the range, a co-adsorbate of a fixed number too)
       for (std::size_t j = 0uz; !parallelTMMC && j < systems[i].components.size(); ++j)
       {
-        if (systems[i].components[j].type == Component::Type::Adsorbate)
+        if (j == systems[i].tmmcComponent())
         {
           std::size_t numberOfMolecules = systems[i].initialNumberOfMolecules[j];
           if (numberOfMolecules < systems[i].tmmc.minMacrostate || numberOfMolecules > systems[i].tmmc.maxMacrostate)
@@ -6162,6 +6163,34 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
+  // ReweightedHistogram and ParallelTMMC count the molecules of one adsorbate. Extra-framework cations of a fixed
+  // number may be declared next to it (before it too: the drivers and the BET set-up take the first adsorbate,
+  // System::tmmcComponent); a second adsorbate, or a component whose number changes, may not.
+  auto requireSingleCountedAdsorbate = [&](const System& system, std::string_view driver)
+  {
+    const std::size_t numberOfAdsorbates = static_cast<std::size_t>(std::ranges::count_if(
+        system.components, [](const Component& component) { return component.type == Component::Type::Adsorbate; }));
+    if (numberOfAdsorbates != 1uz)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: '{}' requires exactly one adsorbate component (the molecule count of a "
+                      "single adsorbate is what is collected; cations of a fixed number may accompany it), {} "
+                      "adsorbate components were declared among {} components\n",
+                      driver, numberOfAdsorbates, system.components.size()));
+    }
+    const std::size_t adsorbateId = system.tmmcComponent();
+    for (std::size_t componentId = 0uz; componentId < system.components.size(); ++componentId)
+    {
+      if (componentId != adsorbateId && system.components[componentId].swappable)
+      {
+        throw std::runtime_error(
+            std::format("[Input reader]: '{}': component '{}' is inserted and deleted next to the adsorbate '{}'; "
+                        "only the adsorbate may change its number of molecules\n",
+                        driver, system.components[componentId].name, system.components[adsorbateId].name));
+      }
+    }
+  };
+
   // Reweighted histogram: a single declared system is replicated by the driver into one replica per
   // (temperature, pressure) grid point and the collected (N, U) samples are combined by
   // multiple-histogram reweighting into a continuous isotherm surface
@@ -6208,14 +6237,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           std::format("[Input reader]: 'ReweightedHistogram' requires at least two (temperature, pressure) grid "
                       "points\n"));
     }
-    if (systems.front().components.size() != 1)
-    {
-      throw std::runtime_error(
-          std::format("[Input reader]: 'ReweightedHistogram' requires exactly one component (the reweighting "
-                      "histograms are collected over the molecule count of a single adsorbate), {} components "
-                      "were declared\n",
-                      systems.front().components.size()));
-    }
+    requireSingleCountedAdsorbate(systems.front(), "ReweightedHistogram");
   }
 
   // Parallel TMMC: a single declared system is replicated by the driver into one walker per
@@ -6230,13 +6252,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       "internally into one walker per (temperature, window) pair), {} systems were declared\n",
                       systems.size()));
     }
-    if (systems.front().components.size() != 1)
-    {
-      throw std::runtime_error(
-          std::format("[Input reader]: 'ParallelTMMC' requires exactly one component (the macrostate is the "
-                      "molecule count of a single adsorbate), {} components were declared\n",
-                      systems.front().components.size()));
-    }
+    requireSingleCountedAdsorbate(systems.front(), "ParallelTMMC");
     System& system = systems.front();
     system.tmmc.doTMMC = true;
     system.tmmc.useBias = true;
@@ -6244,7 +6260,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     system.tmmc.useWangLandau = true;
     system.tmmc.rejectOutOfBound = true;
     system.tmmc.updateTMEvery = tmmcUpdateEvery;
-    const Component& component = system.components.front();
+    const Component& component = system.components[system.tmmcComponent()];
     const bool usesCFCMCSwap =
         component.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
         component.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0;
@@ -6275,8 +6291,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       "every window must span at least two macrostates\n",
                       tmmcNumberOfWindows, system.tmmc.minMacrostate, system.tmmc.maxMacrostate));
     }
-    const std::size_t initialNumberOfMolecules =
-        std::accumulate(system.initialNumberOfMolecules.begin(), system.initialNumberOfMolecules.end(), 0uz);
+    // of the adsorbate: the cations are there from the start and are not part of the macrostate
+    const std::size_t initialNumberOfMolecules = system.tmmcComponent() < system.initialNumberOfMolecules.size()
+                                                     ? system.initialNumberOfMolecules[system.tmmcComponent()]
+                                                     : 0uz;
     if (initialNumberOfMolecules > system.tmmc.minMacrostate)
     {
       throw std::runtime_error(
@@ -6323,7 +6341,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           "[Input reader]: 'ComputeBET' needs an adsorbate component with 'CrossSection', "
           "'LiquidVolume', and 'SaturationPressure'\n");
     }
-    const Component& probe = systems.front().components.front();
+    const Component& probe = systems.front().components[systems.front().tmmcComponent()];
     if (!probe.crossSection.has_value() || !(probe.crossSection.value() > 0.0))
     {
       throw std::runtime_error(std::format(

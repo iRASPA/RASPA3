@@ -501,7 +501,9 @@ reported separately at the end of the simulation.
     the coexistence fugacity, the saturation pressure (from β p V = ln Ξ,
     normalized exactly by the empty-box state when it was sampled, otherwise
     approximately by an ideal-gas reference at the dilute end of the pressure
-    range), and the saturated vapor and liquid densities in kg/m³, all with
+    range; where the sampled molecule counts reach neither the vapor nor the
+    loading at that dilute end, no saturation pressure is given and the column
+    reads `nan`), and the saturated vapor and liquid densities in kg/m³, all with
     per-block error bars; the distribution at coexistence is written to
     `output/vle_distribution_{T}.reweighted_histogram.txt` (for inspection and
     finite-size scaling). Temperatures where no bimodal distribution is found
@@ -516,8 +518,11 @@ reported separately at the end of the simulation.
 
     The reweighting reuses each sampled energy U(x) at all temperatures, so
     temperature-dependent potentials (Feynman-Hibbs) are rejected, and exactly
-    one component is required (the histograms are collected over its molecule
-    count). Reliable reweighting requires the (N, U) histograms of neighboring
+    one adsorbate component is required (the histograms are collected over its
+    molecule count); cations of a fixed number may be declared next to it.
+    Transition-matrix biasing, reactions and identity changes are rejected.
+    The isosteric heat of a flexible molecule lacks the mean intramolecular
+    energy of its ideal-gas molecule, which the output flags. Reliable reweighting requires the (N, U) histograms of neighboring
     grid points to overlap — the same requirement as a healthy swap acceptance,
     so the per-pair acceptance tables double as an overlap diagnostic.
 
@@ -599,7 +604,9 @@ reported separately at the end of the simulation.
     weight. The coexistence table `output/vle_coexistence.parallel_tmmc.txt`
     holds, per temperature, the coexistence fugacity, the saturation pressure
     (from β p V = ln Ξ, normalized exactly by the empty-box state — set the
-    macrostate minimum to `0` for this), and the saturated vapor and liquid
+    macrostate minimum to `0` for this; with a higher minimum it is `nan`
+    unless the range reaches down to the vapor and to the loading at the
+    dilute end of the pressure range), and the saturated vapor and liquid
     densities in kg/m³, all with per-block error bars; the distribution at
     coexistence is written to `output/vle_distribution_{T}.parallel_tmmc.txt`.
     Practical setup: the macrostate maximum must comfortably exceed the
@@ -1331,7 +1338,7 @@ reported separately at the end of the simulation.
 -   `"RescaleWangLandauEvery" : integer`\
     How often (in cycles) the λ biasing factor is rescaled during the
     equilibration phase, for example in Continuous Fractional Component Monte
-    Carlo. Default: `5000`.
+    Carlo; the first rescaling is after this many cycles. Default: `5000`.
 
 -   `"OptimizeMCMovesEvery" : integer`\
     How often (in cycles) the maximum change of each Monte Carlo move is adjusted

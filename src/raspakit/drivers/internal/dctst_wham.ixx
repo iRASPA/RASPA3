@@ -27,6 +27,9 @@ export struct DcTSTWham
   /// Sentinel for ln(0) and the threshold below which a value counts as 'zero'.
   static constexpr double logZero = -1e300;
   static constexpr double logZeroThreshold = -1e299;
+  /// A state forbids a bin with a reduced potential of the order of 1e30. A bin whose largest log weight
+  /// ln n_k + g_k - u_k(b) is below this bound is forbidden in every sampled state: it has no density.
+  static constexpr double forbiddenLogWeight = -1e29;
 
   struct Result
   {

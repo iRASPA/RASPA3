@@ -215,6 +215,31 @@ export std::optional<std::pair<std::size_t, double>> findMacrostatePhaseSplit(st
                                                                              double logZeroThreshold,
                                                                              double bimodalDepthThreshold);
 
+/// One point of a coexistence scan: the reweighted macrostate distribution at a value of ln f.
+export struct MacrostateScanPoint
+{
+  /// ln(liquid weight / vapor weight) when the distribution is bimodal; nothing when it is one phase.
+  std::optional<double> weightDifference;
+  /// <N> of the distribution (any constant offset of N is immaterial).
+  double meanMolecules;
+};
+
+/// The value of x = ln f in [lower, upper] where the vapor and the liquid peak of the reweighted macrostate
+/// distribution carry equal weight, or nothing when the range holds no transition. `evaluate(x)` gives the
+/// distribution at x as a MacrostateScanPoint. The caller checks that the distribution at the returned x is
+/// bimodal: for a fluid that densifies continuously the search ends on a one-phase distribution.
+///
+/// The range is scanned at `numberOfScanPoints` evenly spaced x. Two successive bimodal points whose weight
+/// difference changes sign bracket the equal-weight point, and were the only bracket looked for: the bimodal
+/// window is about 2 (barrier - threshold) / (N_liquid - N_vapor) wide in ln f, a hundredth for a few hundred
+/// molecules, while 200 points over four decades of pressure are 0.046 apart, so that no two points fell
+/// inside it and a clear transition was reported as 'no coexistence found'. Without such a pair the bracket
+/// is the pair of successive points across which <N> rises the most (neither of them a bimodal point on the
+/// wrong side). The bisection takes a bimodal midpoint by the sign of its weight difference and a one-phase
+/// midpoint by its <N> against the mean of the two ends, which narrows it into the bimodal window.
+export std::optional<double> locateEqualWeightPoint(double lower, double upper, std::size_t numberOfScanPoints,
+                                                    const std::function<MacrostateScanPoint(double)>& evaluate);
+
 /// Pin the temperature of a system: T, beta, the force field (shifts and tail corrections), the species
 /// partition functions and the CBMC conformation reservoirs. A no-op when the system is already at T.
 export void pinSystemTemperature(System& system, double temperature);

@@ -16,6 +16,7 @@ import mc_moves_parallel_tempering_swap;
 import property_energy_histogram;
 import isotherm_bet;
 import dctst_wham;
+import property_lambda_probability_histogram;
 import reweighted_histogram;
 
 // Regression tests for the WHAM solvers, the reweighted-histogram guards and the auto-BET setup helpers.
@@ -267,4 +268,83 @@ TEST(WHAM_AND_BET_SETUP_FIXES, bet_scout_probes_the_adsorbate_behind_a_cation)
   EXPECT_GT(point.meanOccupancy, 6.0);
   EXPECT_LT(point.meanOccupancy, 40.0);
   EXPECT_GT(point.peakOccupancy, 6uz);
+}
+
+// A bin that holds samples but is forbidden (a reduced potential of 1e30) in every sampled state: its largest log
+// weight, about -1e30, is far above the 'log of zero', so the bin got the density ln M + 1e30 and entered every
+// free energy as the difference of two numbers of that size.
+TEST(WHAM_AND_BET_SETUP_FIXES, dctst_wham_leaves_out_a_bin_forbidden_in_every_state)
+{
+  const std::vector<std::vector<double>> counts{{100.0, 50.0, 7.0}, {40.0, 110.0, 3.0}};
+  const std::vector<std::vector<double>> reducedPotential{{0.0, 0.0, 1e30}, {0.5, -0.5, 1e30}};
+  const DcTSTWham::Result result = DcTSTWham::solve(counts, reducedPotential, 1e-10, 10000);
+
+  EXPECT_LE(result.logDensity[2], DcTSTWham::logZeroThreshold);
+  EXPECT_GT(result.logDensity[0], -50.0);
+  EXPECT_LT(result.logDensity[0], 50.0);
+  EXPECT_LT(std::abs(result.freeEnergies[1]), 5.0);
+  EXPECT_TRUE(result.converged);
+
+  // the same two states without the forbidden bin
+  const DcTSTWham::Result reference =
+      DcTSTWham::solve({{100.0, 50.0}, {40.0, 110.0}}, {{0.0, 0.0}, {0.5, -0.5}}, 1e-10, 10000);
+  EXPECT_NEAR(result.freeEnergies[1], reference.freeEnergies[1], 1e-8);
+}
+
+// Wang-Landau only lowers the bias: after an equilibration the raw values are hundreds below zero and the weight
+// exp(-bias) of a production sample overflows. Each histogram is shifted by its own minimum.
+TEST(WHAM_AND_BET_SETUP_FIXES, lambda_bias_is_normalized_to_its_own_minimum)
+{
+  PropertyLambdaProbabilityHistogram histogram(5, 3);
+  histogram.biasFactor = {-800.0, -750.0, -790.0};
+  histogram.normalizeToMinimum();
+  EXPECT_DOUBLE_EQ(histogram.biasFactor[0], 0.0);
+  EXPECT_DOUBLE_EQ(histogram.biasFactor[1], 50.0);
+  EXPECT_DOUBLE_EQ(histogram.biasFactor[2], 10.0);
+  for (std::size_t bin = 0; bin < 3uz; ++bin)
+  {
+    histogram.currentBin = bin;
+    EXPECT_LE(histogram.weight(), 1.0);
+    EXPECT_GE(histogram.weight(), 0.0);
+  }
+
+  System system = makeCO2InBox(300.0);
+  system.components[0].lambdaGC.biasFactor.assign(system.components[0].lambdaGC.biasFactor.size(), -900.0);
+  system.components[0].lambdaGC.biasFactor.front() = -1000.0;
+  system.components[0].lambdaPairSwap.biasFactor.assign(system.components[0].lambdaPairSwap.biasFactor.size(), -5.0);
+  system.normalizeLambdaBiasFactors();
+  EXPECT_DOUBLE_EQ(system.components[0].lambdaGC.biasFactor.front(), 0.0);
+  EXPECT_DOUBLE_EQ(system.components[0].lambdaGC.biasFactor.back(), 100.0);
+  // by its own minimum, and not by the -1000 of the other histogram (a weight of exp(-995) is zero)
+  EXPECT_DOUBLE_EQ(system.components[0].lambdaPairSwap.biasFactor.front(), 0.0);
+}
+
+// The bimodal window of a first-order transition is a hundredth wide in ln f for a few hundred molecules; 200 scan
+// points over ten units are 0.05 apart. No two of them were bimodal, and no coexistence was found.
+TEST(WHAM_AND_BET_SETUP_FIXES, equal_weight_point_is_found_inside_a_window_narrower_than_the_scan)
+{
+  const double transition = 1.23456;
+  auto evaluate = [&](double x) -> MacrostateScanPoint
+  {
+    if (std::abs(x - transition) < 0.004) return {500.0 * (x - transition), 205.0 + 49000.0 * (x - transition)};
+    return {std::nullopt, x < transition ? 10.0 + 0.1 * x : 400.0 + 0.1 * x};
+  };
+  const std::optional<double> located = locateEqualWeightPoint(-5.0, 5.0, 200, evaluate);
+  ASSERT_TRUE(located.has_value());
+  EXPECT_NEAR(located.value(), transition, 1e-9);
+
+  // two bimodal scan points on either side are still the bracket
+  auto wide = [&](double x) -> MacrostateScanPoint
+  {
+    if (std::abs(x - transition) < 0.5) return {500.0 * (x - transition), 205.0 + 390.0 * (x - transition)};
+    return {std::nullopt, x < transition ? 10.0 : 400.0};
+  };
+  const std::optional<double> locatedWide = locateEqualWeightPoint(-5.0, 5.0, 200, wide);
+  ASSERT_TRUE(locatedWide.has_value());
+  EXPECT_NEAR(locatedWide.value(), transition, 1e-9);
+
+  // a loading that does not rise anywhere has no transition, and neither has an empty range
+  auto flat = [](double) -> MacrostateScanPoint { return {std::nullopt, 50.0}; };
+  EXPECT_FALSE(locateEqualWeightPoint(-5.0, 5.0, 200, flat).has_value());
+  EXPECT_FALSE(locateEqualWeightPoint(1.0, 1.0, 200, evaluate).has_value());
 }

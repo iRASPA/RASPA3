@@ -93,9 +93,49 @@ static void validateReweightingTemplate(const System& system, std::span<const do
   {
     throw std::runtime_error(
         "[ReweightedHistogram]: an adsorbate component is required (the reweighting histograms are collected over "
-        "the molecule count of the first component)\n");
+        "the molecule count of the first adsorbate)\n");
   }
-  // Across state points the reduced potential carries the molecule count of the first component only: a second
+  // The replicas sample the grand-canonical Boltzmann distribution of their own state point. A transition-matrix
+  // bias, or its macrostate bounds, makes it another distribution, which the reduced potential does not carry.
+  if (system.tmmc.doTMMC)
+  {
+    throw std::runtime_error(
+        "[ReweightedHistogram]: transition-matrix Monte Carlo ('UseBiasOnMacrostate', 'doTMMC') can not be combined "
+        "with histogram reweighting: the samples have to be drawn from the unbiased grand-canonical ensemble\n");
+  }
+  // A reaction or an identity change turns molecules of the counted component into another one. The sample has
+  // one count and one fugacity, and a reaction's own fractional molecules (their lambda is not looked at when a
+  // sample is taken) would be binned at partial coupling as if they were whole.
+  {
+    auto probability = [&](Move::Types move)
+    {
+      double total = system.mc_moves_probabilities.getProbability(move);
+      for (const Component& component : system.components)
+      {
+        total += component.mc_moves_probabilities.getProbability(move);
+      }
+      return total;
+    };
+    for (const Move::Types move :
+         {Move::Types::ReactionCBMC, Move::Types::ReactionConventionalCFCMC, Move::Types::ReactionConventionalCBCFCMC,
+          Move::Types::ReactionCFCMC, Move::Types::ReactionCBCFCMC, Move::Types::IdentityChangeCBMC})
+    {
+      if (probability(move) > 0.0)
+      {
+        throw std::runtime_error(std::format(
+            "[ReweightedHistogram]: the move '{}' is not supported: the (N, U) samples carry the molecule count of "
+            "one adsorbate at one fugacity, which a reaction or an identity change does not conserve\n",
+            Move::moveNames[std::to_underlying(move)]));
+      }
+    }
+    if (!system.reactions.list.empty())
+    {
+      throw std::runtime_error(
+          "[ReweightedHistogram]: reactions are not supported: the (N, U) samples carry the molecule count of one "
+          "adsorbate at one fugacity\n");
+    }
+  }
+  // Across state points the reduced potential carries the molecule count of the adsorbate only: a second
   // swappable component would need its own -N_1 ln(beta f_1), whose fugacity changes along the ladder.
   const bool severalStatePoints = temperatures.size() * numberOfPressures > 1uz;
   const std::size_t numberOfSwappable = static_cast<std::size_t>(
@@ -104,7 +144,7 @@ static void validateReweightingTemplate(const System& system, std::span<const do
   {
     throw std::runtime_error(std::format(
         "[ReweightedHistogram]: {} swappable components were given; the (N, U) samples record the molecule count of "
-        "the first only, so a ladder of state points can only be reweighted for a single adsorbate\n",
+        "the first adsorbate only, so a ladder of state points can only be reweighted for a single adsorbate\n",
         numberOfSwappable));
   }
   for (const VDWParameters& parameter : system.forceField.data)
@@ -138,7 +178,8 @@ static void validateReweightingTemplate(const System& system, std::span<const do
     }
   }
 
-  const Component& component = system.components.front();
+  // the counted component is the adsorbate, which extra-framework cations of a fixed number may precede
+  const Component& component = system.components[system.tmmcComponent()];
   const bool changesTheMoleculeCount = std::ranges::any_of(
       std::array{Move::Types::Swap, Move::Types::SwapCBMC, Move::Types::SwapCFCMC, Move::Types::SwapCBCFCMC,
                  Move::Types::SwapMultiTrialCBMC},
@@ -182,6 +223,35 @@ static void validateReweightingTemplate(const System& system, std::span<const do
           component.name));
     }
   }
+}
+
+// The numbers of the run itself, for the input reader and the programmatic constructor alike: the block count
+// sizes the per-block histograms (zero blocks wrote past the end of an empty one), and a state point enters
+// the reduced potentials through ln(beta f) (a zero pressure gave -inf, and 0 * -inf for the empty box).
+static void validateReweightingRun(std::size_t numberOfBlocks, std::span<const double> temperatures,
+                                   std::span<const double> pressures, std::span<const double> reweightingTemperatures,
+                                   std::pair<double, double> reweightingPressureRange)
+{
+  if (numberOfBlocks == 0uz)
+  {
+    throw std::runtime_error("[ReweightedHistogram]: 'NumberOfBlocks' must be at least 1\n");
+  }
+  auto requirePositive = [](std::span<const double> values, std::string_view what)
+  {
+    for (const double value : values)
+    {
+      if (!(value > 0.0) || !(value < 1e300))
+      {
+        throw std::runtime_error(
+            std::format("[ReweightedHistogram]: {} must be positive and finite (got {})\n", what, value));
+      }
+    }
+  };
+  requirePositive(temperatures, "every temperature of the ladder");
+  requirePositive(pressures, "every pressure of the ladder");
+  requirePositive(reweightingTemperatures, "every reweighting temperature");
+  requirePositive(std::array{reweightingPressureRange.first, reweightingPressureRange.second},
+                  "the reweighting pressure range");
 }
 
 // The intramolecular energy of the fractional molecules. At lambda = 0 a fractional molecule has no
@@ -306,6 +376,8 @@ ReweightedHistogram::ReweightedHistogram(InputReader& reader)
         reader.reweightingPressureRange.value_or(std::make_pair(pressures.front(), pressures.back()));
   }
 
+  validateReweightingRun(numberOfBlocks, temperatures, pressures, reweightingTemperatures, reweightingPressureRange);
+
   initializeReplicas(std::move(templateSystem));
   numberOfStepsPerCycle = std::max(1uz, systems.front().tmmc.maxMacrostate);
 }
@@ -349,6 +421,8 @@ ReweightedHistogram::ReweightedHistogram(System templateSystem, std::vector<doub
   validateReweightingTemplate(templateSystem, temperatures, pressures.size(), reweightingTemperatures);
   reweightingPressureRange =
       parameters.reweightingPressureRange.value_or(std::make_pair(pressures.front(), pressures.back()));
+
+  validateReweightingRun(numberOfBlocks, temperatures, pressures, reweightingTemperatures, reweightingPressureRange);
 
   initializeReplicas(std::move(templateSystem));
   numberOfStepsPerCycle = std::max(1uz, systems.front().tmmc.maxMacrostate);
@@ -816,6 +890,9 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
       system.pairSwapLambdaClearBookkeeping();
       system.reactionLambdaFinalize();
       system.reactionLambdaClearBookkeeping();
+      // Wang-Landau only lowers the bias: left as it ended, exp(-bias) in System::weight() overflows and
+      // every weighted average of the production run becomes inf / inf
+      system.normalizeLambdaBiasFactors();
     }
     std::fill(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
   }
@@ -975,7 +1052,8 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
                   reweightingSamples[replicaId].push_back(
                       Sample{.energy = sampleEnergy,
                              .numberOfMolecules =
-                                 static_cast<std::uint32_t>(system.numberOfIntegerMoleculesPerComponent[0]),
+                                 static_cast<std::uint32_t>(
+                                     system.numberOfIntegerMoleculesPerComponent[system.tmmcComponent()]),
                              .block = static_cast<std::uint32_t>(estimation.currentBin)});
                 }
 
@@ -999,7 +1077,7 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
               }
 
               // Wang-Landau biasing-factor adjustment (all state is owned by this replica)
-              if (stage == SimulationStage::Equilibration && cycle % rescaleWangLandauEvery == 0uz)
+              if (stage == SimulationStage::Equilibration && (cycle + 1uz) % rescaleWangLandauEvery == 0uz)
               {
                 for (Component& component : system.components)
                 {
@@ -1046,13 +1124,16 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
               }
 
               // the only synchronization point between the threads: the configuration-swap sweep
-              // and the periodic binary-restart checkpoint, both performed by the barrier completion
+              // and the periodic binary-restart checkpoint, both performed by the barrier completion, and a
+              // regular check for a shutdown signal (a run without swaps and without binary restarts never
+              // reached the barrier and ignored the signal until the stage was over)
               const bool swapDue =
                   parallelTemperingSwapEvery != 0uz && (cycle + 1uz) % parallelTemperingSwapEvery == 0uz;
               const bool binaryRestartDue =
                   writeBinaryRestartEvery != 0uz &&
                   ((cycle + 1uz) % writeBinaryRestartEvery == 0uz || cycle + 1uz == numberOfCycles);
-              if (swapDue || binaryRestartDue)
+              const bool shutdownCheckDue = (cycle + 1uz) % GracefulShutdown::checkEvery == 0uz;
+              if (swapDue || binaryRestartDue || shutdownCheckDue)
               {
                 if (replicaId == 0uz)
                 {
@@ -1327,7 +1408,7 @@ void ReweightedHistogram::performReweightingAnalysis()
   for (std::size_t stateId = 0; stateId < numberOfReplicas; ++stateId)
   {
     const System& system = systems[stateId];
-    const Component& component = system.components.front();
+    const Component& component = system.components[system.tmmcComponent()];
     const double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
     stateBeta[stateId] = system.beta;
     stateLogBetaFugacity[stateId] = std::log(system.beta * fugacity);
@@ -1513,12 +1594,24 @@ void ReweightedHistogram::performReweightingAnalysis()
           largest = std::max(largest, logStateCounts[stateId] + freeEnergies[stateId] -
                                           reducedPotential[binId * numberOfReplicas + stateId]);
         }
+        // no sampled state contributes to the bin (it can not hold samples then; guarded all the same, the
+        // logarithm of an empty sum being undefined under -ffast-math)
+        if (largest <= logZeroThreshold)
+        {
+          logDensityOfStates[binId] = logZero;
+          continue;
+        }
         double sum = 0.0;
         for (std::size_t stateId = 0; stateId < numberOfReplicas; ++stateId)
         {
           if (logStateCounts[stateId] <= logZeroThreshold) continue;
           sum += std::exp(logStateCounts[stateId] + freeEnergies[stateId] -
                           reducedPotential[binId * numberOfReplicas + stateId] - largest);
+        }
+        if (!(sum > 0.0))
+        {
+          logDensityOfStates[binId] = logZero;
+          continue;
         }
         logDensityOfStates[binId] = logBinCounts[binId] - largest - std::log(sum);
       }
@@ -1581,6 +1674,14 @@ void ReweightedHistogram::performReweightingAnalysis()
   // no extra sampling: the moments come from the same reweighted bins as the loading, and U is the energy
   // that was stored with every (N, U) sample. Where the pore is empty or full the number fluctuations
   // vanish and the ratio is meaningless, which the caller sees as an empty value.
+  //
+  // <U_IG> is the mean intramolecular energy of the molecule in the ideal gas: zero for a rigid molecule, and
+  // for a flexible one a number the component has to carry ('idealGasEnergy'). Without it the heat is too low by
+  // <U_IG>, as the enthalpy of adsorption of a Monte Carlo run is; that was written out without a word.
+  const Component& heatComponent = systems.front().components[systems.front().tmmcComponent()];
+  const double idealGasEnergyOfAdsorbate = heatComponent.idealGasEnergy.value_or(0.0);
+  const bool isostericHeatLacksIdealGasEnergy =
+      !heatComponent.rigid && heatComponent.atoms.size() > 1uz && !heatComponent.idealGasEnergy.has_value();
   auto reweightIsostericHeat = [&](const std::vector<double>& logDensityOfStates, double beta,
                                    double logBetaFugacity) -> std::optional<double>
   {
@@ -1624,8 +1725,7 @@ void ReweightedHistogram::performReweightingAnalysis()
     if (!(varianceOfMolecules > 1e-8)) return std::nullopt;
 
     // q_st = -(Delta H) with the same ideal-gas reference as PropertyEnthalpy: kT + <U_IG> - cov(N, U) / var(N)
-    return 1.0 / beta + systems.front().components.front().idealGasEnergy.value_or(0.0) -
-           covariance / varianceOfMolecules;
+    return 1.0 / beta + idealGasEnergyOfAdsorbate - covariance / varianceOfMolecules;
   };
 
   auto reweight = [&](const std::vector<double>& logDensityOfStates, double beta,
@@ -1770,7 +1870,8 @@ void ReweightedHistogram::performReweightingAnalysis()
 
   // unit conversions shared by all replicas (identical framework)
   const System& front = systems.front();
-  const Component& frontComponent = front.components.front();
+  const std::size_t adsorbateId = front.tmmcComponent();
+  const Component& frontComponent = front.components[adsorbateId];
   double toMoleculesPerUnitCell = 1.0;
   double toMolePerKg = 0.0;
   double toMgPerG = 0.0;
@@ -1809,13 +1910,13 @@ void ReweightedHistogram::performReweightingAnalysis()
     for (std::size_t stateId = 0; stateId < numberOfReplicas; ++stateId)
     {
       const System& system = systems[stateId];
-      const Component& component = system.components.front();
+      const Component& component = system.components[adsorbateId];
       const double fugacityPa =
           component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.input_pressure;
 
       const auto [loadingAverage, loadingError] = system.averageLoadings.average();
-      const double directLoading = toMoleculesPerUnitCell * loadingAverage.numberOfMolecules[0];
-      const double directError = toMoleculesPerUnitCell * loadingError.numberOfMolecules[0];
+      const double directLoading = toMoleculesPerUnitCell * loadingAverage.numberOfMolecules[adsorbateId];
+      const double directError = toMoleculesPerUnitCell * loadingError.numberOfMolecules[adsorbateId];
 
       const auto [reweightedLoadingSupercell, reweightedErrorSupercell, effectiveSamples] =
           reweightWithError(stateBeta[stateId], stateLogBetaFugacity[stateId]);
@@ -1859,7 +1960,7 @@ void ReweightedHistogram::performReweightingAnalysis()
   // reweighted isotherms: one file per requested temperature, evaluated on a fine log-spaced
   // pressure grid (fugacity coefficients from the Peng-Robinson equation of state at every point)
   // the fluid the walkers ran with: every component at its mole fraction, so that the reweighted fugacity of the
-  // front component, y phi(P) P, reproduces the walkers' own y phi P at their pressure
+  // adsorbate, y phi(P) P, reproduces the walkers' own y phi P at their pressure
   std::vector<EquationOfState::FluidInput> fluidInputs;
   for (const Component& component : front.components)
   {
@@ -1877,6 +1978,16 @@ void ReweightedHistogram::performReweightingAnalysis()
   const double logPressureMaximum = std::log(reweightingPressureRange.second);
   const std::size_t numberOfTargetPressures =
       reweightingPressureRange.second > reweightingPressureRange.first ? reweightingNumberOfPressures : 1uz;
+
+  outputJson["output"]["reweighting"]["isostericHeatLacksIdealGasEnergy"] = isostericHeatLacksIdealGasEnergy;
+  if (isostericHeatLacksIdealGasEnergy)
+  {
+    std::print(stream,
+               "    WARNING: '{}' is flexible and has no ideal-gas energy: the reweighted isosteric heats are\n"
+               "             kT - cov(N, U) / var(N), to which the mean intramolecular energy of the ideal-gas\n"
+               "             molecule, <U_IG>, still has to be added\n\n",
+               heatComponent.name);
+  }
 
   // in reduced units there is no kJ/mol (the conversion factor is zero): the heat is written in units of epsilon
   const bool reducedUnits = Units::unitSystem == Units::System::ReducedUnits;
@@ -1900,8 +2011,12 @@ void ReweightedHistogram::performReweightingAnalysis()
     std::print(isotherm, "# column 11: effective sample size [-]\n");
     std::print(isotherm,
                "# column 12: isosteric heat [{}], kT - cov(N, U) / var(N) over the reweighted\n"
-               "#            distribution; 'nan' where the loading is pinned and N does not fluctuate\n\n",
-               reducedUnits ? "reduced energy units" : "kJ/mol");
+               "#            distribution; 'nan' where the loading is pinned and N does not fluctuate\n{}\n",
+               reducedUnits ? "reduced energy units" : "kJ/mol",
+               isostericHeatLacksIdealGasEnergy
+                   ? "#            WARNING: the molecule is flexible and has no ideal-gas energy: the mean\n"
+                     "#            intramolecular energy of the ideal-gas molecule, <U_IG>, still has to be added\n"
+                   : "");
 
     const double targetBeta = 1.0 / (Units::KB * targetTemperature);
     ReweightedIsotherm stored;
@@ -1920,7 +2035,7 @@ void ReweightedHistogram::performReweightingAnalysis()
           targetTemperature, targetPressure, fluidInputs, EquationOfState::Type::PengRobinson,
           EquationOfState::MixingRules::VanDerWaals);
       const double fugacityCoefficient = recomputesFugacityCoefficient
-                                             ? fluidResults.front().fugacityCoefficient.value_or(1.0)
+                                             ? fluidResults[adsorbateId].fugacityCoefficient.value_or(1.0)
                                              : keptFugacityCoefficient;
       const double fugacityPa = frontComponent.molFraction * fugacityCoefficient * targetPressure;
       const double logBetaFugacity = std::log(targetBeta * fugacityPa / Units::PressureConversionFactor);
@@ -1960,7 +2075,7 @@ void ReweightedHistogram::performReweightingAnalysis()
     }
     else
     {
-      const BETProbeProperties probe = requireBETProbeProperties(front.components.front());
+      const BETProbeProperties probe = requireBETProbeProperties(frontComponent);
       const int3 numberOfUnitCells = front.framework->numberOfUnitCells;
       const double cells =
           static_cast<double>(numberOfUnitCells.x * numberOfUnitCells.y * numberOfUnitCells.z);
@@ -2230,7 +2345,7 @@ void ReweightedHistogram::performReweightingAnalysis()
     {
       double logBetaFugacity;
       double fugacityPa;
-      double saturationPressurePa;
+      std::optional<double> saturationPressurePa;  // nothing: the sampled N do not reach a state of known pressure
       bool saturationPressureFromEmptyBox;  // exact normalization (false: ideal-gas reference)
       double vaporDensity;                  // [kg/m^3]
       double liquidDensity;                 // [kg/m^3]
@@ -2248,14 +2363,21 @@ void ReweightedHistogram::performReweightingAnalysis()
     {
       const double beta = 1.0 / (Units::KB * temperature);
 
-      auto weightDifference = [&](double logBetaFugacity) -> std::optional<std::pair<double, std::size_t>>
+      auto scanPoint = [&](double logBetaFugacity) -> MacrostateScanPoint
       {
         const std::vector<double> logProbability = moleculeDistribution(logDOS, beta, logBetaFugacity);
+        const double logTotal = logSumExpRange(logProbability, 0uz, logProbability.size());
+        double meanMolecules = 0.0;
+        for (std::size_t n = 0; n < logProbability.size(); ++n)
+        {
+          if (logProbability[n] <= logZeroThreshold) continue;
+          meanMolecules += static_cast<double>(n) * std::exp(logProbability[n] - logTotal);
+        }
         const std::optional<std::pair<std::size_t, double>> split = findPhaseSplit(logProbability);
-        if (!split.has_value()) return std::nullopt;
+        if (!split.has_value()) return {std::nullopt, meanMolecules};
         const double logVaporWeight = logSumExpRange(logProbability, 0uz, split->first);
         const double logLiquidWeight = logSumExpRange(logProbability, split->first, logProbability.size());
-        return std::make_pair(logLiquidWeight - logVaporWeight, split->first);
+        return {logLiquidWeight - logVaporWeight, meanMolecules};
       };
 
       auto logBetaFugacityOfPressure = [&](double pressure) -> double
@@ -2265,62 +2387,28 @@ void ReweightedHistogram::performReweightingAnalysis()
             EquationOfState::MixingRules::VanDerWaals);
         const double fugacityPa = frontComponent.molFraction *
                                   (recomputesFugacityCoefficient
-                                       ? fluidResults.front().fugacityCoefficient.value_or(1.0)
+                                       ? fluidResults[adsorbateId].fugacityCoefficient.value_or(1.0)
                                        : keptFugacityCoefficient) *
                                   pressure;
         return std::log(beta * fugacityPa / Units::PressureConversionFactor);
       };
 
-      // bracket search over the (log-spaced) scanned pressure range
+      // The search runs over ln(beta f), the variable the density of states is reweighted in. It ran over the
+      // pressure, with the fugacity of each from the stable Peng-Robinson root: past the saturation pressure of
+      // that equation of state the root is the liquid's, whose fugacity hardly rises with the pressure, so the
+      // scan stalled at the Peng-Robinson saturation fugacity and a model that coexists above it was never
+      // bracketed, at any pressure range. It runs from the fugacity of the dilute end to the larger of the
+      // ideal-gas and the Peng-Robinson fugacity of the upper end.
       constexpr std::size_t numberOfScanPoints = 200uz;
-      double lowerLogBetaFugacity = 0.0;
-      double upperLogBetaFugacity = 0.0;
-      double lowerDifference = 0.0;
-      bool havePrevious = false;
-      bool haveBracket = false;
-      for (std::size_t scanIndex = 0; scanIndex < numberOfScanPoints; ++scanIndex)
-      {
-        const double pressure =
-            std::exp(logPressureMinimum + static_cast<double>(scanIndex) *
-                                              (logPressureMaximum - logPressureMinimum) /
-                                              static_cast<double>(numberOfScanPoints - 1uz));
-        const double logBetaFugacity = logBetaFugacityOfPressure(pressure);
-        const std::optional<std::pair<double, std::size_t>> difference = weightDifference(logBetaFugacity);
-        if (!difference.has_value())
-        {
-          havePrevious = false;
-          continue;
-        }
-        if (havePrevious && lowerDifference < 0.0 && difference->first >= 0.0)
-        {
-          upperLogBetaFugacity = logBetaFugacity;
-          haveBracket = true;
-          break;
-        }
-        lowerLogBetaFugacity = logBetaFugacity;
-        lowerDifference = difference->first;
-        havePrevious = true;
-      }
-      if (!haveBracket) return std::nullopt;
+      const double scanLower = logBetaFugacityOfPressure(std::exp(logPressureMinimum));
+      const double scanUpper =
+          std::max(logBetaFugacityOfPressure(std::exp(logPressureMaximum)),
+                   std::log(beta * frontComponent.molFraction * std::exp(logPressureMaximum) /
+                            Units::PressureConversionFactor));
+      const std::optional<double> located = locateEqualWeightPoint(scanLower, scanUpper, numberOfScanPoints, scanPoint);
+      if (!located.has_value()) return std::nullopt;
 
-      // bisection on ln(beta f) to the equal-weight point
-      for (std::size_t iterationIndex = 0; iterationIndex < 100uz; ++iterationIndex)
-      {
-        const double midpoint = 0.5 * (lowerLogBetaFugacity + upperLogBetaFugacity);
-        const std::optional<std::pair<double, std::size_t>> difference = weightDifference(midpoint);
-        if (!difference.has_value()) break;  // lost bimodality mid-bracket; use the current interval
-        if (difference->first < 0.0)
-        {
-          lowerLogBetaFugacity = midpoint;
-        }
-        else
-        {
-          upperLogBetaFugacity = midpoint;
-        }
-        if (std::abs(difference->first) < 1e-10) break;
-      }
-
-      const double logBetaFugacity = 0.5 * (lowerLogBetaFugacity + upperLogBetaFugacity);
+      const double logBetaFugacity = located.value();
       const std::vector<double> logProbability = moleculeDistribution(logDOS, beta, logBetaFugacity);
       const std::optional<std::pair<std::size_t, double>> split = findPhaseSplit(logProbability);
       if (!split.has_value()) return std::nullopt;
@@ -2347,7 +2435,7 @@ void ReweightedHistogram::performReweightingAnalysis()
       // the empty-box state (N = 0, U = 0, weight exactly one) when it was sampled; otherwise it
       // is fixed approximately at the dilute end of the scanned pressure range, where the vapor
       // is nearly ideal and beta p V ~ beta f V.
-      double saturationPressurePa;
+      std::optional<double> saturationPressurePa;
       // The pressure of the coexisting phases is that of either pure phase: beta p V = ln Xi_vap, the grand
       // partition function restricted to the vapor basin (Errington, J. Chem. Phys. 118, 9915 (2003)). The sum over
       // all N is Xi_vap + Xi_liq = 2 Xi_vap at the equal-weight point and would add k_B T ln 2 / V to p_sat.
@@ -2360,15 +2448,34 @@ void ReweightedHistogram::performReweightingAnalysis()
       }
       else
       {
+        // The reference stands in for the full grand partition function only where the states below the
+        // lowest sampled N carry no weight. With <N> = beta f V of the reference below that N the sum over the
+        // sampled states is its truncated tail, ln Xi ~ N_min ln(beta f V) - ln N_min! in place of beta f V,
+        // and the saturation pressure rose without bound as the dilute end of the range was lowered (megapascals
+        // for five molecules at 100 Pa). The same holds for the vapor peak at coexistence. Where either
+        // distribution still has more than a thousandth of its weight on the lowest sampled N there is no
+        // state of known pressure in reach, and no saturation pressure is given.
+        const std::size_t lowestSampled = static_cast<std::size_t>(
+            std::ranges::find_if(logProbability, [&](double value) { return value > logZeroThreshold; }) -
+            logProbability.begin());
+        constexpr double logTruncatedShare = -6.907755278982137;  // ln 1e-3
         const double referenceLogBetaFugacity = logBetaFugacityOfPressure(std::exp(logPressureMinimum));
         const std::vector<double> referenceLogProbability =
             moleculeDistribution(logDOS, beta, referenceLogBetaFugacity);
         const double logPartitionAtReference =
             logSumExpRange(referenceLogProbability, 0uz, referenceLogProbability.size());
-        const double referenceBetaPressureVolume = std::exp(referenceLogBetaFugacity) * volume;
-        saturationPressurePa =
-            ((logPartitionAtCoexistence - logPartitionAtReference + referenceBetaPressureVolume) / (beta * volume)) *
-            Units::PressureConversionFactor;
+        const bool truncated =
+            lowestSampled >= logProbability.size() ||
+            referenceLogProbability[lowestSampled] - logPartitionAtReference > logTruncatedShare ||
+            logProbability[lowestSampled] - logPartitionAtCoexistence > logTruncatedShare;
+        if (!truncated)
+        {
+          const double referenceBetaPressureVolume = std::exp(referenceLogBetaFugacity) * volume;
+          saturationPressurePa =
+              ((logPartitionAtCoexistence - logPartitionAtReference + referenceBetaPressureVolume) /
+               (beta * volume)) *
+              Units::PressureConversionFactor;
+        }
       }
 
       const double toKgPerCubicMeter = frontComponent.totalMass * Units::DensityConversionFactor / volume;
@@ -2394,7 +2501,8 @@ void ReweightedHistogram::performReweightingAnalysis()
     std::print(coexistence,
                "# the saturation pressure follows from beta p V = ln Xi, normalized by the empty-box\n"
                "# state when sampled (column 13 = 0), otherwise approximately by an ideal-gas reference\n"
-               "# at the dilute end of the scanned pressure range (column 13 = 1)\n");
+               "# at the dilute end of the scanned pressure range (column 13 = 1); 'nan' where the sampled\n"
+               "# molecule counts reach neither (column 13 = 2)\n");
     std::print(coexistence, "# column 1: temperature [K]\n");
     std::print(coexistence, "# column 2, 3: coexistence fugacity, error [Pa]\n");
     std::print(coexistence, "# column 4, 5: saturation pressure, error [Pa]\n");
@@ -2402,7 +2510,10 @@ void ReweightedHistogram::performReweightingAnalysis()
     std::print(coexistence, "# column 8, 9: liquid density, error [kg/m^3]\n");
     std::print(coexistence, "# column 10, 11: vapor, liquid peak [molecules]\n");
     std::print(coexistence, "# column 12: ln P(N) valley depth [-] (vanishes towards the critical point)\n");
-    std::print(coexistence, "# column 13: saturation-pressure normalization (0 exact, 1 ideal-gas reference)\n\n");
+    std::print(coexistence,
+               "# column 13: saturation-pressure normalization (0 exact, 1 ideal-gas reference, 2 none)\n\n");
+
+    bool anyUnavailableSaturationPressure = false;
 
     std::print(stream, "    vapor-liquid coexistence (equal-weight criterion)\n");
     std::print(stream, "    temperature [K]    fugacity [Pa]        P_sat [Pa]           "
@@ -2435,26 +2546,38 @@ void ReweightedHistogram::performReweightingAnalysis()
         blockFugacities.push_back(blockPoint->fugacityPa);
         blockVaporDensities.push_back(blockPoint->vaporDensity);
         blockLiquidDensities.push_back(blockPoint->liquidDensity);
-        blockPressures.push_back(blockPoint->saturationPressurePa);
+        if (blockPoint->saturationPressurePa.has_value())
+        {
+          blockPressures.push_back(blockPoint->saturationPressurePa.value());
+        }
       }
       const double fugacityError = blockErrorEstimate(blockFugacities, point->fugacityPa);
-      const double pressureError = blockErrorEstimate(blockPressures, point->saturationPressurePa);
+      const bool hasSaturationPressure = point->saturationPressurePa.has_value();
+      const double pressureError =
+          hasSaturationPressure ? blockErrorEstimate(blockPressures, point->saturationPressurePa.value()) : 0.0;
+      const std::string saturationPressureText =
+          hasSaturationPressure ? std::format("{: .6e} {: .6e}", point->saturationPressurePa.value(), pressureError)
+                                : std::string(" nan nan");
+      anyUnavailableSaturationPressure = anyUnavailableSaturationPressure || !hasSaturationPressure;
       const double vaporDensityError = blockErrorEstimate(blockVaporDensities, point->vaporDensity);
       const double liquidDensityError = blockErrorEstimate(blockLiquidDensities, point->liquidDensity);
 
       std::print(coexistence,
-                 "{:10.4f}   {: .6e} {: .6e}   {: .6e} {: .6e}   {: .6e} {: .6e}   {: .6e} {: .6e}   "
+                 "{:10.4f}   {: .6e} {: .6e}   {}   {: .6e} {: .6e}   {: .6e} {: .6e}   "
                  "{: .6e} {: .6e}   {: .6e}   {}\n",
-                 targetTemperature, point->fugacityPa, fugacityError, point->saturationPressurePa, pressureError,
+                 targetTemperature, point->fugacityPa, fugacityError, saturationPressureText,
                  point->vaporDensity, vaporDensityError, point->liquidDensity, liquidDensityError,
                  point->vaporMolecules, point->liquidMolecules, point->valleyDepth,
-                 point->saturationPressureFromEmptyBox ? 0 : 1);
+                 point->saturationPressureFromEmptyBox ? 0 : (hasSaturationPressure ? 1 : 2));
 
-      std::print(stream, "    {:15.4f}    {: .6e} ± {:.2e}   {: .6e} ± {:.2e}{}  {:9.4f} ± {:7.4f}   "
+      std::print(stream, "    {:15.4f}    {: .6e} ± {:.2e}   {}{}  {:9.4f} ± {:7.4f}   "
                          "{:9.4f} ± {:7.4f}\n",
-                 targetTemperature, point->fugacityPa, fugacityError, point->saturationPressurePa, pressureError,
-                 point->saturationPressureFromEmptyBox ? ' ' : '*', point->vaporDensity, vaporDensityError,
-                 point->liquidDensity, liquidDensityError);
+                 targetTemperature, point->fugacityPa, fugacityError,
+                 hasSaturationPressure
+                     ? std::format("{: .6e} ± {:.2e}", point->saturationPressurePa.value(), pressureError)
+                     : std::format("{:>24}", "not available"),
+                 point->saturationPressureFromEmptyBox ? ' ' : (hasSaturationPressure ? '*' : '#'),
+                 point->vaporDensity, vaporDensityError, point->liquidDensity, liquidDensityError);
 
       // the coexistence molecule-number distribution (for inspection and finite-size scaling)
       std::ofstream distribution(std::format("output/vle_distribution_{}.reweighted_histogram.txt",
@@ -2480,20 +2603,35 @@ void ReweightedHistogram::performReweightingAnalysis()
       vleEntry["temperature"] = targetTemperature;
       vleEntry["fugacity"] = point->fugacityPa;
       vleEntry["fugacityError"] = fugacityError;
-      vleEntry["saturationPressure"] = point->saturationPressurePa;
-      vleEntry["saturationPressureError"] = pressureError;
+      if (hasSaturationPressure)
+      {
+        vleEntry["saturationPressure"] = point->saturationPressurePa.value();
+        vleEntry["saturationPressureError"] = pressureError;
+      }
+      else
+      {
+        vleEntry["saturationPressure"] = nullptr;
+        vleEntry["saturationPressureError"] = nullptr;
+      }
       vleEntry["vaporDensity"] = point->vaporDensity;
       vleEntry["vaporDensityError"] = vaporDensityError;
       vleEntry["liquidDensity"] = point->liquidDensity;
       vleEntry["liquidDensityError"] = liquidDensityError;
       vleEntry["valleyDepth"] = point->valleyDepth;
       vleEntry["saturationPressureNormalization"] =
-          point->saturationPressureFromEmptyBox ? "empty-box" : "ideal-gas reference";
+          point->saturationPressureFromEmptyBox ? "empty-box"
+                                                : (hasSaturationPressure ? "ideal-gas reference" : "unavailable");
       outputJson["output"]["reweighting"]["vaporLiquidEquilibrium"].push_back(vleEntry);
     }
     std::print(stream, "\n");
     std::print(stream, "    (* saturation pressure normalized approximately by an ideal-gas reference at the\n");
     std::print(stream, "       dilute end of the pressure range; the empty-box state was never sampled)\n");
+    if (anyUnavailableSaturationPressure)
+    {
+      std::print(stream, "    (# no saturation pressure: the empty box was never sampled and the sampled molecule\n");
+      std::print(stream, "       counts do not reach down to the vapor, or to the dilute end of the pressure range;\n");
+      std::print(stream, "       the coexistence fugacity and densities do not depend on it)\n");
+    }
     std::print(stream, "    note: near coexistence the direct and reweighted loadings in the self-consistency\n");
     std::print(stream, "          table may legitimately differ; a single replica stays in one (possibly\n");
     std::print(stream, "          metastable) phase while the reweighted average covers both phases\n\n");

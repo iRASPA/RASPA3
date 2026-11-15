@@ -393,6 +393,72 @@ void writeNitrogenBETPressurePlan(std::ostream& stream, const NitrogenBETPressur
              ladderBottomFillFraction, nitrogenBETMaxLogSpacingMultiplier, nitrogenBETMaxGradientExtrasPerInterval);
 }
 
+std::optional<double> locateEqualWeightPoint(double lower, double upper, std::size_t numberOfScanPoints,
+                                             const std::function<MacrostateScanPoint(double)>& evaluate)
+{
+  if (numberOfScanPoints < 2uz || !(upper > lower)) return std::nullopt;
+
+  std::vector<double> x(numberOfScanPoints);
+  std::vector<MacrostateScanPoint> points;
+  points.reserve(numberOfScanPoints);
+  for (std::size_t i = 0; i < numberOfScanPoints; ++i)
+  {
+    x[i] = lower + static_cast<double>(i) * (upper - lower) / static_cast<double>(numberOfScanPoints - 1uz);
+    points.push_back(evaluate(x[i]));
+  }
+
+  // two successive bimodal points with the liquid taking over between them
+  std::optional<std::size_t> bracket;
+  for (std::size_t i = 0; i + 1uz < numberOfScanPoints && !bracket.has_value(); ++i)
+  {
+    const std::optional<double>& left = points[i].weightDifference;
+    const std::optional<double>& right = points[i + 1uz].weightDifference;
+    if (left.has_value() && right.has_value() && left.value() < 0.0 && right.value() >= 0.0) bracket = i;
+  }
+  // otherwise the largest rise of <N> between two successive points that can have the transition between them
+  if (!bracket.has_value())
+  {
+    double largestRise = 0.0;
+    for (std::size_t i = 0; i + 1uz < numberOfScanPoints; ++i)
+    {
+      const std::optional<double>& left = points[i].weightDifference;
+      const std::optional<double>& right = points[i + 1uz].weightDifference;
+      if (left.has_value() && left.value() >= 0.0) continue;  // already liquid
+      if (right.has_value() && right.value() < 0.0) continue;  // still vapor
+      const double rise = points[i + 1uz].meanMolecules - points[i].meanMolecules;
+      if (rise > largestRise)
+      {
+        largestRise = rise;
+        bracket = i;
+      }
+    }
+  }
+  if (!bracket.has_value()) return std::nullopt;
+
+  double lowerX = x[bracket.value()];
+  double upperX = x[bracket.value() + 1uz];
+  const double middleMolecules =
+      0.5 * (points[bracket.value()].meanMolecules + points[bracket.value() + 1uz].meanMolecules);
+  for (std::size_t iteration = 0; iteration < 100uz; ++iteration)
+  {
+    const double midpoint = 0.5 * (lowerX + upperX);
+    const MacrostateScanPoint point = evaluate(midpoint);
+    const bool liquidSide = point.weightDifference.has_value() ? point.weightDifference.value() >= 0.0
+                                                               : point.meanMolecules >= middleMolecules;
+    if (liquidSide)
+    {
+      upperX = midpoint;
+    }
+    else
+    {
+      lowerX = midpoint;
+    }
+    if (point.weightDifference.has_value() && std::abs(point.weightDifference.value()) < 1e-10) break;
+    if (upperX - lowerX < 1e-13) break;
+  }
+  return 0.5 * (lowerX + upperX);
+}
+
 std::optional<std::pair<std::size_t, double>> findMacrostatePhaseSplit(std::span<const double> logProbability,
                                                                       double logZeroThreshold,
                                                                       double bimodalDepthThreshold)

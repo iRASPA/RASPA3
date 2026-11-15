@@ -1101,6 +1101,9 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
         system.pairSwapLambdaClearBookkeeping();
         system.reactionLambdaFinalize();
         system.reactionLambdaClearBookkeeping();
+        // Wang-Landau only lowers the bias: left as it ended, exp(-bias) in System::weight() overflows and
+        // every weighted average of the production run becomes inf / inf
+        system.normalizeLambdaBiasFactors();
       }
     }
     std::fill(stepsPerWalker.begin(), stepsPerWalker.end(), 0uz);
@@ -1258,7 +1261,7 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
               }
 
               // Wang-Landau biasing-factor adjustment (all state is owned by this walker)
-              if (stage == SimulationStage::Equilibration && cycle % rescaleWangLandauEvery == 0uz &&
+              if (stage == SimulationStage::Equilibration && (cycle + 1uz) % rescaleWangLandauEvery == 0uz &&
                   !system.tmmc.lambdaChain())
               {
                 for (Component& component : system.components)
@@ -1611,7 +1614,7 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
   {
     double logBetaFugacity;
     double fugacityPa;
-    double saturationPressurePa;
+    std::optional<double> saturationPressurePa;  // nothing: the macrostates do not reach a state of known pressure
     bool saturationPressureFromEmptyBox;  // exact normalization (false: ideal-gas reference)
     double vaporDensity;                  // [kg/m^3]
     double liquidDensity;                 // [kg/m^3]
@@ -1642,10 +1645,13 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
     std::print(coexistence, "# column 8, 9: liquid density, error [kg/m^3]\n");
     std::print(coexistence, "# column 10, 11: vapor, liquid peak [molecules]\n");
     std::print(coexistence, "# column 12: ln P(N) valley depth [-] (vanishes towards the critical point)\n");
-    std::print(coexistence, "# column 13: saturation-pressure normalization (0 exact, 1 ideal-gas reference)\n\n");
+    std::print(coexistence,
+               "# column 13: saturation-pressure normalization (0 exact, 1 ideal-gas reference, 2 none: the\n"
+               "#            macrostates reach neither the empty box nor the dilute vapor, 'nan' in column 4, 5)\n\n");
   }
 
   bool anyApproximateNormalization = false;
+  bool anyUnavailableSaturationPressure = false;
 
   if (computeBET)
   {
@@ -1673,7 +1679,7 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
           temperature, pressurePa, fluidInputs, EquationOfState::Type::PengRobinson,
           EquationOfState::MixingRules::VanDerWaals);
       return frontComponent.molFraction *
-             (recomputesFugacityCoefficient ? fluidResults.front().fugacityCoefficient.value_or(1.0)
+             (recomputesFugacityCoefficient ? fluidResults[front.tmmcComponent()].fugacityCoefficient.value_or(1.0)
                                             : keptFugacityCoefficient) *
              pressurePa / Units::PressureConversionFactor;
     };
@@ -2353,74 +2359,41 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
 
     auto solveCoexistence = [&](const std::vector<double>& logPiInput) -> std::optional<CoexistencePoint>
     {
-      auto weightDifference = [&](double delta) -> std::optional<std::pair<double, std::size_t>>
+      auto scanPoint = [&](double delta) -> MacrostateScanPoint
       {
         const std::vector<double> logProbability = reweightedDistribution(logPiInput, delta);
+        const double logTotal = logSumExpRange(logProbability, 0uz, logProbability.size());
+        double meanMolecules = 0.0;
+        for (std::size_t index = 0; index < logProbability.size(); ++index)
+        {
+          if (logProbability[index] <= logZeroThreshold) continue;
+          meanMolecules += static_cast<double>(index) * std::exp(logProbability[index] - logTotal);
+        }
         const std::optional<std::pair<std::size_t, double>> split = findPhaseSplit(logProbability);
-        if (!split.has_value()) return std::nullopt;
+        if (!split.has_value()) return {std::nullopt, meanMolecules};
         const double logVaporWeight = logSumExpRange(logProbability, 0uz, split->first);
         const double logLiquidWeight = logSumExpRange(logProbability, split->first, logProbability.size());
-        return std::make_pair(logLiquidWeight - logVaporWeight, split->first);
+        return {logLiquidWeight - logVaporWeight, meanMolecules};
       };
 
-      // Bracket search over the fugacity, the variable ln Pi is reweighted in. The scan ran over the pressure
+      // The search runs over the fugacity, the variable ln Pi is reweighted in. The scan ran over the pressure
       // and took the fugacity of each from the stable Peng-Robinson root: past the saturation pressure of that
       // equation of state the root switches to the liquid, whose fugacity hardly rises with the pressure, so the
       // scan stalled at the Peng-Robinson saturation fugacity. A model that coexists above it (the force field
       // and the equation of state rarely agree to better than a few percent) was never bracketed, at any
       // pressure range. The scan runs from the fugacity of the dilute end to the larger of the ideal-gas and the
-      // Peng-Robinson fugacity of the upper end, evenly in ln f.
+      // Peng-Robinson fugacity of the upper end, evenly in ln f; see locateEqualWeightPoint for the bracket.
       constexpr std::size_t numberOfScanPoints = 200uz;
       const double scanLowerDelta = logBetaFugacityToDelta(fugacityOfPressure(std::exp(logPressureMinimum)));
       const double scanUpperDelta =
           std::max(logBetaFugacityToDelta(fugacityOfPressure(std::exp(logPressureMaximum))),
                    logBetaFugacityToDelta(frontComponent.molFraction * std::exp(logPressureMaximum) /
                                           Units::PressureConversionFactor));
-      double lowerDelta = 0.0;
-      double upperDelta = 0.0;
-      double lowerDifference = 0.0;
-      bool havePrevious = false;
-      bool haveBracket = false;
-      for (std::size_t scanIndex = 0; scanIndex < numberOfScanPoints; ++scanIndex)
-      {
-        const double delta = scanLowerDelta + static_cast<double>(scanIndex) * (scanUpperDelta - scanLowerDelta) /
-                                                  static_cast<double>(numberOfScanPoints - 1uz);
-        const std::optional<std::pair<double, std::size_t>> difference = weightDifference(delta);
-        if (!difference.has_value())
-        {
-          havePrevious = false;
-          continue;
-        }
-        if (havePrevious && lowerDifference < 0.0 && difference->first >= 0.0)
-        {
-          upperDelta = delta;
-          haveBracket = true;
-          break;
-        }
-        lowerDelta = delta;
-        lowerDifference = difference->first;
-        havePrevious = true;
-      }
-      if (!haveBracket) return std::nullopt;
+      const std::optional<double> located =
+          locateEqualWeightPoint(scanLowerDelta, scanUpperDelta, numberOfScanPoints, scanPoint);
+      if (!located.has_value()) return std::nullopt;
 
-      // bisection on ln f to the equal-weight point
-      for (std::size_t iterationIndex = 0; iterationIndex < 100uz; ++iterationIndex)
-      {
-        const double midpoint = 0.5 * (lowerDelta + upperDelta);
-        const std::optional<std::pair<double, std::size_t>> difference = weightDifference(midpoint);
-        if (!difference.has_value()) break;  // lost bimodality mid-bracket; use the current interval
-        if (difference->first < 0.0)
-        {
-          lowerDelta = midpoint;
-        }
-        else
-        {
-          upperDelta = midpoint;
-        }
-        if (std::abs(difference->first) < 1e-10) break;
-      }
-
-      const double delta = 0.5 * (lowerDelta + upperDelta);
+      const double delta = located.value();
       const std::vector<double> logProbability = reweightedDistribution(logPiInput, delta);
       const std::optional<std::pair<std::size_t, double>> split = findPhaseSplit(logProbability);
       if (!split.has_value()) return std::nullopt;
@@ -2450,7 +2423,7 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
       // the empty-box state (N = 0, weight exactly one) when the macrostate range starts at zero
       // and the state was visited; otherwise it is fixed approximately at the dilute end of the
       // scanned pressure range, where the vapor is nearly ideal and beta p V ~ beta f V.
-      double saturationPressurePa;
+      std::optional<double> saturationPressurePa;
       // The pressure of the coexisting phases is that of either pure phase: beta p V = ln Xi_vap, the grand
       // partition function restricted to the vapor basin (Errington, J. Chem. Phys. 118, 9915 (2003)). The sum over
       // all N is Xi_vap + Xi_liq = 2 Xi_vap at the equal-weight point and would add k_B T ln 2 / V to p_sat.
@@ -2463,15 +2436,34 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
       }
       else
       {
+        // The reference stands in for the full grand partition function only where the macrostates below the
+        // lowest one of the range carry no weight. With <N> = beta f V of the reference below that N the sum
+        // over the range is its truncated tail, ln Xi ~ N_min ln(beta f V) - ln N_min! in place of beta f V, and
+        // the saturation pressure rose without bound as the dilute end of the range was lowered (megapascals
+        // for five molecules at 100 Pa). The same holds for the vapor peak at coexistence. Where either
+        // distribution still has more than a thousandth of its weight on the lowest macrostate there is no
+        // state of known pressure in reach, and no saturation pressure is given.
+        const std::size_t lowestSampled = static_cast<std::size_t>(
+            std::ranges::find_if(logProbability, [&](double value) { return value > logZeroThreshold; }) -
+            logProbability.begin());
+        constexpr double logTruncatedShare = -6.907755278982137;  // ln 1e-3
         const double referenceFugacityDilute = fugacityOfPressure(std::exp(logPressureMinimum));
         const std::vector<double> referenceLogProbability =
             reweightedDistribution(logPiInput, logBetaFugacityToDelta(referenceFugacityDilute));
         const double logPartitionAtReference =
             logSumExpRange(referenceLogProbability, 0uz, referenceLogProbability.size());
-        const double referenceBetaPressureVolume = beta * referenceFugacityDilute * volume;
-        saturationPressurePa =
-            ((logPartitionAtCoexistence - logPartitionAtReference + referenceBetaPressureVolume) / (beta * volume)) *
-            Units::PressureConversionFactor;
+        const bool truncated =
+            lowestSampled >= logProbability.size() ||
+            referenceLogProbability[lowestSampled] - logPartitionAtReference > logTruncatedShare ||
+            logProbability[lowestSampled] - logPartitionAtCoexistence > logTruncatedShare;
+        if (!truncated)
+        {
+          const double referenceBetaPressureVolume = beta * referenceFugacityDilute * volume;
+          saturationPressurePa =
+              ((logPartitionAtCoexistence - logPartitionAtReference + referenceBetaPressureVolume) /
+               (beta * volume)) *
+              Units::PressureConversionFactor;
+        }
       }
 
       const double toKgPerCubicMeter = frontComponent.totalMass * Units::DensityConversionFactor / volume;
@@ -2519,28 +2511,42 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
       blockFugacities.push_back(blockPoint->fugacityPa);
       blockVaporDensities.push_back(blockPoint->vaporDensity);
       blockLiquidDensities.push_back(blockPoint->liquidDensity);
-      blockPressures.push_back(blockPoint->saturationPressurePa);
+      if (blockPoint->saturationPressurePa.has_value())
+      {
+        blockPressures.push_back(blockPoint->saturationPressurePa.value());
+      }
     }
     const double fugacityError = blockErrorEstimate(blockFugacities, point->fugacityPa);
-    const double pressureError = blockErrorEstimate(blockPressures, point->saturationPressurePa);
+    const bool hasSaturationPressure = point->saturationPressurePa.has_value();
+    const double pressureError =
+        hasSaturationPressure ? blockErrorEstimate(blockPressures, point->saturationPressurePa.value()) : 0.0;
+    const std::string saturationPressureText =
+        hasSaturationPressure ? std::format("{: .6e} {: .6e}", point->saturationPressurePa.value(), pressureError)
+                              : std::string(" nan nan");
+    anyUnavailableSaturationPressure = anyUnavailableSaturationPressure || !hasSaturationPressure;
     const double vaporDensityError = blockErrorEstimate(blockVaporDensities, point->vaporDensity);
     const double liquidDensityError = blockErrorEstimate(blockLiquidDensities, point->liquidDensity);
 
-    anyApproximateNormalization = anyApproximateNormalization || !point->saturationPressureFromEmptyBox;
+    anyApproximateNormalization =
+        anyApproximateNormalization || (hasSaturationPressure && !point->saturationPressureFromEmptyBox);
 
     std::print(coexistence,
-               "{:10.4f}   {: .6e} {: .6e}   {: .6e} {: .6e}   {: .6e} {: .6e}   {: .6e} {: .6e}   "
+               "{:10.4f}   {: .6e} {: .6e}   {}   {: .6e} {: .6e}   {: .6e} {: .6e}   "
                "{: .6e} {: .6e}   {: .6e}   {}\n",
-               temperature, point->fugacityPa, fugacityError, point->saturationPressurePa, pressureError,
+               temperature, point->fugacityPa, fugacityError, saturationPressureText,
                point->vaporDensity, vaporDensityError, point->liquidDensity, liquidDensityError, point->vaporMolecules,
-               point->liquidMolecules, point->valleyDepth, point->saturationPressureFromEmptyBox ? 0 : 1);
+               point->liquidMolecules, point->valleyDepth,
+               point->saturationPressureFromEmptyBox ? 0 : (hasSaturationPressure ? 1 : 2));
 
     std::print(stream,
-               "    {:15.4f}    {: .6e} ± {:.2e}   {: .6e} ± {:.2e}{}  {:9.4f} ± {:7.4f}   "
+               "    {:15.4f}    {: .6e} ± {:.2e}   {}{}  {:9.4f} ± {:7.4f}   "
                "{:9.4f} ± {:7.4f}\n",
-               temperature, point->fugacityPa, fugacityError, point->saturationPressurePa, pressureError,
-               point->saturationPressureFromEmptyBox ? ' ' : '*', point->vaporDensity, vaporDensityError,
-               point->liquidDensity, liquidDensityError);
+               temperature, point->fugacityPa, fugacityError,
+               hasSaturationPressure
+                   ? std::format("{: .6e} ± {:.2e}", point->saturationPressurePa.value(), pressureError)
+                   : std::format("{:>24}", "not available"),
+               point->saturationPressureFromEmptyBox ? ' ' : (hasSaturationPressure ? '*' : '#'),
+               point->vaporDensity, vaporDensityError, point->liquidDensity, liquidDensityError);
 
     // the coexistence molecule-number distribution (for inspection and finite-size scaling)
     std::ofstream distribution(std::format("output/vle_distribution_{}.parallel_tmmc.txt", temperature),
@@ -2564,15 +2570,24 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
     vleEntry["temperature"] = temperature;
     vleEntry["fugacity"] = point->fugacityPa;
     vleEntry["fugacityError"] = fugacityError;
-    vleEntry["saturationPressure"] = point->saturationPressurePa;
-    vleEntry["saturationPressureError"] = pressureError;
+    if (hasSaturationPressure)
+    {
+      vleEntry["saturationPressure"] = point->saturationPressurePa.value();
+      vleEntry["saturationPressureError"] = pressureError;
+    }
+    else
+    {
+      vleEntry["saturationPressure"] = nullptr;
+      vleEntry["saturationPressureError"] = nullptr;
+    }
     vleEntry["vaporDensity"] = point->vaporDensity;
     vleEntry["vaporDensityError"] = vaporDensityError;
     vleEntry["liquidDensity"] = point->liquidDensity;
     vleEntry["liquidDensityError"] = liquidDensityError;
     vleEntry["valleyDepth"] = point->valleyDepth;
     vleEntry["saturationPressureNormalization"] =
-        point->saturationPressureFromEmptyBox ? "empty-box" : "ideal-gas reference";
+        point->saturationPressureFromEmptyBox ? "empty-box"
+                                              : (hasSaturationPressure ? "ideal-gas reference" : "unavailable");
     outputJson["output"]["tmmc"]["vaporLiquidEquilibrium"].push_back(vleEntry);
   }
 
@@ -2584,6 +2599,13 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
       std::print(stream, "    (* saturation pressure normalized approximately by an ideal-gas reference at the\n");
       std::print(stream, "       dilute end of the pressure range; the empty-box state N = 0 was never sampled -\n");
       std::print(stream, "       set 'MacroStateMinimumNumberOfMolecules' to 0 for the exact normalization)\n");
+    }
+    if (anyUnavailableSaturationPressure)
+    {
+      std::print(stream, "    (# no saturation pressure: the macrostate range starts above the vapor, or above the\n");
+      std::print(stream, "       loading at the dilute end of the pressure range, so no state of known pressure is in\n");
+      std::print(stream, "       reach; set 'MacroStateMinimumNumberOfMolecules' to 0. The coexistence fugacity and\n");
+      std::print(stream, "       densities do not depend on it)\n");
     }
     std::print(stream, "    coexistence written to output/vle_coexistence.parallel_tmmc.txt\n");
     std::print(stream, "    coexistence P(N) written to output/vle_distribution_{{T}}.parallel_tmmc.txt\n\n");

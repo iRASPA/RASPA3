@@ -147,6 +147,15 @@ export struct PropertyLambdaProbabilityHistogram
     }
   }
 
+  /// Shifts the bias so that its smallest value is zero. The weight exp(-bias) of every bin is then at most
+  /// one: Wang-Landau only ever lowers the bias, and exp(-bias) of the raw values overflows after a few
+  /// thousand cycles, turning every weighted average into inf / inf.
+  void normalizeToMinimum()
+  {
+    if (biasFactor.empty()) return;
+    normalize(*std::min_element(biasFactor.cbegin(), biasFactor.cend()));
+  }
+
   void sampleHistogram(std::size_t blockIndex, double fluidDensity, double dUdlambda,
                        bool containsTheFractionalMolecule, double w)
   {

@@ -1266,6 +1266,34 @@ void System::pairSwapLambdaNormalize(double minBias) noexcept
   }
 }
 
+void System::normalizeLambdaBiasFactors() noexcept
+{
+  for (Component& component : components)
+  {
+    component.lambdaGC.normalizeToMinimum();
+    component.lambdaPairSwap.normalizeToMinimum();
+    component.lambdaPairSwapCB.normalizeToMinimum();
+    component.lambdaGroupSwap.normalizeToMinimum();
+    component.lambdaGroupSwapCB.normalizeToMinimum();
+  }
+  for (Reaction& reaction : reactions.list)
+  {
+    double minBias = std::numeric_limits<double>::max();
+    auto include = [&minBias](const PropertyLambdaProbabilityHistogram& histogram)
+    {
+      if (!histogram.biasFactor.empty())
+      {
+        minBias = std::min(minBias, *std::min_element(histogram.biasFactor.cbegin(), histogram.biasFactor.cend()));
+      }
+    };
+    include(reaction.lambda);
+    if (reaction.isSerialRxCFC()) include(reaction.lambdaProductSide);
+    if (minBias == std::numeric_limits<double>::max()) continue;
+    reaction.lambda.normalize(minBias);
+    if (reaction.isSerialRxCFC()) reaction.lambdaProductSide.normalize(minBias);
+  }
+}
+
 void System::pairSwapLambdaWriteBiasingFiles(std::size_t systemId)
 {
   for (std::size_t i = 0; i < components.size(); ++i)

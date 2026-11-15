@@ -193,6 +193,90 @@ TEST(REWEIGHTED_HISTOGRAM_WHAM, reweighting_at_the_sampled_state_of_a_mixture_co
   EXPECT_NEAR(simulation.reweightedIsotherms.front().points.front().fugacity, 0.5e4, 1.0e-6);
 }
 
+TEST(REWEIGHTED_HISTOGRAM_WHAM, reweighting_takes_the_adsorbate_behind_a_fixed_cation)
+{
+  // Fixed cations listed before the adsorbate: the state fugacity, the reweighted fugacity and the direct loading
+  // were those of component 0, the cation, whose mole fraction is zero (ln(beta f) of minus infinity).
+  TemporaryDirectory workspace;
+  ScopedCurrentPath currentPath(workspace.path());
+
+  const ForceField forceField({{"X", false, 1.0, 0.0, 0.0, 1, false}}, {{0.0, 1.0}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  Component cation(forceField, "cation", 0.0, 0.0, 0.0, {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {},
+                   {}, 5, 21);
+  cation.type = Component::Type::Cation;
+  const Component particle(forceField, "particle", 0.0, 0.0, 0.0,
+                           {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 1, false, false)}, {}, {}, 5, 21);
+  System system(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {cation, particle}, {},
+                {3, 0}, 5);
+  system.components[0].molFraction = 0.0;
+  system.components[1].molFraction = 1.0;
+  system.tmmc.maxMacrostate = 50;
+  ASSERT_EQ(system.tmmcComponent(), 1uz);
+
+  ReweightedHistogramParameters parameters;
+  parameters.numberOfPreInitializationCycles = 0;
+  parameters.numberOfInitializationCycles = 0;
+  parameters.numberOfEquilibrationCycles = 0;
+  parameters.numberOfProductionCycles = 10;
+  parameters.numberOfBlocks = 5;
+  parameters.parallelTemperingSwapEvery = 0;
+  parameters.writeBinaryRestartEvery = 0;
+  parameters.reweightingTemperatures = {300.0};
+  parameters.reweightingPressureRange = std::make_pair(1e4, 1e4);
+  parameters.reweightingNumberOfPressures = 1;
+  ReweightedHistogram simulation(std::move(system), {300.0}, {1e4}, parameters);
+  addBalancedSamples(simulation);
+  simulation.setup();
+  for (System& replica : simulation.systems)
+  {
+    for (Component& component : replica.components) component.fugacityCoefficient = 1.0;
+  }
+  simulation.performReweightingAnalysis();
+
+  EXPECT_TRUE(simulation.whamConverged);
+  ASSERT_FALSE(simulation.reweightedIsotherms.empty());
+  ASSERT_FALSE(simulation.reweightedIsotherms.front().points.empty());
+  EXPECT_NEAR(simulation.reweightedIsotherms.front().points.front().moleculesPerCell, 0.5, 1.0e-8);
+  EXPECT_NEAR(simulation.reweightedIsotherms.front().points.front().fugacity, 1.0e4, 1.0e-6);
+  EXPECT_NEAR(simulation.outputJson["output"]["reweighting"]["states"][0]["fugacity"].get<double>(), 1.0e4, 1.0e-6);
+}
+
+TEST(REWEIGHTED_HISTOGRAM_WHAM, constructor_refuses_runs_it_can_not_analyse)
+{
+  auto make = [](auto&& change)
+  {
+    System system = makeIdealParticleSystem();
+    system.tmmc.maxMacrostate = 50;
+    system.components[0].mc_moves_probabilities.setProbability(Move::Types::Swap, 1.0);
+    system.components[0].swappable = true;
+    ReweightedHistogramParameters parameters;
+    parameters.numberOfProductionCycles = 10;
+    parameters.writeBinaryRestartEvery = 0;
+    std::vector<double> pressures{1e4, 2e4};
+    change(system, parameters, pressures);
+    return ReweightedHistogram(std::move(system), {300.0}, pressures, parameters);
+  };
+  EXPECT_NO_THROW(make([](System&, ReweightedHistogramParameters&, std::vector<double>&) {}));
+  // zero blocks wrote past the end of the per-block histograms
+  EXPECT_THROW(make([](System&, ReweightedHistogramParameters& parameters, std::vector<double>&)
+                    { parameters.numberOfBlocks = 0; }),
+               std::runtime_error);
+  // ln(beta f) of a zero pressure
+  EXPECT_THROW(make([](System&, ReweightedHistogramParameters&, std::vector<double>& pressures) { pressures[0] = 0.0; }),
+               std::runtime_error);
+  EXPECT_THROW(make([](System&, ReweightedHistogramParameters& parameters, std::vector<double>&)
+                    { parameters.reweightingPressureRange = std::make_pair(0.0, 1e5); }),
+               std::runtime_error);
+  // a transition-matrix bias is not the Boltzmann distribution the reduced potentials assume
+  EXPECT_THROW(make([](System& system, ReweightedHistogramParameters&, std::vector<double>&)
+                    { system.tmmc.doTMMC = true; }),
+               std::runtime_error);
+  EXPECT_THROW(make([](System& system, ReweightedHistogramParameters&, std::vector<double>&)
+                    { system.components[0].mc_moves_probabilities.setProbability(Move::Types::IdentityChangeCBMC, 1.0); }),
+               std::runtime_error);
+}
+
 TEST(REWEIGHTED_HISTOGRAM_WHAM, inner_steps_equal_filling_ceiling)
 {
   ReweightedHistogram simulation = makeSingleStateDriver();
