@@ -14,7 +14,8 @@ void PropertyNumberOfMoleculesHistogram::addSample(std::size_t blockIndex, std::
 {
   std::make_signed_t<std::size_t> bin;
 
-  if (currentCycle % sampleEvery != 0uz) return;
+  // (an interval of zero is no interval: the remainder by it is a division by zero)
+  if (sampleEvery == 0uz || currentCycle % sampleEvery != 0uz) return;
 
   // a histogram built without its component count (the constructor without 'numberOfComponents') has no channels:
   // only the components it was sized for are binned
@@ -59,7 +60,7 @@ void PropertyNumberOfMoleculesHistogram::writeOutput(std::size_t systemId, std::
                                                      std::size_t currentCycle)
 {
   if (!writeEvery.has_value()) return;
-  if (currentCycle % writeEvery.value() != 0uz) return;
+  if (writeEvery.value() == 0uz || currentCycle % writeEvery.value() != 0uz) return;
 
   std::filesystem::create_directory("number_of_molecules_histogram");
 

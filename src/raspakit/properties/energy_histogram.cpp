@@ -11,7 +11,8 @@ import average_energy_type;
 void PropertyEnergyHistogram::addSample(std::size_t blockIndex, std::size_t currentCycle, AverageEnergyType energy,
                                         const double &weight)
 {
-  if (currentCycle % sampleEvery != 0uz) return;
+  // (an interval of zero is no interval: the remainder by it is a division by zero)
+  if (sampleEvery == 0uz || currentCycle % sampleEvery != 0uz) return;
 
   // The scaled index is signed. Casting a negative value to std::size_t is undefined for <= -1
   // and truncates (-1, 0) onto bin 0.
@@ -41,7 +42,7 @@ PropertyEnergyHistogram::result() const
 void PropertyEnergyHistogram::writeOutput(std::size_t systemId, std::size_t currentCycle)
 {
   if (!writeEvery.has_value()) return;
-  if (currentCycle % writeEvery.value() != 0uz) return;
+  if (writeEvery.value() == 0uz || currentCycle % writeEvery.value() != 0uz) return;
 
   std::filesystem::create_directory("energy_histogram");
 

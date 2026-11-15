@@ -3,6 +3,7 @@
   "NumberOfProductionCycles" : 200000,
   "NumberOfInitializationCycles" : 100000,
   "PrintEvery" : 5000,
+  "TMMCUpdateEvery" : 100000,
 
   "Systems" : [
     {
@@ -26,7 +27,7 @@
       "TranslationProbability" : 1.0,
       "ReinsertionProbability" : 1.0,
       "SwapProbability" : 1.0,
-      "CreateNuMberofmolecules" : 10
+      "CreateNumberOfMolecules" : 10
     }
   ]
 }

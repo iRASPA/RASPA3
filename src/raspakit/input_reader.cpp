@@ -1091,6 +1091,48 @@ InputReader::InputReader(const std::string inputFile)
 
   validateInput(parsed_data);
 
+  // An interval '...Every' is the divisor of 'cycle % interval': zero, which the unsigned-integer check of every
+  // such key accepts, was a division by zero (SIGFPE) at the first cycle. Zero switches off the three intervals
+  // below; for every other one it is refused, wherever in the input it stands.
+  {
+    using Json = std::remove_cvref_t<decltype(parsed_data)>;
+    static const std::array<std::string, 3> zeroDisables{"WriteBinaryRestartEvery", "ParallelTemperingSwapEvery",
+                                                         "LambdaExchangeEvery"};
+    const std::function<void(const Json&)> checkIntervals = [&](const Json& node)
+    {
+      if (node.is_object())
+      {
+        for (const auto& [key, item] : node.items())
+        {
+          // (keys are matched without regard to case, as everywhere in the input)
+          auto sameWord = [](std::string_view a, std::string_view b)
+          {
+            return a.size() == b.size() &&
+                   std::equal(a.begin(), a.end(), b.begin(), [](unsigned char x, unsigned char y)
+                              { return std::tolower(x) == std::tolower(y); });
+          };
+          const std::string_view name{key};
+          const bool isInterval = name.size() >= 5uz && sameWord(name.substr(name.size() - 5uz), "Every");
+          const bool mayBeZero = std::ranges::any_of(
+              zeroDisables, [&](const std::string& allowed) { return sameWord(allowed, name); });
+          if (isInterval && item.is_number() && item.template get<double>() == 0.0 && !mayBeZero)
+          {
+            throw std::runtime_error(std::format(
+                "[Input reader]: '{}' must be a positive integer (an interval of 0 cycles is not an interval; leave "
+                "the key out to keep the default)\n",
+                key));
+          }
+          checkIntervals(item);
+        }
+      }
+      else if (node.is_array())
+      {
+        for (const Json& item : node) checkIntervals(item);
+      }
+    };
+    checkIntervals(parsed_data);
+  }
+
   parseUnits(parsed_data);
 
   if (parsed_data.contains("SimulationType") && parsed_data["SimulationType"].is_string())

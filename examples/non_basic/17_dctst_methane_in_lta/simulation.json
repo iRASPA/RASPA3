@@ -21,10 +21,6 @@
         "LatticeDistance" : 11.8671,
         "CageCenter" : [0.5, 0.5, 0.5],
 
-        "NumberOfFreeEnergyCycles" : 20000,
-        "NumberOfFreeEnergyBins" : 100,
-        "WidomInsertionsPerCycle" : 10,
-
         "NumberOfConstrainedEquilibrationCycles" : 500,
         "NumberOfTransmissionCycles" : 1000,
         "LaunchTrajectoryEvery" : 10,

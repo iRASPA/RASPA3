@@ -1584,3 +1584,31 @@ TEST(INPUT_READER_TMMC, rejects_the_serial_gibbs_cfcmc_swap_at_any_number_of_lam
     }
   }
 }
+
+// An interval '...Every' is the divisor of 'cycle % interval'; zero passed the unsigned-integer check of every such
+// key and was a division by zero at the first cycle. Zero is refused, except where it switches the interval off.
+TEST(INPUT_READER, rejects_an_interval_of_zero_cycles)
+{
+  auto read = [](auto&& change, std::string_view label)
+  {
+    TemporaryDirectory workspace = makeTmmcWorkspace();
+    nlohmann::json input = readTMMCExample();
+    change(input);
+    TemporaryInput temporary(std::move(input), label, workspace.path());
+    ScopedCurrentPath currentPath(workspace.path());
+    InputReader reader(temporary.path().filename().string());
+  };
+  EXPECT_NO_THROW(read([](nlohmann::json&) {}, "interval_base"));
+  for (const char* key : {"PrintEvery", "OptimizeMCMovesEvery", "RescaleWangLandauEvery", "TMMCUpdateEvery",
+                          "printevery"})
+  {
+    EXPECT_THROW(read([&](nlohmann::json& input) { input[key] = 0; }, "interval_zero"), std::runtime_error) << key;
+    EXPECT_NO_THROW(read([&](nlohmann::json& input) { input[key] = 7; }, "interval_seven")) << key;
+  }
+  // inside a system block too
+  EXPECT_THROW(read([](nlohmann::json& input) { input["Systems"][0]["SampleEnergyHistogramEvery"] = 0; },
+                    "interval_system"),
+               std::runtime_error);
+  // zero switches the binary restart off
+  EXPECT_NO_THROW(read([](nlohmann::json& input) { input["WriteBinaryRestartEvery"] = 0; }, "interval_restart"));
+}

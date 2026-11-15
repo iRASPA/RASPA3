@@ -32,8 +32,8 @@ ThermodynamicIntegration::ThermodynamicIntegration(InputReader& reader) noexcept
       numberOfProductionCycles(reader.numberOfProductionCycles),
       numberOfInitializationCycles(reader.numberOfInitializationCycles),
       numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
-      printEvery(reader.printEvery),
-      optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
+      printEvery(std::max(1uz, reader.printEvery)),
+      optimizeMCMovesEvery(std::max(1uz, reader.optimizeMCMovesEvery)),
       systems(std::move(reader.systems)),
       outputJsons(systems.size()),
       estimation(reader.numberOfBlocks, reader.numberOfProductionCycles)

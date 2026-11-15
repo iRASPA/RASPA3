@@ -282,10 +282,10 @@ Minimization::Minimization(InputReader& inputReader)
       numberOfPreInitializationCycles(inputReader.numberOfPreInitializationCycles),
       numberOfInitializationCycles(inputReader.numberOfInitializationCycles),
       numberOfEquilibrationCycles(inputReader.numberOfEquilibrationCycles),
-      printEvery(inputReader.printEvery),
+      printEvery(std::max(1uz, inputReader.printEvery)),
       writeBinaryRestartEvery(inputReader.writeBinaryRestartEvery),
-      rescaleWangLandauEvery(inputReader.rescaleWangLandauEvery),
-      optimizeMCMovesEvery(inputReader.optimizeMCMovesEvery),
+      rescaleWangLandauEvery(std::max(1uz, inputReader.rescaleWangLandauEvery)),
+      optimizeMCMovesEvery(std::max(1uz, inputReader.optimizeMCMovesEvery)),
       randomSeed(inputReader.randomSeed),
       random(RandomNumber(inputReader.randomSeed)),
       systems(std::move(inputReader.systems))
