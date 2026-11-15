@@ -84,6 +84,20 @@ struct BlockAverage
     bookKeeping = std::vector<std::pair<Sample, double>>(numberOfBlocks, std::make_pair(zero, 0.0));
   }
 
+  /// The divisor of an accumulated weighted sum: the weight itself. It was max(1, weight), which is the weight
+  /// only for unit weights; the weights of a biased run (exp(-bias) with the bias normalized to a minimum of
+  /// zero) are at most one, and a block whose weights add up to less than one was divided by one, pulling its
+  /// average towards zero. An empty block (weight zero, sum zero) stays at zero.
+  static double divisor(double weight) { return weight > 0.0 ? weight : 1.0; }
+  /// Whether a block takes part in the statistics: it holds more than half the weight of the first block (or
+  /// any weight at all when the first block is empty). The reference was max(1, first weight), which dropped
+  /// every block of a run whose weights are small.
+  bool filled(std::size_t blockIndex) const
+  {
+    const double reference = bookKeeping.empty() ? 0.0 : bookKeeping.front().second;
+    return bookKeeping[blockIndex].second > 0.0 && bookKeeping[blockIndex].second > 0.5 * reference;
+  }
+
   void addSample(std::size_t blockIndex, const Sample &sample, const double &weight)
   {
     bookKeeping[blockIndex].first += weight * sample;
@@ -93,7 +107,7 @@ struct BlockAverage
   /// Average of a single block.
   Data averaged(std::size_t blockIndex) const
   {
-    Sample normalized = bookKeeping[blockIndex].first / std::max(1.0, bookKeeping[blockIndex].second);
+    Sample normalized = bookKeeping[blockIndex].first / divisor(bookKeeping[blockIndex].second);
     if constexpr (CompositePropertyTerms<Sample>)
     {
       return normalized.compositeProperty();
@@ -128,10 +142,9 @@ struct BlockAverage
     {
       Data accumulated = zeroSample.zeroCompositeProperty();
       std::size_t numberOfSamples = 0;
-      double reference = std::max(1.0, bookKeeping.empty() ? 1.0 : bookKeeping.front().second);
       for (std::size_t blockIndex = 0; blockIndex != bookKeeping.size(); ++blockIndex)
       {
-        if (bookKeeping[blockIndex].second / reference > 0.5)
+        if (filled(blockIndex))
         {
           Data block = averaged(blockIndex);
           if (!usable(block)) continue;
@@ -153,7 +166,7 @@ struct BlockAverage
       std::pair<Sample, double> summedBlocks =
           std::accumulate(bookKeeping.begin(), bookKeeping.end(), std::make_pair(zeroSample, 0.0),
                           pairSum<Sample, double>);
-      return summedBlocks.first / std::max(1.0, summedBlocks.second);
+      return summedBlocks.first / divisor(summedBlocks.second);
     }
   }
 
@@ -167,10 +180,9 @@ struct BlockAverage
     // the sufficiently-filled blocks (more than half the weight of the first), those whose value is defined
     using Result = decltype(mean);
     std::vector<Result> blockAverages;
-    const double reference = std::max(1.0, bookKeeping.empty() ? 1.0 : bookKeeping.front().second);
     for (std::size_t blockIndex = 0; blockIndex != bookKeeping.size(); ++blockIndex)
     {
-      if (bookKeeping[blockIndex].second / reference > 0.5)
+      if (filled(blockIndex))
       {
         Result value = transform(averaged(blockIndex));
         if (usable(value)) blockAverages.push_back(value);
@@ -249,7 +261,8 @@ struct BlockHistogram
     std::vector<Value> averagedData(numberOfBins);
     std::transform(bookKeeping[blockIndex][channelIndex].begin(), bookKeeping[blockIndex][channelIndex].end(),
                    averagedData.begin(),
-                   [&](const Value &sample) { return sample / std::max(1.0, numberOfCounts[blockIndex]); });
+                   [&](const Value &sample)
+                   { return sample / (numberOfCounts[blockIndex] > 0.0 ? numberOfCounts[blockIndex] : 1.0); });
     return averagedData;
   }
 
@@ -267,7 +280,7 @@ struct BlockHistogram
 
     std::vector<Value> average(numberOfBins);
     std::transform(summedBlocks.begin(), summedBlocks.end(), average.begin(),
-                   [&](const Value &sample) { return sample / std::max(1.0, totalNumberOfCounts); });
+                   [&](const Value &sample) { return sample / (totalNumberOfCounts > 0.0 ? totalNumberOfCounts : 1.0); });
     return average;
   }
 

@@ -398,7 +398,7 @@ export struct PropertyLambdaProbabilityHistogram
   {
     std::vector<double> averagedData(bins.size());
     std::transform(bins.cbegin(), bins.cend(), averagedData.begin(), [](const std::pair<double, double> &sample)
-                   { return sample.first / std::max(1.0, sample.second); });
+                   { return sample.first / (sample.second > 0.0 ? sample.second : 1.0); });
     return averagedData;
   }
 

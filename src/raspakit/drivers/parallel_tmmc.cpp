@@ -448,6 +448,19 @@ void ParallelTMMC::initializeWalkers(System templateSystem)
   {
     throw std::runtime_error("[ParallelTMMC]: the template system needs an adsorbate component\n");
   }
+  // The walkers run at the fugacity of their temperature from the pressure and the equation of state; a
+  // chemical potential given on a component would be overwritten by it without a word (the input reader
+  // refuses the keyword for this driver).
+  for (const Component& component : templateSystem.components)
+  {
+    if (component.chemicalPotential.has_value())
+    {
+      throw std::runtime_error(std::format(
+          "[ParallelTMMC]: component '{}' has a chemical potential; the driver takes the fugacity of every "
+          "temperature from the pressure, give the pressure instead\n",
+          component.name));
+    }
+  }
   if (std::ranges::count_if(templateSystem.components, [](const Component& c) { return c.swappable; }) > 1)
   {
     throw std::runtime_error(
@@ -915,15 +928,17 @@ void ParallelTMMC::performWalkerCycle(std::size_t walkerId, SimulationStage stag
         MC_Moves::performRandomMoveEquilibration(rng, system, system, selectedComponent, fractionalMoleculeSystem);
 
         // Wang-Landau biasing of the CFCMC lambda moves. Off when TMMC already flattens the
-        // (N, λ) chain: that Wang-Landau would double-bias λ and is replaced by tmmc.visitWangLandau.
-        if (!system.tmmc.lambdaChain())
+        // (N, λ) chain: that Wang-Landau would double-bias λ and is replaced by tmmc.visitWangLandau. Only the
+        // lambda of the tracked component is the chain's: the gate was on the whole system, and another
+        // component with a CFCMC lambda of its own (a Widom probe, say) was left without any bias.
+        if (!(system.tmmc.lambdaChain() && selectedComponent == system.tmmcComponent()))
         {
           system.components[selectedComponent].lambdaGC.WangLandauIteration(
               PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
               system.lambdaWangLandauIsActive(selectedComponent));
-          system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-          system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         }
+        system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         break;
       case SimulationStage::Production:
         MC_Moves::performRandomMoveProduction(rng, system, system, selectedComponent, fractionalMoleculeSystem,
@@ -1036,19 +1051,18 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
       // drop the collection-matrix statistics of the relaxing initial configurations
       system.tmmc.clearCMatrix();
 
-      if (!system.tmmc.lambdaChain())
+      for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
       {
-        for (Component& component : system.components)
-        {
-          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
-                                                 system.containsTheFractionalMolecule);
-          component.lambdaGC.clear();
-        }
-        system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
-        system.pairSwapLambdaClearBookkeeping();
-        system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
-        system.reactionLambdaClearBookkeeping();
+        if (system.tmmc.lambdaChain() && componentId == system.tmmcComponent()) continue;
+        Component& component = system.components[componentId];
+        component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
+                                               system.containsTheFractionalMolecule);
+        component.lambdaGC.clear();
       }
+      system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+      system.pairSwapLambdaClearBookkeeping();
+      system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+      system.reactionLambdaClearBookkeeping();
     }
   }
   if (startCycle == 0uz && stage == SimulationStage::Production)
@@ -1083,28 +1097,26 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
       system.mc_moves_statistics.clearMoveStatistics();
       system.mc_moves_cputime.clearTimingStatistics();
 
-      for (Component& component : system.components)
+      for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
       {
+        Component& component = system.components[componentId];
         component.mc_moves_statistics.clearMoveStatistics();
         component.mc_moves_cputime.clearTimingStatistics();
 
-        if (!system.tmmc.lambdaChain())
+        if (!(system.tmmc.lambdaChain() && componentId == system.tmmcComponent()))
         {
           component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
                                                  system.containsTheFractionalMolecule);
           component.lambdaGC.clear();
         }
       }
-      if (!system.tmmc.lambdaChain())
-      {
-        system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
-        system.pairSwapLambdaClearBookkeeping();
-        system.reactionLambdaFinalize();
-        system.reactionLambdaClearBookkeeping();
-        // Wang-Landau only lowers the bias: left as it ended, exp(-bias) in System::weight() overflows and
-        // every weighted average of the production run becomes inf / inf
-        system.normalizeLambdaBiasFactors();
-      }
+      system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
+      system.pairSwapLambdaClearBookkeeping();
+      system.reactionLambdaFinalize();
+      system.reactionLambdaClearBookkeeping();
+      // Wang-Landau only lowers the bias: left as it ended, exp(-bias) in System::weight() overflows and
+      // every weighted average of the production run becomes inf / inf
+      system.normalizeLambdaBiasFactors();
     }
     std::fill(stepsPerWalker.begin(), stepsPerWalker.end(), 0uz);
   }
@@ -1261,12 +1273,12 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
               }
 
               // Wang-Landau biasing-factor adjustment (all state is owned by this walker)
-              if (stage == SimulationStage::Equilibration && (cycle + 1uz) % rescaleWangLandauEvery == 0uz &&
-                  !system.tmmc.lambdaChain())
+              if (stage == SimulationStage::Equilibration && (cycle + 1uz) % rescaleWangLandauEvery == 0uz)
               {
-                for (Component& component : system.components)
+                for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
                 {
-                  component.lambdaGC.WangLandauIteration(
+                  if (system.tmmc.lambdaChain() && componentId == system.tmmcComponent()) continue;
+                  system.components[componentId].lambdaGC.WangLandauIteration(
                       PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
                       system.containsTheFractionalMolecule);
                 }

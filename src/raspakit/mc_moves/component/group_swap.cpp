@@ -378,15 +378,18 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
 
   const double Pacc = std::exp(logPacc);
 
-  const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  // the macrostate is the count of the tracked member of the group: the central molecule or a single satellite
+  // (System::groupSwapTMMCMember); a group without a tracked molecule is not a step of the matrix
+  const std::optional<std::size_t> tmmcMember = system.groupSwapTMMCMember(selectedComponent);
+  const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 
-  if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
+  if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
   {
     return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
   }
 
   const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
-  const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
+  const double biasTransitionMatrix = tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, oldN) : 1.0;
 
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
@@ -741,15 +744,18 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
 
   const double Pacc = std::exp(logPacc);
 
-  const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  // the macrostate is the count of the tracked member of the group: the central molecule or a single satellite
+  // (System::groupSwapTMMCMember); a group without a tracked molecule is not a step of the matrix
+  const std::optional<std::size_t> tmmcMember = system.groupSwapTMMCMember(selectedComponent);
+  const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 
-  if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
+  if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
   {
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
 
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-  const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
+  const double biasTransitionMatrix = tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, oldN) : 1.0;
 
   centralComponent.mc_moves_statistics.addConstructed(move, 1);
 

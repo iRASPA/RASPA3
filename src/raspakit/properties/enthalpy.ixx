@@ -320,7 +320,7 @@ export struct PropertyEnthalpy : BlockAverage<EnthalpyOfAdsorptionTerms>
   std::vector<double> blockAdsorbedMoleFractions(std::size_t blockIndex) const
   {
     const EnthalpyOfAdsorptionTerms normalized =
-        bookKeeping[blockIndex].first / std::max(1.0, bookKeeping[blockIndex].second);
+        bookKeeping[blockIndex].first / (bookKeeping[blockIndex].second > 0.0 ? bookKeeping[blockIndex].second : 1.0);
     std::vector<double> fractions(normalized.size, 0.0);
     const double total = std::accumulate(normalized.numberOfMolecules.begin(), normalized.numberOfMolecules.end(), 0.0);
     if (total > 0.0)

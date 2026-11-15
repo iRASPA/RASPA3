@@ -4165,6 +4165,19 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         systems[systemId].tmmc.useBias = value["MacroStateUseBias"].get<bool>();
       }
+      // Wang-Landau exploration before production, and a fresh start of the statistics and the bias after
+      // initialization: both were switches of the transition matrix that no keyword reached
+      for (const auto& [keyword, flag] :
+           {std::pair{"MacroStateUseWangLandau", &systems[systemId].tmmc.useWangLandau},
+            std::pair{"MacroStateRezeroAfterInitialization", &systems[systemId].tmmc.rezeroAfterInitialization}})
+      {
+        if (!value.contains(keyword)) continue;
+        if (!value[keyword].is_boolean())
+        {
+          throw std::runtime_error(std::format("[Input reader]: '{}' must be a boolean\n", keyword));
+        }
+        *flag = value[keyword].get<bool>();
+      }
 
       if (value.contains("MacroStateMinimumNumberOfMolecules") &&
           value["MacroStateMinimumNumberOfMolecules"].is_number_unsigned())
@@ -6553,6 +6566,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "BarostatCoupling",
     "TimeStep",
     "MacroStateUseBias",
+    "MacroStateUseWangLandau",
+    "MacroStateRezeroAfterInitialization",
     "MacroStateMinimumNumberOfMolecules",
     "MacroStateMaximumNumberOfMolecules",
     "RestartFileName",

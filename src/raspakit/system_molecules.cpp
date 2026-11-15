@@ -32,7 +32,10 @@ std::optional<double> System::frameworkMass() const
   double mass = framework->mass;
   for (std::size_t i = 0; i < components.size(); ++i)
   {
-    if (components[i].type == Component::Type::Cation)
+    // the cations that belong to the framework: those of a fixed number. A cation that is inserted and deleted
+    // (the partner of a pair swap, say) is part of the adsorbed phase; counted in, the mass, and every loading
+    // per kg of framework with it, depended on the number of molecules the run happened to end on.
+    if (components[i].type == Component::Type::Cation && !components[i].swappable)
     {
       mass += components[i].totalMass * static_cast<double>(numberOfIntegerMoleculesPerComponent[i]);
     }

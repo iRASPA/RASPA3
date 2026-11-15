@@ -233,6 +233,11 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
   std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
   // a pair swap moves the TMMC macrostate through whichever member of the pair is tracked
   const std::optional<std::size_t> pairTMMCMember = selectedSystem.pairSwapTMMCMember(selectedComponent);
+  // and of a group swap: the tracked member of the group of this central component
+  [[maybe_unused]] const std::optional<std::size_t> groupTMMCMember =
+      selectedSystem.groupSwapTMMCMember(selectedComponent);
+  [[maybe_unused]] const std::size_t oldGroupN =
+      selectedSystem.numberOfIntegerMoleculesPerComponent[groupTMMCMember.value_or(selectedComponent)];
   [[maybe_unused]] const std::size_t oldPairN =
       selectedSystem.numberOfIntegerMoleculesPerComponent[pairTMMCMember.value_or(selectedComponent)];
   captureTMMCLambdaBin(selectedSystem, selectedComponent);
@@ -496,6 +501,11 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
   std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
   // a pair swap moves the TMMC macrostate through whichever member of the pair is tracked
   const std::optional<std::size_t> pairTMMCMember = selectedSystem.pairSwapTMMCMember(selectedComponent);
+  // and of a group swap: the tracked member of the group of this central component
+  [[maybe_unused]] const std::optional<std::size_t> groupTMMCMember =
+      selectedSystem.groupSwapTMMCMember(selectedComponent);
+  [[maybe_unused]] const std::size_t oldGroupN =
+      selectedSystem.numberOfIntegerMoleculesPerComponent[groupTMMCMember.value_or(selectedComponent)];
   [[maybe_unused]] const std::size_t oldPairN =
       selectedSystem.numberOfIntegerMoleculesPerComponent[pairTMMCMember.value_or(selectedComponent)];
   captureTMMCLambdaBin(selectedSystem, selectedComponent);
@@ -1078,7 +1088,8 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+          selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       }
       else
       {
@@ -1093,7 +1104,8 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+          selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       }
       break;
     }
@@ -1108,7 +1120,8 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+          selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       }
       else
       {
@@ -1123,7 +1136,8 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+          selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       }
       break;
     }
@@ -1134,7 +1148,8 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+        selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       break;
     }
     case Move::Types::GroupSwapCBCFCMC:
@@ -1145,7 +1160,8 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+        selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       break;
     }
     case Move::Types::TetheredProtonHop:
@@ -1480,6 +1496,11 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
   std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
   // a pair swap moves the TMMC macrostate through whichever member of the pair is tracked
   const std::optional<std::size_t> pairTMMCMember = selectedSystem.pairSwapTMMCMember(selectedComponent);
+  // and of a group swap: the tracked member of the group of this central component
+  [[maybe_unused]] const std::optional<std::size_t> groupTMMCMember =
+      selectedSystem.groupSwapTMMCMember(selectedComponent);
+  [[maybe_unused]] const std::size_t oldGroupN =
+      selectedSystem.numberOfIntegerMoleculesPerComponent[groupTMMCMember.value_or(selectedComponent)];
   [[maybe_unused]] const std::size_t oldPairN =
       selectedSystem.numberOfIntegerMoleculesPerComponent[pairTMMCMember.value_or(selectedComponent)];
   captureTMMCLambdaBin(selectedSystem, selectedComponent);
@@ -2062,7 +2083,8 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+          selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       }
       else
       {
@@ -2077,7 +2099,8 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+          selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       }
       break;
     }
@@ -2092,7 +2115,8 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+          selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       }
       else
       {
@@ -2107,7 +2131,8 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+          selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       }
       break;
     }
@@ -2118,7 +2143,8 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+        selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       break;
     }
     case Move::Types::GroupSwapCBCFCMC:
@@ -2129,7 +2155,8 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+        selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       break;
     }
     case Move::Types::TetheredProtonHop:
@@ -2464,6 +2491,11 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
   std::size_t oldN = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
   // a pair swap moves the TMMC macrostate through whichever member of the pair is tracked
   const std::optional<std::size_t> pairTMMCMember = selectedSystem.pairSwapTMMCMember(selectedComponent);
+  // and of a group swap: the tracked member of the group of this central component
+  [[maybe_unused]] const std::optional<std::size_t> groupTMMCMember =
+      selectedSystem.groupSwapTMMCMember(selectedComponent);
+  [[maybe_unused]] const std::size_t oldGroupN =
+      selectedSystem.numberOfIntegerMoleculesPerComponent[groupTMMCMember.value_or(selectedComponent)];
   [[maybe_unused]] const std::size_t oldPairN =
       selectedSystem.numberOfIntegerMoleculesPerComponent[pairTMMCMember.value_or(selectedComponent)];
   captureTMMCLambdaBin(selectedSystem, selectedComponent);
@@ -3056,7 +3088,8 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+          selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       }
       else
       {
@@ -3071,7 +3104,8 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+          selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       }
       break;
     }
@@ -3086,7 +3120,8 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+          selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       }
       else
       {
@@ -3101,7 +3136,8 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+          selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       }
       break;
     }
@@ -3112,7 +3148,8 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+        selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       break;
     }
     case Move::Types::GroupSwapCBCFCMC:
@@ -3123,7 +3160,8 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      if (selectedSystem.tmmcTracksIntegerSwap(selectedComponent)) selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      if (groupTMMCMember.has_value() && selectedSystem.tmmcTracksIntegerSwap(groupTMMCMember.value()))
+        selectedSystem.tmmc.updateMatrix(Pacc, oldGroupN);
       break;
     }
     case Move::Types::TetheredProtonHop:

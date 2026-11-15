@@ -217,10 +217,11 @@ export template <BlockAverageable T, typename BookKeeping, typename PerBlockAver
 T blockErrorEstimate(const BookKeeping &bookKeeping, const T &average, PerBlockAverage perBlockAverage)
 {
   std::vector<T> blockAverages;
-  double reference = std::max(1.0, bookKeeping.empty() ? 1.0 : bookKeeping.front().second);
+  // the weights of a biased run are at most one: a reference of max(1, first weight) dropped all its blocks
+  const double reference = bookKeeping.empty() ? 0.0 : bookKeeping.front().second;
   for (std::size_t blockIndex = 0; blockIndex != bookKeeping.size(); ++blockIndex)
   {
-    if (bookKeeping[blockIndex].second / reference > 0.5)
+    if (bookKeeping[blockIndex].second > 0.0 && bookKeeping[blockIndex].second > 0.5 * reference)
     {
       blockAverages.push_back(perBlockAverage(blockIndex));
     }

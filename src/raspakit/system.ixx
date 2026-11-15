@@ -743,15 +743,24 @@ export struct System
     return change;
   }
   /// Whether a group swap of 'centralComponent' fits the one-dimensional nearest-neighbour transition
-  /// matrix of the tracked component 'trackedComponent': the group changes the tracked count by exactly
-  /// its central molecule (a tracked central molecule without tracked satellites), or not at all (an
-  /// untracked central molecule without tracked satellites). Any other group moves the macrostate by
-  /// more than one, or by one on a move the matrix does not see (and the matrix would record a N -> N
-  /// +/- m transition as N -> N +/- 1).
+  /// matrix of the tracked component 'trackedComponent': the group changes the tracked count by one (its
+  /// central molecule, or a single satellite: the move is then the N -> N +/- 1 step of the matrix, recorded
+  /// on the tracked member, see groupSwapTMMCMember), or not at all. A group with more tracked molecules moves
+  /// the macrostate by more than one. A single tracked satellite of an untracked central molecule was refused
+  /// too (a cation driving a 1:1 group with the adsorbate, where the pair swap of the same two is accepted),
+  /// with an error that called a change of one incompatible with N -> N +/- 1.
   [[nodiscard]] bool groupSwapFitsTMMC(std::size_t centralComponent, std::size_t trackedComponent) const
   {
-    return groupMoleculeCountChange(centralComponent, trackedComponent) ==
-           (centralComponent == trackedComponent ? 1uz : 0uz);
+    return groupMoleculeCountChange(centralComponent, trackedComponent) <= 1uz;
+  }
+  /// The component whose count is the macrostate a group swap of 'centralComponent' steps: the tracked
+  /// component when the group holds exactly one molecule of it; empty when TMMC is off or the group holds none.
+  [[nodiscard]] std::optional<std::size_t> groupSwapTMMCMember(std::size_t centralComponent) const
+  {
+    if (!tmmc.doTMMC || centralComponent >= components.size()) return std::nullopt;
+    const std::size_t tracked = tmmcComponent();
+    if (groupMoleculeCountChange(centralComponent, tracked) == 1uz) return tracked;
+    return std::nullopt;
   }
   /// The same for the tracked component of this system; true when TMMC is off.
   [[nodiscard]] bool groupSwapFitsTMMC(std::size_t centralComponent) const
@@ -1042,7 +1051,9 @@ export struct System
 
       // the GC lambda bias is the active box's: the inactive box of a serial Gibbs swap holds a switched-off
       // placeholder and is not reweighted by it
-      w *= (containsTheFractionalMolecule ? component.lambdaGC.weight() : 1.0) * component.lambdaGibbs.weight();
+      // (and only of a component that has a GC lambda coordinate at all, see usesGCLambda)
+      w *= (containsTheFractionalMolecule && usesGCLambda(componentId) ? component.lambdaGC.weight() : 1.0) *
+           component.lambdaGibbs.weight();
 
       if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCFCMC))
       {
@@ -1076,9 +1087,22 @@ export struct System
   /// Wang-Landau updates the GC lambda bias only while this box holds a real fractional molecule.
   /// `containsTheFractionalMolecule` alone is not enough: it defaults to true on system 0 for Gibbs
   /// ownership, including conventional GCMC that has no lambda coordinate.
+  /// 'hasFractionalMolecule' is not enough either: it is also set for a component whose only fractional molecule
+  /// is that of a conventional Gibbs, a pair or a group CFCMC move (the partner and the satellites included).
+  /// Such a component never leaves bin 0 of its GC histogram, which was lowered there on every step, some twenty
+  /// times deeper than the histogram the move really walks.
   bool lambdaWangLandauIsActive(std::size_t componentId) const
   {
-    return containsTheFractionalMolecule && components[componentId].hasFractionalMolecule;
+    return containsTheFractionalMolecule && usesGCLambda(componentId);
+  }
+  /// Whether 'componentId' has a fractional molecule on the GC lambda coordinate (the histogram 'lambdaGC'):
+  /// that of SwapCFCMC, SwapCBCFCMC, their Widom moves, a pinned GC lambda, or the serial Gibbs CFCMC swaps.
+  bool usesGCLambda(std::size_t componentId) const
+  {
+    return componentId < components.size() &&
+           (numberOfGCFractionalMoleculesPerComponent_CFCMC[componentId] > 0uz ||
+            numberOfPairGCFractionalMoleculesPerComponent_CFCMC[componentId] > 0uz ||
+            numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0uz);
   }
 
   void removeRedundantMoves();
@@ -1152,6 +1176,12 @@ export struct System
   /// a shallow histogram next to a deep one. The histograms of one serial Rx/CFC reaction share a shift, the
   /// side-switch acceptance comparing the two. For the drivers whose systems do not exchange lambda biases.
   void normalizeLambdaBiasFactors() noexcept;
+  /// The same for the systems of one simulation. The GC histograms of a component that the serial Gibbs CFCMC
+  /// swaps move between the boxes share one shift: the box switch compares the bias of the two boxes at the same
+  /// bin. One shift for every histogram of every system, as was applied, left a shallow histogram hundreds
+  /// above a deep one (a conventional Gibbs or pair histogram next to a GC one, a co-adsorbate with its own
+  /// lambda), and its weight exp(-bias) at zero for the whole production run.
+  static void normalizeLambdaBiasFactors(std::span<System> systems) noexcept;
   void reactionLambdaWriteBiasingFiles(std::size_t systemId);
   void reactionLambdaSampleProductionHistograms(std::size_t blockIndex, double weight) noexcept;
   void rescaleMolarFractions();

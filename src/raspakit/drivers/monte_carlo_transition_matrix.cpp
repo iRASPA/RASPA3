@@ -47,19 +47,9 @@ namespace
 
 bool isTMMCCrossSystemMove(Move::Types moveType)
 {
-  switch (moveType)
-  {
-    case Move::Types::GibbsVolume:
-    case Move::Types::GibbsSwapCBMC:
-    case Move::Types::GibbsSwapMultiTrialCBMC:
-    case Move::Types::GibbsSwapCFCMC:
-    case Move::Types::GibbsSwapCBCFCMC:
-    case Move::Types::GibbsConventionalCFCMC:
-    case Move::Types::GibbsConventionalCBCFCMC:
-      return true;
-    default:
-      return false;
-  }
+  // every move that acts on two systems (a list of its own left out the parallel-tempering swap and the Gibbs
+  // identity change, after which the second system was not sampled)
+  return crossSystemMoves.contains(moveType);
 }
 
 void sampleTMMCState(System& system, std::size_t componentId, bool adjustBias)
@@ -346,10 +336,12 @@ void MonteCarloTransitionMatrix::performCycle()
         performedMove = MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectedSecondSystem,
                                                                   selectedComponent, fractionalMoleculeSystem);
 
-        sampleTMMCState(selectedSystem, selectedSystem.tmmcComponent(), false);
+        // the bias follows the collection matrix from the start: initialization recorded its transitions under
+        // a bias of zero, and the walk stayed in the adsorption well it started in
+        sampleTMMCState(selectedSystem, selectedSystem.tmmcComponent(), true);
         if (isTMMCCrossSystemMove(performedMove) && hasSecondSystem)
         {
-          sampleTMMCState(selectedSecondSystem, selectedSecondSystem.tmmcComponent(), false);
+          sampleTMMCState(selectedSecondSystem, selectedSecondSystem.tmmcComponent(), true);
         }
         break;
       case SimulationStage::Equilibration:
@@ -666,7 +658,6 @@ void MonteCarloTransitionMatrix::equilibrate()
 
 void MonteCarloTransitionMatrix::production()
 {
-  double minBias{0uz};
   std::chrono::steady_clock::time_point t1, t2;
 
   if (simulationStage == SimulationStage::Production) goto continueProductionStage;
@@ -680,9 +671,16 @@ void MonteCarloTransitionMatrix::production()
 
     system.tmmc.numberOfSteps = 0;
     // Wang-Landau, when it owned the bias, has explored the range during initialization and equilibration;
-    // from here on the bias is -ln Pi from the collection matrix (which is not reset here, so it carries
-    // those stages' statistics). Inert when Wang-Landau was never on.
+    // from here on the bias is -ln Pi from the collection matrix. Inert when Wang-Landau was never on.
     system.tmmc.switchToTMBias();
+    // The bias is kept, the statistics behind it are not (as in ParallelTMMC): they were taken on configurations
+    // that had not relaxed into the deep adsorption sites, whose deletion acceptances are overestimated by
+    // orders of magnitude, and a row of the collection matrix is a heavy-tailed mean that such entries dominate
+    // however long production runs. Production starts its collection matrix from zero.
+    if (numberOfInitializationCycles + numberOfEquilibrationCycles > 0uz)
+    {
+      system.tmmc.clearStatisticsKeepBias();
+    }
 
     system.mc_moves_statistics.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
@@ -711,50 +709,8 @@ void MonteCarloTransitionMatrix::production()
     ++system_id;
   }
 
-  minBias = std::numeric_limits<double>::max();
-  for (System& system : systems)
-  {
-    for (Component& component : system.components)
-    {
-      double currentMinBias =
-          *std::min_element(component.lambdaGC.biasFactor.cbegin(), component.lambdaGC.biasFactor.cend());
-      minBias = currentMinBias < minBias ? currentMinBias : minBias;
-      if (system.usesGibbsConventionalCFCMC())
-      {
-        const double gibbsMinBias =
-            *std::min_element(component.lambdaGibbs.biasFactor.cbegin(), component.lambdaGibbs.biasFactor.cend());
-        minBias = gibbsMinBias < minBias ? gibbsMinBias : minBias;
-      }
-    }
-
-    const double pairSwapMinBias = system.pairSwapLambdaMinBias();
-    if (pairSwapMinBias < minBias)
-    {
-      minBias = pairSwapMinBias;
-    }
-
-    if (system.usesReactionConventionalCFCMC())
-    {
-      const double reactionMinBias = system.reactionLambdaMinBias();
-      if (reactionMinBias < minBias)
-      {
-        minBias = reactionMinBias;
-      }
-    }
-  }
-  for (System& system : systems)
-  {
-    for (Component& component : system.components)
-    {
-      component.lambdaGC.normalize(minBias);
-      if (system.usesGibbsConventionalCFCMC())
-      {
-        component.lambdaGibbs.normalize(minBias);
-      }
-    }
-    system.pairSwapLambdaNormalize(minBias);
-    system.reactionLambdaNormalize(minBias);
-  }
+  // every lambda bias to a minimum of zero, histogram by histogram (see System::normalizeLambdaBiasFactors)
+  System::normalizeLambdaBiasFactors(systems);
 
   numberOfSteps = 0uz;
   for (currentCycle = 0uz; currentCycle != numberOfProductionCycles; ++currentCycle)
@@ -829,6 +785,10 @@ void MonteCarloTransitionMatrix::production()
   // Write the collection matrix and the last state of the sampled properties
   for (std::size_t system_id{0}; System& system : systems)
   {
+    // ln Pi and the bias from the collection matrix as it stands: they were last rebuilt at a multiple of
+    // 'TMMCUpdateEvery' steps (a million by default), so the file held the ln Pi of that moment, or of before
+    // production for a shorter run, next to the final collection matrix
+    if (system.tmmc.doTMMC) system.tmmc.recomputeLnPiAndBias();
     system.tmmc.writeStatistics();
     system.writeSampledPropertiesMC(system_id, currentCycle);
     ++system_id;

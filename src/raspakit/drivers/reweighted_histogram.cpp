@@ -95,6 +95,18 @@ static void validateReweightingTemplate(const System& system, std::span<const do
         "[ReweightedHistogram]: an adsorbate component is required (the reweighting histograms are collected over "
         "the molecule count of the first adsorbate)\n");
   }
+  // the state points are (temperature, pressure) pairs: a chemical potential on a component would be
+  // overwritten by the fugacity of each (the input reader refuses the keyword for this driver)
+  for (const Component& component : system.components)
+  {
+    if (component.chemicalPotential.has_value())
+    {
+      throw std::runtime_error(std::format(
+          "[ReweightedHistogram]: component '{}' has a chemical potential; the state points are given by "
+          "pressures\n",
+          component.name));
+    }
+  }
   // The replicas sample the grand-canonical Boltzmann distribution of their own state point. A transition-matrix
   // bias, or its macrostate bounds, makes it another distribution, which the reduced potential does not carry.
   if (system.tmmc.doTMMC)

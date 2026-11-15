@@ -304,7 +304,11 @@ TEST(REWEIGHTED_HISTOGRAM_WHAM, weight_ignores_lambda_bias_without_fractional_mo
   EXPECT_DOUBLE_EQ(system.weight(), 1.0);
   EXPECT_TRUE(std::isfinite(system.weight()));
 
+  // a fractional molecule alone is not a GC lambda coordinate (it may be a pair's, a group's or a Gibbs one)
   system.components[0].hasFractionalMolecule = true;
+  EXPECT_FALSE(system.lambdaWangLandauIsActive(0));
+  EXPECT_DOUBLE_EQ(system.weight(), 1.0);
+  system.numberOfGCFractionalMoleculesPerComponent_CFCMC[0] = 1;
   EXPECT_TRUE(system.lambdaWangLandauIsActive(0));
   system.components[0].lambdaGC.biasFactor[0] = std::log(2.0);
   EXPECT_NEAR(system.weight(), 0.5, 1.0e-12);
@@ -354,8 +358,10 @@ TEST(REWEIGHTED_HISTOGRAM_WHAM, weight_includes_pair_and_group_swap_lambda_bias)
   driver.lambdaGroupSwapCB.biasFactor.assign(driver.lambdaGroupSwapCB.numberOfSamplePoints, std::log(7.0));
   EXPECT_NEAR(system.weight(), 1.0 / (2.0 * 3.0 * 5.0 * 7.0), 1.0e-12);
 
-  // the GC lambda bias still multiplies in alongside the pair/group biases
+  // the GC lambda bias multiplies in alongside the pair/group biases once the component has that coordinate
   driver.lambdaGC.biasFactor.assign(driver.lambdaGC.numberOfSamplePoints, std::log(11.0));
+  EXPECT_NEAR(system.weight(), 1.0 / (2.0 * 3.0 * 5.0 * 7.0), 1.0e-12);
+  system.numberOfGCFractionalMoleculesPerComponent_CFCMC[0] = 1;
   EXPECT_NEAR(system.weight(), 1.0 / (2.0 * 3.0 * 5.0 * 7.0 * 11.0), 1.0e-12);
 
   // the weight must stay finite and strictly positive

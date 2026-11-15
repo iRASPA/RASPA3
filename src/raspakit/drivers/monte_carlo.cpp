@@ -790,7 +790,6 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
 
 void MonteCarlo::production(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
-  double minBias{0uz};
   std::chrono::steady_clock::time_point t1, t2;
 
   if (simulationStage == SimulationStage::Production) goto continueProductionStage;
@@ -825,50 +824,8 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
     system.reactionLambdaClearBookkeeping();
   };
 
-  minBias = std::numeric_limits<double>::max();
-  for (System& system : systems)
-  {
-    for (Component& component : system.components)
-    {
-      double currentMinBias =
-          *std::min_element(component.lambdaGC.biasFactor.cbegin(), component.lambdaGC.biasFactor.cend());
-      minBias = currentMinBias < minBias ? currentMinBias : minBias;
-      if (system.usesGibbsConventionalCFCMC())
-      {
-        const double gibbsMinBias =
-            *std::min_element(component.lambdaGibbs.biasFactor.cbegin(), component.lambdaGibbs.biasFactor.cend());
-        minBias = gibbsMinBias < minBias ? gibbsMinBias : minBias;
-      }
-    }
-
-    const double pairSwapMinBias = system.pairSwapLambdaMinBias();
-    if (pairSwapMinBias < minBias)
-    {
-      minBias = pairSwapMinBias;
-    }
-
-    if (system.usesReactionConventionalCFCMC())
-    {
-      const double reactionMinBias = system.reactionLambdaMinBias();
-      if (reactionMinBias < minBias)
-      {
-        minBias = reactionMinBias;
-      }
-    }
-  }
-  for (System& system : systems)
-  {
-    for (Component& component : system.components)
-    {
-      component.lambdaGC.normalize(minBias);
-      if (system.usesGibbsConventionalCFCMC())
-      {
-        component.lambdaGibbs.normalize(minBias);
-      }
-    }
-    system.pairSwapLambdaNormalize(minBias);
-    system.reactionLambdaNormalize(minBias);
-  }
+  // every lambda bias to a minimum of zero, histogram by histogram (see System::normalizeLambdaBiasFactors)
+  System::normalizeLambdaBiasFactors(systems);
 
   if (outputToFiles)
   {

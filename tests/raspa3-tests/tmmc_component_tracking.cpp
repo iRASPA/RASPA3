@@ -147,10 +147,16 @@ TEST(TMMC_COMPONENT_TRACKING, a_group_with_tracked_satellites_does_not_fit_the_m
   EXPECT_EQ(system.groupMoleculeCountChange(1, 1), 1uz);
   EXPECT_TRUE(system.groupSwapFitsTMMC(1));
 
-  // a cation with an adsorbate satellite: the tracked count changes on a move the matrix does not see
+  // a cation with one adsorbate satellite: N -> N +/- 1 as well, recorded on the satellite's count
   cation.groupComponentIds = {1};
   EXPECT_EQ(system.groupMoleculeCountChange(0, 1), 1uz);
+  EXPECT_TRUE(system.groupSwapFitsTMMC(0));
+  EXPECT_EQ(system.groupSwapTMMCMember(0).value(), 1uz);
+
+  // a cation with two adsorbate satellites: N -> N +/- 2
+  cation.groupComponentIds = {1, 1};
   EXPECT_FALSE(system.groupSwapFitsTMMC(0));
+  EXPECT_FALSE(system.groupSwapTMMCMember(0).has_value());
 
   // a cation with cation satellites: the tracked count is untouched
   cation.groupComponentIds = {0, 0};

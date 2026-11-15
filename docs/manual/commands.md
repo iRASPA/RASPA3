@@ -1613,6 +1613,21 @@ reported separately at the end of the simulation.
     acceptance (the collection-matrix statistics are unbiased either way).
     Default: `true`.
 
+-   `"MacroStateUseWangLandau" : boolean`\
+    For `"SimulationType" : "MonteCarloTransitionMatrix"`: a Wang-Landau bias
+    on the macrostate drives the walk through the macrostate range during
+    initialization and equilibration (the transition-matrix bias is flat
+    over the macrostates that were not visited yet); production hands the
+    bias over to the transition matrix. `"ParallelTMMC"` always does this.
+    Default: `false`.
+
+-   `"MacroStateRezeroAfterInitialization" : boolean`\
+    For `"SimulationType" : "MonteCarloTransitionMatrix"`: the collection
+    matrix, ln Π and the bias are set to zero at the start of equilibration.
+    The collection matrix and the visit histogram are always restarted at
+    the start of production (the bias is kept), so that ln Π is built from
+    production configurations only. Default: `false`.
+
 -   `"ThermostatChainLength" : integer`\
     The length of the Nosé-Hoover chain used to thermostat the system. Default:
     `5`.

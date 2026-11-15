@@ -1311,7 +1311,9 @@ std::string System::writeMCMoveStatistics() const
     std::print(stream, "{}", component.mc_moves_statistics.writeMCMoveStatistics());
     std::print(stream, "{}", component.writeSubMoveStatistics());
 
-    if (component.hasFractionalMolecule)
+    // the GC lambda statistics, of a component that has that coordinate (a pair, group or conventional Gibbs
+    // fractional molecule alone does not: its histograms are written below)
+    if (component.hasFractionalMolecule && usesGCLambda(componentId))
     {
       double imposedChemicalPotential = std::log(beta * component.fugacityCoefficient.value_or(1.0) * 
                                                  component.molFraction * pressure) / beta;
@@ -1395,7 +1397,7 @@ nlohmann::json System::jsonMCMoveStatistics() const
     nlohmann::json subMoves = component.jsonSubMoveStatistics();
     if (!subMoves.empty()) status[component.name]["subMoves"] = subMoves;
 
-    if (component.hasFractionalMolecule)
+    if (component.hasFractionalMolecule && usesGCLambda(componentId))
     {
       double imposedChemicalPotential =
           std::log(beta * component.fugacityCoefficient.value_or(1.0) * component.molFraction * pressure) / beta;

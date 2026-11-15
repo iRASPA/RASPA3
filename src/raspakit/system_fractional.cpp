@@ -1271,6 +1271,7 @@ void System::normalizeLambdaBiasFactors() noexcept
   for (Component& component : components)
   {
     component.lambdaGC.normalizeToMinimum();
+    component.lambdaGibbs.normalizeToMinimum();
     component.lambdaPairSwap.normalizeToMinimum();
     component.lambdaPairSwapCB.normalizeToMinimum();
     component.lambdaGroupSwap.normalizeToMinimum();
@@ -1291,6 +1292,43 @@ void System::normalizeLambdaBiasFactors() noexcept
     if (minBias == std::numeric_limits<double>::max()) continue;
     reaction.lambda.normalize(minBias);
     if (reaction.isSerialRxCFC()) reaction.lambdaProductSide.normalize(minBias);
+  }
+}
+
+void System::normalizeLambdaBiasFactors(std::span<System> systems) noexcept
+{
+  if (systems.empty()) return;
+  auto minimum = [](const PropertyLambdaProbabilityHistogram& histogram)
+  {
+    return histogram.biasFactor.empty()
+               ? 0.0
+               : *std::min_element(histogram.biasFactor.cbegin(), histogram.biasFactor.cend());
+  };
+  // the components whose GC histograms are coupled between the boxes, with the minimum of each box
+  const std::size_t numberOfComponents = systems.front().components.size();
+  std::vector<std::vector<double>> ownMinimum(numberOfComponents);
+  for (std::size_t componentId = 0; componentId < numberOfComponents; ++componentId)
+  {
+    const bool coupled =
+        systems.size() > 1uz &&
+        std::ranges::all_of(systems, [&](const System& system) { return componentId < system.components.size(); }) &&
+        std::ranges::any_of(systems, [&](const System& system)
+                            { return system.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0uz; });
+    if (!coupled) continue;
+    for (const System& system : systems) ownMinimum[componentId].push_back(minimum(system.components[componentId].lambdaGC));
+  }
+
+  for (System& system : systems) system.normalizeLambdaBiasFactors();
+
+  // back from the minimum of the box to the minimum over the boxes
+  for (std::size_t componentId = 0; componentId < numberOfComponents; ++componentId)
+  {
+    if (ownMinimum[componentId].empty()) continue;
+    const double sharedMinimum = *std::ranges::min_element(ownMinimum[componentId]);
+    for (std::size_t systemId = 0; systemId < systems.size(); ++systemId)
+    {
+      systems[systemId].components[componentId].lambdaGC.normalize(sharedMinimum - ownMinimum[componentId][systemId]);
+    }
   }
 }
 

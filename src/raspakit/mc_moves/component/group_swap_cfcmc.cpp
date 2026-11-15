@@ -183,7 +183,9 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
   // all group fractional molecules are coupled to the lambda histogram of the central component
   PropertyLambdaProbabilityHistogram& lambda = useCBMC ? central.lambdaGroupSwapCB : central.lambdaGroupSwap;
   // on an N chain only a direct crossing (a single bin) is a step of the matrix (System::cfcmcSwapFitsTMMC)
-  if (!system.cfcmcSwapFitsTMMC(selectedComponent, lambda))
+  // (of the tracked member of the group: the central molecule or a single satellite, System::groupSwapTMMCMember)
+  const std::optional<std::size_t> tmmcMember = system.groupSwapTMMCMember(selectedComponent);
+  if (tmmcMember.has_value() && !system.cfcmcSwapFitsTMMC(tmmcMember.value(), lambda))
   {
     return {std::nullopt, double3(0.0, 0.0, 0.0)};
   }
@@ -194,6 +196,8 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
   std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin(random, maxChange);
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  // the macrostate the endpoint crossings step: the count of the tracked member
+  const std::size_t tmmcOldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 
   // current spans of all group fractional molecules
   std::vector<std::span<Atom>> fractionalMolecules(groupSize);
@@ -570,14 +574,15 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
                                 polarizationDifference.potentialEnergy() + intraCoulombScaling));
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
-    if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
+    if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && tmmcOldN >= system.tmmc.maxMacrostate)
     {
       restoreFractionalGroup();
       return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     }
 
-    const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
-    const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
+    const std::size_t newN = tmmcOldN == std::numeric_limits<std::size_t>::max() ? tmmcOldN : tmmcOldN + 1;
+    const double biasTransitionMatrix =
+        tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, tmmcOldN) : 1.0;
 
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {
@@ -996,14 +1001,15 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
                                 polarizationDifference.potentialEnergy() + intraCoulombScaling));
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
-    if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
+    if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && tmmcOldN <= system.tmmc.minMacrostate)
     {
       restoreMolecules();
       return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
     }
 
-    const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-    const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
+    const std::size_t newN = tmmcOldN == 0 ? 0 : tmmcOldN - 1;
+    const double biasTransitionMatrix =
+        tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, tmmcOldN) : 1.0;
 
     if (random.uniform() < biasTransitionMatrix * samplingPacc)
     {

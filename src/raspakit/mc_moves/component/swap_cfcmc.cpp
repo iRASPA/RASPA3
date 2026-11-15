@@ -59,6 +59,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
   // Retrieve lambda parameters and select a new lambda bin for the move
   PropertyLambdaProbabilityHistogram& lambda = component.lambdaGC;
+
+  // A plain N chain (the matrix has no lambda dimension) under a lambda with several bins: the hops inside a
+  // macrostate are flattened by the Wang-Landau factors of the histogram, which the matrix does not see, and the
+  // endpoint crossings alone were recorded as the N -> N +/- 1 transitions. Their ratio then carries
+  // exp(eta_last - eta_0), the excess chemical potential itself, which was so erased from ln Pi. The input
+  // reader gives such a run the (N, lambda) chain; a system put together in code without it is refused here,
+  // as the CFCMC pair and group swaps are (System::cfcmcSwapFitsTMMC). The Widom form of the move (no
+  // insertion, no deletion) never crosses an endpoint and records nothing: it stays.
+  if (!system.tmmc.lambdaChain() && !(insertionDisabled && deletionDisabled) &&
+      !system.cfcmcSwapFitsTMMC(selectedComponent, lambda))
+  {
+    return {std::nullopt, double3(0.0, 0.0, 0.0)};
+  }
   std::size_t oldBin = lambda.currentBin;
   double deltaLambda = lambda.delta;
   double maxChange = component.mc_moves_statistics.getMaxChange(move, 2);
