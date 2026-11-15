@@ -180,7 +180,7 @@ export struct ParallelTMMC
   ParallelTMMC(System templateSystem, std::vector<double> temperatures,
                ParallelTMMCParameters parameters = {});
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization (2: BET auto-setup state).
+  std::uint64_t versionNumber{3};  ///< Version number for serialization (2: BET auto-setup state, 3: output JSON).
 
   RandomNumber random;  ///< Random number generator (seeding).
 

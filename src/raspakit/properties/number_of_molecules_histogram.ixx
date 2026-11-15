@@ -33,7 +33,10 @@ export struct PropertyNumberOfMoleculesHistogram
         numberOfBins(checkedNumberOfBins(range)),
         range(range),
         sampleEvery(sampleEvery),
-        writeEvery(writeEvery)
+        writeEvery(writeEvery),
+        // no components yet (the Python constructor; 'System::setNumberOfMoleculesHistogram' resizes it for the
+        // components of the system): the blocks exist, so a sample counts, and no channel is binned
+        histogram(numberOfBlocks, 0, numberOfBins)
   {
   }
 

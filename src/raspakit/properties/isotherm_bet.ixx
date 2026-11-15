@@ -215,6 +215,15 @@ export std::optional<std::pair<std::size_t, double>> findMacrostatePhaseSplit(st
                                                                              double logZeroThreshold,
                                                                              double bimodalDepthThreshold);
 
+/// Pin the temperature of a system: T, beta, the force field (shifts and tail corrections), the species
+/// partition functions and the CBMC conformation reservoirs. A no-op when the system is already at T.
+export void pinSystemTemperature(System& system, double temperature);
+
+/// Remove every integer molecule of the swappable (adsorbate) components, so that a Widom or occupancy scout
+/// starts from the empty host. Fractional molecules and fixed (non-swappable) co-adsorbates such as cations are
+/// kept: they are part of the host the adsorbate sees.
+export void removeSwappableIntegerMolecules(System& system);
+
 /// Pin T, P and Peng–Robinson fugacity coefficients on a system (WHAM replica re-placement).
 export void pinSystemPengRobinsonPressure(System& system, double pressurePa);
 

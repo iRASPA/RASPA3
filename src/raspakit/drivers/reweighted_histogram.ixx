@@ -88,8 +88,9 @@ export struct ReweightedIsothermPoint
   double moleculesPerCellError{0.0};  ///< Block error on the per-unit-cell loading.
   double effectiveSamples{0.0};       ///< Effective sample size (overlap diagnostic).
   /// Isosteric heat at this point [internal energy units], from the (N, U) fluctuations of the
-  /// reweighted distribution. NaN where the loading is pinned and the fluctuations vanish.
-  double isostericHeat{std::numeric_limits<double>::quiet_NaN()};
+  /// reweighted distribution. Empty where the loading is pinned and the fluctuations vanish (a NaN
+  /// sentinel can not be tested for: the library is compiled with -ffast-math).
+  std::optional<double> isostericHeat{};
 };
 
 export struct ReweightedIsotherm
@@ -141,7 +142,7 @@ export struct ReweightedHistogram
   ReweightedHistogram(System templateSystem, std::vector<double> temperatures, std::vector<double> pressures,
                       ReweightedHistogramParameters parameters = {});
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization (2: BET auto-setup state).
+  std::uint64_t versionNumber{3};  ///< Version number for serialization (2: BET auto-setup state, 3: output JSON).
 
   RandomNumber random;  ///< Random number generator (seeding + swap acceptance).
 
@@ -224,6 +225,12 @@ export struct ReweightedHistogram
   std::vector<UnconvergedBlock> whamUnconvergedBlockDetails;
 
   std::vector<std::size_t> stepsPerReplica;  ///< Production MC steps performed per replica.
+
+  /// Per replica: an accepted configuration swap left the replica with the excess-pressure tensor of the
+
+  /// configuration it gave away; the next production cycle recomputes it before it is sampled.
+
+  std::vector<std::uint8_t> excessPressureIsStale;
 
   /// Cycles completed in the previous stages; the time-evolution properties (number of molecules,
   /// volume) are indexed by the absolute cycle number counted over all stages.

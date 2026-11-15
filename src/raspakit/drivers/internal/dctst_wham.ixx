@@ -15,7 +15,7 @@ import std;
  *
  *     Omega_b = M_b / sum_k n_k exp(g_k - u_k(b)),      g_k = -ln sum_b Omega_b exp(-u_k(b)),
  *
- * which are solved by direct iteration in log space (gauge g_0 = 0). When the bias depends on the
+ * which are solved by direct iteration in log space (gauge: the first state with samples at g = 0). When the bias depends on the
  * coordinate only, these are exactly the MBAR equations in the limit of vanishing bin width; with the
  * bias evaluated at the bin that is sampled (piecewise constant), they are exact at any bin width.
  *
@@ -31,10 +31,11 @@ export struct DcTSTWham
   struct Result
   {
     std::vector<double> logDensity;    ///< ln Omega_b per bin (unnormalized); 'logZero' for empty bins.
-    std::vector<double> freeEnergies;  ///< g_k per state (gauge g_0 = 0).
+    std::vector<double> freeEnergies;  ///< g_k per state (gauge: the first state with samples at g = 0).
     std::size_t iterations{0};
     double residual{0.0};
-    bool converged{false};
+    bool connected{true};  ///< The sampled states form one overlap-connected group (see statesAreConnected).
+    bool converged{false};  ///< residual <= tolerance and connected.
   };
 
   /**
@@ -48,4 +49,12 @@ export struct DcTSTWham
                                     const std::vector<std::vector<double>>& reducedPotential, double tolerance,
                                     std::size_t maximumIterations,
                                     const std::vector<double>& initialFreeEnergies = {});
+
+  /// Whether the sampled states (ln n_k above 'logZeroThreshold') form a single group linked through bins to
+  /// which they both contribute a non-negligible share. Free-energy differences between disconnected groups are
+  /// undetermined: the WHAM iteration then 'converges' at once on an arbitrary offset.
+  [[nodiscard]] static bool statesAreConnected(const std::vector<double>& logStateCounts,
+                                               const std::vector<double>& freeEnergies,
+                                               const std::vector<double>& logDensity,
+                                               const std::vector<std::vector<double>>& reducedPotential);
 };

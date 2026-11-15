@@ -11,6 +11,14 @@ import crystal;
 import energy_shared_well_field;
 import energy_shared_well_surface;
 
+// A finite-value test that survives -ffast-math: std::isfinite and std::isnan are compiled away under its
+// finite-math assumption, an ordinary comparison against the largest double is not (an overflow to infinity and a
+// NaN both fail it).
+static inline bool isBoundedValue(double value)
+{
+  return value > -std::numeric_limits<double>::max() && value < std::numeric_limits<double>::max();
+}
+
 BETSurfaceArea::BETSurfaceArea() {}
 
 BETSurfaceArea::~BETSurfaceArea() {}
@@ -102,7 +110,7 @@ LinearFit fitLine(std::span<const IsothermPoint> points, double xLow, double xHi
     if (!(n > 0.0) || !(oneMinus > 0.0)) continue;
     double x = point.relativePressure;
     double y = x / (n * oneMinus);
-    if (!std::isfinite(y)) continue;
+    if (!isBoundedValue(y)) continue;
     sumX += x;
     sumY += y;
     sumXX += x * x;
@@ -126,7 +134,7 @@ LinearFit fitLine(std::span<const IsothermPoint> points, double xLow, double xHi
     double r = covXY / std::sqrt(varX * varY);
     fit.rSquared = r * r;
   }
-  fit.ok = std::isfinite(fit.slope) && std::isfinite(fit.intercept);
+  fit.ok = isBoundedValue(fit.slope) && isBoundedValue(fit.intercept);
   return fit;
 }
 
@@ -1061,20 +1069,20 @@ FiniteLayerCandidate fitFiniteLayerAtFixedN(std::span<const IsothermPoint> point
   auto evaluate = [&](double c) -> FiniteLayerCandidate
   {
     FiniteLayerCandidate candidate;
-    if (!(c > 0.0) || !std::isfinite(c)) return candidate;
+    if (!(c > 0.0) || !isBoundedValue(c)) return candidate;
 
     double sumFN = 0.0;
     double sumFF = 0.0;
     for (const IsothermPoint &point : points)
     {
       const double f = finiteLayerBETOccupancy(point.relativePressure, c, numberOfLayers);
-      if (!(f > 0.0) || !std::isfinite(f)) return candidate;
+      if (!(f > 0.0) || !isBoundedValue(f)) return candidate;
       sumFN += f * point.moleculesPerCell;
       sumFF += f * f;
     }
     if (!(sumFF > 0.0)) return candidate;
     const double monolayer = sumFN / sumFF;
-    if (!(monolayer > 0.0) || !std::isfinite(monolayer)) return candidate;
+    if (!(monolayer > 0.0) || !isBoundedValue(monolayer)) return candidate;
     // A monolayer larger than the highest loading on the isotherm is unphysical.
     if (saturationLoading > 0.0 && monolayer > saturationLoading) return candidate;
 
@@ -1085,7 +1093,7 @@ FiniteLayerCandidate fitFiniteLayerAtFixedN(std::span<const IsothermPoint> point
       const double delta = point.moleculesPerCell - monolayer * f;
       residual += delta * delta;
     }
-    if (!std::isfinite(residual)) return candidate;
+    if (!isBoundedValue(residual)) return candidate;
     candidate.monolayer = monolayer;
     candidate.cConstant = c;
     candidate.residual = residual;
@@ -1214,7 +1222,7 @@ FiniteLayerBETFit fitFiniteLayerBET(std::span<const IsothermPoint> isotherm, dou
   (void)liquidVolume;
 
   double saturationLoading = 0.0;
-  double xMin = std::numeric_limits<double>::infinity();
+  double xMin = std::numeric_limits<double>::max();
   for (const IsothermPoint &point : isotherm)
   {
     saturationLoading = std::max(saturationLoading, point.moleculesPerCell);
@@ -1225,7 +1233,7 @@ FiniteLayerBETFit fitFiniteLayerBET(std::span<const IsothermPoint> isotherm, dou
   }
 
   const double windowHigh = finiteLayerWindowCap(isotherm);
-  if (!(windowHigh > 0.0) || !std::isfinite(xMin)) return result;
+  if (!(windowHigh > 0.0) || !isBoundedValue(xMin)) return result;
   // Drop the deepest Henry decade so the residual is not dominated by the dilute wing.
   const double windowLow = std::max(xMin, windowHigh * 1.0e-4);
 

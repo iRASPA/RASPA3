@@ -466,7 +466,18 @@ void rebuildMolecularDynamicsState(System& system, double velocityScaling)
 
 }  // namespace
 
-std::optional<std::string> MC_Moves::parallelTemperingUnsupportedReason(const System& system, bool soluteTempering)
+namespace
+{
+// the insertions of a flexible molecule draw (or grow) its conformation from the intramolecular Boltzmann
+// distribution, so a replica samples the activity beta f / Z_intra(beta); the swap knows beta f only and the
+// ratio Z_intra(beta_B) / Z_intra(beta_A) per molecule exchanged is missing from its acceptance
+bool hasFlexibleOpenComponent(const System& system)
+{
+  return std::ranges::any_of(system.components, [](const Component& component)
+                             { return component.swappable && !component.rigid && component.atoms.size() > 1uz; });
+}
+
+std::optional<std::string> unsupportedReason(const System& system, bool soluteTempering, bool checkFlexible)
 {
   if (system.framework.has_value() && system.framework->hasMobileAtoms())
   {
@@ -497,11 +508,7 @@ std::optional<std::string> MC_Moves::parallelTemperingUnsupportedReason(const Sy
         "Hamiltonian: copied to every replica of a temperature or solute-tempering ladder it is wrong at the "
         "others, and the insertions and the swaps then sample the wrong chemical potentials");
   }
-  // the insertions of a flexible molecule draw (or grow) its conformation from the intramolecular Boltzmann
-  // distribution, so a replica samples the activity beta f / Z_intra(beta); the swap knows beta f only and the
-  // ratio Z_intra(beta_B) / Z_intra(beta_A) per molecule exchanged is missing from its acceptance
-  if (std::ranges::any_of(system.components, [](const Component& component)
-                          { return component.swappable && !component.rigid && component.atoms.size() > 1uz; }))
+  if (checkFlexible && hasFlexibleOpenComponent(system))
   {
     return std::string(
         "an open ensemble with a flexible molecule is not supported: a replica samples the activity beta f over "
@@ -516,13 +523,22 @@ std::optional<std::string> MC_Moves::parallelTemperingUnsupportedReason(const Sy
   }
   return std::nullopt;
 }
+}  // namespace
+
+std::optional<std::string> MC_Moves::parallelTemperingUnsupportedReason(const System& system, bool soluteTempering)
+{
+  return unsupportedReason(system, soluteTempering, true);
+}
 
 std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& systemA, const System& systemB)
 {
-  // the cases the drivers refuse up front (see parallelTemperingUnsupportedReason)
+  // the cases the drivers refuse up front (see parallelTemperingUnsupportedReason). A flexible molecule is
+  // refused only across temperatures or Hamiltonians: between two replicas at one temperature and one
+  // Hamiltonian (a pressure ladder) both sample beta f / Z_intra(beta) with the same Z_intra, which cancels.
   const bool soluteTempering = temperedComponent(systemA, systemB).has_value();
-  if (MC_Moves::parallelTemperingUnsupportedReason(systemA, soluteTempering).has_value() ||
-      MC_Moves::parallelTemperingUnsupportedReason(systemB, soluteTempering).has_value())
+  const bool checkFlexible = soluteTempering || systemA.beta != systemB.beta;
+  if (unsupportedReason(systemA, soluteTempering, checkFlexible).has_value() ||
+      unsupportedReason(systemB, soluteTempering, checkFlexible).has_value())
   {
     return std::nullopt;
   }

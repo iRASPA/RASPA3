@@ -16,7 +16,10 @@ void PropertyNumberOfMoleculesHistogram::addSample(std::size_t blockIndex, std::
 
   if (currentCycle % sampleEvery != 0uz) return;
 
-  for (std::size_t i = 0; i < numberOfIntegerMoleculesPerComponent.size(); ++i)
+  // a histogram built without its component count (the constructor without 'numberOfComponents') has no channels:
+  // only the components it was sized for are binned
+  const std::size_t numberOfChannels = std::min(numberOfIntegerMoleculesPerComponent.size(), histogram.numberOfChannels);
+  for (std::size_t i = 0; i < numberOfChannels; ++i)
   {
     bin = std::make_signed_t<std::size_t>(numberOfIntegerMoleculesPerComponent[i]) - std::make_signed_t<std::size_t>(range.first);
     if (bin >= 0 && bin < std::make_signed_t<std::size_t>(numberOfBins))

@@ -272,6 +272,12 @@ constexpr std::size_t numberOfWHAMReweightingPressures = 400;
 
 double henryCoefficientPerCell(System& system, double temperature, double cells)
 {
+  // The Widom insertions sample exp(-beta dU) at the system's own beta, and K_H is an infinite-dilution
+  // property of the empty host: pin the system to the temperature K_H is asked at and remove the guests the
+  // input created (CreateNumberOfMolecules), which would otherwise be inserted against.
+  pinSystemTemperature(system, temperature);
+  removeSwappableIntegerMolecules(system);
+
   RandomNumber rng(std::size_t{1});
   system.forceField.initializeAutomaticCutOff(system.simulationBox);
   system.forceField.initializeEwaldParameters(system.simulationBox);
@@ -441,6 +447,40 @@ std::optional<std::pair<std::size_t, double>> findMacrostatePhaseSplit(std::span
   return std::make_pair(bestCut, bestDepth);
 }
 
+void pinSystemTemperature(System& system, double temperature)
+{
+  if (system.temperature == temperature && system.forceField.temperature == temperature)
+  {
+    return;
+  }
+  system.temperature = temperature;
+  system.beta = 1.0 / (Units::KB * temperature);
+  if (system.forceField.temperature != temperature)
+  {
+    system.forceField.temperature = temperature;
+    system.forceField.preComputeDerivedParameters();
+    system.forceField.preComputePotentialShift();
+    system.forceField.preComputeTailCorrection();
+  }
+  for (Component& component : system.components) component.updateLnPartitionFunction(temperature);
+  system.buildConformationReservoirs();
+  system.buildRecoilReferenceConformations();
+}
+
+void removeSwappableIntegerMolecules(System& system)
+{
+  for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
+  {
+    if (!system.components[componentId].swappable) continue;
+    // integer molecules follow the fractional ones of a component: remove from the back
+    while (system.numberOfIntegerMoleculesPerComponent[componentId] > 0uz)
+    {
+      const std::size_t last = system.numberOfMoleculesPerComponent[componentId] - 1uz;
+      system.deleteMolecule(componentId, last, system.spanOfMolecule(componentId, last));
+    }
+  }
+}
+
 void pinSystemPengRobinsonPressure(System& system, double pressurePa)
 {
   const double T = system.temperature;
@@ -451,8 +491,11 @@ void pinSystemPengRobinsonPressure(System& system, double pressurePa)
   for (Component& component : system.components)
   {
     // A component without critical constants has no Peng-Robinson to take a coefficient from:
-    // the one it was given (or the ideal gas's one) is kept, the same at every state point.
-    if (!EquationOfState::hasCriticalConstants(component.criticalTemperature, component.criticalPressure))
+    // the one it was given (or the ideal gas's one) is kept, the same at every state point. A
+    // 'FugacityCoefficient' given in the input is kept as well (an explicit ideal gas, say), as
+    // the parallel-tempering driver keeps it.
+    if (component.fugacityCoefficientGiven ||
+        !EquationOfState::hasCriticalConstants(component.criticalTemperature, component.criticalPressure))
     {
       continue;
     }
@@ -1174,10 +1217,12 @@ std::vector<double> placePressuresByPreIsothermFisher(double lowestPressure, dou
   {
     const double theta = coverageOfFisher(coordinate);
     double pressure = modelPressureFromCoverage(fit, theta);
-    // the inverse overflows to infinity close to saturation; a bound, as std::isfinite is compiled away
+    // the inverse overflows to infinity close to saturation (and the Toth inverse returns 0 when 1 - theta^t
+    // rounds to zero); a bound, as std::isfinite is compiled away. A failure near theta = 1 lies at the top of
+    // the interval, one near theta = 0 at the bottom.
     if (!(pressure > 0.0 && pressure < 1.0e300))
     {
-      pressure = lowestPressure;
+      pressure = (theta > 0.5) ? highestPressure : lowestPressure;
     }
     return pressure;
   };
@@ -1376,6 +1421,7 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
     component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
                                            system.containsTheFractionalMolecule);
   }
+  const bool hasFractionalAdsorbate = system.components.front().hasFractionalMolecule;
 
   std::print("  Scouting occupancy at {:.5e} Pa...\n", pressurePa);
   std::cout << std::flush;
@@ -1384,6 +1430,7 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
   {
     double blockSum = 0.0;
     double blockSumOfSquares = 0.0;
+    double blockSamples = 0.0;
     std::size_t blockPeak = 0uz;
     for (std::size_t cycle = 0uz; cycle < scoutBlockCycles; ++cycle)
     {
@@ -1395,12 +1442,50 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
         system.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
             system.lambdaWangLandauIsActive(selectedComponent));
+
+        // With a CFCMC fractional molecule the integer count is the grand-canonical N only where the
+        // fractional molecule is decoupled: at lambda = 0 the bias, a function of lambda alone, is the same
+        // for every N, and the conditional distribution of N is the unbiased one. At any other lambda the
+        // configuration holds N molecules plus a partially coupled one.
+        if (hasFractionalAdsorbate && system.components[0].lambdaGC.currentBin == 0uz)
+        {
+          const double occupancy = static_cast<double>(system.numberOfIntegerMoleculesPerComponent[0]);
+          blockSum += occupancy;
+          blockSumOfSquares += occupancy * occupancy;
+          blockSamples += 1.0;
+        }
       }
-      const double occupancy = static_cast<double>(system.numberOfIntegerMoleculesPerComponent[0]);
-      blockSum += occupancy;
-      blockSumOfSquares += occupancy * occupancy;
+      if (!hasFractionalAdsorbate)
+      {
+        const double occupancy = static_cast<double>(system.numberOfIntegerMoleculesPerComponent[0]);
+        blockSum += occupancy;
+        blockSumOfSquares += occupancy * occupancy;
+        blockSamples += 1.0;
+      }
       blockPeak = std::max(blockPeak, system.numberOfIntegerMoleculesPerComponent[0]);
     }
+
+    // the Wang-Landau lambda bias converges geometrically: the modification factor is halved after every
+    // block, as in the equilibration stage of the drivers, instead of growing the bias at a fixed rate
+    for (Component& component : system.components)
+    {
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
+                                             system.containsTheFractionalMolecule);
+    }
+
+    // a block without a decoupled sample carries no information: it is not counted towards the plateau
+    if (!(blockSamples > 0.0))
+    {
+      point.cycles += scoutBlockCycles;
+      point.peakOccupancy = std::max(point.peakOccupancy, blockPeak);
+      std::print("    {} cycles, no lambda = 0 sample in this block\n", point.cycles);
+      std::cout << std::flush;
+      continue;
+    }
+    // rescale the block sums to the per-cycle normalization the plateau statistics use
+    const double toCycles = static_cast<double>(scoutBlockCycles) / blockSamples;
+    blockSum *= toCycles;
+    blockSumOfSquares *= toCycles;
     const double blockMean = blockSum / static_cast<double>(scoutBlockCycles);
     const bool isFirstBlock = point.cycles == 0uz;
     point.cycles += scoutBlockCycles;

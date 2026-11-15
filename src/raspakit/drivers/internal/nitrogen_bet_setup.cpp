@@ -24,7 +24,11 @@ NitrogenBETAutoSetupResult applyNitrogenBETAutoSetup(System& templateSystem, dou
 
   if (scoutFillingCeiling)
   {
-    result.fillingCeiling = scoutNitrogenBETFillingCeiling(templateSystem, scoutMaximumCycles);
+    // the P0 occupancy scout runs at the temperature the ladder is placed for (the template may carry a
+    // different ExternalTemperature than the front of the temperature ladder)
+    System scoutSystem = templateSystem;
+    pinSystemTemperature(scoutSystem, temperature);
+    result.fillingCeiling = scoutNitrogenBETFillingCeiling(std::move(scoutSystem), scoutMaximumCycles);
     templateSystem.tmmc.maxMacrostate =
         std::max(templateSystem.tmmc.minMacrostate + 1uz, result.fillingCeiling->maxMacrostate);
   }

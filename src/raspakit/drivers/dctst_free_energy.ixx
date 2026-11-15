@@ -280,6 +280,7 @@ export struct DynamicallyCorrectedTSTFreeEnergy
   {
     bool available{false};
     bool converged{false};
+    bool connected{true};  ///< The sampled states overlap as one group (their free energies are determined).
     std::size_t iterations{0};
     double residual{0.0};
     std::vector<double> stateFreeEnergies;  ///< g_k of the states (0 = pilot).

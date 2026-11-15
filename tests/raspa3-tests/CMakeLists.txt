@@ -56,6 +56,7 @@ add_executable(unit_tests_raspa3
   cbmc_plan_fixes.cpp
   mc_cfcmc_flexible_charged_drift.cpp
   parallel_tempering_unsupported.cpp
+  wham_and_bet_setup_fixes.cpp
   cbmc_thread_pool_grids.cpp
   gibbs_empty_box_statistics.cpp
   mc_move_probabilities_normalized.cpp

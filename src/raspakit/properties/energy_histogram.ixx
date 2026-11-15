@@ -15,10 +15,22 @@ export struct PropertyEnergyHistogram
 {
   PropertyEnergyHistogram() {};
 
+  /// The range [first, second) in Kelvin: a reversed or empty range is refused (the bins were laid out from 'first'
+  /// over |second - first|, so a reversed range binned the interval above 'first' instead of the one below it).
+  static std::pair<double, double> checkedValueRange(std::pair<double, double> range)
+  {
+    if (!(range.second > range.first))
+      throw std::invalid_argument(std::format(
+          "PropertyEnergyHistogram: the upper limit ({}) must lie above the lower limit ({})", range.second,
+          range.first));
+    return range;
+  }
+
   PropertyEnergyHistogram(std::size_t numberOfBlocks, std::size_t numberOfBins, std::pair<double, double> valueRange,
                           std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
       : numberOfBins(numberOfBins),
-        valueRange(Units::KelvinToEnergy * valueRange.first, Units::KelvinToEnergy * valueRange.second),
+        valueRange(Units::KelvinToEnergy * checkedValueRange(valueRange).first,
+                   Units::KelvinToEnergy * valueRange.second),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
         histogram(numberOfBlocks, 1, numberOfBins)

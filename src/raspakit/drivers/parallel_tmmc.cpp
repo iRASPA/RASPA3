@@ -818,8 +818,12 @@ void ParallelTMMC::setup()
       walkerJsons[walkerId]["walkerId"] = walkerId;
       walkerJsons[walkerId]["temperature"] = system.temperature;
       walkerJsons[walkerId]["window"] = std::vector<std::size_t>{system.tmmc.minMacrostate, system.tmmc.maxMacrostate};
-      walkerJsons[walkerId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
-      walkerJsons[walkerId]["initialization"]["components"] = system.jsonComponentStatus();
+      // a resumed run keeps the initial conditions it restored, not the mid-run state of the restart
+      if (!resumedFromBinaryRestart || !walkerJsons[walkerId]["initialization"].contains("initialConditions"))
+      {
+        walkerJsons[walkerId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
+        walkerJsons[walkerId]["initialization"]["components"] = system.jsonComponentStatus();
+      }
 
       std::ofstream walkerJson(walkerJsonFileNames[walkerId]);
       walkerJson << walkerJsons[walkerId].dump(4);
@@ -1536,6 +1540,7 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
   // coefficient it was given (or the ideal gas's one), and the reweighting uses that same coefficient at
   // every pressure, so that the two sides of it are one fluid.
   const bool recomputesFugacityCoefficient =
+      !frontComponent.fugacityCoefficientGiven &&
       EquationOfState::hasCriticalConstants(frontComponent.criticalTemperature, frontComponent.criticalPressure);
   const double keptFugacityCoefficient = frontComponent.fugacityCoefficient.value_or(1.0);
   const double logPressureMinimum = std::log(reweightingPressureRange.first);
@@ -2004,6 +2009,15 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
           std::print(stream, "BET extraction skipped: BET needs an adsorbate component\n\n");
         }
       }
+      else if (temperatureIndex != 0uz)
+      {
+        // 'SaturationPressure' is P0 at one temperature, the front of the ladder (where the automatic pressure
+        // placement put P0 as well): P / P0 means nothing at any other temperature
+        std::print(stream,
+                   "BET extraction at {} [K] skipped: 'SaturationPressure' P0 is taken at {} [K], the first "
+                   "temperature of the ladder\n\n",
+                   temperature, temperatures.front());
+      }
       else
       {
         const BETProbeProperties probe = requireBETProbeProperties(front.components.front());
@@ -2312,7 +2326,10 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
       // and the state was visited; otherwise it is fixed approximately at the dilute end of the
       // scanned pressure range, where the vapor is nearly ideal and beta p V ~ beta f V.
       double saturationPressurePa;
-      const double logPartitionAtCoexistence = logSumExpRange(logProbability, 0uz, logProbability.size());
+      // The pressure of the coexisting phases is that of either pure phase: beta p V = ln Xi_vap, the grand
+      // partition function restricted to the vapor basin (Errington, J. Chem. Phys. 118, 9915 (2003)). The sum over
+      // all N is Xi_vap + Xi_liq = 2 Xi_vap at the equal-weight point and would add k_B T ln 2 / V to p_sat.
+      const double logPartitionAtCoexistence = logVaporWeight;
       const bool saturationPressureFromEmptyBox = (minMacrostate == 0uz) && (logProbability[0] > logZeroThreshold);
       if (saturationPressureFromEmptyBox)
       {
@@ -2627,6 +2644,15 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
   archive << ptmmc.nitrogenBETPressurePlan;
   archive << ptmmc.nitrogenBETFillingCeiling;
 
+  // version 3: the JSON output of the run (its header and the initial conditions of the walkers), which a
+  // resumed run must not rebuild from its mid-run state
+  archive << ptmmc.outputJson.dump();
+  {
+    std::vector<std::string> jsons;
+    for (const nlohmann::json& json : ptmmc.walkerJsons) jsons.push_back(json.dump());
+    archive << jsons;
+  }
+
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
   return archive;
@@ -2702,6 +2728,16 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTMMC
     archive >> ptmmc.autoMacroStateMaximum;
     archive >> ptmmc.nitrogenBETPressurePlan;
     archive >> ptmmc.nitrogenBETFillingCeiling;
+  }
+  if (versionNumber >= 3)
+  {
+    std::string json;
+    archive >> json;
+    ptmmc.outputJson = nlohmann::json::parse(json);
+    std::vector<std::string> jsons;
+    archive >> jsons;
+    ptmmc.walkerJsons.clear();
+    for (const std::string& walkerJson : jsons) ptmmc.walkerJsons.push_back(nlohmann::json::parse(walkerJson));
   }
 
   std::uint64_t magicNumber;

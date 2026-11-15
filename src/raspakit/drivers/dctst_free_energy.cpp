@@ -1737,6 +1737,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     std::vector<double> freeEnergies;
     std::size_t iterations{0};
     double residual{0.0};
+    bool connected{true};
     bool converged{false};
   };
   auto solveFor = [&](const std::vector<std::vector<double>>& counts, const std::vector<double>& initial,
@@ -1751,6 +1752,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     solution.freeEnergies = wham.freeEnergies;
     solution.iterations = wham.iterations;
     solution.residual = wham.residual;
+    solution.connected = wham.connected;
     solution.converged = wham.converged;
     solution.density.assign(numberOfBins, 0.0);
     solution.defined.assign(numberOfBins, false);
@@ -1855,6 +1857,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
 
   result.available = true;
   result.converged = coldConverged && full.converged;
+  result.connected = full.connected;
   result.iterations = coldIterations;
   result.residual = coldResidual;
   result.stateFreeEnergies = full.freeEnergies;
@@ -2434,7 +2437,13 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
                grid.numberOfBins);
     std::print(stream, "    converged:                           {} ({} iterations, residual {:.2e})\n",
                profile.converged ? "yes" : "NO", profile.iterations, profile.residual);
-    std::print(stream, "    g_0 (pilot) = 0 by gauge; window free energies above\n");
+    if (!profile.connected)
+    {
+      std::print(stream,
+                 "    WARNING: the sampled windows fall apart into groups that do not overlap; the free-energy\n"
+                 "             offsets between those groups are undetermined. Add windows or sample longer.\n");
+    }
+    std::print(stream, "    g = 0 by gauge on the first sampled state (the pilot when it has samples)\n");
     if (profile.pilotConsistencyBins > 0)
     {
       std::print(
@@ -2513,6 +2522,7 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
     json["kTST"] = kTST;
     json["kTSTError"] = kTSTError;
     json["whamConverged"] = profile.converged;
+    json["whamConnected"] = profile.connected;
     json["whamIterations"] = profile.iterations;
     json["minimumWindowOverlap"] = minimumOverlap;
     json["pilotConsistencyRms"] = profile.pilotConsistencyRms;

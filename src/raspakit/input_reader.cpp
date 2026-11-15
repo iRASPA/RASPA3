@@ -1273,6 +1273,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   if (parsed_data.contains("ReweightingTemperatures") && parsed_data["ReweightingTemperatures"].is_array())
   {
     reweightingTemperatures = parsed_data["ReweightingTemperatures"].get<std::vector<double>>();
+    if (std::ranges::any_of(reweightingTemperatures, [](double T) { return !(T > 0.0); }))
+    {
+      throw std::runtime_error("[Input reader]: 'ReweightingTemperatures' must all be positive [K]\n");
+    }
   }
 
   auto parseComputeBET = [&](const std::string& key)
@@ -1329,7 +1333,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       throw std::runtime_error("[Input reader]: 'WHAMTolerance' must be a positive number\n");
     }
     whamTolerance = parsed_data["WHAMTolerance"].get<double>();
-    if (!(whamTolerance > 0.0) || !std::isfinite(whamTolerance))
+    // a bound rather than std::isfinite, which -ffast-math compiles away
+    if (!(whamTolerance > 0.0) || !(whamTolerance < std::numeric_limits<double>::max()))
     {
       throw std::runtime_error("[Input reader]: 'WHAMTolerance' must be a positive finite number\n");
     }
@@ -3574,11 +3579,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           throw std::runtime_error(
               std::format("[Input reader]: 'ExternalTemperatures' must contain at least one temperature\n"));
         }
-        if (!std::ranges::is_sorted(parallelTemperingTemperatures))
+        if (std::ranges::any_of(parallelTemperingTemperatures, [](double T) { return !(T > 0.0); }))
         {
           throw std::runtime_error(
-              std::format("[Input reader]: 'ExternalTemperatures' must be sorted in increasing order (swaps are "
-                          "attempted between neighboring temperatures)\n"));
+              std::format("[Input reader]: 'ExternalTemperatures' must all be positive [K]\n"));
+        }
+        if (std::ranges::adjacent_find(parallelTemperingTemperatures, std::greater_equal<double>{}) !=
+            parallelTemperingTemperatures.end())
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'ExternalTemperatures' must be sorted in strictly increasing order "
+                          "(swaps are attempted between neighboring temperatures)\n"));
         }
       }
 
@@ -3679,11 +3690,18 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             throw std::runtime_error(
                 std::format("[Input reader]: 'ExternalPressures' must contain at least one pressure\n"));
           }
-          if (!std::ranges::is_sorted(parallelTemperingPressures))
+          // a zero pressure has ln(beta f) = -infinity, which the reweighting can not hold (-ffast-math)
+          if (std::ranges::any_of(parallelTemperingPressures, [](double P) { return !(P > 0.0); }))
           {
             throw std::runtime_error(
-                std::format("[Input reader]: 'ExternalPressures' must be sorted in increasing order (swaps are "
-                            "attempted between neighboring pressures)\n"));
+                std::format("[Input reader]: 'ExternalPressures' must all be positive [Pa]\n"));
+          }
+          if (std::ranges::adjacent_find(parallelTemperingPressures, std::greater_equal<double>{}) !=
+              parallelTemperingPressures.end())
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: 'ExternalPressures' must be sorted in strictly increasing order "
+                            "(swaps are attempted between neighboring pressures)\n"));
           }
         }
         else
@@ -4854,6 +4872,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           if (s.sampleEvery == 0)
           {
             throw std::runtime_error("[Input reader]: 'dcTST' 'SampleEvery' must be positive\n");
+          }
+          if (!(s.whamTolerance > 0.0) || !(s.whamTolerance < std::numeric_limits<double>::max()))
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'WhamTolerance' must be a positive finite number\n");
+          }
+          if (s.whamMaximumIterations == 0)
+          {
+            throw std::runtime_error("[Input reader]: 'dcTST' 'WhamMaximumIterations' must be positive\n");
           }
           if (s.windowSpacing <= 0.0)
           {

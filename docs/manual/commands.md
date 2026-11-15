@@ -2359,7 +2359,8 @@ directory `number_of_molecules_histogram`.
     The lower bound of the histograms. Default: `0`.
 
 -   `"UpperLimitNumberOfMoleculesHistogram" : integer`\
-    The upper bound of the histograms. Default: `200`.
+    The upper bound of the histograms, exclusive: the bins are the molecule counts
+    from the lower limit up to this value minus one. Default: `200`.
 
 #### Radial Distribution Function (RDF) force-based <a name="radial-distribution-function-rdf-force-based"></a>
 
