@@ -118,7 +118,8 @@ TEST(REWEIGHTED_HISTOGRAM_WHAM, empty_samples_skip_analysis)
   simulation.setup();
   simulation.performReweightingAnalysis();
 
-  EXPECT_TRUE(simulation.whamConverged);
+  // nothing was solved: an empty analysis is not reported as a converged one
+  EXPECT_FALSE(simulation.whamConverged);
   EXPECT_EQ(simulation.whamIterations, 0uz);
   EXPECT_TRUE(simulation.reweightedIsotherms.empty());
 }

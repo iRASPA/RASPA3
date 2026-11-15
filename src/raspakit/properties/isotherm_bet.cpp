@@ -290,7 +290,8 @@ double henryCoefficientPerCell(System& system, double temperature, double cells)
   double sum = 0.0;
   for (std::size_t insertion = 0uz; insertion < nitrogenBETHenryInsertions; ++insertion)
   {
-    sum += MC_Moves::WidomMove(rng, system, 0uz);
+    // the adsorbate, not component 0: a framework with extra-framework cations lists them first
+    sum += MC_Moves::WidomMove(rng, system, system.tmmcComponent());
   }
   const double averageRosenbluthWeight = sum / static_cast<double>(nitrogenBETHenryInsertions);
 
@@ -334,7 +335,7 @@ NitrogenBETPressurePlan planNitrogenBETPressures(System system, double temperatu
     throw std::runtime_error("[ComputeBET]: automatic pressure placement needs an adsorbate component\n");
   }
 
-  const BETProbeProperties probe = requireBETProbeProperties(system.components.front());
+  const BETProbeProperties probe = requireBETProbeProperties(system.components[system.tmmcComponent()]);
 
   const int3 numberOfUnitCells = system.framework->numberOfUnitCells;
   const double cells =
@@ -715,7 +716,8 @@ double sipsCoverage(double pressure, double affinity, double exponent)
     return 0.0;
   }
   const double x = std::pow(affinity * pressure, exponent);
-  if (!std::isfinite(x) || x > 1.0e300)
+  // a bound that a NaN fails too: std::isfinite is compiled away under -ffast-math
+  if (!(x < 1.0e300))
   {
     return 1.0;
   }
@@ -730,7 +732,7 @@ double tothCoverage(double pressure, double affinity, double exponent)
   }
   const double x = affinity * pressure;
   const double xt = std::pow(x, exponent);
-  if (!std::isfinite(xt) || xt > 1.0e300)
+  if (!(xt < 1.0e300))
   {
     return 1.0;
   }
@@ -1403,7 +1405,7 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
   system.precomputeTotalRigidEnergy();
   system.runningEnergies = system.computeTotalEnergies();
 
-  const BETProbeProperties probe = requireBETProbeProperties(system.components.front());
+  const BETProbeProperties probe = requireBETProbeProperties(system.components[system.tmmcComponent()]);
 
   std::size_t fractionalMoleculeSystem = 0uz;
   NitrogenBETScoutPoint point;
@@ -1421,7 +1423,10 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
     component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
                                            system.containsTheFractionalMolecule);
   }
-  const bool hasFractionalAdsorbate = system.components.front().hasFractionalMolecule;
+  // the probe is the adsorbate (System::tmmcComponent), which fixed extra-framework cations may precede; the
+  // scout took component 0, and counted the cations of such a framework as the loading
+  const std::size_t probeComponent = system.tmmcComponent();
+  const bool hasFractionalAdsorbate = system.components[probeComponent].hasFractionalMolecule;
 
   std::print("  Scouting occupancy at {:.5e} Pa...\n", pressurePa);
   std::cout << std::flush;
@@ -1447,9 +1452,9 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
         // fractional molecule is decoupled: at lambda = 0 the bias, a function of lambda alone, is the same
         // for every N, and the conditional distribution of N is the unbiased one. At any other lambda the
         // configuration holds N molecules plus a partially coupled one.
-        if (hasFractionalAdsorbate && system.components[0].lambdaGC.currentBin == 0uz)
+        if (hasFractionalAdsorbate && system.components[probeComponent].lambdaGC.currentBin == 0uz)
         {
-          const double occupancy = static_cast<double>(system.numberOfIntegerMoleculesPerComponent[0]);
+          const double occupancy = static_cast<double>(system.numberOfIntegerMoleculesPerComponent[probeComponent]);
           blockSum += occupancy;
           blockSumOfSquares += occupancy * occupancy;
           blockSamples += 1.0;
@@ -1457,12 +1462,12 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
       }
       if (!hasFractionalAdsorbate)
       {
-        const double occupancy = static_cast<double>(system.numberOfIntegerMoleculesPerComponent[0]);
+        const double occupancy = static_cast<double>(system.numberOfIntegerMoleculesPerComponent[probeComponent]);
         blockSum += occupancy;
         blockSumOfSquares += occupancy * occupancy;
         blockSamples += 1.0;
       }
-      blockPeak = std::max(blockPeak, system.numberOfIntegerMoleculesPerComponent[0]);
+      blockPeak = std::max(blockPeak, system.numberOfIntegerMoleculesPerComponent[probeComponent]);
     }
 
     // the Wang-Landau lambda bias converges geometrically: the modification factor is halved after every
@@ -1543,7 +1548,7 @@ NitrogenBETFillingCeiling scoutNitrogenBETFillingCeiling(System system, std::siz
         "[ComputeBET]: automatic filling ceiling needs an adsorbate component to scout occupancy at P0\n");
   }
 
-  const BETProbeProperties probe = requireBETProbeProperties(system.components.front());
+  const BETProbeProperties probe = requireBETProbeProperties(system.components[system.tmmcComponent()]);
 
   std::print("  Scouting occupancy at P0 ({:.0f} Pa) for the filling ceiling N_max...\n",
              probe.saturationPressure);

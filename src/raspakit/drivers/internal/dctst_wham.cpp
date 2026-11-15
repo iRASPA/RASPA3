@@ -54,11 +54,9 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
     return result;
   }
 
-  double residual = 1e30;
-  std::size_t iteration = 0uz;
-  for (; iteration < maximumIterations && residual > tolerance; ++iteration)
+  // Omega_b from the current g_k
+  auto updateDensity = [&]()
   {
-    // Omega_b
     for (std::size_t b = 0; b < numberOfBins; ++b)
     {
       if (logBinCounts[b] <= logZeroThreshold)
@@ -80,6 +78,14 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
       }
       result.logDensity[b] = logBinCounts[b] - largest - std::log(sum);
     }
+
+  };
+
+  double residual = 1e30;
+  std::size_t iteration = 0uz;
+  for (; iteration < maximumIterations && residual > tolerance; ++iteration)
+  {
+    updateDensity();
 
     // g_k
     for (std::size_t k = 0; k < numberOfStates; ++k)
@@ -114,6 +120,11 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
     }
     result.freeEnergies = updated;
   }
+
+  // The density that belongs to the returned g_k: inside the loop it is computed from the g_k of the iteration
+  // before (one step behind, and by the gauge shift of that step), and with no iteration at all it was never
+  // computed, every bin left at the 'log of zero'.
+  updateDensity();
 
   result.iterations = iteration;
   result.residual = residual;

@@ -435,7 +435,11 @@ void ReweightedHistogram::setup()
 
   std::filesystem::create_directories("output");
   std::filesystem::create_directories("wham");
-  excessPressureIsStale.assign(systems.size(), 0u);
+  // On a resume from a binary restart every excess pressure is recomputed before it is sampled: the restart is
+  // written right after the replica exchange, which swaps the stored tensors with the configurations and marks
+  // them stale, and the marks are not part of the restart. Reset to "fresh", a swapped replica sampled its
+  // partner's tensor until its next scheduled recomputation.
+  excessPressureIsStale.assign(systems.size(), simulationStage != SimulationStage::Uninitialized ? 1u : 0u);
 
   // on a binary-restart resume append to the existing output files (and skip re-printing the
   // headers) so each log continues where the interrupted run left off
@@ -1305,7 +1309,7 @@ void ReweightedHistogram::performReweightingAnalysis()
   }
   if (totalNumberOfSamples == 0uz)
   {
-    whamConverged = true;
+    whamConverged = false;  // nothing was solved: an empty analysis is not a converged one
     whamResidual = 0.0;
     whamIterations = 0uz;
     whamUnconvergedBlocks = 0uz;
@@ -1489,11 +1493,11 @@ void ReweightedHistogram::performReweightingAnalysis()
     logDensityOfStates.assign(numberOfBins, logZero);
     std::size_t referenceState = 0uz;
     while (referenceState < numberOfReplicas && logStateCounts[referenceState] <= logZeroThreshold) ++referenceState;
-    if (referenceState == numberOfReplicas) return {0uz, 0.0, true};
+    // no samples at all: nothing was solved, which is not a converged solution of connected states
+    if (referenceState == numberOfReplicas || numberOfBins == 0uz) return {0uz, 1e30, false};
 
-    std::size_t iteration = 0uz;
-    double residual = 1e30;
-    for (; iteration < maximumNumberOfIterations && residual > tolerance; ++iteration)
+    // Omega_b from the current g_i
+    auto updateDensity = [&]()
     {
       for (std::size_t binId = 0; binId < numberOfBins; ++binId)
       {
@@ -1518,6 +1522,13 @@ void ReweightedHistogram::performReweightingAnalysis()
         }
         logDensityOfStates[binId] = logBinCounts[binId] - largest - std::log(sum);
       }
+    };
+
+    std::size_t iteration = 0uz;
+    double residual = 1e30;
+    for (; iteration < maximumNumberOfIterations && residual > tolerance; ++iteration)
+    {
+      updateDensity();
 
       for (std::size_t stateId = 0; stateId < numberOfReplicas; ++stateId)
       {
@@ -1552,6 +1563,9 @@ void ReweightedHistogram::performReweightingAnalysis()
       }
       freeEnergies = updatedFreeEnergies;
     }
+    // the density of states that belongs to the returned free energies (inside the loop it is one iteration and
+    // one gauge shift behind them)
+    updateDensity();
     return {iteration, residual, statesAreConnected(logStateCounts, freeEnergies, logDensityOfStates)};
   };
 

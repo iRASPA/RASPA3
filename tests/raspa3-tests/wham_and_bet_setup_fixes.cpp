@@ -199,3 +199,72 @@ TEST(WHAM_AND_BET_SETUP_FIXES, scout_helpers_pin_the_temperature_and_empty_the_h
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 0uz);
   EXPECT_TRUE(system.spanOfMoleculeAtoms().empty());
 }
+
+// The density of states returned with the free energies is the one those free energies give,
+// Omega_b = M_b / sum_k n_k exp(g_k - u_k(b)). It was computed from the free energies of the iteration before (and
+// before that iteration's gauge shift), and with no iteration at all it was never computed.
+TEST(WHAM_AND_BET_SETUP_FIXES, dctst_wham_density_belongs_to_the_returned_free_energies)
+{
+  const std::size_t numberOfBins = 12;
+  std::vector<std::vector<double>> counts(3, std::vector<double>(numberOfBins, 0.0));
+  std::vector<std::vector<double>> bias(3, std::vector<double>(numberOfBins, 0.0));
+  for (std::size_t b = 0; b < numberOfBins; ++b)
+  {
+    const double x = static_cast<double>(b);
+    bias[1][b] = 0.3 * x;
+    bias[2][b] = 0.05 * (x - 8.0) * (x - 8.0);
+    counts[0][b] = 50.0 + 3.0 * x;
+    counts[1][b] = 200.0 * std::exp(-bias[1][b]);
+    counts[2][b] = 90.0 * std::exp(-bias[2][b]) + 1.0;
+  }
+  auto expectedLogDensity = [&](const DcTSTWham::Result& result, std::size_t b)
+  {
+    double binCount = 0.0;
+    double denominator = 0.0;
+    for (std::size_t k = 0; k < 3; ++k)
+    {
+      binCount += counts[k][b];
+      const double stateCount = std::accumulate(counts[k].begin(), counts[k].end(), 0.0);
+      denominator += stateCount * std::exp(result.freeEnergies[k] - bias[k][b]);
+    }
+    return std::log(binCount) - std::log(denominator);
+  };
+
+  // stopped far from convergence, so that one iteration of lag is visible
+  for (const std::size_t iterations : {0uz, 1uz, 3uz})
+  {
+    const DcTSTWham::Result result = DcTSTWham::solve(counts, bias, 1e-14, iterations);
+    EXPECT_EQ(result.iterations, iterations);
+    EXPECT_FALSE(result.converged);
+    for (std::size_t b = 0; b < numberOfBins; ++b)
+    {
+      EXPECT_NEAR(result.logDensity[b], expectedLogDensity(result, b), 1e-10) << iterations << " iterations, bin " << b;
+    }
+  }
+}
+
+// The probe of the BET scouts is the adsorbate, which fixed extra-framework cations may precede. The scouts took
+// component 0: they asked the cation for its BET probe properties and counted the cations as the loading.
+TEST(WHAM_AND_BET_SETUP_FIXES, bet_scout_probes_the_adsorbate_behind_a_cation)
+{
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component cation = Component::makeCO2(forceField, 0, true);
+  cation.name = "cation";
+  cation.type = Component::Type::Cation;
+  Component probe = Component::makeCO2(forceField, 1, true);
+  probe.mc_moves_probabilities.setProbability(Move::Types::Translation, 1.0);
+  probe.mc_moves_probabilities.setProbability(Move::Types::Swap, 1.0);
+  probe.crossSection = 16.2;
+  probe.liquidVolume = 57.7;
+  probe.saturationPressure = 101325.0;
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {cation, probe}, {}, {3, 0},
+                5);
+  ASSERT_EQ(system.tmmcComponent(), 1uz);
+
+  NitrogenBETScoutPoint point;
+  ASSERT_NO_THROW(point = scoutNitrogenBETOccupancy(system, 2.0e6, 1000));
+  // about 13 molecules of an ideal gas at this pressure, and not the three cations
+  EXPECT_GT(point.meanOccupancy, 6.0);
+  EXPECT_LT(point.meanOccupancy, 40.0);
+  EXPECT_GT(point.peakOccupancy, 6uz);
+}
