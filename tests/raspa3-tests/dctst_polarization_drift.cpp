@@ -211,3 +211,155 @@ TEST(DCTST_FREE_ENERGY, the_pilot_bead_speed_of_a_rigid_fragment_bead_uses_the_f
   // (a free CH2 atom would be sqrt(42.08 / 14.03) faster than the fragment's translation alone)
   EXPECT_LT(driver.pilot[0].beadSpeedSum, std::sqrt(2.0 * Units::KB * replica.temperature / 14.03 / std::numbers::pi));
 }
+
+namespace
+{
+System makeMethaneSystem(std::size_t numberOfCations, std::size_t numberOfMolecules)
+{
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  const Framework framework = Framework::makeITQ29(forceField, int3(2, 2, 2));
+  Component cation = Component::makeMethane(forceField, 0);
+  cation.name = "cation";
+  cation.type = Component::Type::Cation;
+  Component methane = Component::makeMethane(forceField, 1);
+  methane.name = "methane";
+  return System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {cation, methane}, {},
+                {numberOfCations, numberOfMolecules}, 5);
+}
+
+DcTSTFreeEnergySettings makeMethaneSettings()
+{
+  DcTSTFreeEnergySettings settings = makeSettings();
+  settings.taggedComponentName = "methane";
+  settings.taggedComponent = 1;
+  return settings;
+}
+
+DcTSTFreeEnergyParameters makeParameters()
+{
+  DcTSTFreeEnergyParameters parameters;
+  parameters.numberOfBlocks = 5;
+  parameters.randomSeed = 17;
+  return parameters;
+}
+}  // namespace
+
+// The frame of cage A runs over [-lambda/2, 3 lambda/4) with the dividing surface at lambda/2: four fifths of the
+// way, a bin edge for one bin count in five only. In the others the pilot filled part of a bin the reweighting
+// took as forbidden to it (or as wholly its own).
+TEST(DCTST_FREE_ENERGY, the_dividing_surface_of_the_occupancy_frame_is_a_bin_edge)
+{
+  for (const double fineBinWidth : {0.01, 0.013, 0.02, 0.031, 0.05, 0.3})
+  {
+    DcTSTFreeEnergySettings settings = makeMethaneSettings();
+    settings.cageOccupancies = std::make_pair(1uz, 0uz);
+    settings.fineBinWidth = fineBinWidth;
+    const DynamicallyCorrectedTSTFreeEnergy driver(makeMethaneSystem(0, 8), settings, makeParameters());
+    const double lambda = driver.barrier.lambda;
+    const std::size_t numberOfBins = driver.grid.numberOfBins;
+    ASSERT_EQ(numberOfBins % 5uz, 0uz) << fineBinWidth;
+    const std::size_t first = 4uz * numberOfBins / 5uz;  // the first bin of cage B
+    EXPECT_NEAR(driver.grid.begin + static_cast<double>(first) * driver.grid.width, 0.5 * lambda, 1e-9);
+    EXPECT_GT(driver.grid.center(first), 0.5 * lambda);
+    EXPECT_LT(driver.grid.center(first - 1uz), 0.5 * lambda);
+    EXPECT_NEAR(driver.grid.width, fineBinWidth, 0.5 * fineBinWidth);
+  }
+}
+
+TEST(DCTST_FREE_ENERGY, settings_that_cannot_be_run_are_refused)
+{
+  auto build = [](auto&& change)
+  {
+    DcTSTFreeEnergySettings settings = makeMethaneSettings();
+    change(settings);
+    DynamicallyCorrectedTSTFreeEnergy driver(makeMethaneSystem(0, 8), settings, makeParameters());
+  };
+  EXPECT_NO_THROW(build([](DcTSTFreeEnergySettings&) {}));
+  // n_A counts the tagged molecule: zero wrapped n_A - 1 around
+  EXPECT_THROW(build([](DcTSTFreeEnergySettings& s) { s.cageOccupancies = std::make_pair(0uz, 1uz); }),
+               std::runtime_error);
+  EXPECT_THROW(build([](DcTSTFreeEnergySettings& s) { s.fineBinWidth = 0.0; }), std::runtime_error);
+  // a window off the coordinate it biases: every sample of it would be rejected
+  EXPECT_THROW(build([](DcTSTFreeEnergySettings& s)
+                     {
+                       s.mirrorSymmetry = true;
+                       s.windowCenters = {-1.0, 1.0};
+                     }),
+               std::runtime_error);
+  EXPECT_THROW(build([](DcTSTFreeEnergySettings& s)
+                     {
+                       s.cageOccupancies = std::make_pair(1uz, 0uz);
+                       s.windowCenters = {0.0, 12.0};
+                     }),
+               std::runtime_error);
+  // the plain coordinate is periodic: a center outside the period is folded
+  EXPECT_NO_THROW(build([](DcTSTFreeEnergySettings& s) { s.windowCenters = {0.0, 7.0}; }));
+}
+
+// A center given twice made the smallest spacing zero: an infinite stiffness with a support of zero width, and
+// 0.5 * inf * 0 = NaN in the bias of the bin on the center.
+TEST(DCTST_FREE_ENERGY, repeated_window_centers_keep_a_finite_bias)
+{
+  ScopedCurrentPath workspace(
+      std::filesystem::temp_directory_path() /
+      std::format("raspa3_dctst_windows_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+  DcTSTFreeEnergySettings settings = makeMethaneSettings();
+  settings.windowCenters = {0.0, 0.0, 1.0};
+  DynamicallyCorrectedTSTFreeEnergy driver(makeMethaneSystem(0, 8), settings, makeParameters());
+  driver.setup();
+  driver.buildWindows();
+
+  ASSERT_GE(driver.windows.size(), 3uz);
+  for (const auto& window : driver.windows)
+  {
+    EXPECT_NEAR(window.stiffness, 4.0, 1e-9);  // 4 / spacing^2 with the spacing of the distinct centers
+    for (const double bias : window.bias)
+    {
+      EXPECT_GE(bias, 0.0);
+      EXPECT_LT(bias, 1.0e300);
+    }
+  }
+
+  // the thermal speed is that of the samples on the dividing surface once there are enough of them
+  const double cageSpeed = driver.beadThermalSpeed();
+  EXPECT_GT(cageSpeed, 0.0);
+  driver.windowData[0].barrierSpeedSum = 250.0;
+  driver.windowData[0].barrierSpeedCount = 50.0;
+  EXPECT_DOUBLE_EQ(driver.beadThermalSpeed(), cageSpeed);
+  driver.windowData[0].barrierSpeedCount = 125.0;
+  EXPECT_DOUBLE_EQ(driver.beadThermalSpeed(), 2.0);
+}
+
+// The cage occupancies are those of the tagged species: a cation in the cage was counted, and taken off its site
+// to fill or empty a cage.
+TEST(DCTST_FREE_ENERGY, cage_occupancies_count_the_tagged_species_only)
+{
+  ScopedCurrentPath workspace(
+      std::filesystem::temp_directory_path() /
+      std::format("raspa3_dctst_occupancy_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+  DcTSTFreeEnergySettings settings = makeMethaneSettings();
+  settings.cageOccupancies = std::make_pair(2uz, 1uz);
+  DynamicallyCorrectedTSTFreeEnergy driver(makeMethaneSystem(6, 12), settings, makeParameters());
+  driver.setup();
+  driver.buildWindows();
+
+  System& system = driver.systems[0];
+  const std::vector<std::size_t> occupancy = driver.countOccupancies(system);
+  EXPECT_EQ(std::accumulate(occupancy.begin(), occupancy.end(), 0uz), 12uz);
+
+  std::vector<double3> before;
+  for (std::size_t m = 0; m < 6uz; ++m) before.push_back(system.spanOfMolecule(0, m).front().position);
+  driver.startWindow(0, 0);
+  for (std::size_t m = 0; m < 6uz; ++m)
+  {
+    const double3 after = system.spanOfMolecule(0, m).front().position;
+    EXPECT_DOUBLE_EQ(after.x, before[m].x);
+    EXPECT_DOUBLE_EQ(after.y, before[m].y);
+    EXPECT_DOUBLE_EQ(after.z, before[m].z);
+  }
+  // the requested occupancies hold for the tagged species (the tagged molecule itself is the +1 of cage A)
+  const DcTSTWindowState& state = driver.windowStates[0];
+  const std::vector<std::size_t> counted = driver.countOccupancies(system);
+  EXPECT_EQ(counted[state.cageA], 2uz);
+  EXPECT_EQ(counted[state.cageB], 1uz);
+}

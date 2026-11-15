@@ -150,6 +150,8 @@ export struct DcTSTTransmissionAccumulator
   std::array<std::size_t, static_cast<std::size_t>(EventChannel::Count)> channelEventsBefore{};
   std::size_t numberOfUncommittedTrajectories{0};  ///< Reached the cap without ever committing.
   double integratedTimeSum{0.0};                   ///< Over all trajectories (for the cost per trajectory) [ps].
+  /// Sum of |qdot| over the members that reached the cap without any event after commitment (event mode).
+  double eventFreeCappedSpeed{0.0};
 
   // --- hybrid estimator (handover times) --------------------------------------------------------------
   /// Occupancy state of the column (all molecules, the tagged one included) at a handover time, in the frame of
@@ -184,6 +186,11 @@ export struct DcTSTTransmissionAccumulator
     auto operator<=>(const NeighbourhoodState&) const = default;
   };
   std::vector<std::map<NeighbourhoodState, std::pair<double, std::size_t>>> hybridNeighbourhood;  ///< [handover]
+  /// The same sums of |qdot| with the sign the member's Markov tail takes in the pair difference: +1 when it
+  /// committed the way it was launched, -1 when it turned back before the commit distance. The states are in the
+  /// frame of the commitment (the tagged molecule in B) for either.
+  std::vector<std::map<ColumnState, double>> hybridOccupancySigned;                ///< [handover]
+  std::vector<std::map<NeighbourhoodState, double>> hybridNeighbourhoodSigned;     ///< [handover]
   std::vector<std::size_t> hybridEventBefore;  ///< [handover] members whose first event occurred before tau
   std::vector<std::size_t> hybridTruncated;    ///< [handover] members that did not reach tau
 
@@ -496,8 +503,10 @@ export struct DynamicallyCorrectedTST
       double collectiveEventConditionedError{0.0};
       double backCorrelationFactorConditioned{0.0};
       double collectiveExcessConditioned{0.0};
-      /// Cap-corrected: the deviations from kappa_S^committed divided by the fraction of trajectories that
-      /// reached the k-th event (a trajectory without an event carries no induced jump and no back-hop).
+      /// Cap-corrected: the deviations from kappa_S^committed divided by 1 - p_0, with p_0 the flux-weighted
+      /// fraction of the members that reached the cap without any event (eventFreeCappedFraction): those carry
+      /// no induced jump and no back-hop. A member capped after one or more events carries theirs in full and
+      /// is not rescaled; epsilon is rescaled without its part from before the commitment, which every member has.
       double cappedFraction{0.0};  ///< (capped before the k-th event + never committed) / all trajectories
       double backCorrelationFactorCapCorrected{0.0};
       double collectiveExcessCapCorrected{0.0};
@@ -523,6 +532,8 @@ export struct DynamicallyCorrectedTST
       double maximumTerminationTime{0.0};
     };
     std::vector<EventOrder> eventOrders;  ///< [order - 1]
+    /// p_0: the |qdot|-weighted fraction of the members that reached the cap without any event after commitment.
+    double eventFreeCappedFraction{0.0};
     [[nodiscard]] const EventOrder& lastEventOrder() const { return eventOrders.back(); }
     /// epsilon_before: the Q_local crossings of the other molecules before the commitment of the tagged molecule
     /// (independent of the event order), in total and per channel (contribution to epsilon, number of crossings,

@@ -113,6 +113,10 @@ export struct DcTSTWindowAccumulator
   /// k^TST(n_A -> n_B) = k^TST P(n_A, n_B | q*) / P(n_A, n_B) without constrained runs.
   std::vector<double> barrierOccupancyPairs;
   double barrierOccupancySamples{0.0};  ///< Number of samples in the slab.
+  /// Thermal speed of the reaction bead along the normal over the samples in that slab (the sum of
+  /// sqrt(2 kT sigma^2 / pi) and the number of terms): the orientations of the transition state.
+  double barrierSpeedSum{0.0};
+  double barrierSpeedCount{0.0};
   static constexpr double barrierOccupancyHalfWidth = 0.25;  ///< [A]
   static constexpr std::size_t numberOfOccupancyPairs = 32uz * 32uz;  ///< (maximumOccupancy + 1)^2 of the pilot.
 
@@ -144,6 +148,9 @@ export struct DcTSTPilotAccumulator
   /// center-of-mass bead this is sqrt(2 kT / pi M) exactly.
   double beadSpeedSum{0.0};
   double beadSpeedCount{0.0};
+  /// The same over the samples within DcTSTWindowAccumulator::barrierOccupancyHalfWidth of a dividing plane.
+  double barrierSpeedSum{0.0};
+  double barrierSpeedCount{0.0};
 
   DcTSTPilotAccumulator() = default;
   DcTSTPilotAccumulator(std::size_t numberOfBlocks, std::size_t numberOfBins, std::size_t numberOfConditionedBins);
@@ -291,6 +298,9 @@ export struct DynamicallyCorrectedTSTFreeEnergy
     bool available{false};
     bool converged{false};
     bool connected{true};  ///< The sampled states overlap as one group (their free energies are determined).
+    /// The fraction of the fine bins of the cage period (the range P is normalized over) that hold samples. Below
+    /// one the normalization integral misses part of the cage, and P(q*) and k^TST are upper bounds only.
+    double normalizationCoverage{1.0};
     std::size_t iterations{0};
     double residual{0.0};
     std::vector<double> stateFreeEnergies;  ///< g_k of the states (0 = pilot).

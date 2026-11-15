@@ -76,6 +76,8 @@ DcTSTTransmissionAccumulator::DcTSTTransmissionAccumulator(std::size_t numberOfB
       hybridOthers(numberOfHandovers, std::vector<double>(numberOfBlocks, 0.0)),
       hybridOccupancy(numberOfHandovers),
       hybridNeighbourhood(numberOfHandovers),
+      hybridOccupancySigned(numberOfHandovers),
+      hybridNeighbourhoodSigned(numberOfHandovers),
       hybridEventBefore(numberOfHandovers, 0uz),
       hybridTruncated(numberOfHandovers, 0uz)
 {
@@ -466,6 +468,40 @@ DynamicallyCorrectedTST::DynamicallyCorrectedTST(InputReader& reader)
                                          settings.cageOccupancies.has_value() ? "'CageOccupancies'"
                                                                               : "'TrajectoryTermination' \"Event\"",
                                          cageLatticeInconsistency.value()));
+  }
+
+  // the settings a programmatic construction can get wrong (the input reader checks the keywords it reads)
+  if (!(settings.trajectoryTime > 0.0) || !(settings.trajectoryTime < 1.0e300))
+  {
+    throw std::runtime_error("dcTST: 'TrajectoryTime' must be positive and finite [ps]\n");
+  }
+  // The tagged molecule is committed to cage A or B, by the side of the plane it is on, once it is the commit
+  // distance from the plane. Beyond half a lattice distance it has passed the center of that cage, and at a
+  // lattice distance it is in the next one: the cage it was assigned, and the offset from its center the hops
+  // are measured by, were then those of the wrong cage.
+  if (!(settings.commitDistance >= 0.0) || !(settings.commitDistance <= 0.5 * barrier.lambda * (1.0 + 1e-12)))
+  {
+    throw std::runtime_error(std::format(
+        "dcTST: 'CommitDistance' ({} [A]) must lie between 0 (the default, half a lattice distance) and half the "
+        "lattice distance ({} [A])\n",
+        settings.commitDistance, 0.5 * barrier.lambda));
+  }
+  if (settings.plateauWindow.has_value())
+  {
+    const auto& [begin, end] = settings.plateauWindow.value();
+    if (!(begin >= 0.0) || !(end >= begin) || !(end <= settings.trajectoryTime * (1.0 + 1e-12)))
+    {
+      throw std::runtime_error(std::format(
+          "dcTST: 'PlateauWindow' [{}, {}] needs 0 <= begin <= end <= 'TrajectoryTime' ({} [ps]); a window outside "
+          "the trajectories was replaced by their last point without a word\n",
+          begin, end, settings.trajectoryTime));
+    }
+  }
+  // n_A counts the tagged molecule: zero wrapped n_A - 1 around to the largest unsigned integer
+  if (settings.cageOccupancies.has_value() && settings.cageOccupancies->first == 0uz)
+  {
+    throw std::runtime_error(
+        "dcTST: 'CageOccupancies' n_A must be at least 1 (the tagged molecule itself is in cage A)\n");
   }
 
   // the trajectories are integrated with the system time step; the transmission functions are stored
@@ -952,6 +988,8 @@ void DynamicallyCorrectedTST::loadFreeEnergyInput()
           accumulator.hybridOthers.assign(handoverSteps.size(), std::vector<double>(numberOfBlocks, 0.0));
           accumulator.hybridOccupancy.assign(handoverSteps.size(), {});
           accumulator.hybridNeighbourhood.assign(handoverSteps.size(), {});
+          accumulator.hybridOccupancySigned.assign(handoverSteps.size(), {});
+          accumulator.hybridNeighbourhoodSigned.assign(handoverSteps.size(), {});
           accumulator.hybridEventBefore.assign(handoverSteps.size(), 0uz);
           accumulator.hybridTruncated.assign(handoverSteps.size(), 0uz);
         }
@@ -1385,6 +1423,7 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
                     {
                       for (std::size_t c = 0; c < accumulator.numberOfComponents; ++c)
                       {
+                        if (c != settings.taggedComponent) continue;  // kappa_C is of the tagged species
                         collectiveEnd +=
                             accumulator.collective[b][accumulator.collectiveIndex(s, c, numberOfTimes - 1)];
                       }
@@ -1524,7 +1563,8 @@ void DynamicallyCorrectedTST::performMonteCarloCycle(std::size_t replicaId)
       // ('DcTSTMoves::validate' refuses the rest up front; there is no fall-back to a translation)
       energyDifference = DcTSTMoves::perform(rng, system, selectedComponent, selectedMolecule, moveType);
 
-      if (occupancyMode && energyDifference.has_value())
+      // (the constraint is on the molecules of the tagged component; the others move freely between the cages)
+      if (occupancyMode && energyDifference.has_value() && selectedComponent == settings.taggedComponent)
       {
         DcTSTOccupancyState& state = occupancyStates[replicaId];
         const std::size_t oldCage = state.cageOfMolecule[moleculeIndex];
@@ -1839,8 +1879,23 @@ void DynamicallyCorrectedTST::createConstrainedConfiguration(std::size_t replica
   // tagged molecule into an already filled system fails at high loading -- every window may hold a
   // molecule -- whereas in the empty framework the growth on a window centre always succeeds. The
   // molecules created with the system are discarded (they are a random configuration anyway).
+  // Not every component: extra-framework cations, and any component without a move, stay where the system has
+  // them. Such molecules were deleted and regrown at random positions with the rest, and a component without
+  // moves then stayed there for the whole run (a cation off its site, in a window as soon as not).
+  const auto keptInPlace = [&](std::size_t componentId)
+  {
+    if (componentId == taggedComponent) return false;
+    const Component& component = system.components[componentId];
+    if (component.type == Component::Type::Cation) return true;
+    for (std::size_t index = 0; index < std::to_underlying(Move::Types::Count); ++index)
+    {
+      if (component.mc_moves_probabilities.getProbability(static_cast<Move::Types>(index)) > 0.0) return false;
+    }
+    return true;
+  };
   for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
   {
+    if (keptInPlace(componentId)) continue;
     while (system.numberOfMoleculesPerComponent[componentId] > 0uz)
     {
       const std::size_t last = system.numberOfMoleculesPerComponent[componentId] - 1uz;
@@ -1937,11 +1992,25 @@ void DynamicallyCorrectedTST::createConstrainedConfiguration(std::size_t replica
     const Component& component = system.components[componentId];
     const CBMC::NewMoleculeIdentity identity{.componentId = componentId, .moleculeId = system.numberOfMolecules()};
 
+    // (bounded, and interruptible: at a loading the framework cannot hold the loop never ended)
+    constexpr std::size_t maximumGrowthAttempts = 1000000uz;
     std::optional<CBMC::GrowResult> current = std::nullopt;
-    do
+    for (std::size_t attempt = 0; !isValid(current); ++attempt)
     {
+      if (attempt >= maximumGrowthAttempts)
+      {
+        throw std::runtime_error(std::format(
+            "dcTST: molecule {} of component '{}' could not be grown after {} attempts (replica {}); the loading "
+            "does not fit next to the tagged molecule on the barrier\n",
+            system.numberOfMoleculesPerComponent[componentId] + 1uz, component.name, maximumGrowthAttempts,
+            replicaId));
+      }
+      if ((attempt & 255uz) == 255uz && GracefulShutdown::requested())
+      {
+        throw std::runtime_error("dcTST: interrupted by a termination signal while creating the configuration\n");
+      }
       current = CBMC::growNewMolecule(rng, creationContext(), component, identity);
-    } while (!isValid(current));
+    }
 
     const std::size_t numberOfGrowths = component.rigid ? 1uz : CBMC::Constants::creationCandidateGrowths;
     for (std::size_t attempt = 1; attempt < numberOfGrowths; ++attempt)
@@ -2009,6 +2078,9 @@ std::vector<std::size_t> DynamicallyCorrectedTST::countOccupancies(const System&
   const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
   for (const Molecule& molecule : system.moleculeData)
   {
+    // the occupancies are those of the tagged species: (n_A, n_B) label the rates of its hops, and a cation or
+    // a co-adsorbate in the cage is part of the environment, not a molecule that hops with that rate
+    if (molecule.componentId != settings.taggedComponent) continue;
     const Component& component = system.components[molecule.componentId];
     ++occupancy[cageLattice.cageOf(atoms[molecule.atomIndex + component.startingBead].position)];
   }
@@ -2027,11 +2099,15 @@ void DynamicallyCorrectedTST::prepareOccupancies(std::size_t replicaId)
   const std::size_t numberOfMolecules = system.moleculeData.size();
   const std::size_t numberOfCages = cageLattice.numberOfCages();
 
-  if (nA - 1uz + nB > numberOfMolecules - 1uz)
+  // the molecules of the tagged component besides the tagged one: only they are counted and moved (every
+  // molecule was, so that cations were taken off their sites to fill a cage and counted as its occupancy)
+  const std::size_t numberOfOthers = system.numberOfMoleculesPerComponent[settings.taggedComponent] - 1uz;
+  if (nA - 1uz + nB > numberOfOthers)
   {
-    throw std::runtime_error(
-        std::format("dcTST: 'CageOccupancies' [{}, {}] needs {} molecules besides the tagged one, the system has {}\n",
-                    nA, nB, nA - 1uz + nB, numberOfMolecules - 1uz));
+    throw std::runtime_error(std::format(
+        "dcTST: 'CageOccupancies' [{}, {}] needs {} molecules of the tagged component besides the tagged one, the "
+        "system has {}\n",
+        nA, nB, nA - 1uz + nB, numberOfOthers));
   }
 
   // bookkeeping from the current configuration (the tagged molecule is excluded from the occupancies)
@@ -2045,7 +2121,10 @@ void DynamicallyCorrectedTST::prepareOccupancies(std::size_t replicaId)
       const Molecule& molecule = system.moleculeData[j];
       const Component& component = system.components[molecule.componentId];
       state.cageOfMolecule[j] = cageLattice.cageOf(atoms[molecule.atomIndex + component.startingBead].position);
-      if (j != taggedIndex) ++state.occupancy[state.cageOfMolecule[j]];
+      if (j != taggedIndex && molecule.componentId == settings.taggedComponent)
+      {
+        ++state.occupancy[state.cageOfMolecule[j]];
+      }
     }
   };
   rebuild();
@@ -2114,7 +2193,11 @@ void DynamicallyCorrectedTST::prepareOccupancies(std::size_t replicaId)
     std::vector<std::size_t> candidates;
     for (std::size_t j = 0; j < numberOfMolecules; ++j)
     {
-      if (j != taggedIndex && predicate(state.cageOfMolecule[j])) candidates.push_back(j);
+      if (j != taggedIndex && system.moleculeData[j].componentId == settings.taggedComponent &&
+          predicate(state.cageOfMolecule[j]))
+      {
+        candidates.push_back(j);
+      }
     }
     if (candidates.empty()) return std::nullopt;
     return candidates[std::min(candidates.size() - 1uz,
@@ -2270,6 +2353,8 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     {
       if (j == taggedIndex) continue;
       const Molecule& molecule = system.moleculeData[j];
+      // of the tagged species only (see countOccupancies)
+      if (molecule.componentId != settings.taggedComponent) continue;
       const Component& component = system.components[molecule.componentId];
       const std::size_t cage = cageLattice.cageOf(systemAtoms[molecule.atomIndex + component.startingBead].position);
       if (cage == launchA) ++othersInA;
@@ -2296,6 +2381,11 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     {
       if (j == taggedIndex) continue;  // committed to A or B only once it has reached the commit distance
       const Molecule& molecule = system.moleculeData[j];
+      // Only the molecules of the tagged species have a cage: the events, Q_local, the column occupancies and
+      // the Markov closure are those of one species hopping with one set of rates k(n -> n'). A cation or a
+      // co-adsorbate was counted into (n_A', n_A, n_B, n_B') and its count multiplied by the rate of the tagged
+      // species; its window crossings were events. It stays in the per-component collective sums.
+      if (molecule.componentId != settings.taggedComponent) continue;
       const Component& component = system.components[molecule.componentId];
       initialCommittedCage[j] = cageLattice.cageOf(systemAtoms[molecule.atomIndex + component.startingBead].position);
     }
@@ -2328,6 +2418,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     bool eventBefore{false};  // the first post-commitment event occurred before the handover time
     double tagged{0.0};       // tagged cage count: smooth C at tau, or the net count at the first event
     double others{0.0};       // others: smoothed column displacement at tau, or Q_local at the first event
+    int orientation{1};       // the side the tagged molecule committed to (+1: along the normal), the frame of 'state'
     ColumnState state{};      // occupancies of the column at tau (frame of the hop), when no event occurred before
     NeighbourhoodState neighbourhood{};  // column plus the four lateral neighbours of A and of B
   };
@@ -2437,6 +2528,8 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     outcome.handover.assign(numberOfHandovers, Handover{});
     bool& committed = outcome.committed;
     double committedValue{0.0};
+    // the side of the plane the tagged molecule committed to (+1: the cage along the normal, lab B)
+    int committedOrientation{0};
 
     // event mode: the frame of the tagged hop (mirrored for the time-reversed trajectory)
     committedCage = initialCommittedCage;
@@ -2487,6 +2580,8 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
         }
       }
     }
+    auto frameOrientation = [&]() -> int
+    { return (committedOrientation != 0) ? committedOrientation : ((direction > 0.0) ? 1 : -1); };
     auto columnState = [&]() -> ColumnState
     {
       std::size_t count[4]{};  // lab frame: A', A, B, B'
@@ -2499,8 +2594,11 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
         else if (cage == cageB) ++count[2];
         else if (cage == cageC) ++count[3];
       }
+      // The frame of the hop: the tagged molecule is in B. That is the cage it committed to, not the one it was
+      // launched towards: a member that turns back before the commit distance sits in the cage it came from,
+      // and in the frame of its launch direction the state had the tagged molecule in A (n_B could be zero).
       ColumnState state;
-      if (direction > 0.0)
+      if (frameOrientation() > 0)
       {
         state.nAPrime = static_cast<std::uint16_t>(count[0]);
         state.nA = static_cast<std::uint16_t>(count[1]);
@@ -2539,8 +2637,8 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
         }
         std::sort(dest.begin(), dest.end());
       };
-      // frame of the tagged hop: for the time-reversed member A <-> B so that A is always the departure cage
-      if (direction > 0.0)
+      // frame of the tagged hop (see columnState): A is the cage the tagged molecule is not in
+      if (frameOrientation() > 0)
       {
         fill(cageA, state.lateralA);
         fill(cageB, state.lateralB);
@@ -2560,7 +2658,11 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
       const std::size_t frameWindow = (direction > 0.0) ? window : 2uz - window;
       if (j == taggedIndex)
       {
-        return (frameDirection > 0) ? EventChannel::TaggedForwardHop : EventChannel::TaggedBackHop;
+        // relative to its commitment: on from the cage it committed to, or back through the window it left. By
+        // the launch direction alone a member that had turned back and committed to A had its recrossing A -> B
+        // counted as running on from B to B', and its hop A -> A' as the return from B to A.
+        const int commitDirection = (committedOrientation != 0) ? alongNormal * committedOrientation : frameDirection;
+        return (commitDirection > 0) ? EventChannel::TaggedForwardHop : EventChannel::TaggedBackHop;
       }
       switch (frameWindow)
       {
@@ -2647,6 +2749,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
         committed = true;
         committedValue = (qTagged > 0.0) ? 0.5 : -0.5;
         outcome.commitStep = step;
+        committedOrientation = (qTagged > 0.0) ? 1 : -1;
         if (eventMode)
         {
           committedCage[taggedIndex] = (qTagged > 0.0) ? cageB : cageA;
@@ -2774,6 +2877,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
             handover.others = smoothOthers;
             handover.state = columnState();
             handover.neighbourhood = neighbourhoodState();
+            handover.orientation = frameOrientation();
           }
           ++nextHandover;
         }
@@ -3006,9 +3110,16 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     {
       accumulator.hybridTagged[h][block] += qdot * (forward.handover[h].tagged - backward.handover[h].tagged);
       accumulator.hybridOthers[h][block] += qdot * (forward.handover[h].others - backward.handover[h].others);
-      for (const TrajectoryOutcome* outcome : {&forward, &backward})
+      for (double launch = 1.0; const TrajectoryOutcome* outcome : {&forward, &backward})
       {
         const Handover& handover = outcome->handover[h];
+        // The expected sign of the first event is evaluated in the frame of the commitment, E(state); in the lab
+        // frame it is orientation * E, and the pair difference takes the forward member with +1 and the
+        // time-reversed one with -1: the sign is +1 for a member that committed the way it was launched and -1
+        // for one that turned back first. Both entered with +1, so that the two members of a pair that bounced
+        // into the same cage, in the same configuration, added their tails instead of cancelling them.
+        const double memberSign = launch * static_cast<double>(handover.orientation);
+        launch = -1.0;
         if (handover.eventBefore)
         {
           // also when the handover time lies beyond the end of the trajectory: the event came first
@@ -3026,12 +3137,16 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
           std::pair<double, std::size_t>& neighbourhood = accumulator.hybridNeighbourhood[h][handover.neighbourhood];
           neighbourhood.first += qdot;
           ++neighbourhood.second;
+          accumulator.hybridOccupancySigned[h][handover.state] += memberSign * qdot;
+          accumulator.hybridNeighbourhoodSigned[h][handover.neighbourhood] += memberSign * qdot;
         }
       }
     }
 
     for (const TrajectoryOutcome* outcome : {&forward, &backward})
     {
+      // the flux of the members that reached the cap without a single event after commitment (or uncommitted)
+      if (eventMode && outcome->events.empty() && !outcome->eventTerminated) accumulator.eventFreeCappedSpeed += qdot;
       accumulator.integratedTimeSum += static_cast<double>(outcome->integratedSteps) * system.timeStep;
       if (!outcome->committed) ++accumulator.numberOfUncommittedTrajectories;
       // the crossings of the other molecules before the commitment of the tagged molecule, per channel (frame of
@@ -3063,6 +3178,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
         {
           for (std::size_t c = 0; c < numberOfComponents; ++c)
           {
+            if (c != settings.taggedComponent) continue;  // kappa_C is of the tagged species
             const std::size_t index = accumulator.collectiveIndex(s, c, t);
             collectivePlateau += forwardCollective[index] - deltaCollective[index];
           }
@@ -3299,6 +3415,7 @@ void DynamicallyCorrectedTST::writeAccumulatorSnapshot(std::size_t replicaId, bo
   json["channelEventsBefore"] = accumulator.channelEventsBefore;
   json["numberOfUncommittedTrajectories"] = accumulator.numberOfUncommittedTrajectories;
   json["integratedTimeSum"] = accumulator.integratedTimeSum;
+  json["eventFreeCappedSpeed"] = accumulator.eventFreeCappedSpeed;
   if (hybridEnabled())
   {
     nlohmann::json& hybrid = json["hybrid"];
@@ -3394,8 +3511,10 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
   ChannelArray localQChannelBefore{};
   ChannelArray channelTimeSumBefore{};
   double integratedTimeSum{0.0};
+  double eventFreeCappedSpeed{0.0};
   for (const DcTSTTransmissionAccumulator& accumulator : transmission)
   {
+    eventFreeCappedSpeed += accumulator.eventFreeCappedSpeed;
     result.numberOfTrajectoryPairs +=
         std::accumulate(accumulator.numberOfTrajectoryPairs.begin(), accumulator.numberOfTrajectoryPairs.end(), 0uz);
     result.meanRelativeEnergyDrift += accumulator.sumRelativeEnergyDrift;
@@ -3450,6 +3569,7 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
       {
         for (std::size_t c = 0; c < numberOfComponents; ++c)
         {
+          if (c != settings.taggedComponent) continue;  // kappa_C is of the tagged species
           for (std::size_t t = 0; t < numberOfTimes; ++t)
           {
             cumulative[t] += accumulator.collective[b][accumulator.collectiveIndex(s, c, t)];
@@ -3585,6 +3705,8 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
   result.collectivePlateau.assign(numberOfShells, 0.0);
   result.collectivePlateauError.assign(numberOfShells, 0.0);
   if (speed <= 0.0) return result;
+  // every pair has two members of the same |qdot|
+  result.eventFreeCappedFraction = eventFreeCappedSpeed / (2.0 * speed);
 
   for (std::size_t t = 0; t < numberOfTimes; ++t)
   {
@@ -3616,9 +3738,11 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
     }
     for (std::size_t t = 0; t < numberOfTimes; ++t)
     {
-      double sum{0.0};
-      for (std::size_t c = 0; c < numberOfComponents; ++c) sum += result.collectivePerComponent[s][c][t];
-      result.collective[s][t] = result.self[t] + sum;
+      // kappa_C of the tagged species: its own molecules only. D_C = kappa_C k^TST lambda^2 is then
+      // (k_B T / N_0) L_00, the collective diffusivity of that species. The sum over every component, as was
+      // taken, is (k_B T / N_0) sum_c L_0c: neither that nor the collective diffusivity of the mixture, and with
+      // the cage spacing of the tagged species applied to all. The cross terms stay in the per-component columns.
+      result.collective[s][t] = result.self[t] + result.collectivePerComponent[s][settings.taggedComponent][t];
       std::vector<double> values;
       for (const std::vector<std::vector<double>>& k : blockCollective) values.push_back(k[s][t]);
       result.collectiveError[s][t] = meanAndError(values).second;
@@ -3766,13 +3890,16 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
       order.collectiveExcessError = meanAndError(blockSum).second / std::abs(selfCommittedFinal);
       order.backCorrelationFactorConditioned = order.selfEventConditioned / selfCommittedFinal;
       order.collectiveExcessConditioned = order.collectiveEventConditioned / selfCommittedFinal - 1.0;
-      // a capped trajectory contributes Delta = +-1 and Q_local = 0, i.e. exactly kappa_S^committed; the
-      // deviations f - 1 and epsilon therefore scale with the event-terminated fraction 1 - p_cap
-      const double eventFraction = 1.0 - order.cappedFraction;
+      // A member that reached the cap without any event contributes Delta = +-1 and no crossing after its
+      // commitment, i.e. exactly kappa_S^committed: the deviation f - 1 scales with the flux fraction 1 - p_0 of
+      // the members that had an event. The divisor was the fraction that reached the k-th event, counted per
+      // trajectory: for k >= 2 a member capped after 1..k-1 events was taken as having contributed nothing while
+      // its events (the first one or two carry nearly all of f - 1 and epsilon) were in the sums, and the
+      // correction was inflated by 1 / p(k events), to a negative f when many were capped. (epsilon below.)
+      const double eventFraction = 1.0 - result.eventFreeCappedFraction;
       if (eventFraction > 1e-12)
       {
         order.backCorrelationFactorCapCorrected = 1.0 + (order.backCorrelationFactor - 1.0) / eventFraction;
-        order.collectiveExcessCapCorrected = order.collectiveExcess / eventFraction;
       }
       // epsilon_after of the decomposition epsilon - (f - 1) = epsilon_before + epsilon_after, and per channel
       if (speed > 0.0)
@@ -3803,6 +3930,21 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
             (result.channelEventsBefore[c] > 0uz)
                 ? channelTimeSumBefore[c] / static_cast<double>(result.channelEventsBefore[c])
                 : 0.0;
+      }
+    }
+
+    // epsilon_corr: the crossings before the commitment are those of every member, capped or not, and are not
+    // rescaled
+    {
+      const double eventFraction = 1.0 - result.eventFreeCappedFraction;
+      for (TransmissionResult::EventOrder& order : result.eventOrders)
+      {
+        if (eventFraction > 1e-12)
+        {
+          order.collectiveExcessCapCorrected =
+              result.collectiveExcessBeforeCommitment +
+              (order.collectiveExcess - result.collectiveExcessBeforeCommitment) / eventFraction;
+        }
       }
     }
 
@@ -3837,8 +3979,17 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
         double total = forward + backward;
         if (lateral)
         {
-          for (std::uint16_t nL : state.lateralA) total += channelRate(nL, column.nA);
-          for (std::uint16_t nL : state.lateralB) total += channelRate(column.nB, nL);
+          // every lateral hop that changes n_A or n_B ends the state: into A and out of A, into B and out of B,
+          // through the four lateral windows of each (sixteen channels). Only the refill of A and the escape
+          // from B were counted, which left the total too small and the expected sign too large.
+          for (std::uint16_t nL : state.lateralA)
+          {
+            total += channelRate(nL, column.nA) + channelRate(column.nA, nL);
+          }
+          for (std::uint16_t nL : state.lateralB)
+          {
+            total += channelRate(column.nB, nL) + channelRate(nL, column.nB);
+          }
         }
         return (total > 0.0) ? (forward - backward) / total : 0.0;
       };
@@ -3861,9 +4012,23 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
         std::size_t eventBefore{0}, truncated{0};
         std::map<ColumnState, std::pair<double, std::size_t>> occupancy;
         std::map<NeighbourhoodState, std::pair<double, std::size_t>> neighbourhood;
+        // the weights of the Markov tail: signed by the commitment of the member (see hybridOccupancySigned)
+        std::map<ColumnState, double> occupancySigned;
+        std::map<NeighbourhoodState, double> neighbourhoodSigned;
         for (const DcTSTTransmissionAccumulator& accumulator : transmission)
         {
           if (k >= accumulator.hybridTagged.size()) continue;
+          if (k < accumulator.hybridOccupancySigned.size())
+          {
+            for (const auto& [state, weight] : accumulator.hybridOccupancySigned[k]) occupancySigned[state] += weight;
+          }
+          if (k < accumulator.hybridNeighbourhoodSigned.size())
+          {
+            for (const auto& [state, weight] : accumulator.hybridNeighbourhoodSigned[k])
+            {
+              neighbourhoodSigned[state] += weight;
+            }
+          }
           for (std::size_t b = 0; b < accumulator.numberOfBlocks; ++b)
           {
             taggedSum += accumulator.hybridTagged[k][b];
@@ -3939,11 +4104,11 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
           };
           if (!neighbourhood.empty())
           {
-            for (const auto& [state, weight] : neighbourhood) accumulate(state, weight.first);
+            for (const auto& [state, weight] : neighbourhoodSigned) accumulate(state, weight);
           }
           else
           {
-            for (const auto& [state, weight] : occupancy) accumulate(wrapColumn(state), weight.first);
+            for (const auto& [state, weight] : occupancySigned) accumulate(wrapColumn(state), weight);
           }
           // per member: sum_members |qdot| E[s] / sum_pairs |qdot|, relative to kappa_S^committed
           hybrid.markovTable = table / speed / selfCommittedFinal;
@@ -4217,11 +4382,13 @@ void DynamicallyCorrectedTST::output()
       std::print(stream, "    (errors from the block values of the differences kappa_C^event - kappa_S^event and\n"
                          "     kappa_S^event - kappa_S^committed, which share the trajectories and are much less noisy\n"
                          "     than the kappas themselves; the error of k^TST is not included)\n");
-      std::print(stream, "  Cap-corrected (deviations divided by the event-ended fraction 1 - p_cap, p_cap = {:.4f}):\n",
-                 last.cappedFraction);
-      std::print(stream, "    f_corr = 1 + (f - 1) / (1 - p_cap):              {:.5f}\n",
+      std::print(stream,
+                 "  Cap-corrected (deviations divided by 1 - p_0, p_0 = {:.4f} the flux fraction of the members that\n"
+                 "  reached the cap without any event; {:.4f} of the trajectories did not reach the last event):\n",
+                 kappa.eventFreeCappedFraction, last.cappedFraction);
+      std::print(stream, "    f_corr = 1 + (f - 1) / (1 - p_0):                {:.5f}\n",
                  last.backCorrelationFactorCapCorrected);
-      std::print(stream, "    epsilon_corr = epsilon / (1 - p_cap):            {:.5f}\n",
+      std::print(stream, "    epsilon_corr = eps_before + (eps - eps_before) / (1 - p_0): {:.5f}\n",
                  last.collectiveExcessCapCorrected);
       std::print(stream, "  Conditioned on the event-ended trajectories only (per trajectory, not per pair):\n");
       std::print(stream, "    kappa_S^event|cond:                  {:.5f} +/- {:.5f}\n", last.selfEventConditioned,
@@ -4442,7 +4609,9 @@ void DynamicallyCorrectedTST::output()
                 std::pow(kappa.collectivePlateauError[s] / std::max(std::abs(kappa.collectivePlateau[s]), 1e-300), 2));
         kCErrors[s] = kCError;
         if (s + 1 == numberOfShells)
-          std::print(stream, "    D_C = kappa_C k^TST lambda^2 (all):  {:.6e} +/- {:.2e} [m^2/s]\n",
+          std::print(stream, "    D_C = kappa_C k^TST lambda^2 (all):  {:.6e} +/- {:.2e} [m^2/s]\n"
+                             "    (of the tagged component; the cross terms with other components are the\n"
+                             "     per-component columns of the transmission file)\n",
                      kC * lambdaSquared * conversion, kCError * lambdaSquared * conversion);
         else
           std::print(stream, "    D_C (shell <= {}):                    {:.6e} +/- {:.2e} [m^2/s]\n", s,
@@ -4655,6 +4824,7 @@ void DynamicallyCorrectedTST::output()
       target["collectiveExcess"] = order.collectiveExcess;
       target["collectiveExcessError"] = order.collectiveExcessError;
       target["cappedFraction"] = order.cappedFraction;
+      target["eventFreeCappedFraction"] = kappa.eventFreeCappedFraction;
       target["backCorrelationFactorCapCorrected"] = order.backCorrelationFactorCapCorrected;
       target["collectiveExcessCapCorrected"] = order.collectiveExcessCapCorrected;
       target["kappaSelfEventConditioned"] = order.selfEventConditioned;

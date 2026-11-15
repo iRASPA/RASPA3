@@ -17,7 +17,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.signal import argrelextrema
 
 # the state point of the example (simulation.json) and the critical constants of methane (methane.json)
 TEMPERATURE = 111.58  # [K]
@@ -26,14 +25,20 @@ CRITICAL_TEMPERATURE = 190.564  # [K]
 CRITICAL_PRESSURE = 4599200.0  # [Pa]
 ACENTRIC_FACTOR = 0.01142
 
+# a valley of ln Pi shallower than this is noise, not a second phase (the threshold of the RASPA3 drivers)
+BIMODAL_DEPTH_THRESHOLD = 0.2
+
 STATISTICS_FILE = os.path.join("tmmc", "tmmc_statistics.txt")
 FONT_SIZE = 15
 LINE_WIDTH = 2
 
 
 def peng_robinson_fugacity(temperature, pressure, tc=CRITICAL_TEMPERATURE, pc=CRITICAL_PRESSURE,
-                           omega=ACENTRIC_FACTOR):
-    """Fugacity [Pa] of a pure Peng-Robinson fluid, from the root of lowest Gibbs energy."""
+                           omega=ACENTRIC_FACTOR, with_phase=False):
+    """Fugacity [Pa] of a pure Peng-Robinson fluid, from the root of lowest Gibbs energy (the one RASPA3 runs at).
+
+    With 'with_phase' the result is (fugacity, liquid): whether that root is the liquid one. Above the saturation
+    pressure of the equation of state it is, and the fugacity then hardly rises with the pressure."""
     gas_constant = 8.314462618
     kappa = 0.37464 + 1.54226 * omega - 0.26992 * omega * omega
     alpha = (1.0 + kappa * (1.0 - np.sqrt(temperature / tc))) ** 2
@@ -51,12 +56,20 @@ def peng_robinson_fugacity(temperature, pressure, tc=CRITICAL_TEMPERATURE, pc=CR
                 np.log((z + (1.0 + sqrt2) * big_b) / (z + (1.0 - sqrt2) * big_b)))
 
     # the stable root has the lowest ln phi (the lowest molar Gibbs energy at fixed T and P)
-    return pressure * np.exp(min(ln_phi(z) for z in roots))
+    stable = min(roots, key=ln_phi)
+    fugacity = pressure * np.exp(ln_phi(stable))
+    if with_phase:
+        return fugacity, len(roots) > 1 and stable < max(roots)
+    return fugacity
 
 
 def read_window(directory):
     """ln Pi(N) of one window: the integer states (lambda bin 0 of an (N, lambda) chain)."""
     data = pd.read_csv(os.path.join(directory, STATISTICS_FILE), comment="#", sep=r"\s+")
+    # the integer states first: two of them share a segment only when every lambda link between them is supported,
+    # and counted over all (N, k) rows a segment of fractional states alone could win and leave no integer state
+    if "k" in data.columns:
+        data = data[data["k"] == 0]
     if "segment" in data.columns:
         # ln Pi is carried flat across a link without accepted transitions in both directions: only the states of
         # one 'segment' are tied to each other. Keep the longest one.
@@ -68,16 +81,17 @@ def read_window(directory):
             print(f"window '{directory}': ln Pi is not connected, keeping segment {longest} "
                   f"({(visited['segment'] == longest).sum()} of {len(visited)} visited states)")
         data = visited[visited["segment"] == longest]
-    if "k" in data.columns:
-        data = data[data["k"] == 0]
     return data[["N", "lnpi"]].reset_index(drop=True)
 
 
 def combine_windows(directories):
-    """Stitch the windows on the macrostates they share; each window is shifted onto the ones before it."""
+    """Stitch the windows on the macrostates they share; each window is shifted onto the ones before it.
+
+    The windows are taken in the order of their lowest macrostate, whatever the directories are called."""
+    windows = sorted(((directory, read_window(directory)) for directory in directories),
+                     key=lambda item: item[1]["N"].min())
     combined = None
-    for directory in directories:
-        window = read_window(directory)
+    for directory, window in windows:
         if combined is None:
             combined = window
             continue
@@ -86,7 +100,8 @@ def combine_windows(directories):
             raise ValueError(f"window '{directory}' shares no macrostate with the windows before it")
         shift = np.mean(overlap["lnpi_combined"] - overlap["lnpi_window"])
         window = window.assign(lnpi=window["lnpi"] + shift)
-        combined = pd.concat([combined, window[window["N"] > combined["N"].max()]], ignore_index=True)
+        # the macrostates the combined distribution does not have yet (below its range as well as above)
+        combined = pd.concat([combined, window[~window["N"].isin(combined["N"])]], ignore_index=True)
     return combined.sort_values("N").reset_index(drop=True)
 
 
@@ -97,16 +112,26 @@ def normalized(lnpi):
 
 def peaks_and_saddle(n, lnpi):
     """The gas peak, the liquid peak and the deepest saddle between them; for a unimodal ln Pi the single peak
-    is both, and there is no saddle (None)."""
-    lnpi = np.asarray(lnpi)
+    is both, and there is no saddle (None).
+
+    The saddle is the N that lies deepest below the highest point on either side of it, as in the RASPA3 drivers
+    (findMacrostatePhaseSplit); the peaks are those highest points. A peak may sit on the first or the last
+    macrostate (a dilute phase that decays from N = 0, a saturated pore at the top of the range), which a search
+    for interior maxima does not see, and a valley shallower than BIMODAL_DEPTH_THRESHOLD is noise."""
+    lnpi = np.asarray(lnpi, dtype=float)
     n = np.asarray(n)
-    maxima = argrelextrema(lnpi, np.greater)[0]
-    if maxima.size == 0:
-        maxima = np.array([int(np.argmax(lnpi))])
-    gas, liquid = maxima.min(), maxima.max()
-    minima = argrelextrema(lnpi, np.less)[0]
-    saddles = minima[(minima > gas) & (minima < liquid)]
-    saddle = saddles[np.argmin(lnpi[saddles])] if saddles.size > 0 else None
+    gas = liquid = int(np.argmax(lnpi))
+    saddle = None
+    if lnpi.size >= 3:
+        left = np.maximum.accumulate(lnpi)
+        right = np.maximum.accumulate(lnpi[::-1])[::-1]
+        cuts = np.arange(1, lnpi.size - 1)
+        depth = np.minimum(left[cuts - 1], right[cuts + 1]) - lnpi[cuts]
+        best = int(np.argmax(depth))
+        if depth[best] >= BIMODAL_DEPTH_THRESHOLD:
+            saddle = int(cuts[best])
+            gas = int(np.argmax(lnpi[:saddle]))
+            liquid = saddle + 1 + int(np.argmax(lnpi[saddle + 1:]))
     return {
         "gas-N": n[gas], "gas-lnpi": lnpi[gas],
         "liq-N": n[liquid], "liq-lnpi": lnpi[liquid],
@@ -144,8 +169,14 @@ def main():
     rows.append({"Pressure": REFERENCE_PRESSURE, "Fugacity": reference_fugacity, **extremes})
     plot(data["N"], data["normalized-lnpi"], "combined_lnpi.png", extremes)
 
+    warned = False
     for pressure in np.linspace(42500.0, 50000.0, 16):
-        fugacity = peng_robinson_fugacity(TEMPERATURE, pressure)
+        fugacity, liquid = peng_robinson_fugacity(TEMPERATURE, pressure, with_phase=True)
+        if liquid and not warned:
+            print(f"at {pressure:g} Pa the stable Peng-Robinson root is the liquid: above the saturation pressure "
+                  "of the equation of state the fugacity hardly rises with the pressure; reweight in the fugacity "
+                  "to go beyond it")
+            warned = True
         column = f"lnpi_{pressure:g}"
         data[column] = normalized(
             (data["normalized-lnpi"] + data["N"] * np.log(fugacity / reference_fugacity)).to_numpy())

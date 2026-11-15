@@ -803,7 +803,12 @@ reported separately at the end of the simulation.
     far from the centre) and the overlap tell. `"MirrorSymmetry"` folds
     \f$q\to -q\f$ (a cage symmetric about the window) so that only the
     non-negative side is windowed. The reweighting lives on a fine grid
-    (`"FineBinWidth"`, default `0.01` Å); \f$P(q^*)\f$ is the value of a
+    (`"FineBinWidth"`, default `0.01` Å; with `"CageOccupancies"` it is
+    adjusted so that the dividing surface is a bin edge); \f$P(q^*)\f$ is
+    normalized over the cage period, and the output warns when part of that
+    period holds no samples (windows on the barrier only and no pilot: the
+    wells are then missing from the normalization and \f$P(q^*)\f$ is far
+    too high). \f$P(q^*)\f$ is the value of a
     parabola fitted to \f$\ln P\f$ over `"BarrierFitRange"` Å about the plane
     (default `0.3` Å), not a bin average. The tagged molecule is moved by a
     biased translation (`"MaximumTranslationTagged"`) and a biased CBMC
@@ -879,7 +884,9 @@ reported separately at the end of the simulation.
     identity changes, volume and connectivity-altering moves) is refused by
     both dcTST drivers, as is reptation together with `"CageOccupancies"`. The
     starting configuration is built in the order used by RASPA2: the
-    molecules created with the system are discarded, the tagged molecule is
+    molecules created with the system are discarded (except
+    extra-framework cations and components without any move, which stay
+    where they are), the tagged molecule is
     grown first with its bead on the plane into the empty framework (a
     window centre is tried first, so this always succeeds), and the
     remaining `"CreateNumberOfMolecules"` − 1 molecules of the tagged
@@ -899,7 +906,10 @@ reported separately at the end of the simulation.
     accumulated every `"SampleTrajectoryEvery"` steps; collective
     contributions are resolved up to `"MaximumCollectiveShell"` cages from
     the hop. The plateau values are averaged over `"PlateauWindow" : [begin,
-    end]` (ps; default the second half of the trajectory). All keys live in
+    end]` (ps; default the second half of the trajectory; it must lie within
+    the trajectory). The collective values are those of the tagged
+    component; the cross terms with other components are the per-component
+    columns of the transmission file. All keys live in
     a `"dcTST"` object of the system block; `"TaggedComponent"` (a component
     name) and `"LatticeDistance"` (Å) are required. `"CageCenter" : [fx, fy,
     fz]` gives the centre of a cage in fractional coordinates of the
@@ -955,7 +965,8 @@ reported separately at the end of the simulation.
     cages A/B, i.e. reached a second window; it should be ≈0 for a
     well-defined plateau) and the *committed* estimator of \f$\kappa_S\f$,
     in which the side-of-the-plane value is frozen once \f$|q|\f$ reaches
-    `"CommitDistance"` (Å; default \f$\lambda/2\f$, the cage centre) — the
+    `"CommitDistance"` (Å; default and maximum \f$\lambda/2\f$, the cage
+    centre) — the
     RASPA2 convention — together with its *committed fraction*. The
     net-cage-count, two-state and committed values of \f$\kappa_S\f$ agree
     when the molecules are thermalized in the cage. When `"FreeEnergyInput"`
@@ -1009,7 +1020,9 @@ reported separately at the end of the simulation.
     (\f$\kappa_S(t) = \sum_b \mathrm{self}[b][t] / \sum_b \mathrm{speed}[b]\f$,
     pooled over replicas and runs).
 
-    *Occupancy-resolved mode* — `"CageOccupancies" : [n_A, n_B]`. In a cage
+    *Occupancy-resolved mode* — `"CageOccupancies" : [n_A, n_B]` (molecules
+    of the tagged component; cations and other components are not counted
+    and not moved to set the occupancies). In a cage
     system the correlations that distinguish \f$D_C\f$ from \f$D_S\f$ act on
     the time scale of the hops themselves (a hop leaves a vacancy that is
     refilled much later), not within a picosecond trajectory, so the

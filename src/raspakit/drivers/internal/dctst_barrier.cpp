@@ -170,6 +170,12 @@ DcTSTCageLattice::DcTSTCageLattice(const SimulationBox& unitCell, int3 numberOfU
                                    int3 cagesPerUnitCell)
     : origin(cageCenter)
 {
+  // (a count below one was taken as one without a word)
+  if (cagesPerUnitCell.x < 1 || cagesPerUnitCell.y < 1 || cagesPerUnitCell.z < 1)
+  {
+    throw std::runtime_error(std::format("dcTST: 'CagesPerUnitCell' must be three positive integers (got {}, {}, {})\n",
+                                         cagesPerUnitCell.x, cagesPerUnitCell.y, cagesPerUnitCell.z));
+  }
   const int3 divisions(std::max(1, cagesPerUnitCell.x), std::max(1, cagesPerUnitCell.y),
                        std::max(1, cagesPerUnitCell.z));
   cell = double3x3(unitCell.cell[0] / static_cast<double>(divisions.x),

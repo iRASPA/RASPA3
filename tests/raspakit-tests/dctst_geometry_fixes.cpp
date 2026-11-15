@@ -194,3 +194,12 @@ TEST(DCTST_GEOMETRY_FIXES, an_inclined_plane_is_not_a_cage_boundary)
                                       int3(2, 1, 1));
   EXPECT_FALSE(axialLattice.inconsistencyWith(box, axial).has_value());
 }
+
+// A count of cages per unit cell below one was taken as one without a word.
+TEST(DCTST_GEOMETRY_FIXES, cage_lattice_refuses_a_cage_count_below_one)
+{
+  const SimulationBox cell(10.0, 10.0, 10.0);
+  EXPECT_NO_THROW(DcTSTCageLattice(cell, int3(2, 2, 2), double3(5.0, 5.0, 5.0), int3(2, 1, 1)));
+  EXPECT_THROW(DcTSTCageLattice(cell, int3(2, 2, 2), double3(5.0, 5.0, 5.0), int3(0, 1, 1)), std::runtime_error);
+  EXPECT_THROW(DcTSTCageLattice(cell, int3(2, 2, 2), double3(5.0, 5.0, 5.0), int3(1, 1, -2)), std::runtime_error);
+}

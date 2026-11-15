@@ -4690,6 +4690,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             }
             s.plateauWindow = std::pair<double, double>(block["PlateauWindow"][0].get<double>(),
                                                         block["PlateauWindow"][1].get<double>());
+            if (!(s.plateauWindow->first >= 0.0) || !(s.plateauWindow->second >= s.plateauWindow->first))
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'PlateauWindow' [begin, end] needs 0 <= begin <= end [ps]\n");
+            }
           }
           readBoolean("WriteTrajectoryDiagnostics", s.writeTrajectoryDiagnostics);
           readBoolean("WritePairRecords", s.writePairRecords);
@@ -4885,6 +4890,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                 throw std::runtime_error("[Input reader]: 'dcTST' 'WindowCenters' must be an array of numbers [A]\n");
               }
               s.windowCenters.push_back(item.get<double>());
+            }
+            if (s.windowCenters.empty())
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'dcTST' 'WindowCenters' is empty; give the centers [A] or leave the key out for "
+                  "evenly spaced windows\n");
             }
           }
           readNumber("WindowStiffness", s.windowStiffness);
@@ -6008,7 +6019,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       throw std::runtime_error(std::format("[Input reader]: '{}' supports rigid frameworks only\n", driverName));
     }
     const Component& tagged = system.components[taggedComponent];
-    if (tagged.isSemiFlexible())
+    // (the free-energy driver is Monte Carlo only: it samples semi-flexible molecules and polarization, which
+    // the trajectories of the transmission driver do not integrate; both were refused for either driver)
+    if (!freeEnergyDriver && tagged.isSemiFlexible())
     {
       throw std::runtime_error(
           std::format("[Input reader]: '{}': the tagged component '{}' is semi-flexible, which "
@@ -6043,7 +6056,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     {
       throw std::runtime_error(std::format("[Input reader]: {}", error.what()));
     }
-    if (system.forceField.computePolarization)
+    if (!freeEnergyDriver && system.forceField.computePolarization)
     {
       throw std::runtime_error(std::format("[Input reader]: '{}' does not support polarization\n", driverName));
     }
@@ -6077,12 +6090,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                         "unit cells of its lattice)\n",
                         driverName));
       }
-      const std::size_t totalMolecules = system.numberOfMolecules();
+      // the occupancies count the molecules of the tagged component
+      const std::size_t totalMolecules = system.numberOfMoleculesPerComponent[taggedComponent];
       if (cageOccupancies->first + cageOccupancies->second > totalMolecules)
       {
         throw std::runtime_error(
             std::format("[Input reader]: '{}' 'CageOccupancies' [{}, {}] requires at least {} "
-                        "molecules, the system has {}\n",
+                        "molecules of the tagged component, the system has {}\n",
                         driverName, cageOccupancies->first, cageOccupancies->second,
                         cageOccupancies->first + cageOccupancies->second, totalMolecules));
       }

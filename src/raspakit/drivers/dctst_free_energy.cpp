@@ -399,14 +399,75 @@ DynamicallyCorrectedTSTFreeEnergy::DynamicallyCorrectedTSTFreeEnergy(System temp
   // grids: the period for the pilot; the period or the frame of cage A (extended a quarter cage into B so
   // that the barrier top can be fitted from both sides) for the reweighting
   const double lambda = barrier.lambda;
+  // the settings a programmatic construction can get wrong (the input reader checks the keywords it reads)
+  auto requirePositive = [](double value, std::string_view name)
+  {
+    if (!(value > 0.0) || !(value < 1.0e300))
+    {
+      throw std::runtime_error(std::format("dcTST: '{}' must be positive and finite (got {})\n", name, value));
+    }
+  };
+  requirePositive(settings.fineBinWidth, "FineBinWidth");
+  requirePositive(settings.windowSpacing, "WindowSpacing");
+  requirePositive(settings.barrierFitRange, "BarrierFitRange");
+  if (!(settings.windowStiffness >= 0.0) || !(settings.windowStiffness < 1.0e300))
+  {
+    throw std::runtime_error("dcTST: 'WindowStiffness' must be non-negative and finite\n");
+  }
+  // n_A counts the tagged molecule: zero wrapped n_A - 1 around to the largest unsigned integer
+  if (occupancyMode && settings.cageOccupancies->first == 0uz)
+  {
+    throw std::runtime_error(
+        "dcTST: 'CageOccupancies' n_A must be at least 1 (the tagged molecule itself is in cage A)\n");
+  }
   pilotGrid = makeGrid(-0.5 * lambda, 0.5 * lambda, settings.fineBinWidth, 0.0, -0.5 * lambda, 0.5 * lambda);
   if (occupancyMode)
   {
-    grid = makeGrid(-0.5 * lambda, 0.75 * lambda, settings.fineBinWidth, 0.5 * lambda, -0.5 * lambda, 0.5 * lambda);
+    // The frame of cage A runs over [-lambda/2, 3 lambda/4) with the dividing surface at lambda/2, four fifths
+    // of the way: a bin count that is not a multiple of five put the surface inside a bin. The pilot (confined
+    // to x < lambda/2) then filled part of a bin that the reweighting took as forbidden to it, or as wholly
+    // its own: a density of e^(1e30) or a spike at the barrier in the first case, a P(q*) that is too low in
+    // the second. Cage A gets a number of bins that is a multiple of four, the quarter cage beyond it a quarter
+    // of that, so that lambda/2 (and 3 lambda/4) are bin edges.
+    const std::size_t binsOfCage =
+        4uz * std::max(1uz, static_cast<std::size_t>(std::llround(lambda / settings.fineBinWidth / 4.0)));
+    grid = makeGrid(-0.5 * lambda, 0.75 * lambda, lambda / static_cast<double>(binsOfCage), 0.5 * lambda,
+                    -0.5 * lambda, 0.5 * lambda);
   }
   else
   {
     grid = pilotGrid;
+  }
+
+  // the windows must lie on the coordinate they bias: outside it every sample of a window is rejected
+  {
+    const bool mirror = settings.mirrorSymmetry && !occupancyMode;
+    const double lowest = mirror ? 0.0 : grid.begin;
+    // (the plain coordinate is periodic: a center outside the period is folded into it)
+    const bool bounded = mirror || occupancyMode;
+    auto requireOnGrid = [&](double x, std::string_view name)
+    {
+      if (!(x > -1.0e300) || !(x < 1.0e300))
+      {
+        throw std::runtime_error(std::format("dcTST: '{}' must be finite\n", name));
+      }
+      if (bounded && (!(x >= lowest - 1e-9) || !(x <= grid.end + 1e-9)))
+      {
+        throw std::runtime_error(std::format(
+            "dcTST: '{}' {} [A] lies outside the reaction coordinate [{}, {}] [A]{}\n", name, x, lowest, grid.end,
+            mirror ? " (with 'MirrorSymmetry' the windows are on the folded coordinate |q|)" : ""));
+      }
+    };
+    if (settings.windowRange.has_value())
+    {
+      requireOnGrid(settings.windowRange->first, "WindowRange");
+      requireOnGrid(settings.windowRange->second, "WindowRange");
+      if (!(settings.windowRange->second > settings.windowRange->first))
+      {
+        throw std::runtime_error("dcTST: 'WindowRange' must have q_end > q_begin\n");
+      }
+    }
+    for (const double center : settings.windowCenters) requireOnGrid(center, "WindowCenters");
   }
 
   templateSystem.thermostat = std::nullopt;
@@ -618,6 +679,9 @@ std::vector<std::size_t> DynamicallyCorrectedTSTFreeEnergy::countOccupancies(con
   const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
   for (const Molecule& molecule : system.moleculeData)
   {
+    // the occupancies are those of the tagged species: (n_A, n_B) label the rates of its hops, and a cation or
+    // a co-adsorbate in the cage is part of the environment, not a molecule that hops with that rate
+    if (molecule.componentId != settings.taggedComponent) continue;
     const Component& component = system.components[molecule.componentId];
     ++occupancy[cageLattice.cageOf(atoms[molecule.atomIndex + component.startingBead].position)];
   }
@@ -862,10 +926,18 @@ void DynamicallyCorrectedTSTFreeEnergy::buildWindows()
   }
   else if (centers.size() > 1)
   {
+    // the smallest gap between distinct centers. A center given twice (a window run on two replicas) made the
+    // gap zero: an infinite stiffness with a support of zero width, and 0.5 * inf * 0 = NaN in the bias of the
+    // bin on the center. With fewer than two distinct centers the spacing is 'WindowSpacing'.
     std::vector<double> sorted = centers;
     std::sort(sorted.begin(), sorted.end());
-    spacing = sorted[1] - sorted[0];
-    for (std::size_t k = 1; k + 1 < sorted.size(); ++k) spacing = std::min(spacing, sorted[k + 1] - sorted[k]);
+    double smallestGap = std::numeric_limits<double>::max();
+    for (std::size_t k = 0; k + 1 < sorted.size(); ++k)
+    {
+      const double gap = sorted[k + 1] - sorted[k];
+      if (gap > 1e-9) smallestGap = std::min(smallestGap, gap);
+    }
+    if (smallestGap < std::numeric_limits<double>::max()) spacing = smallestGap;
   }
   const double stiffness = (settings.windowStiffness > 0.0) ? settings.windowStiffness : 4.0 / (spacing * spacing);
 
@@ -1107,11 +1179,15 @@ void DynamicallyCorrectedTSTFreeEnergy::startWindow(std::size_t replicaId, std::
   const std::size_t taggedIndex = taggedComponentOffset(system) + best;
   const std::size_t numberOfMolecules = system.moleculeData.size();
   const std::size_t numberOfCages = cageLattice.numberOfCages();
-  if (nA - 1uz + nB > numberOfMolecules - 1uz)
+  // the molecules of the tagged component besides the tagged one: only they are counted and moved (every
+  // molecule was, so that cations were taken off their sites to fill a cage and counted as its occupancy)
+  const std::size_t numberOfOthers = system.numberOfMoleculesPerComponent[settings.taggedComponent] - 1uz;
+  if (nA - 1uz + nB > numberOfOthers)
   {
-    throw std::runtime_error(
-        std::format("dcTST: 'CageOccupancies' [{}, {}] needs {} molecules besides the tagged one, the system has {}\n",
-                    nA, nB, nA - 1uz + nB, numberOfMolecules - 1uz));
+    throw std::runtime_error(std::format(
+        "dcTST: 'CageOccupancies' [{}, {}] needs {} molecules of the tagged component besides the tagged one, the "
+        "system has {}\n",
+        nA, nB, nA - 1uz + nB, numberOfOthers));
   }
   {
     const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
@@ -1122,7 +1198,10 @@ void DynamicallyCorrectedTSTFreeEnergy::startWindow(std::size_t replicaId, std::
       const Molecule& molecule = system.moleculeData[j];
       const Component& c = system.components[molecule.componentId];
       state.cageOfMolecule[j] = cageLattice.cageOf(atoms[molecule.atomIndex + c.startingBead].position);
-      if (j != taggedIndex) ++state.occupancy[state.cageOfMolecule[j]];
+      if (j != taggedIndex && molecule.componentId == settings.taggedComponent)
+      {
+        ++state.occupancy[state.cageOfMolecule[j]];
+      }
     }
     if (windowInCageB)
     {
@@ -1181,7 +1260,11 @@ void DynamicallyCorrectedTSTFreeEnergy::startWindow(std::size_t replicaId, std::
     std::vector<std::size_t> candidates;
     for (std::size_t j = 0; j < numberOfMolecules; ++j)
     {
-      if (j != taggedIndex && predicate(state.cageOfMolecule[j])) candidates.push_back(j);
+      if (j != taggedIndex && system.moleculeData[j].componentId == settings.taggedComponent &&
+          predicate(state.cageOfMolecule[j]))
+      {
+        candidates.push_back(j);
+      }
     }
     if (candidates.empty()) return std::nullopt;
     return candidates[std::min(candidates.size() - 1uz,
@@ -1299,7 +1382,8 @@ void DynamicallyCorrectedTSTFreeEnergy::performWindowCycle(std::size_t replicaId
       // ('DcTSTMoves::validate' refuses the rest up front; there is no fall-back to a translation)
       energyDifference = DcTSTMoves::perform(rng, system, selectedComponent, selectedMolecule, moveType);
 
-      if (occupancyMode && energyDifference.has_value())
+      // (the constraint is on the molecules of the tagged component; the others move freely between the cages)
+      if (occupancyMode && energyDifference.has_value() && selectedComponent == settings.taggedComponent)
       {
         const std::size_t oldCage = state.cageOfMolecule[moleculeIndex];
         const std::size_t newCage = cageLattice.cageOf(moleculeAtoms[component.startingBead].position);
@@ -1642,6 +1726,13 @@ void DynamicallyCorrectedTSTFreeEnergy::samplePilot(std::size_t replicaId, std::
           beadInverseEffectiveMass(component, molecule, atoms, component.startingBead, barrier.normal);
       accumulator.beadSpeedSum += std::sqrt(2.0 * kT * inverseMass / std::numbers::pi);
       accumulator.beadSpeedCount += 1.0;
+      // the orientations of the transition state: the samples on a dividing plane
+      if (std::abs(barrier.reducedCoordinate(barrier.projection(system.simulationBox, position))) <
+          DcTSTWindowAccumulator::barrierOccupancyHalfWidth)
+      {
+        accumulator.barrierSpeedSum += std::sqrt(2.0 * kT * inverseMass / std::numbers::pi);
+        accumulator.barrierSpeedCount += 1.0;
+      }
     }
     const double x = barrier.reducedCoordinate(barrier.projection(system.simulationBox, position));
     if (mirror)
@@ -1703,6 +1794,17 @@ void DynamicallyCorrectedTSTFreeEnergy::sampleWindow(std::size_t replicaId, std:
   accumulator.sumXSquared[block] += xf * xf;
   accumulator.sumBias[block] += windowBias(windowIndex, x);
 
+  // the thermal speed of the reaction bead for the orientation it has on the dividing plane (see beadThermalSpeed)
+  if (std::abs(x - grid.barrier) < DcTSTWindowAccumulator::barrierOccupancyHalfWidth)
+  {
+    const Molecule& molecule =
+        system.moleculeData[system.moleculeIndexOfComponent(settings.taggedComponent, state.taggedLocalIndex)];
+    const double inverseMass =
+        beadInverseEffectiveMass(component, molecule, atoms, component.startingBead, barrier.normal);
+    accumulator.barrierSpeedSum += std::sqrt(2.0 * Units::KB * system.temperature * inverseMass / std::numbers::pi);
+    accumulator.barrierSpeedCount += 1.0;
+  }
+
   // occupancies of the two cages sharing the window while the tagged molecule is on the dividing plane
   if (!occupancyMode && !cageLatticeInconsistency.has_value() &&
       std::abs(x) < DcTSTWindowAccumulator::barrierOccupancyHalfWidth)
@@ -1749,6 +1851,26 @@ void DynamicallyCorrectedTSTFreeEnergy::sampleWindow(std::size_t replicaId, std:
 
 double DynamicallyCorrectedTSTFreeEnergy::beadThermalSpeed() const
 {
+  // k^TST = <|qdot|>_{q*} P(q*) / 2 takes the mean speed over the configurations on the dividing surface. For a
+  // rigid molecule with its reaction bead off the center of mass the effective mass of the bead depends on the
+  // orientation, and a molecule in a window is not oriented as in the cage (CO2 end-on in an eight-ring): the
+  // average over the pilot's cage orientations was up to a few tens of percent too high. The samples within the
+  // barrier slab are used (windows and pilot); the cage average only when there are fewer than a hundred.
+  {
+    double sum{0.0};
+    double count{0.0};
+    for (const DcTSTWindowAccumulator& accumulator : windowData)
+    {
+      sum += accumulator.barrierSpeedSum;
+      count += accumulator.barrierSpeedCount;
+    }
+    for (const DcTSTPilotAccumulator& accumulator : pilot)
+    {
+      sum += accumulator.barrierSpeedSum;
+      count += accumulator.barrierSpeedCount;
+    }
+    if (count >= 100.0) return sum / count;
+  }
   double sum{0.0};
   double count{0.0};
   for (const DcTSTPilotAccumulator& accumulator : pilot)
@@ -1997,6 +2119,21 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
   result.available = true;
   result.converged = coldConverged && full.converged;
   result.connected = full.connected;
+  // how much of the cage period the normalization integral covers: a bin without samples is left out of it,
+  // and with the wells unsampled (windows on the barrier only, no pilot) P(q*) is normalized over the barrier
+  // region alone and comes out orders of magnitude too high
+  {
+    std::size_t inRange{0}, covered{0};
+    for (std::size_t b = 0; b < numberOfBins; ++b)
+    {
+      const double x = grid.center(b);
+      if (x < grid.normalizationBegin || x >= grid.normalizationEnd) continue;
+      ++inRange;
+      if (full.defined[b]) ++covered;
+    }
+    result.normalizationCoverage =
+        (inRange > 0uz) ? static_cast<double>(covered) / static_cast<double>(inRange) : 0.0;
+  }
   result.iterations = coldIterations;
   result.residual = coldResidual;
   result.stateFreeEnergies = full.freeEnergies;
@@ -2711,10 +2848,19 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
     const double kTSTError = 0.5 * meanSpeed * profile.barrierProbabilityError;
     std::print(stream, "Transition-state rate:\n");
     std::print(stream,
-               "    <|qdot|> of the reaction bead:       {:.6f} [A/ps] (pilot orientations; sqrt(2 kT / pi M) of the "
-               "molecular mass: {:.6f})\n",
+               "    <|qdot|> of the reaction bead:       {:.6f} [A/ps] (orientations on the dividing surface when "
+               "sampled, else of the pilot; sqrt(2 kT / pi M) of the molecular mass: {:.6f})\n",
                meanSpeed, thermalSpeed);
     std::print(stream, "    k^TST = <|qdot|>/2 P(q*):            {:.6e} +/- {:.2e} [1/ps]\n", kTST, kTSTError);
+    if (profile.normalizationCoverage < 1.0 - 1e-12)
+    {
+      std::print(stream,
+                 "    WARNING: only {:.1f}% of the cage period holds samples. P(q*) is normalized over the sampled\n"
+                 "             part alone: where the missing part is a well (windows on the barrier only, no\n"
+                 "             pilot), P(q*) and k^TST are too high by orders of magnitude. Run pilot cycles or let\n"
+                 "             the windows span the cage. The shape of beta F over the sampled range is not affected.\n",
+                 100.0 * profile.normalizationCoverage);
+    }
     std::print(stream, "    k^TST lambda^2 (D for kappa = 1):    {:.6e} +/- {:.2e} [m^2/s]\n",
                kTST * lambdaSquared * conversion, kTSTError * lambdaSquared * conversion);
     std::print(stream,
@@ -2742,6 +2888,8 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
     json["kTSTError"] = kTSTError;
     json["whamConverged"] = profile.converged;
     json["whamConnected"] = profile.connected;
+    json["normalizationCoverage"] = profile.normalizationCoverage;
+    json["normalizationComplete"] = !(profile.normalizationCoverage < 1.0 - 1e-12);
     json["whamIterations"] = profile.iterations;
     json["minimumWindowOverlap"] = minimumOverlap;
     json["pilotConsistencyRms"] = profile.pilotConsistencyRms;
