@@ -53,6 +53,18 @@ void TransitionMatrix::updateMatrix(double3 Pacc, std::size_t oldN, std::size_t 
 
   if (Pacc.x == 0.0 && Pacc.y == 0.0 && Pacc.z == 0.0) return;
 
+  // A non-finite entry (an acceptance that overflowed, or inf * 0) would poison the row for the rest of the run:
+  // std::clamp passes a NaN through, and std::isnan is compiled away under -ffast-math. A finite entry is clamped
+  // (an acceptance above one leaves a negative stay); an overflowed acceptance is an accepted proposal; anything
+  // else (a NaN, which fails every comparison) drops the record.
+  auto finite = [](double value) { return value > -1.0e300 && value < 1.0e300; };
+  if (!finite(Pacc.x) || !finite(Pacc.y) || !finite(Pacc.z))
+  {
+    auto overflowed = [](double value) { return value >= 1.0e300; };
+    if (!overflowed(Pacc.x) && !overflowed(Pacc.z)) return;
+    Pacc = double3(overflowed(Pacc.x) ? 1.0 : 0.0, 0.0, overflowed(Pacc.z) ? 1.0 : 0.0);
+  }
+
   Pacc.clamp(0.0, 1.0);
 
   const std::size_t index = chainIndex(oldN, oldLambdaBin);
@@ -156,8 +168,16 @@ void TransitionMatrix::adjustBias()
 // gives every macrostate comparable statistics, which is what the ln Pi increments need.
 void TransitionMatrix::switchToTMBias()
 {
-  if (!doTMMC || !useBias || !useTMBias) return;
+  if (!doTMMC) return;
 
+  // Without a transition-matrix bias to take over, Wang-Landau is frozen rather than retired: its bias keeps
+  // flattening the walk, but its un-annealed running penalty no longer changes the sampled distribution through
+  // production (it did, the switch returning before it touched Wang-Landau).
+  if (!useBias || !useTMBias)
+  {
+    wangLandauFactor = 0.0;
+    return;
+  }
   useWangLandau = false;
   recomputeLnPiAndBias();
 };
@@ -298,6 +318,36 @@ void TransitionMatrix::clearCMatrix()
   // not be rebuilt and the walk could not re-explore the macrostates
   wangLandauFactor = TransitionMatrix{}.wangLandauFactor;
 };
+
+std::optional<std::pair<double, double>> TransitionMatrix::reweightedMoleculeCountMeanAndVariance() const
+{
+  if (!doTMMC || lnpi.size() != numberOfChainStates() || histogram.size() != numberOfChainStates()) return std::nullopt;
+  const std::size_t nLambda = lambdaBinCount();
+  std::vector<std::size_t> visited;
+  for (std::size_t N = minMacrostate; N <= maxMacrostate; ++N)
+  {
+    std::size_t visits = 0uz;
+    for (std::size_t k = 0; k < nLambda; ++k) visits += histogram[chainIndex(N, k)];
+    if (visits > 0uz) visited.push_back(N);
+  }
+  if (visited.empty()) return std::nullopt;
+  double largest = -1e300;
+  for (std::size_t N = visited.front(); N <= visited.back(); ++N) largest = std::max(largest, lnpi[chainIndex(N, 0uz)]);
+  double sum = 0.0;
+  double sumN = 0.0;
+  double sumNN = 0.0;
+  for (std::size_t N = visited.front(); N <= visited.back(); ++N)
+  {
+    const double weight = std::exp(lnpi[chainIndex(N, 0uz)] - largest);
+    const double n = static_cast<double>(N);
+    sum += weight;
+    sumN += weight * n;
+    sumNN += weight * n * n;
+  }
+  if (!(sum > 0.0)) return std::nullopt;
+  const double mean = sumN / sum;
+  return std::make_pair(mean, std::max(0.0, sumNN / sum - mean * mean));
+}
 
 void TransitionMatrix::writeStatistics()
 {

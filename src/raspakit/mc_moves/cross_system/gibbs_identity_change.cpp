@@ -221,6 +221,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsIdentityCh
   const Move::Types move = Move::Types::GibbsIdentityChangeCBMC;
   Component& startComponent = systemI.components[componentA];
 
+  // the one-dimensional N chain of TMMC cannot hold this move (the input reader refuses the mix up front)
+  if (systemI.tmmc.doTMMC || systemII.tmmc.doTMMC) return std::nullopt;
+
   if (startComponent.gibbsIdentityChanges.empty())
   {
     return std::nullopt;

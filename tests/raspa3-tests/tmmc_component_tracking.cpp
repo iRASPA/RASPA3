@@ -8,6 +8,7 @@ import atom;
 import forcefield;
 import component;
 import system;
+import property_lambda_probability_histogram;
 import simulationbox;
 import monte_carlo_transition_matrix;
 import simulation_schedule;
@@ -294,7 +295,9 @@ TEST(TMMC_COMPONENT_TRACKING, integer_swaps_on_a_lambda_chain_are_refused_and_no
 
 // The Gibbs CFCMC transfer turns the fractional molecule whole at its lambda bin and makes a molecule of the
 // other box fractional at that same bin: on an (N, lambda) chain that is an off-chain jump in both boxes, like
-// an integer swap, and is refused and not recorded. On a plain chain the transfers run and record as usual.
+// an integer swap, and is refused and not recorded. On a plain chain it is a step of the matrix only as a direct
+// crossing (a single lambda bin): with more bins the transfers happen at any lambda, biased by the Wang-Landau
+// factors of the two boxes, which the matrix does not see, so they are refused there as well.
 TEST(TMMC_COMPONENT_TRACKING, gibbs_cfcmc_transfers_on_a_lambda_chain_are_refused_and_not_recorded)
 {
   // the driver writes its output files relative to the working directory
@@ -305,14 +308,23 @@ TEST(TMMC_COMPONENT_TRACKING, gibbs_cfcmc_transfers_on_a_lambda_chain_are_refuse
   std::filesystem::create_directories(scratch);
   std::filesystem::current_path(scratch);
 
-  for (const std::size_t numberOfLambdaBins : {21uz, 1uz})
+  for (const auto [numberOfLambdaBins, histogramBins] : {std::pair{21uz, 21uz}, std::pair{1uz, 21uz},
+                                                         std::pair{1uz, 1uz}})
   {
     MCMoveProbabilities transferring;
     transferring.setProbability(Move::Types::Translation, 1.0);
     transferring.setProbability(Move::Types::GibbsSwapCFCMC, 1.0);
     std::vector<System> systems{makeAdsorbateSystem(transferring, 10, 1e4), makeAdsorbateSystem(transferring, 10, 1e4)};
-    for (System& system : systems) enableTMMC(system, 0, 40, numberOfLambdaBins);
+    for (System& system : systems)
+    {
+      if (histogramBins != system.components[0].lambdaGC.numberOfSamplePoints)
+      {
+        system.components[0].lambdaGC = PropertyLambdaProbabilityHistogram(5, histogramBins);
+      }
+      enableTMMC(system, 0, 40, numberOfLambdaBins);
+    }
     const bool chain = numberOfLambdaBins > 1uz;
+    const bool directCrossing = !chain && histogramBins == 1uz;
     ASSERT_EQ(systems[0].tmmc.lambdaChain(), chain);
 
     RandomNumber random(13);
@@ -326,17 +338,17 @@ TEST(TMMC_COMPONENT_TRACKING, gibbs_cfcmc_transfers_on_a_lambda_chain_are_refuse
     const std::size_t nA = tmmc.systems[0].numberOfIntegerMoleculesPerComponent[0];
     const std::size_t nB = tmmc.systems[1].numberOfIntegerMoleculesPerComponent[0];
     const bool recorded = !allZero(tmmc.systems[0].tmmc.cmatrix) || !allZero(tmmc.systems[1].tmmc.cmatrix);
-    if (chain)
+    if (!directCrossing)
     {
       // the transfers are refused and nothing is recorded (the fractional molecule, which the setup adds on
       // top of the ten integer ones, only moves in lambda)
-      EXPECT_EQ(nA, 10uz) << "on the chain";
-      EXPECT_EQ(nB, 10uz) << "on the chain";
-      EXPECT_FALSE(recorded) << "on the chain";
+      EXPECT_EQ(nA, 10uz) << "lambda bins " << numberOfLambdaBins << ", histogram " << histogramBins;
+      EXPECT_EQ(nB, 10uz) << "lambda bins " << numberOfLambdaBins << ", histogram " << histogramBins;
+      EXPECT_FALSE(recorded) << "lambda bins " << numberOfLambdaBins << ", histogram " << histogramBins;
     }
     else
     {
-      EXPECT_TRUE(recorded) << "on the plain chain";
+      EXPECT_TRUE(recorded) << "on the plain chain with a single lambda bin";
     }
   }
 

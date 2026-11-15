@@ -58,10 +58,10 @@ class DualTMMCTrial
             (oldNB_ > 0 && oldNB_ - 1 >= systemB_.tmmc.minMacrostate));
   }
 
+  // one box carries the bias of the shared Gibbs macrostate (System::gibbsTransferTMMCBiasFactor)
   double biasFactor() const
   {
-    return systemA_.tmmcIntegerSwapBiasFactor(selectedComponent_, oldNA_ + 1, oldNA_) *
-           systemB_.tmmcIntegerSwapBiasFactor(selectedComponent_, oldNB_ - 1, oldNB_);
+    return System::gibbsTransferTMMCBiasFactor(systemA_, systemB_, selectedComponent_, oldNA_, oldNB_);
   }
 
   void recordTransfer(double physicalAcceptance)

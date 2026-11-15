@@ -18,6 +18,9 @@ import mc_moves_reaction_common;
 
 std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, System& system)
 {
+  // the one-dimensional N chain of TMMC cannot hold this move (the input reader refuses the mix up front)
+  if (system.tmmc.doTMMC) return std::nullopt;
+
   const Move::Types move = Move::Types::ReactionCBMC;
 
   if (system.reactions.list.empty())

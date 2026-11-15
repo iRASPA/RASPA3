@@ -260,6 +260,13 @@ export struct ParallelTMMC
   std::vector<std::vector<double>> widomWeightSquaredSums;
   std::vector<std::vector<std::size_t>> widomInsertions;
 
+  /// Cumulative snapshots of 'widomWeightSums' and 'widomInsertions' per walker, taken with the
+  /// collection-matrix snapshots at the block boundaries: each block anchors its own ln Pi with its own
+  /// test-insertion increments (the whole-production ones made every block identical over the anchored range,
+  /// and its error bars zero).
+  std::vector<std::vector<std::vector<double>>> blockWidomWeightSums;
+  std::vector<std::vector<std::vector<std::size_t>>> blockWidomInsertions;
+
   std::vector<std::size_t> stepsPerWalker;  ///< Production MC steps performed per walker.
 
   /// Reweighted isotherms (equilibrium, adsorption and desorption branches), one per temperature,

@@ -205,6 +205,11 @@ export struct TransitionMatrix
    */
   void writeStatistics();
 
+  /// The grand-canonical mean and variance of the molecule count at the fugacity the walk ran at, reweighted from
+  /// ln Pi over the visited macrostates (the integer states (N, 0) of an (N, lambda) chain); empty when nothing was
+  /// visited. The averages a biased walk samples directly are flat-histogram averages, not these.
+  [[nodiscard]] std::optional<std::pair<double, double>> reweightedMoleculeCountMeanAndVariance() const;
+
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const TransitionMatrix& m);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, TransitionMatrix& m);
 };

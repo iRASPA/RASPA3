@@ -5281,8 +5281,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     for (std::size_t i = 0uz; i < systems.size(); ++i)
     {
       systems[i].tmmc.doTMMC = true;
-      systems[i].tmmc.useBias = true;
+      // the bias is on by default; an explicit "MacroStateUseBias": false (an unbiased TMMC run) is kept
+      const bool useBiasGiven = parsed_data.contains("Systems") && parsed_data["Systems"].is_array() &&
+                                i < parsed_data["Systems"].size() &&
+                                parsed_data["Systems"][i].contains("MacroStateUseBias");
+      if (!useBiasGiven) systems[i].tmmc.useBias = true;
       systems[i].tmmc.useTMBias = true;
+      // per-box statistics files: with several boxes (Gibbs TMMC) each wrote over the one before
+      if (systems.size() > 1uz)
+      {
+        systems[i].tmmc.statisticsFileName = std::format("tmmc/tmmc_statistics.s{}.txt", i);
+      }
       // the (N, lambda) chain is that of the tracked component, the adsorbate (a cation beside it is a
       // component too, but not what the matrix is of)
       if (!systems[i].components.empty())
@@ -5605,14 +5614,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         // The CFCMC pair and group swaps walk their lambda inside one macrostate of the N chain, biased by their
         // own Wang-Landau factors, which the matrix cannot see; only as a direct crossing (a single bin) are they
         // its steps (System::cfcmcSwapFitsTMMC).
+        // The Gibbs CFCMC swap transfers the fractional molecule at any lambda of the GC histogram in the same way.
         const std::array cfcmcPairGroupMoves{
-            std::pair{Move::Types::PairSwapCFCMC, "CFCMC_PairSwapProbability"},
-            std::pair{Move::Types::PairSwapCBCFCMC, "CFCMC_CBMC_PairSwapProbability"},
-            std::pair{Move::Types::GroupSwapCFCMC, "CFCMC_GroupSwapProbability"},
-            std::pair{Move::Types::GroupSwapCBCFCMC, "CFCMC_CBMC_GroupSwapProbability"}};
-        for (const auto& [move, keyword] : cfcmcPairGroupMoves)
+            std::tuple{Move::Types::PairSwapCFCMC, "CFCMC_PairSwapProbability", &tracked.lambdaPairSwap},
+            std::tuple{Move::Types::PairSwapCBCFCMC, "CFCMC_CBMC_PairSwapProbability", &tracked.lambdaPairSwapCB},
+            std::tuple{Move::Types::GroupSwapCFCMC, "CFCMC_GroupSwapProbability", &tracked.lambdaGroupSwap},
+            std::tuple{Move::Types::GroupSwapCBCFCMC, "CFCMC_CBMC_GroupSwapProbability", &tracked.lambdaGroupSwapCB},
+            std::tuple{Move::Types::GibbsSwapCFCMC, "GibbsSwapCFCMCProbability", &tracked.lambdaGC},
+            std::tuple{Move::Types::GibbsSwapCBCFCMC, "GibbsSwapCBCFCMCProbability", &tracked.lambdaGC}};
+        for (const auto& [move, keyword, histogram] : cfcmcPairGroupMoves)
         {
-          if (tracked.mc_moves_probabilities.getProbability(move) != 0.0 && tracked.lambdaGC.numberOfSamplePoints > 1uz)
+          if (tracked.mc_moves_probabilities.getProbability(move) != 0.0 && histogram->numberOfSamplePoints > 1uz)
           {
             throw std::runtime_error(std::format(
                 "Error [TMMC, system {}, component {} ('{}')]: '{}' needs 'NumberOfLambdaBins' 1 under TMMC; move '{}' "
@@ -5621,6 +5633,22 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                 "whole N -> N +/- 1 transition). Use a single lambda bin, or the CFCMC swap for an (N, lambda) "
                 "chain.\n",
                 i, trackedComponent, tracked.name, keyword, Move::moveNames[std::to_underlying(move)]));
+          }
+        }
+        // The conventional Gibbs CFCMC transfers are the lambda crossings of a walk over (N, k) of the Gibbs lambda,
+        // biased by its Wang-Landau factors; on a single bin they never cross. Neither is a step of the matrix.
+        for (const auto& [move, keyword] :
+             {std::pair{Move::Types::GibbsConventionalCFCMC, "GibbsConventionalCFCMCProbability"},
+              std::pair{Move::Types::GibbsConventionalCBCFCMC, "GibbsConventionalCBCFCMCProbability"}})
+        {
+          if (tracked.mc_moves_probabilities.getProbability(move) != 0.0)
+          {
+            throw std::runtime_error(std::format(
+                "Error [TMMC, system {}, component {} ('{}')]: '{}' must be zero under TMMC; the conventional Gibbs "
+                "CFCMC move transfers molecules at the lambda crossings of a Wang-Landau biased walk the transition "
+                "matrix cannot see. Use 'GibbsSwapCBMCProbability', or 'GibbsSwapCFCMCProbability' with "
+                "'NumberOfLambdaBins' 1.\n",
+                i, trackedComponent, tracked.name, keyword));
           }
         }
         const bool lambdaChain = (tracked.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||

@@ -35,6 +35,9 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   Move::Types move = Move::Types::IdentityChangeCBMC;
   Component &startComponent = system.components[selectedComponent];
 
+  // the one-dimensional N chain of TMMC cannot hold this move (the input reader refuses the mix up front)
+  if (system.tmmc.doTMMC) return std::nullopt;
+
   if (startComponent.identityChanges.empty())
   {
     return std::nullopt;

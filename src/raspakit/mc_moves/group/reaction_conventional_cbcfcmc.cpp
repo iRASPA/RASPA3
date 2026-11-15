@@ -16,5 +16,8 @@ import mc_moves_reaction_common;
 // coupling schedule of scaling.ixx.
 std::optional<RunningEnergy> MC_Moves::reactionMove_ConventionalCBCFCMC(RandomNumber& random, System& system)
 {
+  // the one-dimensional N chain of TMMC cannot hold this move (the input reader refuses the mix up front)
+  if (system.tmmc.doTMMC) return std::nullopt;
+
   return ReactionCommon::parallelReactionMove(random, system, Move::Types::ReactionConventionalCBCFCMC, true);
 }

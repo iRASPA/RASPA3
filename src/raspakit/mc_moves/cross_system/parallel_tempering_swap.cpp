@@ -261,21 +261,34 @@ bool compatibleMobileTopology(const System& systemA, const System& systemB)
   return true;
 }
 
-std::optional<double> tmmcLogBias(const System& replica, const System& configuration)
+// The change of the TMMC log-bias of 'replica' when its configuration 'from' is replaced by 'to', with the semantics
+// of TransitionMatrix::biasFactor exactly: a macrostate outside the window refuses the swap (empty) when the window
+// rejects out-of-bound states and leaves it unbiased (0) otherwise, whether or not a bias is in use; inside the
+// window the bias difference counts only while a bias is active, clamped like the factor of the single-box moves.
+std::optional<double> tmmcLogBiasChange(const System& replica, const System& from, const System& to)
 {
-  if (!replica.tmmc.doTMMC || !replica.tmmc.useBias) return 0.0;
-  if (!replica.tmmc.useTMBias && !replica.tmmc.useWangLandau) return 0.0;
-  if (replica.components.empty() || configuration.components.empty()) return 0.0;
+  if (!replica.tmmc.doTMMC) return 0.0;
+  if (replica.components.empty()) return 0.0;
 
   // the chain is of the tracked component (the adsorbate), not of whatever component comes first
   const std::size_t componentId = replica.tmmcComponent();
-  if (componentId >= configuration.components.size()) return 0.0;
-  const std::size_t moleculeCount = configuration.numberOfIntegerMoleculesPerComponent[componentId];
-  const std::size_t lambdaBin =
-      replica.tmmc.lambdaChain() ? configuration.components[componentId].lambdaGC.currentBin : 0uz;
-  const std::size_t index = replica.tmmc.chainIndex(moleculeCount, lambdaBin);
-  if (index >= replica.tmmc.bias.size()) return std::nullopt;
-  return replica.tmmc.bias[index];
+  if (componentId >= from.components.size() || componentId >= to.components.size()) return 0.0;
+  auto indexOf = [&](const System& configuration)
+  {
+    const std::size_t moleculeCount = configuration.numberOfIntegerMoleculesPerComponent[componentId];
+    const std::size_t lambdaBin =
+        replica.tmmc.lambdaChain() ? configuration.components[componentId].lambdaGC.currentBin : 0uz;
+    return replica.tmmc.chainIndex(moleculeCount, lambdaBin);
+  };
+  const std::size_t oldIndex = indexOf(from);
+  const std::size_t newIndex = indexOf(to);
+  if (oldIndex >= replica.tmmc.bias.size() || newIndex >= replica.tmmc.bias.size())
+  {
+    if (replica.tmmc.rejectOutOfBound) return std::nullopt;
+    return 0.0;
+  }
+  if (!replica.tmmc.useBias || (!replica.tmmc.useTMBias && !replica.tmmc.useWangLandau)) return 0.0;
+  return std::clamp(replica.tmmc.bias[newIndex] - replica.tmmc.bias[oldIndex], -500.0, 500.0);
 }
 
 // Solute tempering: E_target(X) - E_holder(X) for the configuration X held by 'holder', i.e. the energy
@@ -612,19 +625,23 @@ std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& sys
     if (!componentA.hasFractionalMolecule) continue;
     const std::size_t binA = componentA.lambdaGC.currentBin;
     const std::size_t binB = componentB.lambdaGC.currentBin;
-    logR += componentA.lambdaGC.biasFactor[binB] - componentA.lambdaGC.biasFactor[binA] +
-            componentB.lambdaGC.biasFactor[binA] - componentB.lambdaGC.biasFactor[binB];
+    // on an (N, lambda) chain the transition matrix owns the lambda of the tracked component (its bias is in the
+    // TMMC term above) and the single-box CFCMC swap does not apply the histogram's own bias
+    auto lambdaBias = [&](const System& system, const Component& component, std::size_t bin)
+    {
+      return (system.tmmcTracks(componentId) && system.tmmc.lambdaChain()) ? 0.0 : component.lambdaGC.biasFactor[bin];
+    };
+    logR += lambdaBias(systemA, componentA, binB) - lambdaBias(systemA, componentA, binA) +
+            lambdaBias(systemB, componentB, binA) - lambdaBias(systemB, componentB, binB);
   }
 
-  const std::optional<double> tmmcAOnA = tmmcLogBias(systemA, systemA);
-  const std::optional<double> tmmcAOnB = tmmcLogBias(systemA, systemB);
-  const std::optional<double> tmmcBOnB = tmmcLogBias(systemB, systemB);
-  const std::optional<double> tmmcBOnA = tmmcLogBias(systemB, systemA);
-  if (!tmmcAOnA.has_value() || !tmmcAOnB.has_value() || !tmmcBOnB.has_value() || !tmmcBOnA.has_value())
+  const std::optional<double> tmmcA = tmmcLogBiasChange(systemA, systemA, systemB);
+  const std::optional<double> tmmcB = tmmcLogBiasChange(systemB, systemB, systemA);
+  if (!tmmcA.has_value() || !tmmcB.has_value())
   {
     return std::nullopt;
   }
-  logR += *tmmcAOnB - *tmmcAOnA + *tmmcBOnA - *tmmcBOnB;
+  logR += *tmmcA + *tmmcB;
 
   return logR;
 }

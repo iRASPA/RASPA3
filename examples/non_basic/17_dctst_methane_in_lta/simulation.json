@@ -1,0 +1,60 @@
+{
+  "SimulationType" : "DynamicallyCorrectedTST",
+  "NumberOfInitializationCycles" : 2000,
+  "NumberOfBlocks" : 5,
+  "NumberOfThreads" : 4,
+  "PrintEvery" : 500,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "ITQ-29",
+      "NumberOfUnitCells" : [3, 3, 3],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "None",
+      "TimeStep" : 0.0005,
+
+      "dcTST" : {
+        "TaggedComponent" : "methane",
+        "BarrierPosition" : [0.0, 0.5, 0.5],
+        "BarrierNormal" : [1.0, 0.0, 0.0],
+        "LatticeDistance" : 11.8671,
+        "CageCenter" : [0.5, 0.5, 0.5],
+
+        "NumberOfFreeEnergyCycles" : 20000,
+        "NumberOfFreeEnergyBins" : 100,
+        "WidomInsertionsPerCycle" : 10,
+
+        "NumberOfConstrainedEquilibrationCycles" : 500,
+        "NumberOfTransmissionCycles" : 1000,
+        "LaunchTrajectoryEvery" : 10,
+        "TrajectoriesPerConfiguration" : 1,
+        "TrajectoryTime" : 2.0,
+        "SampleTrajectoryEvery" : 10,
+        "MaximumCollectiveShell" : 2,
+        "PlateauWindow" : [1.0, 2.0],
+
+        "TrajectoryThermostat" : "None",
+
+        "MaximumTranslationInPlane" : 1.0,
+        "ReinsertionInPlaneProbability" : 0.5
+      }
+    }
+  ],
+
+  "Components" : [
+    {
+      "Name" : "methane",
+      "StartingBead" : 0,
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "BlockingPockets" : [
+           [0.0, 0.0, 0.0, 4.0],
+           [0.5, 0.0, 0.0, 1.0],
+           [0.0, 0.5, 0.0, 1.0],
+           [0.0, 0.0, 0.5, 1.0]
+         ],
+      "CreateNumberOfMolecules" : 162
+    }
+  ]
+}

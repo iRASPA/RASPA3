@@ -694,6 +694,43 @@ export struct System
     if (tmmc.lambdaChain()) return 0.0;
     return tmmc.biasFactor(newN, oldN);
   }
+  /// The transition-matrix bias of a Gibbs transfer of one molecule of 'componentId' from 'losing' (which holds
+  /// 'oldNLosing') into 'gaining' (which holds 'oldNGaining').
+  ///
+  /// In a two-box Gibbs ensemble N_A + N_B is conserved, so (N_A, N_B) is one macrostate coordinate. Both boxes
+  /// record the same transfers in their own collection matrices, so each reconstructs the same distribution,
+  /// Pi_A(N_A) = Pi_B(N_tot - N_A), and each bias is -ln of it. Multiplying the two biases squared the
+  /// flattening factor and drove the walk to 1 / Pi (stable basins turned into barriers, and the product of two
+  /// clamped exponentials overflowed). One box carries the bias: the tracking box, or of two tracking boxes the
+  /// first in the driver's list of systems (the lower address; the systems live in one vector), so that a move
+  /// and its reverse, called with the roles of the boxes exchanged, see the same bias function of the state. The
+  /// other box contributes only its window bound. On an (N, lambda) chain a Gibbs transfer is refused (0).
+  [[nodiscard]] static double gibbsTransferTMMCBiasFactor(System& gaining, System& losing, std::size_t componentId,
+                                                          std::size_t oldNGaining, std::size_t oldNLosing)
+  {
+    const bool gainingTracks = gaining.tmmcTracks(componentId);
+    const bool losingTracks = losing.tmmcTracks(componentId);
+    if ((gainingTracks && gaining.tmmc.lambdaChain()) || (losingTracks && losing.tmmc.lambdaChain())) return 0.0;
+    if (losingTracks && oldNLosing == 0uz) return 0.0;
+
+    auto windowFactor = [](const System& system, std::size_t newN) -> double
+    {
+      const bool outside = newN < system.tmmc.minMacrostate || newN > system.tmmc.maxMacrostate;
+      return (outside && system.tmmc.rejectOutOfBound) ? 0.0 : 1.0;
+    };
+    const bool gainingIsReference = gainingTracks && (!losingTracks || &gaining < &losing);
+    if (gainingIsReference)
+    {
+      return gaining.tmmc.biasFactor(oldNGaining + 1uz, oldNGaining) *
+             (losingTracks ? windowFactor(losing, oldNLosing - 1uz) : 1.0);
+    }
+    if (losingTracks)
+    {
+      return losing.tmmc.biasFactor(oldNLosing - 1uz, oldNLosing) *
+             (gainingTracks ? windowFactor(gaining, oldNGaining + 1uz) : 1.0);
+    }
+    return 1.0;
+  }
   /// The change of the molecule count of 'componentId' by one group insertion of the group of
   /// 'centralComponent' (the central molecule and its satellites; a group deletion removes the same).
   [[nodiscard]] std::size_t groupMoleculeCountChange(std::size_t centralComponent, std::size_t componentId) const
@@ -735,9 +772,10 @@ export struct System
   /// the matrix cannot see, and the acceptance of the endpoint crossing would stand in for the whole
   /// N -> N +/- 1 transition: refused and not recorded (the input reader refuses the mix up front). True when
   /// the matrix does not track the component.
+  /// On an (N, lambda) chain such a swap is an integer jump (N, k) -> (N +/- 1, k), which that matrix cannot hold.
   [[nodiscard]] bool cfcmcSwapFitsTMMC(std::size_t componentId, const PropertyLambdaProbabilityHistogram& lambda) const
   {
-    return !tmmcTracks(componentId) || lambda.numberOfSamplePoints <= 1uz;
+    return !tmmcTracks(componentId) || (lambda.numberOfSamplePoints <= 1uz && !tmmc.lambdaChain());
   }
   std::size_t randomMoleculeOfComponent(RandomNumber& random, std::size_t selectedComponent);
   std::size_t randomIntegerMoleculeOfComponent(RandomNumber& random, std::size_t selectedComponent);

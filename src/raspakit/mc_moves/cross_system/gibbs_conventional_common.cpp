@@ -304,6 +304,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   const Move::Types move = useCBMC ? Move::Types::GibbsConventionalCBCFCMC : Move::Types::GibbsConventionalCFCMC;
   Component& componentA = systemA.components[selectedComponent];
   Component& componentB = systemB.components[selectedComponent];
+  // Not a step of a transition matrix (the input reader refuses the mix up front): the transfers are the lambda
+  // crossings of a walk over (N, k) biased by the Wang-Landau factors of the Gibbs lambda, which an N-chain matrix
+  // does not see, and with a single bin the move has no crossing at all.
+  if (systemA.tmmcTracks(selectedComponent) || systemB.tmmcTracks(selectedComponent))
+  {
+    return std::nullopt;
+  }
   DualTMMCTrial tmmcTrial(systemA, systemB, selectedComponent);
 
   PropertyLambdaProbabilityHistogram& lambdaA = componentA.lambdaGibbs;
@@ -539,7 +546,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   struct BoundaryTrial
   {
     RunningEnergy energy{};
-    double acceptanceFactor{1.0};
+    double logAcceptanceFactor{0.0};  // ln of the box's boundary acceptance factor
     std::pair<Molecule, std::vector<Atom>> conventionalInsert{};
     std::optional<CBMC::GrowResult> cbmcInsert{};
     std::size_t selectedInteger{0};
@@ -576,9 +583,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
         trial.energy = trial.cbmcInsert->energies + ewaldTail;
         const double idealGas = component.idealGasRosenbluthWeight.value_or(1.0);
         // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero).
-        trial.acceptanceFactor =
-            std::exp(trial.cbmcInsert->logRosenbluthWeight - std::log(idealGas) -
-                     system.beta * ewaldTail.potentialEnergy() + std::log(volume / (integerCount + 1.0)));
+        trial.logAcceptanceFactor = trial.cbmcInsert->logRosenbluthWeight - std::log(idealGas) -
+                                    system.beta * ewaldTail.potentialEnergy() +
+                                    std::log(volume / (integerCount + 1.0));
         return true;
       }
 
@@ -607,9 +614,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
           system.forceField, system.simulationBox, trialAtoms);
       trial.energy = insertionEnergy.value() + internalEnergyNew;
       // the conformation was drawn at full coupling and is placed at lambda_new
-      trial.acceptanceFactor =
-          std::exp(-system.beta * (insertionEnergy->potentialEnergy() + system.intraCoulombScalingEnergy(trialAtoms))) *
-          volume / (integerCount + 1.0);
+      trial.logAcceptanceFactor =
+          -system.beta * (insertionEnergy->potentialEnergy() + system.intraCoulombScalingEnergy(trialAtoms)) +
+          std::log(volume / (integerCount + 1.0));
       return true;
     }
 
@@ -636,7 +643,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       return false;
     }
     trial.energy = deletionEnergy.value();
-    trial.acceptanceFactor = std::exp(-system.beta * trial.energy.potentialEnergy()) * integerCount / volume;
+    trial.logAcceptanceFactor = -system.beta * trial.energy.potentialEnergy() + std::log(integerCount / volume);
     return true;
   };
 
@@ -652,7 +659,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
 
   componentA.mc_moves_statistics.addConstructed(move, channel);
 
-  // The first-step factor of a box: the Boltzmann factor of rescaling its fractional molecule, except for a CBMC
+  // The first-step factor of a box (as its logarithm): the Boltzmann factor of rescaling its fractional molecule, except for a CBMC
   // deletion, where the retrace of the leaving molecule replaces the short-range part (the mirror image of the
   // insertion side, where W / ideal-gas-weight replaces the grown molecule's Boltzmann factor):
   //   ideal-gas-weight / W_retrace * exp(-beta (Ewald Fourier + tail of the removal)).
@@ -664,17 +671,20 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       const double idealGas = component.idealGasRosenbluthWeight.value_or(1.0);
       // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero,
       // which would turn this quotient into +inf).
-      return std::exp(std::log(idealGas) - prelude.logRosenbluthWeight -
-                      system.beta * prelude.retraceEwaldTail.potentialEnergy());
+      return std::log(idealGas) - prelude.logRosenbluthWeight -
+             system.beta * prelude.retraceEwaldTail.potentialEnergy();
     }
-    return std::exp(-system.beta * (energyFirstStep.potentialEnergy() - prelude.intraCoulombScaling));
+    return -system.beta * (energyFirstStep.potentialEnergy() - prelude.intraCoulombScaling);
   };
 
-  const double physicalAcceptance =
-      firstStepFactor(systemA, componentA, moveKindA, energyFirstStepA.value(), deletionA) *
-      firstStepFactor(systemB, componentB, moveKindB, energyFirstStepB.value(), deletionB) *
-      boundaryA.acceptanceFactor * boundaryB.acceptanceFactor;
-  const double lambdaBias = std::exp((biasNewA - biasOldA) + (biasNewB - biasOldB));
+  // The factors of the two boxes are summed as logarithms: each one alone can overflow or underflow exp() (an
+  // overlap energy is ~1e7 K), and inf * 0 = NaN in the product, which 'u >= NaN' then accepted.
+  const double logPhysicalAcceptance =
+      firstStepFactor(systemA, componentA, moveKindA, energyFirstStepA.value(), deletionA) +
+      firstStepFactor(systemB, componentB, moveKindB, energyFirstStepB.value(), deletionB) +
+      boundaryA.logAcceptanceFactor + boundaryB.logAcceptanceFactor;
+  const double physicalAcceptance = std::exp(std::min(0.0, logPhysicalAcceptance));
+  const double logLambdaBias = (biasNewA - biasOldA) + (biasNewB - biasOldB);
   if (!tmmcTrial.transitionsAreInBounds(deltaA, deltaB))
   {
     tmmcTrial.record(physicalAcceptance, deltaA, deltaB);
@@ -684,7 +694,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   const double tmmcBias = tmmcTrial.biasFactor(deltaA, deltaB);
   tmmcTrial.record(physicalAcceptance, deltaA, deltaB);
 
-  if (random.uniform() >= physicalAcceptance * lambdaBias * tmmcBias)
+  // the total in log space, exponentiated only once it is capped at 0 (no overflow, no inf * 0); a zero TMMC bias
+  // (out of the window) rejects
+  if (!(tmmcBias > 0.0) ||
+      !(random.uniform() < std::exp(std::min(0.0, logPhysicalAcceptance + logLambdaBias + std::log(tmmcBias)))))
   {
     restoreFractionals();
     return std::nullopt;

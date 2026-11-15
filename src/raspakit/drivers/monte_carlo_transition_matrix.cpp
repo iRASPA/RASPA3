@@ -893,6 +893,41 @@ void MonteCarloTransitionMatrix::output()
     std::print(stream, "Total simulation time:          {:14f} [s]\n", totalSimulationTime.count());
     std::print(stream, "\n\n");
 
+    // Under the TMMC bias the walk samples a flattened distribution of N, so the averages below are flat-histogram
+    // averages over the macrostate window, not grand-canonical properties at the fugacity of the run. The
+    // grand-canonical loading follows from ln Pi.
+    if (system.tmmc.doTMMC)
+    {
+      const std::size_t trackedComponent = system.tmmcComponent();
+      system.tmmc.recomputeLnPiAndBias();
+      const std::optional<std::pair<double, double>> reweighted =
+          system.tmmc.reweightedMoleculeCountMeanAndVariance();
+      std::print(stream, "Transition-matrix reweighting\n");
+      std::print(stream, "========================================================================================================================\n\n");
+      if (system.tmmc.useBias)
+      {
+        std::print(stream,
+                   "    The walk ran under the TMMC bias: the energies, enthalpies, loadings, histograms and other\n"
+                   "    averages printed below are flat-histogram averages over the macrostate window [{}, {}], not\n"
+                   "    grand-canonical properties at the pressure of the run.\n",
+                   system.tmmc.minMacrostate, system.tmmc.maxMacrostate);
+      }
+      if (reweighted.has_value())
+      {
+        std::print(stream,
+                   "    Grand-canonical loading of '{}' from ln Pi at the pressure of the run (within the window):\n"
+                   "        <N> = {:.6f} molecules, var(N) = {:.6f}\n\n",
+                   system.components[trackedComponent].name, reweighted->first, reweighted->second);
+        outputJsons[system_id]["output"]["tmmcReweighted"]["meanNumberOfMolecules"] = reweighted->first;
+        outputJsons[system_id]["output"]["tmmcReweighted"]["varianceNumberOfMolecules"] = reweighted->second;
+      }
+      else
+      {
+        std::print(stream, "    No macrostate was visited; no reweighted loading.\n\n");
+      }
+      outputJsons[system_id]["output"]["tmmcReweighted"]["flatHistogramAverages"] = system.tmmc.useBias;
+    }
+
     std::print(
         stream, "{}",
         system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));

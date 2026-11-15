@@ -1,161 +1,150 @@
+"""Combine the ln Pi(N) of the TMMC windows in the directories 0, 1, ... and reweight it to other pressures.
+
+Each window directory holds 'tmmc/tmmc_statistics.txt' written by RASPA3 ('MonteCarloTransitionMatrix'). The
+windows are stitched on the macrostates they share (matched by N, the offset taken as the mean difference over the
+whole overlap), the combined distribution is normalized, and its gas peak, liquid peak and the saddle between them
+are located. The distribution is reweighted to other pressures with the Peng-Robinson fugacity of the pure
+component, ln Pi(N; f1) = ln Pi(N; f0) + N ln(f1 / f0), not with the ratio of the pressures.
+
+Run from this directory: python combine-tmmc-data.py
+"""
+
+import os
+
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pathlib
-import os
-from os import path
-
 from scipy.signal import argrelextrema
 
-def GetMinMax(Dataset, colname, p0):
-    max_ind = argrelextrema(np.array(Dataset[colname]), np.greater)
-    rmax    = np.array(Dataset[colname])[max_ind]
-    min_ind = argrelextrema(np.array(Dataset[colname]), np.less)
-    rmin    = np.array(Dataset[colname])[min_ind]
-    gas_N   = np.min(max_ind)
-    gas_lnpi= np.array(Dataset[colname])[gas_N]
-    liq_N   = np.max(max_ind)
-    liq_lnpi= np.array(Dataset[colname])[liq_N]
-    sads    = (min_ind > gas_N) & (min_ind < liq_N)
+# the state point of the example (simulation.json) and the critical constants of methane (methane.json)
+TEMPERATURE = 111.58  # [K]
+REFERENCE_PRESSURE = 36000.0  # [Pa], the 'ExternalPressure' every window ran at
+CRITICAL_TEMPERATURE = 190.564  # [K]
+CRITICAL_PRESSURE = 4599200.0  # [Pa]
+ACENTRIC_FACTOR = 0.01142
 
-    print(liq_N, rmax)
+STATISTICS_FILE = os.path.join("tmmc", "tmmc_statistics.txt")
+FONT_SIZE = 15
+LINE_WIDTH = 2
 
-    # Get the minimum among the saddles #
-    min_saddles_idx = list(rmin).index(np.min(rmin))
-    #min_saddles_N = min_ind[0][min_saddles_idx]
-    #print(min_saddles_idx, min_ind[0][min_saddles_idx])
-    #sad_N   = np.min(np.array(min_ind)[sads])
-    sad_N   = min_ind[0][min_saddles_idx]
-    sad_lnpi= np.array(Dataset[colname])[sad_N]
-    
-    
-    return [p0, sad_N, sad_lnpi, gas_N, gas_lnpi, liq_N, liq_lnpi]
 
-def Combine_TMMC_lnpi(file, file_dir, start, sims, p0):
-    print(file_dir + str(start) + '/' + file)
-    TMMCFile = file_dir + str(start) + '/' + file
-    if(path.exists(TMMCFile)):
-        InitData = pd.read_table(TMMCFile, sep='\s+', 
-                                 skiprows = 12)#, skipfooter = end)
-        MinMaxData = pd.DataFrame(columns=['Fugacity', 'Saddle-N', 'Saddle-lnpi',
-                                           'gas-N', 'gas-lnpi', 
-                                           'liq-N', 'liq-lnpi'])
-        for sim in range(start + 1, sims):
-            TMMCFile = file_dir + str(sim) + '/' + file
-            if(path.exists(TMMCFile)):
-                Dataset = pd.read_table(TMMCFile, sep='\s+', 
-                                        skiprows = 12)#, skipfooter = end)
-    
-                diff_lnpi = Dataset['lnpi'] - Dataset['lnpi'][0]
-                last_lnpi = InitData.iloc[-1]['lnpi']
-                Dataset['lnpi'] = last_lnpi + diff_lnpi
-                # Drop first row
-                Dataset.drop(index=Dataset.index[0], axis=0, inplace=True)
-                frames = [InitData, Dataset]
-                InitData = pd.concat(frames)
-        # Normalize
-        max_lnpi = np.max(InitData['lnpi'])
-        print("Max_lnpi: " + str(max_lnpi))
-        InitData['cont-maxlnpi'] = InitData['lnpi'] - max_lnpi
-        InitData['pi'] = np.exp(InitData['cont-maxlnpi'])
-        sumpi = np.sum(InitData['pi'])
-        print("SumPi: " + str(sumpi))
-        InitData['normalized-pi'] = InitData['pi'] / sumpi
-        InitData['normalized-lnpi'] = np.log(InitData['normalized-pi'])
-        
-        row = GetMinMax(InitData, 'normalized-lnpi', p0)
-        MinMaxData.loc[len(MinMaxData)] = row
-        lnpis = [row[2], row[4], row[6]]
-        min_lnpi = np.min(lnpis)
-        max_lnpi = np.max(lnpis)
-        
-        figpX = plt.figure()
-        axpX = figpX.add_subplot(111)
-        axpX.plot(InitData['N'], InitData['normalized-lnpi'], color='orange',
-                  label='lnpi', linewidth = aaa)
-        axpX.set_xlabel('Loading [Number of Molecule]', fontsize = fsize, fontweight='bold')
-        axpX.set_ylabel("lnpi", fontsize = fsize, fontweight='bold')
-        #axpX.set_ylim([init_lnpi,max_lnpi])
-        axpX.set_ylim([min_lnpi - 10, max_lnpi + 10])
-        plt.savefig(file_dir + '/' + 'combined_lnpi' + '.png', dpi=900, bbox_inches = 'tight')
-        plt.clf()
-        
-        return InitData, MinMaxData
-    
-def analyse_TMMC_lnpi(file, file_dir):
-    if(path.exists(file)):
-        Dataset = pd.read_table(TMMCfile, sep='\s+', 
-                                skiprows = 12)#, skipfooter = end)
-        figpX = plt.figure()
-        axpX = figpX.add_subplot(111)
-        axpX.plot(Dataset['N'], Dataset['lnpi'], color='orange',
-                  label='lnpi', linewidth = aaa)
-        axpX.set_xlabel('Loading [Number of Molecule]', fontsize = fsize, fontweight='bold')
-        axpX.set_ylabel("lnpi", fontsize = fsize, fontweight='bold')
-        plt.savefig(file_dir + '/' + 'lnpi_Sim_' + str(sim) + '.png', dpi=900, bbox_inches = 'tight')
-        plt.clf()
+def peng_robinson_fugacity(temperature, pressure, tc=CRITICAL_TEMPERATURE, pc=CRITICAL_PRESSURE,
+                           omega=ACENTRIC_FACTOR):
+    """Fugacity [Pa] of a pure Peng-Robinson fluid, from the root of lowest Gibbs energy."""
+    gas_constant = 8.314462618
+    kappa = 0.37464 + 1.54226 * omega - 0.26992 * omega * omega
+    alpha = (1.0 + kappa * (1.0 - np.sqrt(temperature / tc))) ** 2
+    a = 0.45724 * gas_constant ** 2 * tc ** 2 / pc * alpha
+    b = 0.07780 * gas_constant * tc / pc
+    big_a = a * pressure / (gas_constant * temperature) ** 2
+    big_b = b * pressure / (gas_constant * temperature)
+    roots = np.roots([1.0, -(1.0 - big_b), big_a - 3.0 * big_b ** 2 - 2.0 * big_b,
+                      -(big_a * big_b - big_b ** 2 - big_b ** 3)])
+    roots = [r.real for r in roots if abs(r.imag) < 1e-10 and r.real > big_b]
 
-def Reweight_TMMC_lnpi(Dataset, MinMaxData, p0, p1):
-    Dataset['lnpi_' + str(p1)] = Dataset['normalized-lnpi'] + Dataset['N'] * np.log(p1/p0)
-    
-    # Add normalization
-    max_lnpi = np.max(Dataset['lnpi_' + str(p1)])
-    cont_maxlnpi = Dataset['lnpi_' + str(p1)] - max_lnpi
-    cont_maxpi = np.exp(cont_maxlnpi)
-    sumpi = np.sum(cont_maxpi)
+    def ln_phi(z):
+        sqrt2 = np.sqrt(2.0)
+        return (z - 1.0 - np.log(z - big_b) - big_a / (2.0 * sqrt2 * big_b) *
+                np.log((z + (1.0 + sqrt2) * big_b) / (z + (1.0 - sqrt2) * big_b)))
 
-    normalized_pi = cont_maxpi / sumpi
-    Dataset['lnpi_' + str(p1)] = np.log(normalized_pi)
-    
-    row = GetMinMax(Dataset, 'lnpi_' + str(p1), p1)
-    MinMaxData.loc[len(MinMaxData)] = row
-    
-    lnpis = [row[2], row[4], row[6]]
-    min_lnpi = np.min(lnpis)
-    max_lnpi = np.max(lnpis)
-    
-    figpX = plt.figure()
-    axpX = figpX.add_subplot(111)
-    axpX.plot(Dataset['N'], Dataset['lnpi_' + str(p1)], color='orange',
-              label='lnpi', linewidth = aaa)
-    init_lnpi = Dataset.iloc[0]['lnpi_' + str(p1)]
-    end_lnpi  = Dataset.iloc[-1]['lnpi_' + str(p1)]
-    selected_lnpi = np.max([init_lnpi, end_lnpi])
-    max_lnpi  = np.max(Dataset['lnpi_' + str(p1)])
-    #axpX.set_ylim([init_lnpi,max_lnpi])
-    axpX.set_ylim([min_lnpi - 10, max_lnpi + 10])
-    axpX.set_xlabel('Loading [Number of Molecule]', fontsize = fsize, fontweight='bold')
-    axpX.set_ylabel("lnpi", fontsize = fsize, fontweight='bold')
-    plt.savefig(file_dir + '/' + 'lnpi_reweightedTo_' + str(p1) + '.png', dpi=900, bbox_inches = 'tight')
-    plt.clf()
+    # the stable root has the lowest ln phi (the lowest molar Gibbs energy at fixed T and P)
+    return pressure * np.exp(min(ln_phi(z) for z in roots))
 
-    return Dataset, MinMaxData
 
-def GetMaxMin(Dataset, p1):
-    return Dataset
+def read_window(directory):
+    """ln Pi(N) of one window: the integer states (lambda bin 0 of an (N, lambda) chain)."""
+    data = pd.read_csv(os.path.join(directory, STATISTICS_FILE), comment="#", sep=r"\s+")
+    if "k" in data.columns:
+        data = data[data["k"] == 0]
+    return data[["N", "lnpi"]].reset_index(drop=True)
 
-fsize = 15
-legendwidth = 4.0
-aaa = 2
-sim = 5
 
-file_dir = os.getcwd() + '/'
+def combine_windows(directories):
+    """Stitch the windows on the macrostates they share; each window is shifted onto the ones before it."""
+    combined = None
+    for directory in directories:
+        window = read_window(directory)
+        if combined is None:
+            combined = window
+            continue
+        overlap = pd.merge(combined, window, on="N", suffixes=("_combined", "_window"))
+        if overlap.empty:
+            raise ValueError(f"window '{directory}' shares no macrostate with the windows before it")
+        shift = np.mean(overlap["lnpi_combined"] - overlap["lnpi_window"])
+        window = window.assign(lnpi=window["lnpi"] + shift)
+        combined = pd.concat([combined, window[window["N"] > combined["N"].max()]], ignore_index=True)
+    return combined.sort_values("N").reset_index(drop=True)
 
-TMMCfile = 'tmmc/tmmc_statistics.txt'
-FinalData, MinMaxData = Combine_TMMC_lnpi(TMMCfile, file_dir, 0, 5, 36000)
-# preslist = [35000,35500,36000,36500,37000,37500,38000,38500,39000,39500,40000,40500,41000,
-#             41500,42000,42500,43000,43500,44000,44500,45000,45500,
-#             46000,46500,47000,47500,48000,48500,49000,49500,50000,50500,51000,51500,52000]
-preslist = np.linspace(42000 + 500, 50000, 16)
 
-#preslist = [35000]
-for pres in preslist:
-    FinalData, MinMaxData = Reweight_TMMC_lnpi(FinalData, MinMaxData, 36000, pres)
-FinalData.to_csv("combined_lnpi.csv")
-MinMaxData.to_csv("combined_min_max-lnpi.csv")
-# FinalData, MinMaxData = Reweight_TMMC_lnpi(FinalData, 36000, 45053.3)
-# column = 'lnpi_' + '45053.3'
-# max_ind = argrelextrema(np.array(FinalData[column]), np.greater)
-# rmax    = np.array(FinalData[column])[max_ind]
-# min_ind = argrelextrema(np.array(FinalData[column]), np.less)
-# rmin    = np.array(FinalData[column])[min_ind]
+def normalized(lnpi):
+    shifted = lnpi - np.max(lnpi)
+    return shifted - np.log(np.sum(np.exp(shifted)))
+
+
+def peaks_and_saddle(n, lnpi):
+    """The gas peak, the liquid peak and the deepest saddle between them; for a unimodal ln Pi the single peak
+    is both, and there is no saddle (None)."""
+    lnpi = np.asarray(lnpi)
+    n = np.asarray(n)
+    maxima = argrelextrema(lnpi, np.greater)[0]
+    if maxima.size == 0:
+        maxima = np.array([int(np.argmax(lnpi))])
+    gas, liquid = maxima.min(), maxima.max()
+    minima = argrelextrema(lnpi, np.less)[0]
+    saddles = minima[(minima > gas) & (minima < liquid)]
+    saddle = saddles[np.argmin(lnpi[saddles])] if saddles.size > 0 else None
+    return {
+        "gas-N": n[gas], "gas-lnpi": lnpi[gas],
+        "liq-N": n[liquid], "liq-lnpi": lnpi[liquid],
+        "Saddle-N": n[saddle] if saddle is not None else np.nan,
+        "Saddle-lnpi": lnpi[saddle] if saddle is not None else np.nan,
+    }
+
+
+def plot(n, lnpi, file_name, extremes):
+    values = [extremes["gas-lnpi"], extremes["liq-lnpi"]]
+    if not np.isnan(extremes["Saddle-lnpi"]):
+        values.append(extremes["Saddle-lnpi"])
+    figure = plt.figure()
+    axis = figure.add_subplot(111)
+    axis.plot(n, lnpi, color="orange", linewidth=LINE_WIDTH)
+    axis.set_xlabel("Loading [Number of Molecules]", fontsize=FONT_SIZE, fontweight="bold")
+    axis.set_ylabel("ln Pi", fontsize=FONT_SIZE, fontweight="bold")
+    axis.set_ylim([min(values) - 10, max(values) + 10])
+    figure.savefig(file_name, dpi=300, bbox_inches="tight")
+    plt.close(figure)
+
+
+def main():
+    directories = sorted((d for d in os.listdir(".") if d.isdigit() and os.path.exists(os.path.join(d, STATISTICS_FILE))),
+                         key=int)
+    if not directories:
+        raise SystemExit(f"no window directories with '{STATISTICS_FILE}' found")
+
+    data = combine_windows(directories)
+    data["normalized-lnpi"] = normalized(data["lnpi"].to_numpy())
+
+    reference_fugacity = peng_robinson_fugacity(TEMPERATURE, REFERENCE_PRESSURE)
+    rows = []
+    extremes = peaks_and_saddle(data["N"], data["normalized-lnpi"])
+    rows.append({"Pressure": REFERENCE_PRESSURE, "Fugacity": reference_fugacity, **extremes})
+    plot(data["N"], data["normalized-lnpi"], "combined_lnpi.png", extremes)
+
+    for pressure in np.linspace(42500.0, 50000.0, 16):
+        fugacity = peng_robinson_fugacity(TEMPERATURE, pressure)
+        column = f"lnpi_{pressure:g}"
+        data[column] = normalized(
+            (data["normalized-lnpi"] + data["N"] * np.log(fugacity / reference_fugacity)).to_numpy())
+        extremes = peaks_and_saddle(data["N"], data[column])
+        rows.append({"Pressure": pressure, "Fugacity": fugacity, **extremes})
+        plot(data["N"], data[column], f"lnpi_reweightedTo_{pressure:g}.png", extremes)
+
+    data.to_csv("combined_lnpi.csv", index=False)
+    pd.DataFrame(rows).to_csv("combined_min_max-lnpi.csv", index=False)
+
+
+if __name__ == "__main__":
+    main()

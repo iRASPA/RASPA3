@@ -1,0 +1,74 @@
+{
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "O",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -1.025,
+      "source" : "D. Dubbeldam et al., J. Phys. Chem. B 2004, 108, 12301-12313"
+    },
+    {
+      "name" : "Si",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "Si",
+      "print_as" : "Si",
+      "mass" : 28.0855,
+      "charge" :  2.05,
+      "source" : "D. Dubbeldam et al., J. Phys. Chem. B 2004, 108, 12301-12313"
+    },
+    {
+      "name" : "CH4",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 16.04246,
+      "charge" :  0.0,
+      "source" : "D. Dubbeldam et al., J. Phys. Chem. B 2004, 108, 12301-12313"
+    }
+  ],
+  "SelfInteractions" :
+  [
+    {
+      "name" : "O",
+      "type" : "none",
+      "parameters" : [],
+      "source" : "framework-framework interactions are not needed for a rigid framework"
+    },
+    {
+      "name" : "Si",
+      "type" : "none",
+      "parameters" : [],
+      "source" : "framework-framework interactions are not needed for a rigid framework"
+    },
+    {
+      "name" : "CH4",
+      "type" : "lennard-jones",
+      "parameters" : [158.5, 3.72],
+      "source" : "D. Dubbeldam et al., J. Phys. Chem. B 2004, 108, 12301-12313"
+    }
+  ],
+  "BinaryInteractions" :
+  [
+    {
+      "names" : ["O", "CH4"],
+      "type" : "lennard-jones",
+      "parameters" : [115.0, 3.47],
+      "source" : "D. Dubbeldam et al., J. Phys. Chem. B 2004, 108, 12301-12313"
+    },
+    {
+      "names" : ["Si", "CH4"],
+      "type" : "none",
+      "parameters" : [],
+      "source" : "silicon is screened by the oxygens"
+    }
+  ],
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false
+}

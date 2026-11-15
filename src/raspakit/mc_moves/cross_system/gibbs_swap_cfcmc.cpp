@@ -75,10 +75,10 @@ class DualTMMCTrial
             (oldNB_ > 0 && oldNB_ - 1 >= systemB_.tmmc.minMacrostate));
   }
 
+  // one box carries the bias of the shared Gibbs macrostate (System::gibbsTransferTMMCBiasFactor)
   double biasFactor() const
   {
-    return systemA_.tmmcIntegerSwapBiasFactor(selectedComponent_, oldNA_ + 1, oldNA_) *
-           systemB_.tmmcIntegerSwapBiasFactor(selectedComponent_, oldNB_ - 1, oldNB_);
+    return System::gibbsTransferTMMCBiasFactor(systemA_, systemB_, selectedComponent_, oldNA_, oldNB_);
   }
 
   void recordTransfer(double physicalAcceptance)
@@ -109,6 +109,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   Move::Types move = Move::Types::GibbsSwapCFCMC;
   Component& componentA = systemA.components[selectedComponent];
   Component& componentB = systemB.components[selectedComponent];
+  // Under TMMC on an N chain only a direct crossing (a single lambda bin) is a step of the matrix: with more bins
+  // the transfers happen at any lambda, biased by the Wang-Landau factors of the two boxes, which the matrix does
+  // not see (the input reader refuses the mix up front; System::cfcmcSwapFitsTMMC)
+  if (!systemA.cfcmcSwapFitsTMMC(selectedComponent, componentA.lambdaGC) ||
+      !systemB.cfcmcSwapFitsTMMC(selectedComponent, componentB.lambdaGC))
+  {
+    return std::nullopt;
+  }
   DualTMMCTrial tmmcTrial(systemA, systemB, selectedComponent);
 
   PropertyLambdaProbabilityHistogram& lambdaA = componentA.lambdaGC;
