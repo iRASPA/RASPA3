@@ -406,6 +406,12 @@ export struct ForceField
   void initializeEwaldParameters(const SimulationBox &simulationBox);
 
   /**
+   * \brief Sets the wave vectors of the automatic Ewald sum: every wave vector inside the sphere
+   * |k| <= 2 alpha tol1, the index ranges from the lengths of the lattice vectors.
+   */
+  void setAutomaticEwaldWaveVectors(const SimulationBox &simulationBox, double tol1);
+
+  /**
    * \brief Sets the automatic cut-offs to half the smallest perpendicular width of the box.
    *
    * Only the cut-offs flagged automatic ("auto" in the force-field file) are replaced. A changed VDW cut-off

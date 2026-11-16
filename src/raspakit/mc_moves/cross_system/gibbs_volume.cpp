@@ -89,7 +89,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
   const SavedVolumeState savedB = saveVolumeState(systemB);
   RunningEnergy newTotalEnergyB =
-      timed(systemA, move, Move::Timing::NonEwald, [&] { return applyTrialVolume(systemB, newBoxB); });
+      timed(systemB, move, Move::Timing::NonEwald, [&] { return applyTrialVolume(systemB, newBoxB); });
 
   if (volumeTrialOverlaps(systemB, newTotalEnergyB))
   {

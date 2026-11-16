@@ -93,6 +93,9 @@ export struct ParallelTempering
 
   std::vector<std::size_t> stepsPerReplica;  ///< Production MC steps performed per replica.
   std::vector<ProductionCycleLength> productionCycleLengths;  ///< Fixed number of steps of a production cycle, per replica.
+  /// Per replica: an accepted configuration swap left the replica with the excess-pressure tensor of the
+  /// configuration it gave away; the next production cycle recomputes it before it is sampled.
+  std::vector<std::uint8_t> excessPressureIsStale;
 
   /// Cycles completed in the previous stages; the time-evolution properties (number of molecules,
   /// volume) are indexed by the absolute cycle number counted over all stages.

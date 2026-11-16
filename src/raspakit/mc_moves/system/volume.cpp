@@ -43,7 +43,8 @@ MC_Moves::SavedVolumeState MC_Moves::saveVolumeState(const System& system)
                          .cutOffCoulomb = system.forceField.cutOffCoulomb,
                          .ewaldAlpha = system.forceField.EwaldAlpha,
                          .numberOfWaveVectors = system.forceField.numberOfWaveVectors,
-                         .reciprocalIntegerCutOffSquared = system.forceField.reciprocalIntegerCutOffSquared};
+                         .reciprocalIntegerCutOffSquared = system.forceField.reciprocalIntegerCutOffSquared,
+                         .reciprocalCutOffSquared = system.forceField.reciprocalCutOffSquared};
   if (system.forceField.computePolarization)
   {
     const std::span<const double3> electricField = system.spanOfMoleculeElectricField();
@@ -96,6 +97,7 @@ void MC_Moves::restoreVolumeState(System& system, const SavedVolumeState& saved)
   system.forceField.EwaldAlpha = saved.ewaldAlpha;
   system.forceField.numberOfWaveVectors = saved.numberOfWaveVectors;
   system.forceField.reciprocalIntegerCutOffSquared = saved.reciprocalIntegerCutOffSquared;
+  system.forceField.reciprocalCutOffSquared = saved.reciprocalCutOffSquared;
   system.forceField.updateEwaldRealSpaceTable();
 
   // 'applyTrialVolume' rebuilt the molecule cell list (via 'computeTotalEnergies') for the trial box and

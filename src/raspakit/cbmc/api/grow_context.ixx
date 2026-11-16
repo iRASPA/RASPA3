@@ -335,17 +335,25 @@ struct GrowContext
   {
     return mode == CutOffMode::Inner || (mode == CutOffMode::Growth && forceField.settings.useDualCutOff);
   }
+  // The inner cut-off never exceeds the full one. The reader holds 'DualCutOff' below every explicitly set full
+  // cut-off, but an automatic cut-off (half the smallest perpendicular width) is only known once the box is, and
+  // shrinks with it in a volume move: an inner cut-off left above it reached past the cells the cell list covers
+  // and past the minimum image. Held at the full cut-off, the inner and the full evaluation coincide and the
+  // dual cut-off correction of that interaction is zero.
   static double frameworkVDWCutOff(const ForceField &forceField, CutOffMode mode)
   {
-    return usesInner(forceField, mode) ? forceField.settings.dualCutOff : forceField.cutOffFrameworkVDW;
+    return usesInner(forceField, mode) ? std::min(forceField.settings.dualCutOff, forceField.cutOffFrameworkVDW)
+                                       : forceField.cutOffFrameworkVDW;
   }
   static double moleculeVDWCutOff(const ForceField &forceField, CutOffMode mode)
   {
-    return usesInner(forceField, mode) ? forceField.settings.dualCutOff : forceField.cutOffMoleculeVDW;
+    return usesInner(forceField, mode) ? std::min(forceField.settings.dualCutOff, forceField.cutOffMoleculeVDW)
+                                       : forceField.cutOffMoleculeVDW;
   }
   static double coulombCutOff(const ForceField &forceField, CutOffMode mode)
   {
-    return usesInner(forceField, mode) ? forceField.settings.dualCutOff : forceField.cutOffCoulomb;
+    return usesInner(forceField, mode) ? std::min(forceField.settings.dualCutOff, forceField.cutOffCoulomb)
+                                       : forceField.cutOffCoulomb;
   }
 };
 }  // namespace CBMC

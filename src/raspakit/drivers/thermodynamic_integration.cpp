@@ -168,13 +168,14 @@ void ThermodynamicIntegration::performCycle()
         break;
     }
 
-    selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
+    selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
+        selectedSystem.gcFractionalMoleculeIsActive(selectedComponent));
     // pinned pair- and group-swap lambda histograms
     selectedSystem.pairSwapLambdaSampleOccupancy();
     if (hasSecondSystem)
     {
       selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-          selectedSecondSystem.containsTheFractionalMolecule);
+          selectedSecondSystem.gcFractionalMoleculeIsActive(selectedComponent));
       selectedSecondSystem.pairSwapLambdaSampleOccupancy();
     }
   }

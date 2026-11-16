@@ -4295,7 +4295,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                                              Move::Types::GibbsSwapMultiTrialCBMC, Move::Types::GibbsSwapCBMC,
                                              Move::Types::GibbsSwapCFCMC, Move::Types::GibbsSwapCBCFCMC,
                                              Move::Types::GibbsConventionalCFCMC, Move::Types::GibbsConventionalCBCFCMC,
-                                             Move::Types::DoubleBridging, Move::Types::IntramolecularDoubleRebridging})
+                                             Move::Types::DoubleBridging, Move::Types::IntramolecularDoubleRebridging,
+                                             // these return without an attempt under polarization (they change the
+                                             // internal geometry without the induced-dipole terms): enabled, their
+                                             // share of the move probability was spent on nothing
+                                             Move::Types::Pivot, Move::Types::PivotCBMC, Move::Types::Crankshaft,
+                                             Move::Types::ConcertedRotation, Move::Types::BeadDisplacement,
+                                             Move::Types::BeadFlip})
           {
             if (component.mc_moves_probabilities.getProbability(moveType) > 0.0)
             {

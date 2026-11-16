@@ -1156,19 +1156,19 @@ void System::pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogra
   {
     if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCFCMC))
     {
-      components[i].lambdaPairSwap.WangLandauIteration(phase, containsTheFractionalMolecule);
+      components[i].lambdaPairSwap.WangLandauIteration(phase, true);
     }
     if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCBCFCMC))
     {
-      components[i].lambdaPairSwapCB.WangLandauIteration(phase, containsTheFractionalMolecule);
+      components[i].lambdaPairSwapCB.WangLandauIteration(phase, true);
     }
     if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCFCMC))
     {
-      components[i].lambdaGroupSwap.WangLandauIteration(phase, containsTheFractionalMolecule);
+      components[i].lambdaGroupSwap.WangLandauIteration(phase, true);
     }
     if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCBCFCMC))
     {
-      components[i].lambdaGroupSwapCB.WangLandauIteration(phase, containsTheFractionalMolecule);
+      components[i].lambdaGroupSwapCB.WangLandauIteration(phase, true);
     }
   }
 }
@@ -1179,19 +1179,19 @@ void System::pairSwapLambdaSampleOccupancy() noexcept
   {
     if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCFCMC))
     {
-      components[i].lambdaPairSwap.sampleOccupancy(containsTheFractionalMolecule);
+      components[i].lambdaPairSwap.sampleOccupancy(true);
     }
     if (componentDrivesPairSwapLambda(i, Move::Types::PairSwapCBCFCMC))
     {
-      components[i].lambdaPairSwapCB.sampleOccupancy(containsTheFractionalMolecule);
+      components[i].lambdaPairSwapCB.sampleOccupancy(true);
     }
     if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCFCMC))
     {
-      components[i].lambdaGroupSwap.sampleOccupancy(containsTheFractionalMolecule);
+      components[i].lambdaGroupSwap.sampleOccupancy(true);
     }
     if (componentDrivesGroupSwapLambda(i, Move::Types::GroupSwapCBCFCMC))
     {
-      components[i].lambdaGroupSwapCB.sampleOccupancy(containsTheFractionalMolecule);
+      components[i].lambdaGroupSwapCB.sampleOccupancy(true);
     }
   }
 }
@@ -1468,10 +1468,13 @@ void System::createParallelReactionFractionalMolecules()
 
     for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
     {
-      // grow at the actual effective coupling (reactants: 1 - lambda, products: lambda) so that the
-      // overlap check is meaningful for fractional molecules that start (nearly) fully coupled; against
-      // the fractional molecules placed before (decoupled or nearly so) the check is made at full coupling
-      const double reactantScaling = 1.0 - reaction.currentLambda;
+      // Grow at full coupling, whatever the initial coupling (reactants: 1 - lambda, products: lambda), so that
+      // the overlap and the blocked-pocket checks below are meaningful, as for the serial moves: at its actual
+      // coupling a decoupled molecule (the products at lambda = 0) has no energy and a pocket radius of zero, and
+      // could be placed inside a framework atom or a blocked pocket, where every later move that raises its
+      // lambda is refused until it has been displaced out. 'insertReactionFractionalMolecule' sets the actual
+      // coupling.
+      const double reactantScaling = 1.0;
       for (std::size_t k = 0; k < reaction.reactantStoichiometry[componentId]; ++k)
       {
         std::optional<CBMC::GrowResult> growData = std::nullopt;
@@ -1513,7 +1516,7 @@ void System::createParallelReactionFractionalMolecules()
                                          reaction.currentLambda, reaction.dUdlambdaGroup(true));
       }
 
-      const double productScaling = reaction.currentLambda;
+      const double productScaling = 1.0;
       for (std::size_t k = 0; k < reaction.productStoichiometry[componentId]; ++k)
       {
         std::optional<CBMC::GrowResult> growData = std::nullopt;

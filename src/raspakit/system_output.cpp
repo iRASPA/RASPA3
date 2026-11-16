@@ -190,7 +190,7 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
 
   for (std::size_t componentId{0}; const Component& c : components)
   {
-    double occupancy = static_cast<double>(containsTheFractionalMolecule);
+    double occupancy = static_cast<double>(gcFractionalMoleculeIsActive(componentId));
     // a fixed lambda-bin (thermodynamic integration at constant lambda) may pin the pair- or
     // group-swap lambda instead of the grand-canonical one; report the pinned coordinate
     const PropertyLambdaProbabilityHistogram& histogram =
@@ -276,7 +276,7 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
 
   for (std::size_t componentId = 0; const Component& c : components)
   {
-    double occupancy = static_cast<double>(containsTheFractionalMolecule);
+    double occupancy = static_cast<double>(gcFractionalMoleculeIsActive(componentId));
     // a fixed lambda-bin (thermodynamic integration at constant lambda) may pin the pair- or
     // group-swap lambda instead of the grand-canonical one; report the pinned coordinate
     const PropertyLambdaProbabilityHistogram& histogram =
@@ -425,7 +425,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
 
   for (std::size_t componentId{0}; const Component& c : components)
   {
-    double occupancy = static_cast<double>(containsTheFractionalMolecule);
+    double occupancy = static_cast<double>(gcFractionalMoleculeIsActive(componentId));
     // a fixed lambda-bin (thermodynamic integration at constant lambda) may pin the pair- or
     // group-swap lambda instead of the grand-canonical one; report the pinned coordinate
     const PropertyLambdaProbabilityHistogram& histogram =
@@ -766,7 +766,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine,
 
   for (std::size_t componentId{0}; const Component& c : components)
   {
-    double occupancy = static_cast<double>(containsTheFractionalMolecule);
+    double occupancy = static_cast<double>(gcFractionalMoleculeIsActive(componentId));
     // a fixed lambda-bin (thermodynamic integration at constant lambda) may pin the pair- or
     // group-swap lambda instead of the grand-canonical one; report the pinned coordinate
     const PropertyLambdaProbabilityHistogram& histogram =
@@ -1101,7 +1101,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::print(stream, "\n");
   for (std::size_t componentId = 0; const Component& c : components)
   {
-    double occupancy = static_cast<double>(containsTheFractionalMolecule);
+    double occupancy = static_cast<double>(gcFractionalMoleculeIsActive(componentId));
     // a fixed lambda-bin (thermodynamic integration at constant lambda) may pin the pair- or
     // group-swap lambda instead of the grand-canonical one; report the pinned coordinate
     const PropertyLambdaProbabilityHistogram& histogram =

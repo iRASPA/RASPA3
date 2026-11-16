@@ -374,6 +374,8 @@ CBMC::MultiTrialRetraceResult CBMC::DeviceMultiTrialGrower::retraceNew(
   for (Atom &atom : templateAtoms)
   {
     atom.moleculeId = static_cast<std::uint32_t>(referenceIdentity.moleculeId);
+    // as 'growNew': the atoms of a component put together in code carry the component id of the prototype
+    atom.componentId = static_cast<std::uint8_t>(referenceIdentity.componentId);
     atom.groupId = referenceIdentity.groupId;
     atom.isFractional = referenceIdentity.isFractional;
     atom.setScaling(referenceIdentity.scaling);

@@ -1488,10 +1488,34 @@ std::optional<std::size_t> ForceField::findPseudoAtom(const std::vector<PseudoAt
   return std::nullopt;
 }
 
+void ForceField::setAutomaticEwaldWaveVectors(const SimulationBox& simulationBox, double tol1)
+{
+  // The reciprocal sum runs over the wave vectors inside the sphere |k| <= k_max = 2 alpha tol1, which is what the
+  // precision is derived for. A wave vector k = 2 pi (h_1 b_1 + h_2 b_2 + h_3 b_3) has h_i = k . a_i / (2 pi), so
+  // inside the sphere |h_i| <= |a_i| k_max / (2 pi) = |a_i| alpha tol1 / pi: the range of the indices follows from
+  // the lengths of the lattice vectors, and the sphere itself is cut in k (reciprocalCutOffSquared).
+  //
+  // The ranges were taken from the perpendicular widths (the reach along b_i alone, smaller than |a_i| in a skewed
+  // cell) with a sphere in the integer indices: in a monoclinic, triclinic or hexagonal cell wave vectors inside
+  // the sphere were left out and the sum fell short of its precision, and in an orthorhombic cell that is not
+  // cubic the integer sphere reached well past k_max along the short edges.
+  const double3 lengths = simulationBox.lengths();
+  const double reach = EwaldAlpha * tol1 / std::numbers::pi;
+  numberOfWaveVectors = int3(std::max(1, static_cast<std::int32_t>(std::floor(lengths.x * reach))),
+                             std::max(1, static_cast<std::int32_t>(std::floor(lengths.y * reach))),
+                             std::max(1, static_cast<std::int32_t>(std::floor(lengths.z * reach))));
+
+  const double maximumWaveVector = 2.0 * EwaldAlpha * tol1;
+  reciprocalCutOffSquared = maximumWaveVector * maximumWaveVector;
+
+  // no cut in the integer indices: every index triplet in range is tested against the sphere in k
+  reciprocalIntegerCutOffSquared = static_cast<std::size_t>(numberOfWaveVectors.x * numberOfWaveVectors.x +
+                                                            numberOfWaveVectors.y * numberOfWaveVectors.y +
+                                                            numberOfWaveVectors.z * numberOfWaveVectors.z);
+}
+
 void ForceField::initializeEwaldParameters(const SimulationBox& simulationBox)
 {
-  double3 perpendicularWidths = simulationBox.perpendicularWidths();
-
   if (automaticEwald)
   {
     // compute the alpha-parameter and max k-vectors from the relative precision
@@ -1502,14 +1526,7 @@ void ForceField::initializeEwaldParameters(const SimulationBox& simulationBox)
     EwaldAlpha = std::sqrt(std::abs(std::log(eps * cutOffCoulomb * tol))) / cutOffCoulomb;
     double tol1 = std::sqrt(-std::log(eps * cutOffCoulomb * (2.0 * tol * EwaldAlpha) * (2.0 * tol * EwaldAlpha)));
 
-    numberOfWaveVectors =
-        int3(static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.x * EwaldAlpha * tol1 / std::numbers::pi)),
-             static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.y * EwaldAlpha * tol1 / std::numbers::pi)),
-             static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.z * EwaldAlpha * tol1 / std::numbers::pi)));
-
-    std::size_t maxNumberOfWaveVector =
-        static_cast<std::size_t>(std::max({numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z}));
-    reciprocalIntegerCutOffSquared = maxNumberOfWaveVector * maxNumberOfWaveVector;
+    setAutomaticEwaldWaveVectors(simulationBox, tol1);
   }
 
   updateEwaldRealSpaceTable();
@@ -1568,14 +1585,7 @@ void ForceField::initializeAutomaticCutOff(const SimulationBox& simulationBox)
 
     double tol1 = std::sqrt(-std::log(eps * cutOffCoulomb * (2.0 * tol * EwaldAlpha) * (2.0 * tol * EwaldAlpha)));
 
-    numberOfWaveVectors =
-        int3(static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.x * EwaldAlpha * tol1 / std::numbers::pi)),
-             static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.y * EwaldAlpha * tol1 / std::numbers::pi)),
-             static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.z * EwaldAlpha * tol1 / std::numbers::pi)));
-
-    std::size_t maxNumberOfWaveVector =
-        static_cast<std::size_t>(std::max({numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z}));
-    reciprocalIntegerCutOffSquared = maxNumberOfWaveVector * maxNumberOfWaveVector;
+    setAutomaticEwaldWaveVectors(simulationBox, tol1);
   }
 
   updateEwaldRealSpaceTable();

@@ -2715,6 +2715,37 @@ system. `"ChargeMethod"` is set per system.
     non-Ewald calculations the cutoff should be as large as possible (greater
     than about 30 Å).
 
+-   `"EwaldPrecision" : floating-point-number or string`\
+    The relative precision of the Ewald summation, from which the Ewald
+    parameter α and the wave vectors of the reciprocal sum are derived: a number,
+    or `"High"` (`1e-8`), `"Medium"` (`1e-6`) or `"Low"` (`1e-4`). Default:
+    `1e-6`. With the precision $\epsilon$ and the Coulomb cutoff $r_c$,
+
+    $$t = \sqrt{|\ln(\epsilon\, r_c)|},\qquad
+      \alpha = \frac{\sqrt{|\ln(\epsilon\, r_c\, t)|}}{r_c},\qquad
+      t_1 = \sqrt{-\ln\left(\epsilon\, r_c\, (2 t \alpha)^2\right)},\qquad
+      k_\mathrm{max} = 2 \alpha\, t_1 .$$
+
+    The reciprocal sum runs over every wave vector inside the sphere
+    $|\mathbf{k}| < k_\mathrm{max}$, for any shape of the cell. A wave vector
+    $\mathbf{k} = 2\pi (h_1 \mathbf{b}_1 + h_2 \mathbf{b}_2 + h_3 \mathbf{b}_3)$ has
+    $h_i = \mathbf{k}\cdot\mathbf{a}_i / 2\pi$, so the indices that are visited
+    run up to $|h_i| \le \lfloor |\mathbf{a}_i|\, \alpha\, t_1 / \pi \rfloor$ with
+    $|\mathbf{a}_i|$ the length of lattice vector $i$ (not the perpendicular
+    width of the cell, which is smaller in a monoclinic, triclinic or hexagonal
+    cell and would leave out wave vectors inside the sphere). These index ranges
+    are the "Ewald k-vectors" printed in the output; the truncation error of the
+    reciprocal sum is then the same fraction of the energy in a cubic, an
+    elongated and a skewed cell. The parameters are derived again whenever the
+    box or an automatic Coulomb cutoff changes (volume moves).
+
+-   `"EwaldParameters" : [floating-point-number, integer, integer, integer]`\
+    Sets the Ewald parameter α and the largest wave-vector index along each
+    reciprocal axis explicitly, instead of deriving them from
+    `"EwaldPrecision"`. The reciprocal sum then runs over all index triplets in
+    that range, without the cut at $k_\mathrm{max}$, and the values are kept when
+    the box changes.
+
 -   `"CutOff" : floating-point-number`\
     A convenience key that sets both `"CutOffVDW"` cutoffs (framework-molecule
     and molecule-molecule) at once.

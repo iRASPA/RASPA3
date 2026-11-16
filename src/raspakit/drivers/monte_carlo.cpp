@@ -142,6 +142,17 @@ void MonteCarlo::setup()
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
 
+    // The input reader refuses this combination; a system put together in code reaches the driver without that
+    // check. The polarization field of the framework is taken from the structure factor of its lab-fixed atoms:
+    // the charges of mobile framework atoms are missing from the Monte Carlo field differences, and the energies
+    // drift.
+    if (system.forceField.computePolarization && system.framework.has_value() && system.framework->hasMobileAtoms())
+    {
+      throw std::runtime_error(
+          "Monte Carlo with 'ComputePolarization' is not supported with a flexible or mixed framework (its mobile "
+          "atoms are not part of the framework field)\n");
+    }
+
     // The serial Gibbs swap shares one active fractional molecule between its boxes: on in the first box, off in
     // the others. Every other system (independent boxes with their own CFCMC moves, the conventional Gibbs swap
     // with a fractional molecule in each box) owns its fractional molecules and keeps them active.
@@ -401,7 +412,8 @@ void MonteCarlo::performCycle()
         break;
     }
 
-    selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
+    selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
+        selectedSystem.gcFractionalMoleculeIsActive(selectedComponent));
     if (selectedSystem.usesGibbsConventionalCFCMC())
     {
       selectedSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
@@ -411,7 +423,7 @@ void MonteCarlo::performCycle()
     if (hasSecondSystem)
     {
       selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-          selectedSecondSystem.containsTheFractionalMolecule);
+          selectedSecondSystem.gcFractionalMoleculeIsActive(selectedComponent));
       if (selectedSecondSystem.usesGibbsConventionalCFCMC())
       {
         selectedSecondSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);

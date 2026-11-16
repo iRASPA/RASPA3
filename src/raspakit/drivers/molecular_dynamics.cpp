@@ -944,9 +944,9 @@ void MolecularDynamics::preInitialize(std::function<void()> call_back_function, 
 
       for (System& system : systems)
       {
-        for (Component& component : system.components)
+        for (std::size_t componentId = 0; componentId != system.components.size(); ++componentId)
         {
-          component.lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
+          system.components[componentId].lambdaGC.sampleOccupancy(system.gcFractionalMoleculeIsActive(componentId));
         }
       }
     }
@@ -1039,9 +1039,9 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
 
       for (System& system : systems)
       {
-        for (Component& component : system.components)
+        for (std::size_t componentId = 0; componentId != system.components.size(); ++componentId)
         {
-          component.lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
+          system.components[componentId].lambdaGC.sampleOccupancy(system.gcFractionalMoleculeIsActive(componentId));
         }
       }
     }

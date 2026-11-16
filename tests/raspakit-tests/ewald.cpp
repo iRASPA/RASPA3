@@ -437,3 +437,74 @@ TEST(Ewald, single_ion_fourier_energy_is_quadratic_in_the_charge)
   EXPECT_EQ(energyAt(0.0), 0.0);
   EXPECT_NEAR(energyAt(2.0), 4.0 * unit, 1e-12 * std::abs(unit));
 }
+
+// The automatic Ewald sum keeps every wave vector inside the sphere |k| <= 2 alpha tol1, whatever the shape of the
+// cell: the truncation error of the reciprocal sum at the default precision is the same small fraction of the
+// energy in a cubic, an elongated, a hexagonal and a strongly skewed triclinic cell. With the index ranges taken
+// from the perpendicular widths and a sphere in the integer indices, wave vectors inside the sphere were left out
+// in the skewed cells: the error was 5 times that of the cubic cell in the hexagonal cell and 30 times in the
+// triclinic one.
+TEST(Ewald, automatic_wave_vectors_reach_the_precision_in_skewed_cells)
+{
+  const double degrees = std::numbers::pi / 180.0;
+  const std::vector<std::pair<std::string, SimulationBox>> boxes{
+      {"cubic", SimulationBox(30.0, 30.0, 30.0)},
+      {"elongated", SimulationBox(26.0, 26.0, 52.0)},
+      {"hexagonal", SimulationBox(30.0, 30.0, 30.0, 90.0 * degrees, 90.0 * degrees, 120.0 * degrees)},
+      {"triclinic", SimulationBox(34.0, 36.0, 38.0, 62.0 * degrees, 68.0 * degrees, 58.0 * degrees)}};
+
+  for (const auto& [name, box] : boxes)
+  {
+    ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+    Component na = Component::makeIon(forceField, 0, "Na", 6, 0.0);
+    Component cl = Component::makeIon(forceField, 1, "Cl", 7, 0.0);
+    System system = System(forceField, box, false, 300.0, 1e4, 1.0, {}, {na, cl}, {}, {20, 20}, 5);
+    for (std::size_t i = 0; i < 40; ++i) system.atomData[i].charge = (i < 20) ? 1.0 : -1.0;
+    ASSERT_TRUE(system.forceField.usesEwaldFourier()) << name;
+
+    const auto energy = [&]()
+    {
+      system.precomputeTotalRigidEnergy();
+      return system.computeTotalEnergies().potentialEnergy() * Units::EnergyToKelvin;
+    };
+
+    // the automatic sum at the default precision
+    system.forceField.automaticEwald = true;
+    system.forceField.initializeEwaldParameters(system.simulationBox);
+    const int3 automatic = system.forceField.numberOfWaveVectors;
+    const double standard = energy();
+
+    // the same alpha with the reciprocal sum carried far past the sphere: what is left is its truncation error
+    system.forceField.automaticEwald = false;
+    system.forceField.numberOfWaveVectors = int3(3 * automatic.x, 3 * automatic.y, 3 * automatic.z);
+    system.forceField.reciprocalIntegerCutOffSquared = std::numeric_limits<std::size_t>::max();
+    system.forceField.reciprocalCutOffSquared = std::numeric_limits<double>::max();
+    const double converged = energy();
+
+    // the former selection: index ranges from the perpendicular widths, a sphere in the integer indices
+    const double eps = system.forceField.EwaldPrecision;
+    const double cutOff = system.forceField.cutOffCoulomb;
+    const double alpha = system.forceField.EwaldAlpha;
+    const double tol = std::sqrt(std::abs(std::log(eps * cutOff)));
+    const double tol1 = std::sqrt(-std::log(eps * cutOff * (2.0 * tol * alpha) * (2.0 * tol * alpha)));
+    const double3 widths = system.simulationBox.perpendicularWidths();
+    const int3 former(static_cast<std::int32_t>(std::rint(0.25 + widths.x * alpha * tol1 / std::numbers::pi)),
+                      static_cast<std::int32_t>(std::rint(0.25 + widths.y * alpha * tol1 / std::numbers::pi)),
+                      static_cast<std::int32_t>(std::rint(0.25 + widths.z * alpha * tol1 / std::numbers::pi)));
+    const std::size_t largest = static_cast<std::size_t>(std::max({former.x, former.y, former.z}));
+    system.forceField.numberOfWaveVectors = former;
+    system.forceField.reciprocalIntegerCutOffSquared = largest * largest;
+    const double formerEnergy = energy();
+
+    // the truncation error is the same small fraction of the energy in every cell (about 3e-5 at this precision)
+    EXPECT_LT(std::abs(standard - converged), 1e-4 * std::abs(converged))
+        << name << ": " << standard << " against " << converged << " [K] with " << automatic.x << " " << automatic.y
+        << " " << automatic.z << " wave vectors";
+    // and in the skewed cells several times smaller than that of the former selection
+    if (name == "hexagonal" || name == "triclinic")
+    {
+      EXPECT_LT(std::abs(standard - converged), 0.3 * std::abs(formerEnergy - converged))
+          << name << ": former selection " << former.x << " " << former.y << " " << former.z;
+    }
+  }
+}

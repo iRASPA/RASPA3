@@ -19,6 +19,7 @@ import transition_matrix;
 import simulation_schedule;
 import mc_moves_move_types;
 import mc_moves_probabilities;
+import cbmc_grow_context;
 
 // Driver-level bookkeeping of the Monte Carlo drivers: the per-step sampling with a single system, the
 // restart archive, and the first-run preparation of the transition-matrix driver.
@@ -497,4 +498,72 @@ TEST(MC_DRIVER_BOOKKEEPING, transition_matrix_samples_the_count_of_the_adsorbate
   EXPECT_GT(low, 0uz);
   EXPECT_EQ(high, 0uz) << "visits above five: " << high;
   EXPECT_LT(tmmc.systems[0].numberOfIntegerMoleculesPerComponent[0], 5uz);
+}
+
+// 'containsTheFractionalMolecule' is the flag of the serial Gibbs CFCMC swaps: the fractional molecules of the
+// components that use them are active in one box at a time. A co-adsorbate with a box-local CFCMC swap keeps its
+// own fractional molecule in every box, biased and present throughout: its Wang-Landau updates, its lambda
+// histogram and its factor in the weight of the box must not follow the flag of the other component.
+TEST(MC_DRIVER_BOOKKEEPING, box_local_cfcmc_component_stays_active_in_the_box_without_the_gibbs_fractional_molecule)
+{
+  const ForceField forceField({{"CH4", false, 16.04246, 0.0, 0.0, 6, false}}, {{158.5, 3.72}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  const auto makeComponent = [&](const std::string& name, Move::Types swapMove)
+  {
+    MCMoveProbabilities probabilities;
+    probabilities.setProbability(Move::Types::Translation, 1.0);
+    probabilities.setProbability(swapMove, 1.0);
+    return Component(forceField, name, 190.564, 4599200, 0.01142, {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)},
+                     {}, {}, 5, 21, probabilities, std::nullopt, false);
+  };
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {},
+                {makeComponent("gibbs", Move::Types::GibbsSwapCFCMC), makeComponent("local", Move::Types::SwapCFCMC)},
+                {}, {10, 10}, 5);
+  ASSERT_GT(system.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[0], 0uz);
+  ASSERT_EQ(system.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[1], 0uz);
+  ASSERT_TRUE(system.usesGCLambda(0uz));
+  ASSERT_TRUE(system.usesGCLambda(1uz));
+
+  system.components[0].lambdaGC.biasFactor[system.components[0].lambdaGC.currentBin] = -3.0;
+  system.components[1].lambdaGC.biasFactor[system.components[1].lambdaGC.currentBin] = -2.0;
+  const double gibbsWeight = system.components[0].lambdaGC.weight();
+  const double localWeight = system.components[1].lambdaGC.weight();
+  ASSERT_NE(localWeight, 1.0);
+
+  // the box that holds the Gibbs fractional molecule: both are active
+  system.containsTheFractionalMolecule = true;
+  EXPECT_TRUE(system.gcFractionalMoleculeIsActive(0uz));
+  EXPECT_TRUE(system.gcFractionalMoleculeIsActive(1uz));
+  EXPECT_DOUBLE_EQ(system.weight(), gibbsWeight * localWeight);
+
+  // the other box: the Gibbs fractional molecule is a switched-off placeholder, the local one is as it was
+  system.containsTheFractionalMolecule = false;
+  EXPECT_FALSE(system.gcFractionalMoleculeIsActive(0uz));
+  EXPECT_TRUE(system.gcFractionalMoleculeIsActive(1uz));
+  EXPECT_FALSE(system.lambdaWangLandauIsActive(0uz));
+  EXPECT_TRUE(system.lambdaWangLandauIsActive(1uz));
+  EXPECT_DOUBLE_EQ(system.weight(), localWeight);
+}
+
+// The inner cut-off of the dual cut-off scheme never exceeds the full one: an automatic full cut-off is only known
+// once the box is and shrinks with it, and an inner cut-off left above it reached past the cell list and the
+// minimum image.
+TEST(MC_DRIVER_BOOKKEEPING, inner_cut_off_of_the_dual_cut_off_scheme_is_held_at_the_full_cut_off)
+{
+  System system = makeMethaneCFCMCSystem(5);
+  system.forceField.settings.useDualCutOff = true;
+
+  system.forceField.settings.dualCutOff = 6.0;
+  EXPECT_DOUBLE_EQ(system.makeGrowContext().cutOffMoleculeVDW, 6.0);
+  EXPECT_DOUBLE_EQ(system.makeGrowContext(CBMC::CutOffMode::Full).cutOffMoleculeVDW,
+                   system.forceField.cutOffMoleculeVDW);
+
+  system.forceField.settings.dualCutOff = system.forceField.cutOffMoleculeVDW + 5.0;
+  for (const CBMC::CutOffMode mode : {CBMC::CutOffMode::Growth, CBMC::CutOffMode::Inner})
+  {
+    const CBMC::GrowContext context = system.makeGrowContext(mode);
+    EXPECT_DOUBLE_EQ(context.cutOffMoleculeVDW, system.forceField.cutOffMoleculeVDW);
+    EXPECT_DOUBLE_EQ(context.cutOffFrameworkVDW, system.forceField.cutOffFrameworkVDW);
+    EXPECT_DOUBLE_EQ(context.cutOffCoulomb, system.forceField.cutOffCoulomb);
+  }
 }

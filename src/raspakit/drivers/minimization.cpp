@@ -463,7 +463,8 @@ void Minimization::performCycle()
         break;
     }
 
-    selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
+    selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
+        selectedSystem.gcFractionalMoleculeIsActive(selectedComponent));
     if (selectedSystem.usesGibbsConventionalCFCMC())
     {
       selectedSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
@@ -473,7 +474,7 @@ void Minimization::performCycle()
     if (hasSecondSystem)
     {
       selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-          selectedSecondSystem.containsTheFractionalMolecule);
+          selectedSecondSystem.gcFractionalMoleculeIsActive(selectedComponent));
       if (selectedSecondSystem.usesGibbsConventionalCFCMC())
       {
         selectedSecondSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);

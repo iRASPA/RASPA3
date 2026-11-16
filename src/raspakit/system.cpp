@@ -679,7 +679,9 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
 
     double lambda = component.lambdaGC.lambdaValue();
     double dudlambda = currentDUdlambda(lambda, component.lambdaGC.dUdlambdaGroupId);
-    component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda, containsTheFractionalMolecule, w);
+    // (active per component: only the fractional molecules of the serial Gibbs swaps follow the flag of the box)
+    component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda,
+                                       gcFractionalMoleculeIsActive(componentId), w);
 
     if (usesGibbsConventionalCFCMC())
     {
@@ -688,12 +690,13 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
       component.lambdaGibbs.sampleHistogram(currentBlock, componentDensity, gibbsDudlambda, true, w);
     }
 
+    // the pair and group fractional molecules are box-local: they do not follow the serial Gibbs flag of the box
     if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCFCMC))
     {
       const double pairLambda = component.lambdaPairSwap.lambdaValue();
       component.lambdaPairSwap.sampleHistogram(
           currentBlock, componentDensity, currentDUdlambda(pairLambda, component.lambdaPairSwap.dUdlambdaGroupId),
-          containsTheFractionalMolecule, w);
+          true, w);
     }
 
     if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCBCFCMC))
@@ -701,7 +704,7 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
       const double pairLambda = component.lambdaPairSwapCB.lambdaValue();
       component.lambdaPairSwapCB.sampleHistogram(
           currentBlock, componentDensity, currentDUdlambda(pairLambda, component.lambdaPairSwapCB.dUdlambdaGroupId),
-          containsTheFractionalMolecule, w);
+          true, w);
     }
 
     if (componentDrivesGroupSwapLambda(componentId, Move::Types::GroupSwapCFCMC))
@@ -709,7 +712,7 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
       const double groupLambda = component.lambdaGroupSwap.lambdaValue();
       component.lambdaGroupSwap.sampleHistogram(
           currentBlock, componentDensity, currentDUdlambda(groupLambda, component.lambdaGroupSwap.dUdlambdaGroupId),
-          containsTheFractionalMolecule, w);
+          true, w);
     }
 
     if (componentDrivesGroupSwapLambda(componentId, Move::Types::GroupSwapCBCFCMC))
@@ -717,7 +720,7 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
       const double groupLambda = component.lambdaGroupSwapCB.lambdaValue();
       component.lambdaGroupSwapCB.sampleHistogram(
           currentBlock, componentDensity, currentDUdlambda(groupLambda, component.lambdaGroupSwapCB.dUdlambdaGroupId),
-          containsTheFractionalMolecule, w);
+          true, w);
     }
 
     ++componentId;

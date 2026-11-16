@@ -1120,7 +1120,7 @@ export struct System
       // (and only of a component that has a GC lambda coordinate at all, see usesGCLambda)
       // (nor on an (N, lambda) chain, where the moves leave the bias of the GC histogram out, see
       // tmmcOwnsGCLambda)
-      w *= (containsTheFractionalMolecule && usesGCLambda(componentId) && !tmmcOwnsGCLambda(componentId)
+      w *= (gcFractionalMoleculeIsActive(componentId) && usesGCLambda(componentId) && !tmmcOwnsGCLambda(componentId)
                 ? component.lambdaGC.weight()
                 : 1.0) *
            component.lambdaGibbs.weight();
@@ -1163,7 +1163,23 @@ export struct System
   /// times deeper than the histogram the move really walks.
   bool lambdaWangLandauIsActive(std::size_t componentId) const
   {
-    return containsTheFractionalMolecule && usesGCLambda(componentId);
+    return gcFractionalMoleculeIsActive(componentId) && usesGCLambda(componentId);
+  }
+  /// Whether the fractional molecule of 'componentId' on the GC lambda coordinate is active in this box.
+  /// 'containsTheFractionalMolecule' is a property of the box and belongs to the serial Gibbs CFCMC swaps: the
+  /// fractional molecules of the components that use them are active in one box at a time and switched off in the
+  /// other. The fractional molecule of a box-local move (SwapCFCMC, SwapCBCFCMC, their Widom moves, a pinned GC
+  /// lambda) of another component in the same boxes never leaves its box and is never switched off: read through
+  /// the flag of the box, its Wang-Landau bias, lambda histogram, dU/dlambda and its factor in System::weight()
+  /// were dropped whenever the Gibbs fractional molecule of the other component was in the other box.
+  bool gcFractionalMoleculeIsActive(std::size_t componentId) const
+  {
+    if (componentId < numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC.size() &&
+        numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0uz)
+    {
+      return containsTheFractionalMolecule;
+    }
+    return true;
   }
   /// Whether 'componentId' has a fractional molecule on the GC lambda coordinate (the histogram 'lambdaGC'):
   /// that of SwapCFCMC, SwapCBCFCMC, their Widom moves, a pinned GC lambda, or the serial Gibbs CFCMC swaps.

@@ -401,6 +401,8 @@ void HyperParallelTempering::performSwapSweep(SimulationStage stage, std::size_t
                                             systems[replicaIndex(temperatureIndex + 1, pressureIndex)])
                 .has_value())
         {
+          excessPressureIsStale[replicaIndex(temperatureIndex, pressureIndex)] = 1u;
+          excessPressureIsStale[replicaIndex(temperatureIndex + 1, pressureIndex)] = 1u;
           ++swapAccepted;
           ++swapAcceptedPerTemperaturePair[temperatureIndex];
         }
@@ -419,6 +421,8 @@ void HyperParallelTempering::performSwapSweep(SimulationStage stage, std::size_t
                                             systems[replicaIndex(temperatureIndex, pressureIndex + 1)])
                 .has_value())
         {
+          excessPressureIsStale[replicaIndex(temperatureIndex, pressureIndex)] = 1u;
+          excessPressureIsStale[replicaIndex(temperatureIndex, pressureIndex + 1)] = 1u;
           ++swapAccepted;
           ++swapAcceptedPerPressurePair[pressureIndex];
         }
@@ -470,6 +474,8 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
   simulationStage = stage;
 
   productionCycleLengths.resize(numberOfReplicas);
+  // not part of the restart file: a resumed run recomputes every stored excess-pressure tensor before it samples it
+  if (excessPressureIsStale.size() != numberOfReplicas) excessPressureIsStale.assign(numberOfReplicas, 1u);
 
   if (startCycle == 0uz)
   {
@@ -641,8 +647,13 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
                 // others an earlier one
                 std::optional<std::pair<EnergyStatus, double3x3>> freshPressure{};
                 std::chrono::steady_clock::duration freshPressureTime{};
-                if (cycle % 10uz == 0uz || cycle % printEvery == 0uz)
+                // An accepted configuration swap leaves the replica with the tensor of the configuration it gave
+                // away (the stored tensor does not travel with the configuration), so the first cycle after the
+                // swap recomputes it as well: sampled as it was, both replicas of the pair accumulated the
+                // virial of the departed configuration until their next scheduled recomputation.
+                if (cycle % 10uz == 0uz || cycle % printEvery == 0uz || excessPressureIsStale[replicaId] != 0u)
                 {
+                  excessPressureIsStale[replicaId] = 0u;
                   const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
                   freshPressure = system.computeMolecularPressure();
                   system.currentEnergyStatus = freshPressure->first;

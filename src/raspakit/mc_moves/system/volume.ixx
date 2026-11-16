@@ -34,6 +34,7 @@ struct SavedVolumeState
   double ewaldAlpha;
   int3 numberOfWaveVectors;
   std::size_t reciprocalIntegerCutOffSquared;
+  double reciprocalCutOffSquared;
 };
 
 SavedVolumeState saveVolumeState(const System& system);
