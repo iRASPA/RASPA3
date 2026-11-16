@@ -1275,8 +1275,16 @@ reported separately at the end of the simulation.
     The number of cycles in the production run. For Monte Carlo a cycle consists
     of $N$ steps, where $N$ is the number of molecules with a minimum of 20. On
     average, one Monte Carlo move is therefore attempted per molecule per cycle
-    (whether accepted or rejected). For Molecular Dynamics the number of cycles
-    is simply the number of integration steps.
+    (whether accepted or rejected). Before production $N$ is the current number
+    of molecules. During production the number of steps per cycle is fixed: $N$
+    is the average number of molecules over the second half of the
+    equilibration (the number at the start of production without an
+    equilibration), and is printed at the start of the production stage. The
+    properties are sampled once per cycle, and a cycle whose length follows the
+    current number of molecules would sample the states of high loading less
+    often per step than the states of low loading, biasing the averages of an
+    open ensemble. For Molecular Dynamics the number of cycles is simply the
+    number of integration steps.
 
 -   `"NumberOfBlocks" : integer`\
     Number of contiguous production blocks used for confidence-interval
@@ -1357,7 +1365,9 @@ reported separately at the end of the simulation.
     How often (in cycles) the maximum change of each Monte Carlo move is adjusted
     towards an optimal acceptance ratio (target: 0.5). The translation move tunes
     its maximum displacement, the rotation move its maximum angle, the hybrid MC
-    move its time step, and so on. Default: `5000`.
+    move its time step, and so on. The adjustment is made in the stages before
+    production only: during production the maximum changes are held fixed, since
+    an adaptive move breaks detailed balance. Default: `5000`.
 
 -   `"ParallelTemperingSwapEvery" : integer`\
     For `"SimulationType" : "ParallelTempering"`,

@@ -97,8 +97,10 @@ struct GrowthSettings
   double ringCrankshaftProbability{0.2};
   /// Attempt probability of the whole-ring junction tilt per internal ring move.
   double ringTiltProbability{0.25};
-  /// A grow whose weight (of any step) falls below this is reported as failed (std::nullopt).
-  double minimumRosenbluthFactor{1e-150};
+  /// A grow whose weight (of any step) falls below this is reported as failed (std::nullopt); 0.0 (the
+  /// default) is no floor. A positive floor is not applied to the retrace and breaks detailed balance (see
+  /// 'ForceFieldSettings::minimumRosenbluthFactor').
+  double minimumRosenbluthFactor{0.0};
   /// Trial directions 'k' per recoil-growth step.
   std::size_t recoilGrowthNumberOfTrialDirections{5};
   /// Recoil (feeler) length 'l' of recoil growth.
@@ -296,6 +298,22 @@ struct GrowContext
   {
     GrowContext copy(*this);
     copy.settings.chainScheme = scheme;
+    return copy;
+  }
+
+  /// The same environment for a grow that places a molecule outside the Markov chain: the molecules a system is
+  /// created with, the walkers grown to the start of their window, a molecule moved to its cage before the
+  /// equilibration. Such a placement has no reverse move to be symmetric with, so it may carry a floor on the
+  /// Rosenbluth factor: a grow whose factor falls below 'placementMinimumRosenbluthFactor' is taken as failed
+  /// and tried again, which keeps the high-energy placements below the overlap criterion out of the starting
+  /// configuration and lets a packing probe see that a box is full. The Monte Carlo moves carry no floor (see
+  /// 'ForceFieldSettings::minimumRosenbluthFactor').
+  static constexpr double placementMinimumRosenbluthFactor = 1e-150;
+  [[nodiscard]] GrowContext forPlacement() const
+  {
+    GrowContext copy(*this);
+    copy.settings.minimumRosenbluthFactor =
+        std::max(copy.settings.minimumRosenbluthFactor, placementMinimumRosenbluthFactor);
     return copy;
   }
 

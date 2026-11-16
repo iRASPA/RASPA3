@@ -95,7 +95,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMoveMu
 
   if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
 
-  const std::size_t numberOfTrials = std::max<std::size_t>(1, componentA.numberOfTrialMolecules);
+  // One trial count for the grow in A and the retrace in B, and the same one for the transfer the other way:
+  // the reverse of this move retraces the molecule in A among as many trials as it was grown with. The count
+  // is therefore a symmetric function of the two boxes (their per-system values may differ).
+  const std::size_t numberOfTrials =
+      std::max<std::size_t>({1uz, componentA.numberOfTrialMolecules, componentB.numberOfTrialMolecules});
 
   // Insertion side (system A): M trials grown into the unchanged system A.
   const std::size_t newMoleculeIndex = systemA.numberOfMolecules();

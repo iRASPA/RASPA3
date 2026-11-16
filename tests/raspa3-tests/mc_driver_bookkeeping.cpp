@@ -192,6 +192,99 @@ TEST(MC_DRIVER_BOOKKEEPING, transition_matrix_samples_the_gibbs_lambda_histogram
   std::filesystem::remove_all(scratch);
 }
 
+// A production cycle has a fixed number of steps: a cycle of max(20, N) steps with the live molecule count N
+// samples the states of high N less often per step than those of low N, which biases the cycle-sampled
+// averages of an open ensemble. The stages before production keep the live count.
+TEST(MC_DRIVER_BOOKKEEPING, production_cycle_has_a_fixed_number_of_steps)
+{
+  // the average of the recorded counts, rounded; at least 20 steps per component
+  ProductionCycleLength length{};
+  EXPECT_FALSE(length.fixed);
+  length.fix(7uz, 2uz);
+  EXPECT_TRUE(length.fixed);
+  EXPECT_EQ(length.stepsPerCycle, 40uz);
+  length.clear();
+  for (const std::size_t count : {100uz, 101uz, 103uz}) length.sample(count);
+  length.fix(7uz, 2uz);
+  EXPECT_EQ(length.stepsPerCycle, 2uz * 101uz);
+
+  std::vector<System> systems{makeMethaneCFCMCSystem(30)};
+  MonteCarlo mc(makeSchedule(1, 0, 1), systems, 7uz, 5, false);
+  mc.setup();
+  for (System& system : mc.systems) system.runningEnergies = system.computeTotalEnergies();
+  const auto stepsOfACycle = [&]()
+  {
+    const std::size_t before = mc.systems[0].components[0].lambdaGC.occupancyTotal;
+    mc.performCycle();
+    return mc.systems[0].components[0].lambdaGC.occupancyTotal - before;
+  };
+
+  // before production the length follows the live molecule count
+  mc.simulationStage = MonteCarlo::SimulationStage::Equilibration;
+  const std::size_t liveCount = mc.systems[0].numberOfMolecules();
+  EXPECT_EQ(stepsOfACycle(), std::max(liveCount, 20uz));
+
+  // in production it is the fixed length, whatever the molecule count
+  mc.simulationStage = MonteCarlo::SimulationStage::Production;
+  mc.productionCycleLength.clear();
+  mc.productionCycleLength.sample(57uz);
+  mc.productionCycleLength.fix(mc.systems[0].numberOfMolecules(), 1uz);
+  ASSERT_NE(mc.systems[0].numberOfMolecules(), 57uz);
+  EXPECT_EQ(stepsOfACycle(), 57uz);
+  EXPECT_EQ(stepsOfACycle(), 57uz);
+
+  // a production stage resumed from a restart file without a stored length fixes it at its first cycle
+  mc.productionCycleLength.clear();
+  const std::size_t resumedCount = mc.systems[0].numberOfMolecules();
+  EXPECT_EQ(stepsOfACycle(), std::max(resumedCount, 20uz));
+  EXPECT_TRUE(mc.productionCycleLength.fixed);
+  EXPECT_EQ(mc.productionCycleLength.stepsPerCycle, std::max(resumedCount, 20uz));
+
+  // the transition-matrix driver takes the same path
+  std::vector<System> tmmcSystems{makeMethaneCFCMCSystem(30)};
+  RandomNumber random(7);
+  MonteCarloTransitionMatrix tmmc(makeSchedule(1, 0, 1), tmmcSystems, random, 5);
+  for (System& system : tmmc.systems) system.runningEnergies = system.computeTotalEnergies();
+  tmmc.simulationStage = MonteCarloTransitionMatrix::SimulationStage::Production;
+  tmmc.productionCycleLength.sample(43uz);
+  tmmc.productionCycleLength.fix(tmmc.systems[0].numberOfMolecules(), 1uz);
+  const std::size_t before = tmmc.systems[0].components[0].lambdaGC.occupancyTotal;
+  tmmc.performCycle();
+  EXPECT_EQ(tmmc.systems[0].components[0].lambdaGC.occupancyTotal - before, 43uz);
+}
+
+// The fixed length of a production cycle is set by a full run and survives a binary restart.
+TEST(MC_DRIVER_BOOKKEEPING, archive_restores_the_production_cycle_length)
+{
+  std::vector<System> systems{makeMethaneCFCMCSystem(40)};
+  MonteCarlo original(makeSchedule(2, 2, 4), systems, 11uz, 5, false);
+  original.run();
+  ASSERT_TRUE(original.productionCycleLength.fixed);
+  // the second half of the equilibration was recorded
+  EXPECT_EQ(original.productionCycleLength.numberOfSamples, 2uz);
+  EXPECT_GE(original.productionCycleLength.stepsPerCycle, 20uz);
+
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / "raspa3_monte_carlo_cycle_length.bin";
+  {
+    std::ofstream stream(path, std::ios::binary);
+    Archive<std::ofstream> archive(stream);
+    archive << original;
+  }
+  MonteCarlo restored;
+  {
+    std::ifstream stream(path, std::ios::binary);
+    Archive<std::ifstream> archive(stream);
+    archive >> restored;
+  }
+  std::filesystem::remove(path);
+
+  EXPECT_TRUE(restored.productionCycleLength.fixed);
+  EXPECT_EQ(restored.productionCycleLength.stepsPerCycle, original.productionCycleLength.stepsPerCycle);
+  EXPECT_EQ(restored.productionCycleLength.moleculeCountSum, original.productionCycleLength.moleculeCountSum);
+  EXPECT_EQ(restored.productionCycleLength.numberOfSamples, original.productionCycleLength.numberOfSamples);
+}
+
 // The overall cycle number indexes the property-evolution samples; it has to survive a binary restart.
 TEST(MC_DRIVER_BOOKKEEPING, archive_restores_the_absolute_cycle_number)
 {

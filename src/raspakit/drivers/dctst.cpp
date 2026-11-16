@@ -1446,7 +1446,9 @@ void DynamicallyCorrectedTST::runStage(SimulationStage stage, std::size_t number
                 }
               }
 
-              if (cycle % optimizeMCMovesEvery == 0uz)
+              // the step sizes are tuned before the sampled cycles only: an adaptive kernel while the
+              // barrier ensemble is sampled breaks detailed balance
+              if (!(stage == SimulationStage::Transmission && production) && cycle % optimizeMCMovesEvery == 0uz)
               {
                 system.optimizeMCMoves();
                 constrainedMoves[replicaId].optimize();
@@ -1987,7 +1989,11 @@ void DynamicallyCorrectedTST::createConstrainedConfiguration(std::size_t replica
 
   // the context is rebuilt per growth: every inserted molecule changes the background it spans
   const auto creationContext = [&]()
-  { return system.makeGrowContext(CBMC::CutOffMode::Full).withChainScheme(CBMC::ChainScheme::ConfigurationalBias); };
+  {
+    return system.makeGrowContext(CBMC::CutOffMode::Full)
+        .withChainScheme(CBMC::ChainScheme::ConfigurationalBias)
+        .forPlacement();
+  };
 
   // --- the tagged molecule: reaction bead pinned on the barrier plane ---------------------------------
   const auto growTaggedAt = [&](double3 point) -> std::optional<CBMC::GrowResult>
@@ -2234,7 +2240,7 @@ void DynamicallyCorrectedTST::prepareOccupancies(std::size_t replicaId)
 
   // molecules are moved between cages by a pinned CBMC growth at a random point of the target cage; the
   // first non-overlapping growth is taken (the constrained equilibration relaxes the configuration)
-  const CBMC::GrowContext context = system.makeGrowContext(CBMC::CutOffMode::Full);
+  const CBMC::GrowContext context = system.makeGrowContext(CBMC::CutOffMode::Full).forPlacement();
   auto relocate = [&](std::size_t j, std::size_t targetCage)
   {
     Molecule& molecule = system.moleculeData[j];

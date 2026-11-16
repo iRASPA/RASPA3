@@ -107,6 +107,44 @@ R"({
 }
 )";
 
+// Four beads, fixed {0, 3}, with a Urey-Bradley term between the beads 1 and 3: bead 1 is a seed grown from
+// the fixed bead 0 (which has no placed neighbour), and the Urey-Bradley term reaches the other fixed bead.
+constexpr std::string_view kButaneUreyBradleyJson =
+R"({
+  "CriticalTemperature" : 425.125,
+  "CriticalPressure" : 3796000.0,
+  "AcentricFactor" : 0.201,
+  "pseudoAtoms" :
+    [
+      ["CH2", [0.0, 0.0, 0.0]],
+      ["CH2", [1.54, 0.0, 0.0]],
+      ["CH2", [2.17, 1.41, 0.0]],
+      ["CH2", [3.71, 1.41, 0.0]]
+    ],
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3]
+  ],
+  "Bonds" : [
+    [["CH2", "CH2"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2", "CH2", "CH2"], "HARMONIC", [700.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH2", "CH2", "CH2", "CH2"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ],
+  "UreyBradleys" : [
+    [[1, 3], "HARMONIC", [4000.0, 2.25]]
+  ],
+  "VanDerWaals" : "auto",
+  "Partial-reinsertion" : [
+    [0, 3]
+  ]
+}
+)";
+
 // The same six-bead chain with holonomic (FIXED) bonds.
 constexpr std::string_view kHexaneFixedBondsJson =
 R"({
@@ -564,6 +602,53 @@ TEST(CBMC_FIXED_ENDPOINT, guided_seed_from_fixed_chain_end_matches_metropolis_re
   EXPECT_LT(chiSquaredTwoSample(cbmc[3].counts, reference[3].counts), 100.0) << "torsion 0-1-2-3";
   EXPECT_LT(chiSquaredTwoSample(cbmc[4].counts, reference[4].counts), 100.0) << "closure distance 2-4";
   EXPECT_LT(chiSquaredTwoSample(cbmc[5].counts, reference[5].counts), 100.0) << "seed guide distance 1-4";
+}
+
+// A seed step of a fixed-endpoint regrowth completes the internal terms that reach another fixed bead: here
+// the Urey-Bradley term between the seed bead 1 and the fixed bead 3. The seed sampler does not sample it and
+// no later step carries it, so it has to be in the Rosenbluth weight of the seed step; left out (as it was,
+// every term of a seed step being taken for a constant of the seed fragment), the regrowth sampled the chain
+// without the term.
+TEST(CBMC_FIXED_ENDPOINT, seed_step_weights_the_terms_that_reach_another_fixed_bead)
+{
+  Fixture f("fixed-endpoint-butane-urey-bradley", kButaneUreyBradleyJson);
+  ASSERT_EQ(f.component.intraMolecularPotentials.ureyBradleys.size(), 1uz);
+  RandomNumber random(8123);
+  CBMC::GrowResult initial = f.initialMolecule(random);
+
+  const std::vector<std::size_t> fixed{0, 3};
+  const std::vector<std::size_t> movable{1, 2};
+  constexpr std::size_t bins = 20;
+  const double sigmaR = std::sqrt(kTemperature / kBondK);
+  auto makeHistograms = [&]
+  {
+    return std::vector<Histogram>{Histogram(kBondR0 - 5.0 * sigmaR, kBondR0 + 5.0 * sigmaR, bins),
+                                  Histogram(1.6, 3.0, bins), Histogram(-1.0, 1.0, bins), Histogram(-1.0, 1.0, bins),
+                                  Histogram(-std::numbers::pi, std::numbers::pi, bins)};
+  };
+  Observer observe = [](std::span<const Atom> atoms, std::vector<Histogram> &h)
+  {
+    h[0].add((atoms[1].position - atoms[0].position).length());
+    h[1].add((atoms[3].position - atoms[1].position).length());  // the Urey-Bradley distance
+    h[2].add(std::cos(angleBetween(atoms[0].position, atoms[1].position, atoms[2].position)));
+    h[3].add(std::cos(angleBetween(atoms[1].position, atoms[2].position, atoms[3].position)));
+    h[4].add(dihedral(atoms[0].position, atoms[1].position, atoms[2].position, atoms[3].position));
+  };
+
+  constexpr std::size_t samples = 20'000;
+  std::vector<Histogram> cbmc = makeHistograms();
+  std::vector<Atom> atoms = initial.atoms;
+  double acceptance = runRegrowChain(random, f, atoms, initial.molecule, fixed, 4 * samples, 4, observe, cbmc);
+  EXPECT_GT(acceptance, 0.05) << "fixed-endpoint regrowth acceptance collapsed";
+
+  std::vector<Histogram> reference = makeHistograms();
+  runDisplacementChain(random, f, initial.atoms, movable, 100 * samples, 100, observe, reference);
+
+  EXPECT_LT(chiSquaredTwoSample(cbmc[0].counts, reference[0].counts), 100.0) << "bond length 0-1";
+  EXPECT_LT(chiSquaredTwoSample(cbmc[1].counts, reference[1].counts), 100.0) << "Urey-Bradley distance 1-3";
+  EXPECT_LT(chiSquaredTwoSample(cbmc[2].counts, reference[2].counts), 100.0) << "bend angle 0-1-2";
+  EXPECT_LT(chiSquaredTwoSample(cbmc[3].counts, reference[3].counts), 100.0) << "bend angle 1-2-3";
+  EXPECT_LT(chiSquaredTwoSample(cbmc[4].counts, reference[4].counts), 100.0) << "torsion 0-1-2-3";
 }
 
 TEST(CBMC_FIXED_ENDPOINT, fixed_bonds_are_closed_exactly)

@@ -727,9 +727,10 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 [[nodiscard]] int reactionLambdaStepInBins(RandomNumber& random, const PropertyLambdaProbabilityHistogram& histogram,
                                            double maximumChange) noexcept
 {
-  const int lastBin = static_cast<int>(histogram.numberOfSamplePoints) - 1;
+  // at most one period of the grid (its number of points), so that a step crosses at most one end of the path
+  const int numberOfBins = static_cast<int>(histogram.numberOfSamplePoints);
   const int step = histogram.selectNewBin(random, maximumChange) - static_cast<int>(histogram.currentBin);
-  return std::clamp(step, -lastBin, lastBin);
+  return std::clamp(step, -numberOfBins, numberOfBins);
 }
 
 // sum of intramolecular energies, one molecule per distinct moleculeId in 'atoms'
@@ -742,6 +743,21 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     internal += system.components[componentId].intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, molecule);
   }
   return internal;
+}
+
+// The intramolecular Coulomb energy of the molecules in 'atoms' at their own Coulomb scaling minus that at full
+// coupling (see 'System::intraCoulombScalingEnergy'), one molecule per distinct moleculeId. A non-CBMC move
+// places conformations drawn at full coupling as fractional molecules at s(lambda): the change of their Ewald
+// compensation kernel -s^2 C q_A q_B erf(alpha r)/r with the scaling is not part of the generation probability
+// and belongs in the acceptance, where it cancels the molecule's own share of the Fourier difference.
+[[nodiscard]] double intraCoulombScalingFromAtomGroups(const System& system, std::span<const Atom> atoms)
+{
+  double energy = 0.0;
+  for (const std::vector<Atom>& molecule : splitAtomsByMoleculeId(atoms))
+  {
+    energy += system.intraCoulombScalingEnergy(molecule);
+  }
+  return energy;
 }
 
 // Monolithic serial Rx/CFC move (Rosch and Maginn): one function containing the three sub-moves.
@@ -989,8 +1005,13 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     }
     else
     {
+      // the conformations were drawn at full coupling and are fractional molecules at lambda: the change of
+      // their intramolecular Coulomb kernel with the scaling stays in the acceptance
+      const double intraCoulombScaling =
+          intraCoulombScalingFromAtomGroups(system, newAtoms) - intraCoulombScalingFromAtomGroups(system, oldAtoms);
       acceptanceProbability =
-          std::exp(-system.beta * (energyDifference.potentialEnergy() - internalDifference.potentialEnergy()) +
+          std::exp(-system.beta * (energyDifference.potentialEnergy() - internalDifference.potentialEnergy() +
+                                   intraCoulombScaling) +
                    equilibriumTerm + biasNew - biasOld);
     }
 
@@ -1387,9 +1408,14 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   }
   else
   {
+    // the ghost conformations were drawn at full coupling and are fractional molecules at their lambda: the
+    // change of their intramolecular Coulomb kernel with the scaling stays in the acceptance
+    const double ghostIntraCoulombScaling = intraCoulombScalingFromAtomGroups(system, grownAtoms) -
+                                            intraCoulombScalingFromAtomGroups(system, ghostOldAtoms);
     acceptanceProbability =
         std::exp(equilibriumTerm + biasNew - biasOld -
-                 system.beta * (energyDifference.potentialEnergy() - ghostInternalDifference.potentialEnergy()));
+                 system.beta * (energyDifference.potentialEnergy() - ghostInternalDifference.potentialEnergy() +
+                                ghostIntraCoulombScaling));
   }
 
   // the trial configuration has been constructed; counted before the Metropolis test
@@ -1484,22 +1510,27 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
 
   const double lambdaOld = reaction.currentLambda;
   // the step along the lambda grid of the bias histogram
-  const int lastBin = static_cast<int>(reaction.lambda.numberOfSamplePoints) - 1;
+  const int numberOfBins = static_cast<int>(reaction.lambda.numberOfSamplePoints);
   const int newBinSigned = static_cast<int>(reaction.lambda.binOfLambda(lambdaOld)) +
                            reactionLambdaStepInBins(random, reaction.lambda, reaction.maximumLambdaChange);
 
-  // boundary crossing: attempt a chemical reaction with the wrapped lambda (Rosch and Maginn), one lambda period on
-  if (newBinSigned > lastBin)
+  // boundary crossing: attempt a chemical reaction with the wrapped lambda (Rosch and Maginn). The grid has
+  // 'numberOfBins' live states per reaction count, the bins 0 and numberOfBins - 1 both among them, so the bin
+  // wraps by the number of bins (as in the CFCMC swap moves) and not by the lambda period numberOfBins - 1:
+  // a step +d out of the last bin lands in bin d - 1, and the step -d from there crosses back into the last bin.
+  // Wrapped by numberOfBins - 1 the step back would end in bin 0 of the same reaction count, and the crossing
+  // had no reverse.
+  if (newBinSigned >= numberOfBins)
   {
     return parallelReactionBoundaryMove(random, system, reaction, move,
-                                        static_cast<double>(newBinSigned - lastBin) * reaction.lambda.delta, true,
-                                        useCBMC);
+                                        static_cast<double>(newBinSigned - numberOfBins) * reaction.lambda.delta,
+                                        true, useCBMC);
   }
   if (newBinSigned < 0)
   {
     return parallelReactionBoundaryMove(random, system, reaction, move,
-                                        static_cast<double>(newBinSigned + lastBin) * reaction.lambda.delta, false,
-                                        useCBMC);
+                                        static_cast<double>(newBinSigned + numberOfBins) * reaction.lambda.delta,
+                                        false, useCBMC);
   }
   const double lambdaNew = static_cast<double>(newBinSigned) * reaction.lambda.delta;
 

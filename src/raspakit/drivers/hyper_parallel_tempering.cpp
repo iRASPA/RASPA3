@@ -7,6 +7,7 @@ import std;
 import stringutils;
 import hardware_info;
 import archive;
+import simulation_schedule;
 import graceful_shutdown;
 import system;
 import framework;
@@ -325,8 +326,20 @@ void HyperParallelTempering::performReplicaCycle(std::size_t replicaId, Simulati
   // supported by this driver
   std::size_t fractionalMoleculeSystem = 0uz;
 
-  const std::size_t numberOfStepsPerCycle =
-      std::max(system.numberOfMolecules(), 20uz) * system.numerOfAdsorbateComponents();
+  // a production cycle has a fixed number of steps: a length that follows the live molecule count
+  // biases the cycle-sampled averages of an open ensemble, and the configuration swaps at the cycle
+  // boundaries then no longer leave the joint distribution of the ladder invariant (see
+  // 'ProductionCycleLength'). The length belongs to the replica (the thermodynamic state), not to the
+  // configuration that a swap moves through it. A restart file that predates the fixed length fixes it
+  // here, from the count it resumes with.
+  std::size_t numberOfStepsPerCycle =
+      ProductionCycleLength::adaptive(system.numberOfMolecules(), system.numerOfAdsorbateComponents());
+  if (stage == SimulationStage::Production)
+  {
+    ProductionCycleLength& cycleLength = productionCycleLengths[replicaId];
+    if (!cycleLength.fixed) cycleLength.fix(system.numberOfMolecules(), system.numerOfAdsorbateComponents());
+    numberOfStepsPerCycle = cycleLength.stepsPerCycle;
+  }
 
   for (std::size_t j = 0uz; j != numberOfStepsPerCycle; ++j)
   {
@@ -456,11 +469,14 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
 
   simulationStage = stage;
 
+  productionCycleLengths.resize(numberOfReplicas);
+
   if (startCycle == 0uz)
   {
     // serial per-stage preparation
     if (stage == SimulationStage::Equilibration)
     {
+      for (ProductionCycleLength& cycleLength : productionCycleLengths) cycleLength.clear();
       for (System& system : systems)
       {
         for (Component& component : system.components)
@@ -500,6 +516,22 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
         system.normalizeLambdaBiasFactors();
       }
       std::fill(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
+
+      // the number of steps of a production cycle is fixed here, replica by replica
+      for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
+      {
+        productionCycleLengths[replicaId].fix(systems[replicaId].numberOfMolecules(),
+                                              systems[replicaId].numerOfAdsorbateComponents());
+      }
+      {
+        // the worker threads of this stage have not started yet
+        std::scoped_lock lock(outputMutex);
+        std::print(stream, "\nMonte Carlo steps per production cycle (fixed for the whole production stage)\n");
+        for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
+        {
+          std::print(stream, "    replica {:3d}: {}\n", replicaId, productionCycleLengths[replicaId].stepsPerCycle);
+        }
+      }
     }
     sweepsThisStage = 0uz;
   }
@@ -582,6 +614,13 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
 
               performReplicaCycle(replicaId, stage, estimation.currentBin);
 
+              // the molecule count of the second half of the equilibration sets the length of a
+              // production cycle of this replica
+              if (stage == SimulationStage::Equilibration && cycle >= numberOfCycles / 2uz)
+              {
+                productionCycleLengths[replicaId].sample(system.numberOfMolecules());
+              }
+
               // time-evolution properties (number of molecules, volume): sampled over all stages,
               // indexed by the absolute cycle number; the writers gate on their own 'writeEvery'
               const std::size_t absoluteCycle = stageCycleOffset + cycle;
@@ -626,7 +665,9 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
                 }
               }
 
-              if (cycle % optimizeMCMovesEvery == 0uz)
+              // the step sizes are tuned while the system equilibrates only: an adaptive kernel during production
+              // makes the chain depend on its history and breaks detailed balance
+              if (stage != SimulationStage::Production && cycle % optimizeMCMovesEvery == 0uz)
               {
                 system.optimizeMCMoves();
               }
@@ -1058,6 +1099,16 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const HyperP
   archive << hpt.swapAttemptsPerPressurePair;
   archive << hpt.swapAcceptedPerPressurePair;
 
+  // version 2: the fixed number of steps of a production cycle, per replica
+  archive << static_cast<std::uint64_t>(hpt.productionCycleLengths.size());
+  for (const ProductionCycleLength& cycleLength : hpt.productionCycleLengths)
+  {
+    archive << cycleLength.moleculeCountSum;
+    archive << cycleLength.numberOfSamples;
+    archive << cycleLength.stepsPerCycle;
+    archive << cycleLength.fixed;
+  }
+
   archive << hpt.totalPreInitializationSimulationTime;
   archive << hpt.totalInitializationSimulationTime;
   archive << hpt.totalEquilibrationSimulationTime;
@@ -1117,6 +1168,22 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, HyperParalle
   archive >> hpt.swapAcceptedPerTemperaturePair;
   archive >> hpt.swapAttemptsPerPressurePair;
   archive >> hpt.swapAcceptedPerPressurePair;
+
+  // older restart files did not store it: a resumed production fixes its cycle lengths at its first cycle
+  hpt.productionCycleLengths.clear();
+  if (versionNumber >= 2)
+  {
+    std::uint64_t numberOfCycleLengths{0};
+    archive >> numberOfCycleLengths;
+    hpt.productionCycleLengths.resize(numberOfCycleLengths);
+    for (ProductionCycleLength& cycleLength : hpt.productionCycleLengths)
+    {
+      archive >> cycleLength.moleculeCountSum;
+      archive >> cycleLength.numberOfSamples;
+      archive >> cycleLength.stepsPerCycle;
+      archive >> cycleLength.fixed;
+    }
+  }
 
   archive >> hpt.totalPreInitializationSimulationTime;
   archive >> hpt.totalInitializationSimulationTime;

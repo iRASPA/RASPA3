@@ -162,7 +162,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
     double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                        (system.beta * fugacity * system.simulationBox.volume);
-    double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
+    // the reverse insertion draws the conformation from the molecule's own ideal-gas distribution: the Ewald
+    // compensation of its intramolecular pairs is not part of that generation probability (see
+    // 'System::intraCoulombScalingEnergy')
+    double Pacc = preFactor * std::exp(-system.beta * (energyDifference.potentialEnergy() -
+                                                       system.intraCoulombScalingEnergy(molecule)));
     std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
     // Check if TMMC is enabled and if new state is below minimum macrostate

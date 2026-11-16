@@ -95,7 +95,40 @@ double CBMC::unsampledInternalLogFactor(double beta, const GrowStep &step, const
   // against the single-molecule partition function and are left out, as the conventional swap and the device
   // multi-trial grower leave them out. A rigid component has no ideal-gas Rosenbluth weight to cancel them, and its
   // CBMC insertions were weighted by exp(-beta U) of its constant internal terms.
-  if (step.kind == GrowStep::Kind::PlaceSeedFragment) return 0.0;
+  //
+  // That holds for the terms among the beads of the seed fragment only. In a fixed-endpoint regrowth the placed
+  // beads are not one connected set: a seed grown from a fixed bead without a placed neighbour (chain 0-1-2-3
+  // with the ends fixed, bead 1 grown from bead 0) completes the terms that reach another fixed bead (a
+  // Urey-Bradley 1-3, an improper or a cross term through bead 3). Those depend on where the seed is placed,
+  // no later step carries them and the seed sampler does not sample them: they are weighted here.
+  if (step.kind == GrowStep::Kind::PlaceSeedFragment)
+  {
+    const auto insideSeed = [&step](std::size_t bead)
+    { return bead == step.currentBead || std::ranges::find(step.nextBeads, bead) != step.nextBeads.end(); };
+    const auto reachingOutside = [&insideSeed](const auto &potentials)
+    {
+      std::remove_cvref_t<decltype(potentials)> selected{};
+      for (const auto &potential : potentials)
+      {
+        if (!std::ranges::all_of(potential.identifiers, insideSeed)) selected.push_back(potential);
+      }
+      return selected;
+    };
+
+    Potentials::IntraMolecularPotentials outside{};
+    outside.ureyBradleys = reachingOutside(step.intra.ureyBradleys);
+    outside.inversionBends = reachingOutside(step.intra.inversionBends);
+    outside.outOfPlaneBends = reachingOutside(step.intra.outOfPlaneBends);
+    outside.improperTorsions = reachingOutside(step.intra.improperTorsions);
+    outside.bondBonds = reachingOutside(step.intra.bondBonds);
+    outside.bondBends = reachingOutside(step.intra.bondBends);
+    outside.bondTorsions = reachingOutside(step.intra.bondTorsions);
+    outside.bendBends = reachingOutside(step.intra.bendBends);
+    outside.bendTorsions = reachingOutside(step.intra.bendTorsions);
+    outside.cmaps = reachingOutside(step.intra.cmaps);
+    if (!outside.cmaps.empty()) outside.cmapMaps = step.intra.cmapMaps;
+    return -beta * outside.computeInternalEnergiesNotSampledDuringGrowth(chainAtoms).potentialEnergy();
+  }
   return -beta * step.intra.computeInternalEnergiesNotSampledDuringGrowth(chainAtoms).potentialEnergy();
 }
 

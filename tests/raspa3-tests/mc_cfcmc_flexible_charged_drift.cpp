@@ -436,3 +436,55 @@ TEST(MC_CFCMC_FLEXIBLE_CHARGED_DRIFT, swap_cfcmc_keeps_the_dudlambda_of_another_
   ASSERT_GT(numberOfExchanges, 0uz);
   EXPECT_LT(largestDrift, 1e-6);
 }
+
+// A dilute gas is an ideal gas: at a fugacity f the conventional (non-CBMC) swap must fill the box with
+// <N> = beta f V molecules, also for a flexible molecule with charged non-excluded intramolecular pairs under
+// Ewald. The inserted conformations are samples of the molecule's own ideal-gas distribution (bare
+// intramolecular Coulomb); the intramolecular kernel of the box carries the compensation
+// -C q_A q_B erf(alpha r)/r of the pair's share of the Fourier sum on top of that, and the acceptance has to hold
+// exactly that compensation next to the Fourier difference. With the conformations drawn from the kernel itself
+// the two no longer cancel in the normalization: the acceptance was that of an ideal-gas partition function
+// that depends on alpha, and the density was off by <exp(-beta C q_A q_B erf(alpha r)/r)> (orders of magnitude
+// for the charges of this fixture).
+TEST(MC_CFCMC_FLEXIBLE_CHARGED_DRIFT, conventional_swap_of_a_dilute_gas_gives_the_ideal_gas_density)
+{
+  const ForceField forceField = makeChargedAlkaneForceField();
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::Swap, 1.0);
+  Component butane = makeChargedButane(forceField, probabilities);
+  butane.fugacityCoefficient = 1.0;
+
+  System system(forceField, SimulationBox(40.0, 40.0, 40.0), false, 300.0, 1e5, 1.0, {}, {butane}, {}, {2}, 5);
+  ASSERT_TRUE(system.forceField.usesEwaldFourier());
+  system.precomputeTotalRigidEnergy();
+  system.runningEnergies = system.computeTotalEnergies();
+
+  const Component& component = system.components[0];
+  const double idealGasCount = system.beta * component.molFraction * component.fugacityCoefficient.value_or(1.0) *
+                               system.pressure * system.simulationBox.volume;
+  ASSERT_GT(idealGasCount, 1.0);
+  ASSERT_LT(idealGasCount, 2.5);
+
+  RandomNumber random(29);
+  std::size_t fractionalMoleculeSystem = 0;
+  constexpr std::size_t equilibrationSteps = 5000;
+  constexpr std::size_t productionSteps = 60000;
+  double sum = 0.0;
+  bool chargedPairsSampled = false;
+  for (std::size_t step = 0; step < equilibrationSteps + productionSteps; ++step)
+  {
+    MC_Moves::performRandomMoveProduction(random, system, system, 0, fractionalMoleculeSystem, 0);
+    if (step < equilibrationSteps) continue;
+    sum += static_cast<double>(system.numberOfIntegerMoleculesPerComponent[0]);
+    chargedPairsSampled = chargedPairsSampled || system.runningEnergies.intraCoul != 0.0;
+  }
+  const double averageCount = sum / static_cast<double>(productionSteps);
+  ASSERT_TRUE(chargedPairsSampled);
+
+  // the gas is dilute but not ideal (a second virial correction of a few percent), and the average of a
+  // Poisson-distributed count over a few thousand independent samples is good to a few percent
+  EXPECT_NEAR(averageCount / idealGasCount, 1.0, 0.15)
+      << "average count " << averageCount << " against the ideal-gas count " << idealGasCount;
+  EXPECT_NEAR((system.runningEnergies - system.computeTotalEnergies()).potentialEnergy(), 0.0, 1e-6);
+}

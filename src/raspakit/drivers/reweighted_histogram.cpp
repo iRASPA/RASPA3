@@ -1114,7 +1114,9 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
                 }
               }
 
-              if (cycle % optimizeMCMovesEvery == 0uz)
+              // the step sizes are tuned while the system equilibrates only: an adaptive kernel during production
+              // makes the chain depend on its history and breaks detailed balance
+              if (stage != SimulationStage::Production && cycle % optimizeMCMovesEvery == 0uz)
               {
                 system.optimizeMCMoves();
               }

@@ -327,39 +327,45 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   const double biasOldA = lambdaA.biasFactor[oldBinA];
   const double biasOldB = lambdaB.biasFactor[oldBinB];
 
-  const int lastBin = static_cast<int>(lambdaA.numberOfSamplePoints) - 1;
+  const int numberOfBins = static_cast<int>(lambdaA.numberOfSamplePoints);
   const double maxChange = componentA.mc_moves_statistics.getMaxChange(move, 2);
-  // the step in grid points (at most one lambda period, so a box crosses at most one boundary)
+  // the step in grid points (at most one period of the grid, so a box crosses at most one boundary)
   const int deltaBins =
-      std::clamp(lambdaA.selectNewBin(random, maxChange) - static_cast<int>(oldBinA), -lastBin, lastBin);
+      std::clamp(lambdaA.selectNewBin(random, maxChange) - static_cast<int>(oldBinA), -numberOfBins, numberOfBins);
   const double vNew = static_cast<double>(deltaBins) * lambdaA.delta;
 
   int newBinSignedA = static_cast<int>(oldBinA) + deltaBins;
   int newBinSignedB = static_cast<int>(oldBinB) - deltaBins;
 
-  // crossing lambda = 1 (insertion) or lambda = 0 (deletion) wraps the bin by one lambda period
+  // Crossing lambda = 1 (insertion) or lambda = 0 (deletion) wraps the bin by the number of bins, as in the
+  // CFCMC swap moves: the grid has 'numberOfBins' live states per molecule count, the bins 0 and
+  // numberOfBins - 1 both among them. A step +d out of the last bin lands in bin d - 1, and the step -d from
+  // there crosses back into the last bin; wrapped by the lambda period numberOfBins - 1 the step back would end
+  // in bin 0 without a transfer, and the crossing had no reverse. Both boxes cross together (bin_A + d reaches
+  // numberOfBins exactly when bin_B - d drops below zero), and the sum rule bin_A + bin_B = numberOfBins - 1 is
+  // kept: (bin_A + d - numberOfBins) + (bin_B - d + numberOfBins).
   GibbsMoveKind moveKindA = GibbsMoveKind::LambdaChange;
-  if (newBinSignedA > lastBin)
+  if (newBinSignedA >= numberOfBins)
   {
     moveKindA = GibbsMoveKind::Insert;
-    newBinSignedA -= lastBin;
+    newBinSignedA -= numberOfBins;
   }
   else if (newBinSignedA < 0)
   {
     moveKindA = GibbsMoveKind::Delete;
-    newBinSignedA += lastBin;
+    newBinSignedA += numberOfBins;
   }
 
   GibbsMoveKind moveKindB = GibbsMoveKind::LambdaChange;
-  if (newBinSignedB > lastBin)
+  if (newBinSignedB >= numberOfBins)
   {
     moveKindB = GibbsMoveKind::Insert;
-    newBinSignedB -= lastBin;
+    newBinSignedB -= numberOfBins;
   }
   else if (newBinSignedB < 0)
   {
     moveKindB = GibbsMoveKind::Delete;
-    newBinSignedB += lastBin;
+    newBinSignedB += numberOfBins;
   }
   const double lambdaNewA = static_cast<double>(newBinSignedA) * lambdaA.delta;
   const double lambdaNewB = static_cast<double>(newBinSignedB) * lambdaB.delta;
@@ -430,7 +436,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   // Deletion prelude (lambda < 0): upon acceptance the fractional molecule leaves its box. Its intra-molecular
   // energy leaves the running energies (not the acceptance rule: the reverse insertion draws the conformation from
   // the ideal-gas distribution, CBMC or not). With CBMC the molecule is retraced at lambda_old, before anything is
-  // rescaled, exactly mirroring the grow of the insertion side: ideal-gas-weight / W replaces the short-range
+  // rescaled, exactly mirroring the grow of the insertion side: 1 / W replaces the short-range
   // Boltzmann factor of its removal, and only the Ewald Fourier + tail part of that removal stays explicit.
   struct DeletionPrelude
   {
@@ -581,9 +587,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
         RunningEnergy ewaldTail = growEwaldTailDifference(system, tailEffectiveCounts, tailGroupCounts,
                                                           runningNetCharge, trial.cbmcInsert->atoms);
         trial.energy = trial.cbmcInsert->energies + ewaldTail;
-        const double idealGas = component.idealGasRosenbluthWeight.value_or(1.0);
+        // No ideal-gas Rosenbluth weight here or in the retrace of the partner box: a move that inserts in one
+        // box deletes in the other, both boxes are at one temperature, and the true weights cancel (as in the
+        // other Gibbs transfers). Read per box, two slightly different input values left their ratio behind as
+        // a spurious fugacity ratio on every transfer.
         // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero).
-        trial.logAcceptanceFactor = trial.cbmcInsert->logRosenbluthWeight - std::log(idealGas) -
+        trial.logAcceptanceFactor = trial.cbmcInsert->logRosenbluthWeight -
                                     system.beta * ewaldTail.potentialEnergy() +
                                     std::log(volume / (integerCount + 1.0));
         return true;
@@ -661,18 +670,17 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
 
   // The first-step factor of a box (as its logarithm): the Boltzmann factor of rescaling its fractional molecule, except for a CBMC
   // deletion, where the retrace of the leaving molecule replaces the short-range part (the mirror image of the
-  // insertion side, where W / ideal-gas-weight replaces the grown molecule's Boltzmann factor):
-  //   ideal-gas-weight / W_retrace * exp(-beta (Ewald Fourier + tail of the removal)).
-  auto firstStepFactor = [&](const System& system, const Component& component, GibbsMoveKind moveKind,
+  // insertion side, where W replaces the grown molecule's Boltzmann factor):
+  //   1 / W_retrace * exp(-beta (Ewald Fourier + tail of the removal)).
+  auto firstStepFactor = [&](const System& system, GibbsMoveKind moveKind,
                              const RunningEnergy& energyFirstStep, const DeletionPrelude& prelude)
   {
     if (useCBMC && moveKind == GibbsMoveKind::Delete)
     {
-      const double idealGas = component.idealGasRosenbluthWeight.value_or(1.0);
       // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero,
-      // which would turn this quotient into +inf).
-      return std::log(idealGas) - prelude.logRosenbluthWeight -
-             system.beta * prelude.retraceEwaldTail.potentialEnergy();
+      // which would turn this quotient into +inf). The ideal-gas weight cancels against that of the
+      // insertion in the partner box and is left out of both (see 'constructBoundaryTrial').
+      return -prelude.logRosenbluthWeight - system.beta * prelude.retraceEwaldTail.potentialEnergy();
     }
     return -system.beta * (energyFirstStep.potentialEnergy() - prelude.intraCoulombScaling);
   };
@@ -680,8 +688,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   // The factors of the two boxes are summed as logarithms: each one alone can overflow or underflow exp() (an
   // overlap energy is ~1e7 K), and inf * 0 = NaN in the product, which 'u >= NaN' then accepted.
   const double logPhysicalAcceptance =
-      firstStepFactor(systemA, componentA, moveKindA, energyFirstStepA.value(), deletionA) +
-      firstStepFactor(systemB, componentB, moveKindB, energyFirstStepB.value(), deletionB) +
+      firstStepFactor(systemA, moveKindA, energyFirstStepA.value(), deletionA) +
+      firstStepFactor(systemB, moveKindB, energyFirstStepB.value(), deletionB) +
       boundaryA.logAcceptanceFactor + boundaryB.logAcceptanceFactor;
   const double physicalAcceptance = std::exp(std::min(0.0, logPhysicalAcceptance));
   const double logLambdaBias = (biasNewA - biasOldA) + (biasNewB - biasOldB);

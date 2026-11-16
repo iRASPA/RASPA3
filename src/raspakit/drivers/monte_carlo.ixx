@@ -77,7 +77,7 @@ export struct MonteCarlo
   MonteCarlo(const SimulationSchedule &schedule, const std::vector<System> &systems,
              std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles);
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization (2: absoluteCurrentCycle).
+  std::uint64_t versionNumber{3};  ///< Version number for serialization (3: productionCycleLength).
 
   bool outputToFiles{true};
   RandomNumber random;  ///< Random number generator.
@@ -97,6 +97,7 @@ export struct MonteCarlo
   std::size_t currentCycle{0};                                      ///< Current cycle number.
   std::size_t absoluteCurrentCycle{0};                              ///< Current overall cycle number.
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.
+  ProductionCycleLength productionCycleLength{};  ///< Fixed number of steps of a production cycle.
 
   std::vector<System> systems;              ///< Vector of systems to simulate.
   std::size_t fractionalMoleculeSystem{0};  // the system where the fractional molecule is located

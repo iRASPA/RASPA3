@@ -793,7 +793,11 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
   // hundreds of beads, and the recoil window aborts the attempt long before the end.
   // (The context is rebuilt per grow: every inserted molecule changes the background it spans.)
   auto creationContext = [&]()
-  { return makeGrowContext(CBMC::CutOffMode::Full).withChainScheme(CBMC::ChainScheme::ConfigurationalBias); };
+  {
+    return makeGrowContext(CBMC::CutOffMode::Full)
+        .withChainScheme(CBMC::ChainScheme::ConfigurationalBias)
+        .forPlacement();
+  };
 
   // A grown molecule is valid when it exists and does not overlap with its environment.
   auto isValid = [&](const std::optional<CBMC::GrowResult>& growData)
@@ -1112,7 +1116,10 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
   if (component.atoms.size() < 2) return scratchAtoms;
 
   // Isolated (ideal-gas) growth context: CBMC growth feels only the intra-molecular potential and hence
-  // samples exp(-beta * U_intra). Always configurational bias (see 'makeIdealGasGrowContext'): these
+  // samples exp(-beta * U_intra) of the force field's intramolecular kernels. With Ewald the Coulomb kernel of
+  // a non-excluded pair carries the compensation -C q_A q_B erf(alpha r)/r of the pair's share of the Fourier
+  // sum; an isolated molecule has no Fourier sum, so the reinsertion moves below take the compensation back
+  // out and the chain samples the molecule's own (bare Coulomb) ideal-gas distribution. Always configurational bias (see 'makeIdealGasGrowContext'): these
   // conformations seed the conformation reservoir and define the recoil-growth openness reference, and
   // recoil growth can not run before its own reference exists.
   const CBMC::GrowContext context = makeIdealGasGrowContext();
@@ -1146,10 +1153,16 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
         random, context, component, scratchAtoms,
         {.firstBead = CBMC::FirstBeadScheme::Reinsertion, .logStoredR = growData->firstBeadLogStoredR});
 
-    // Metropolis acceptance for the reinsertion move in the isolated system (no Ewald/polarization/tail
+    // Metropolis acceptance for the reinsertion move in the isolated system (no polarization/tail
     // corrections apply): accept with min(1, W_new / W_old), with the ratio evaluated in log space so it
-    // stays exact for long chains whose raw Rosenbluth weights underflow to zero.
-    if (random.uniform() < std::exp(growData->logRosenbluthWeight - retraceData.logRosenbluthWeight))
+    // stays exact for long chains whose raw Rosenbluth weights underflow to zero. The growth weighted the
+    // Ewald compensation of the intramolecular pairs, which the isolated molecule does not have: it is
+    // removed here, as the Fourier difference removes it in the box (see 'intraCoulombScalingEnergy').
+    const double compensationDifference =
+        ewaldIntraCoulombCompensationEnergy(selectedComponent, growData->atoms) -
+        ewaldIntraCoulombCompensationEnergy(selectedComponent, scratchAtoms);
+    if (random.uniform() < std::exp(growData->logRosenbluthWeight - retraceData.logRosenbluthWeight +
+                                    beta * compensationDifference))
     {
       std::copy(growData->atoms.begin(), growData->atoms.end(), scratchAtoms.begin());
       scratchMolecule = growData->molecule;

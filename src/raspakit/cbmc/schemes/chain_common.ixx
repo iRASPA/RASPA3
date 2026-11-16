@@ -88,7 +88,9 @@ struct TetherSchedule
  *
  * Zero for flexible attach steps: their base sampler and torsion-spin selection handle these terms
  * inside the operator engine ('stepHandlesUnsampledInternalTerms'), so applying the factor again
- * would double count. Rigid-body, ring-closure, and seed steps fold them in here.
+ * would double count. Rigid-body and ring-closure steps fold them in here. A seed step folds in the
+ * terms that reach a placed bead outside its fragment (fixed-endpoint regrowth); the terms among the
+ * beads of the seed fragment are constants of its geometry and are left out.
  */
 double unsampledInternalLogFactor(double beta, const GrowStep &step, const std::vector<Atom> &chainAtoms);
 

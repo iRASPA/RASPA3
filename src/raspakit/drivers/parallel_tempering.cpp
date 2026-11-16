@@ -7,6 +7,7 @@ import std;
 import stringutils;
 import hardware_info;
 import archive;
+import simulation_schedule;
 import graceful_shutdown;
 import system;
 import framework;
@@ -392,8 +393,20 @@ void ParallelTempering::performReplicaCycle(std::size_t replicaId, SimulationSta
   // supported by this driver
   std::size_t fractionalMoleculeSystem = 0uz;
 
-  const std::size_t numberOfStepsPerCycle =
-      std::max(system.numberOfMolecules(), 20uz) * system.numerOfAdsorbateComponents();
+  // a production cycle has a fixed number of steps: a length that follows the live molecule count
+  // biases the cycle-sampled averages of an open ensemble, and the configuration swaps at the cycle
+  // boundaries then no longer leave the joint distribution of the ladder invariant (see
+  // 'ProductionCycleLength'). The length belongs to the replica (the thermodynamic state), not to the
+  // configuration that a swap moves through it. A restart file that predates the fixed length fixes it
+  // here, from the count it resumes with.
+  std::size_t numberOfStepsPerCycle =
+      ProductionCycleLength::adaptive(system.numberOfMolecules(), system.numerOfAdsorbateComponents());
+  if (stage == SimulationStage::Production)
+  {
+    ProductionCycleLength& cycleLength = productionCycleLengths[replicaId];
+    if (!cycleLength.fixed) cycleLength.fix(system.numberOfMolecules(), system.numerOfAdsorbateComponents());
+    numberOfStepsPerCycle = cycleLength.stepsPerCycle;
+  }
 
   for (std::size_t j = 0uz; j != numberOfStepsPerCycle; ++j)
   {
@@ -485,11 +498,14 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
 
   simulationStage = stage;
 
+  productionCycleLengths.resize(numberOfReplicas);
+
   if (startCycle == 0uz)
   {
     // serial per-stage preparation
     if (stage == SimulationStage::Equilibration)
     {
+      for (ProductionCycleLength& cycleLength : productionCycleLengths) cycleLength.clear();
       for (System& system : systems)
       {
         for (Component& component : system.components)
@@ -529,6 +545,22 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
         system.normalizeLambdaBiasFactors();
       }
       std::fill(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
+
+      // the number of steps of a production cycle is fixed here, replica by replica
+      for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
+      {
+        productionCycleLengths[replicaId].fix(systems[replicaId].numberOfMolecules(),
+                                              systems[replicaId].numerOfAdsorbateComponents());
+      }
+      {
+        // the worker threads of this stage have not started yet
+        std::scoped_lock lock(outputMutex);
+        std::print(stream, "\nMonte Carlo steps per production cycle (fixed for the whole production stage)\n");
+        for (std::size_t replicaId = 0; replicaId < numberOfReplicas; ++replicaId)
+        {
+          std::print(stream, "    replica {:3d}: {}\n", replicaId, productionCycleLengths[replicaId].stepsPerCycle);
+        }
+      }
     }
     sweepsThisStage = 0uz;
   }
@@ -611,6 +643,13 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
 
               performReplicaCycle(replicaId, stage, estimation.currentBin);
 
+              // the molecule count of the second half of the equilibration sets the length of a
+              // production cycle of this replica
+              if (stage == SimulationStage::Equilibration && cycle >= numberOfCycles / 2uz)
+              {
+                productionCycleLengths[replicaId].sample(system.numberOfMolecules());
+              }
+
               // time-evolution properties (number of molecules, volume): sampled over all stages,
               // indexed by the absolute cycle number; the writers gate on their own 'writeEvery'
               const std::size_t absoluteCycle = stageCycleOffset + cycle;
@@ -655,7 +694,9 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
                 }
               }
 
-              if (cycle % optimizeMCMovesEvery == 0uz)
+              // the step sizes are tuned while the system equilibrates only: an adaptive kernel during production
+              // makes the chain depend on its history and breaks detailed balance
+              if (stage != SimulationStage::Production && cycle % optimizeMCMovesEvery == 0uz)
               {
                 system.optimizeMCMoves();
               }
@@ -1017,6 +1058,16 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
   archive << pt.soluteTemperingComponent;
   archive << pt.soluteTemperatures;
 
+  // version 2: the fixed number of steps of a production cycle, per replica
+  archive << static_cast<std::uint64_t>(pt.productionCycleLengths.size());
+  for (const ProductionCycleLength& cycleLength : pt.productionCycleLengths)
+  {
+    archive << cycleLength.moleculeCountSum;
+    archive << cycleLength.numberOfSamples;
+    archive << cycleLength.stepsPerCycle;
+    archive << cycleLength.fixed;
+  }
+
   archive << pt.totalPreInitializationSimulationTime;
   archive << pt.totalInitializationSimulationTime;
   archive << pt.totalEquilibrationSimulationTime;
@@ -1074,6 +1125,22 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTemp
   archive >> pt.roundTrips;
   archive >> pt.soluteTemperingComponent;
   archive >> pt.soluteTemperatures;
+
+  // older restart files did not store it: a resumed production fixes its cycle lengths at its first cycle
+  pt.productionCycleLengths.clear();
+  if (versionNumber >= 2)
+  {
+    std::uint64_t numberOfCycleLengths{0};
+    archive >> numberOfCycleLengths;
+    pt.productionCycleLengths.resize(numberOfCycleLengths);
+    for (ProductionCycleLength& cycleLength : pt.productionCycleLengths)
+    {
+      archive >> cycleLength.moleculeCountSum;
+      archive >> cycleLength.numberOfSamples;
+      archive >> cycleLength.stepsPerCycle;
+      archive >> cycleLength.fixed;
+    }
+  }
 
   archive >> pt.totalPreInitializationSimulationTime;
   archive >> pt.totalInitializationSimulationTime;

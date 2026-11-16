@@ -818,8 +818,8 @@ void DynamicallyCorrectedTSTFreeEnergy::runPilot()
               if (GracefulShutdown::requested()) break;
               estimation.setCurrentSample(cycle);
               performUnconstrainedCycle(replicaId, SimulationStage::Pilot);
+              // no tuning of the step sizes here: every pilot cycle is sampled (the initialization tuned them)
               if (cycle % settings.sampleEvery == 0uz) samplePilot(replicaId, estimation.currentBin);
-              if (cycle % optimizeMCMovesEvery == 0uz) system.optimizeMCMoves();
               if (cycle % printEvery == 0uz)
               {
                 std::print(replicaStream, "Cycle {} of {} (pilot)\n{}\n", cycle, numberOfCycles,
@@ -1093,7 +1093,8 @@ void DynamicallyCorrectedTSTFreeEnergy::runWindows()
                 {
                   sampleWindow(replicaId, windowIndex, estimation.currentBin);
                 }
-                if (cycle % optimizeMCMovesEvery == 0uz)
+                // the step sizes are tuned during the equilibration of the window only
+                if (!inProduction && cycle % optimizeMCMovesEvery == 0uz)
                 {
                   system.optimizeMCMoves();
                   accumulator.optimize();
@@ -1283,7 +1284,7 @@ void DynamicallyCorrectedTSTFreeEnergy::startWindow(std::size_t replicaId, std::
   }
   const bool hasOtherCages = numberOfCages > 2uz;
 
-  const CBMC::GrowContext context = system.makeGrowContext(CBMC::CutOffMode::Full);
+  const CBMC::GrowContext context = system.makeGrowContext(CBMC::CutOffMode::Full).forPlacement();
   auto relocate = [&](std::size_t j, std::size_t targetCage)
   {
     Molecule& molecule = system.moleculeData[j];

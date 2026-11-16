@@ -1889,3 +1889,102 @@ TEST(MC_GIBBS_DRIFT, gibbs_conventional_cfcmc_conserves_the_molecules_and_the_la
   EXPECT_GT(accepted, 100uz);
   for (System& system : systems) expectNoEnergyDrift(system);
 }
+
+// The lambda grid of the conventional Gibbs CFCMC move has 'points' live states per molecule count, the bins 0 and
+// points - 1 both among them, so a crossing of lambda = 1 or lambda = 0 wraps the bin by 'points' (as the CFCMC swap
+// moves do). Wrapped by the lambda period points - 1, a step +d out of the last bin landed in bin d >= 1 and the
+// step -d from there ended in bin 0 of the same box without a transfer: the crossing had no reverse, the receiving
+// box never arrived in bin 0 and the donating box never in the last bin.
+TEST(MC_GIBBS_DRIFT, gibbs_conventional_cfcmc_boundary_crossings_reach_both_ends_of_the_lambda_grid)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  MCMoveProbabilities probabilities = makeGibbsConventionalCFCMCProbabilities();
+  const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("CH4"));
+  Component methane(forceField, "methane", 190.564, 4599200.0, 0.01142,
+                    {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, 0, false)}, {}, {}, 5, 11, probabilities, std::nullopt,
+                    true);
+  const std::size_t points = methane.lambdaGibbs.numberOfSamplePoints;
+  ASSERT_EQ(points, 11uz);
+
+  const SimulationBox box(30.0, 30.0, 30.0);
+  std::vector<System> systems{System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {40}, 5),
+                              System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {40}, 5)};
+  setupSerialGibbsCFCMC(systems);
+  for (System& system : systems)
+  {
+    system.components[0].mc_moves_statistics.setMaxChange(Move::Types::GibbsConventionalCFCMC,
+                                                          double3(0.5, 0.5, 0.5));
+  }
+
+  const auto bin = [&](std::size_t box) { return systems[box].components[0].lambdaGibbs.currentBin; };
+  const auto integers = [&](std::size_t box) { return systems[box].numberOfIntegerMoleculesPerComponent[0]; };
+
+  RandomNumber random(31);
+  std::size_t receiverInFirstBin = 0, donorInLastBin = 0, transfers = 0;
+  for (std::size_t attempt = 0; attempt < 20000; ++attempt)
+  {
+    const std::array<std::size_t, 2> integersBefore{integers(0), integers(1)};
+    const std::optional<std::pair<RunningEnergy, RunningEnergy>> delta =
+        MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(random, systems[0], systems[1], 0, false);
+    if (!delta.has_value()) continue;
+    systems[0].runningEnergies += delta->first;
+    systems[1].runningEnergies += delta->second;
+    ASSERT_EQ(bin(0) + bin(1), points - 1uz) << "attempt " << attempt;
+    if (integers(0) == integersBefore[0]) continue;
+
+    ++transfers;
+    const std::size_t receiver = integers(0) > integersBefore[0] ? 0uz : 1uz;
+    if (bin(receiver) == 0uz) ++receiverInFirstBin;
+    if (bin(1uz - receiver) == points - 1uz) ++donorInLastBin;
+  }
+  EXPECT_GT(transfers, 50uz);
+  EXPECT_GT(receiverInFirstBin, 0uz);
+  // both boxes cross together, so the two counts are of the same transfers
+  EXPECT_EQ(receiverInFirstBin, donorInLastBin);
+  for (System& system : systems) expectNoEnergyDrift(system);
+}
+
+// A lambda grid of a single point: every step of the conventional Gibbs CFCMC move crosses an end of the lambda
+// path (PropertyLambdaProbabilityHistogram::selectNewBin) and transfers a whole molecule. With the step clamped
+// to the lambda period (zero for one point) the move was a permanent no-op.
+TEST(MC_GIBBS_DRIFT, gibbs_conventional_cfcmc_on_a_single_lambda_point_transfers_molecules)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  MCMoveProbabilities probabilities = makeGibbsConventionalCFCMCProbabilities();
+  const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("CH4"));
+  Component methane(forceField, "methane", 190.564, 4599200.0, 0.01142,
+                    {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, 0, false)}, {}, {}, 5, 1, probabilities, std::nullopt,
+                    true);
+  ASSERT_EQ(methane.lambdaGibbs.numberOfSamplePoints, 1uz);
+
+  const SimulationBox box(30.0, 30.0, 30.0);
+  std::vector<System> systems{System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {40}, 5),
+                              System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {40}, 5)};
+  setupSerialGibbsCFCMC(systems);
+
+  const auto molecules = [&]()
+  { return systems[0].numberOfMoleculesPerComponent[0] + systems[1].numberOfMoleculesPerComponent[0]; };
+  const auto integerMolecules = [&]()
+  { return systems[0].numberOfIntegerMoleculesPerComponent[0] + systems[1].numberOfIntegerMoleculesPerComponent[0]; };
+  const std::size_t initialMolecules = molecules();
+  const std::size_t initialIntegerMolecules = integerMolecules();
+
+  RandomNumber random(13);
+  std::size_t accepted = 0;
+  for (std::size_t attempt = 0; attempt < 3000; ++attempt)
+  {
+    const std::size_t integersBefore = systems[0].numberOfIntegerMoleculesPerComponent[0];
+    const std::optional<std::pair<RunningEnergy, RunningEnergy>> delta =
+        MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(random, systems[0], systems[1], 0, false);
+    if (!delta.has_value()) continue;
+    ++accepted;
+    systems[0].runningEnergies += delta->first;
+    systems[1].runningEnergies += delta->second;
+    ASSERT_EQ(molecules(), initialMolecules) << "attempt " << attempt;
+    ASSERT_EQ(integerMolecules(), initialIntegerMolecules) << "attempt " << attempt;
+    // every accepted move is a transfer
+    EXPECT_NE(systems[0].numberOfIntegerMoleculesPerComponent[0], integersBefore) << "attempt " << attempt;
+  }
+  EXPECT_GT(accepted, 100uz);
+  for (System& system : systems) expectNoEnergyDrift(system);
+}

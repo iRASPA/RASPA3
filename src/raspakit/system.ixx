@@ -551,17 +551,46 @@ export struct System
   /// same order (several molecules are split by their molecule id); only a molecule whose positions are unchanged
   /// is rescaled in place and counted (a slot that receives another conformation, as in the Gibbs transfers, has
   /// its internal energies accounted by the move itself); zero for rigid molecules.
-  /// The intramolecular Coulomb energy of 'atoms' at their own Coulomb scaling minus that at full coupling. With Ewald
-  /// the intramolecular kernel carries the scaling (-s^2 erf(alpha r)/r cancels the pair's share of the Fourier sum),
-  /// while the ideal-gas conformations the CFCMC moves draw are Boltzmann samples at full coupling: placed as a
-  /// fractional molecule at s(lambda), the kernel's change belongs in the acceptance (and its inverse in the reverse
-  /// deletion). Zero without charges and for rigid molecules.
+  /// The intramolecular Coulomb energy of 'atoms' at their own Coulomb scaling minus the intramolecular Coulomb
+  /// energy the ideal-gas conformations of the conventional (non-CBMC) moves are Boltzmann samples of (see
+  /// 'equilibratedIdealGasConformation'). A conformation drawn from exp(-beta U_ideal) and placed in the box with
+  /// the kernel energy U_kernel(s) has this difference in the acceptance (and its inverse in the reverse deletion);
+  /// the rest of its intramolecular energy cancels against the generation probability.
+  ///
+  /// With Ewald the kernel of a non-excluded pair is f C q_A q_B / r - s^2 C q_A q_B erf(alpha r)/r: the second term
+  /// cancels the pair's share of the Fourier sum, which an isolated molecule does not have. The ideal-gas energy is
+  /// therefore the bare f C q_A q_B / r, the kernel at zero scaling, and the difference is the compensation term
+  /// itself, also for a whole molecule (s = 1). Referenced to the kernel at full coupling, the conformations were
+  /// those of a molecule with alpha-dependent charges-in-a-background interactions: the acceptance was that of an
+  /// ideal-gas partition function Z(alpha) instead of the molecule's own, a shift of the chemical potential that
+  /// differs between two Gibbs boxes with different alpha.
+  ///
+  /// With the finite-cutoff methods (Wolf, damped shifted force, ...) the kernel at full coupling is the model's
+  /// own energy of the isolated molecule (there is no Fourier sum that adds to it), and with the methods without
+  /// corrections the kernel does not depend on the scaling: the reference is the kernel at full coupling.
+  /// Zero without charges and for rigid molecules.
   [[nodiscard]] double intraCoulombScalingEnergy(std::span<const Atom> atoms) const
   {
     if (!forceField.useCharge) return 0.0;
+    const double referenceScaling = forceField.usesEwaldFourier() ? 0.0 : 1.0;
+    std::vector<Atom> reference(atoms.begin(), atoms.end());
+    for (Atom& atom : reference) atom.scalingCoulomb = referenceScaling;
+    return intraCoulombRescaleDifference(atoms, reference).potentialEnergy();
+  }
+
+  /// The intramolecular Coulomb kernel energy of a conformation of component 'componentId' at full coupling minus
+  /// its ideal-gas (bare) intramolecular Coulomb energy: the Ewald compensation -C q_A q_B erf(alpha r)/r summed over
+  /// the non-excluded pairs inside the cutoff. Zero unless the Fourier part of the Ewald sum is used.
+  [[nodiscard]] double ewaldIntraCoulombCompensationEnergy(std::size_t componentId, std::span<const Atom> atoms) const
+  {
+    if (!forceField.useCharge || !forceField.usesEwaldFourier()) return 0.0;
     std::vector<Atom> fullCoupling(atoms.begin(), atoms.end());
+    std::vector<Atom> bare(atoms.begin(), atoms.end());
     for (Atom& atom : fullCoupling) atom.scalingCoulomb = 1.0;
-    return intraCoulombRescaleDifference(atoms, fullCoupling).potentialEnergy();
+    for (Atom& atom : bare) atom.scalingCoulomb = 0.0;
+    const auto& potentials = components[componentId].intraMolecularPotentials;
+    return potentials.computeInternalIntraCoulombEnergies(forceField, simulationBox, fullCoupling).potentialEnergy() -
+           potentials.computeInternalIntraCoulombEnergies(forceField, simulationBox, bare).potentialEnergy();
   }
 
   [[nodiscard]] RunningEnergy intraCoulombRescaleDifference(std::span<const Atom> newAtoms,

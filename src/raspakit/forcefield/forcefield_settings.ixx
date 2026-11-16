@@ -53,7 +53,11 @@ export struct ForceFieldSettings
   std::size_t numberOfTorsionTrialDirections{100}; ///< Trial spins per trial direction for the torsion selection.
   std::size_t numberOfFirstBeadPositions{10};      ///< Trial positions of the first bead.
   std::size_t numberOfTrialMovesPerOpenBead{150};  ///< Internal Metropolis moves per placed bead (tilt, ring closure).
-  double minimumRosenbluthFactor{1e-150};          ///< Minimum allowed Rosenbluth factor.
+  /// Floor of the Rosenbluth factor of a grow; 0.0 (the default) is no floor. The weights are accumulated as
+  /// logarithms, so a small factor needs no guard: the acceptance rule rejects it. A positive floor is applied
+  /// to the grow only, not to the retrace, and so removes the reverse of a move out of a high-energy
+  /// (non-overlapping) configuration: it breaks detailed balance and is not a sampling parameter.
+  double minimumRosenbluthFactor{0.0};
 
   // Internal ring-closure Monte-Carlo tuning (CBMC growth of cyclic clusters). Per internal-MC trial,
   // the conformer-hopping crankshaft is attempted with probability 'cbmcRingCrankshaftProbability';

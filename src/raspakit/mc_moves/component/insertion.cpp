@@ -174,7 +174,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
   double preFactor = system.beta * fugacity * system.simulationBox.volume /
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
-  double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
+  // the conformation is a sample of the molecule's own ideal-gas distribution: the Ewald compensation of its
+  // intramolecular pairs is not part of the generation probability (see 'System::intraCoulombScalingEnergy')
+  double Pacc = preFactor * std::exp(-system.beta * (energyDifference.potentialEnergy() +
+                                                     system.intraCoulombScalingEnergy(trialMolecule.second)));
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
   // Calculate acceptance probability and bias from the transition matrix.

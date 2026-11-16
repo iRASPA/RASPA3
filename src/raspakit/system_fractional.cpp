@@ -574,7 +574,10 @@ void System::initializeFixedLambdaFractionalMolecules()
     do
     {
       growData = CBMC::growNewMolecule(
-          random, makeGrowContext(CBMC::CutOffMode::Full).withChainScheme(CBMC::ChainScheme::ConfigurationalBias),
+          random,
+          makeGrowContext(CBMC::CutOffMode::Full)
+              .withChainScheme(CBMC::ChainScheme::ConfigurationalBias)
+              .forPlacement(),
           component, identity);
     } while (!growData.has_value() || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
 
@@ -1476,7 +1479,8 @@ void System::createParallelReactionFractionalMolecules()
         {
           if (useCBMC)
           {
-            growData = CBMC::growNewMolecule(random, makeGrowContext(CBMC::CutOffMode::Full), components[componentId],
+            growData = CBMC::growNewMolecule(random, makeGrowContext(CBMC::CutOffMode::Full).forPlacement(),
+                                             components[componentId],
                                              {.componentId = componentId,
                                               .moleculeId = numberOfMolecules(),
                                               .scaling = reactantScaling,
@@ -1517,7 +1521,8 @@ void System::createParallelReactionFractionalMolecules()
         {
           if (useCBMC)
           {
-            growData = CBMC::growNewMolecule(random, makeGrowContext(CBMC::CutOffMode::Full), components[componentId],
+            growData = CBMC::growNewMolecule(random, makeGrowContext(CBMC::CutOffMode::Full).forPlacement(),
+                                             components[componentId],
                                              {.componentId = componentId,
                                               .moleculeId = numberOfMolecules(),
                                               .scaling = productScaling,
@@ -1597,7 +1602,8 @@ void System::createSerialReactionFractionalMolecules()
           // molecule, which produces an astronomically high energy as soon as lambda is raised
           if (useCBMC)
           {
-            growData = CBMC::growNewMolecule(random, makeGrowContext(CBMC::CutOffMode::Full), components[componentId],
+            growData = CBMC::growNewMolecule(random, makeGrowContext(CBMC::CutOffMode::Full).forPlacement(),
+                                             components[componentId],
                                              {.componentId = componentId,
                                               .moleculeId = numberOfMolecules(),
                                               .scaling = 1.0,

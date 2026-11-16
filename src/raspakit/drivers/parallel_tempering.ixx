@@ -10,6 +10,7 @@ import system;
 import input_reader;
 import running_energy;
 import archive;
+import simulation_schedule;
 import json;
 import replica_round_trips;
 
@@ -53,7 +54,7 @@ export struct ParallelTempering
    */
   ParallelTempering(InputReader& reader);
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization (2: productionCycleLengths).
 
   RandomNumber random;  ///< Random number generator (seeding + swap acceptance).
 
@@ -91,6 +92,7 @@ export struct ParallelTempering
   std::vector<RandomNumber> randoms;  ///< Independent random-number stream per replica.
 
   std::vector<std::size_t> stepsPerReplica;  ///< Production MC steps performed per replica.
+  std::vector<ProductionCycleLength> productionCycleLengths;  ///< Fixed number of steps of a production cycle, per replica.
 
   /// Cycles completed in the previous stages; the time-evolution properties (number of molecules,
   /// volume) are indexed by the absolute cycle number counted over all stages.

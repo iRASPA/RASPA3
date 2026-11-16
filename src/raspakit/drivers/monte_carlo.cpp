@@ -319,7 +319,18 @@ void MonteCarlo::performCycle()
         "the systems of a Monte Carlo simulation must have the same components: a step pairs two systems and "
         "addresses the component of both by one index\n");
   }
-  numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
+  numberOfStepsPerCycle = ProductionCycleLength::adaptive(totalNumberOfMolecules, totalNumberOfComponents);
+  if (simulationStage == SimulationStage::Production)
+  {
+    // a production cycle has a fixed number of steps: a length that follows the live molecule count
+    // biases the cycle-sampled averages of an open ensemble (see 'ProductionCycleLength'). A restart
+    // file that predates the fixed length fixes it here, from the count it resumes with.
+    if (!productionCycleLength.fixed)
+    {
+      productionCycleLength.fix(totalNumberOfMolecules, totalNumberOfComponents);
+    }
+    numberOfStepsPerCycle = productionCycleLength.stepsPerCycle;
+  }
 
   for (std::size_t j = 0uz; j != numberOfStepsPerCycle; j++)
   {
@@ -637,6 +648,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
 
   if (simulationStage == SimulationStage::Equilibration) goto continueEquilibrationStage;
   simulationStage = SimulationStage::Equilibration;
+  productionCycleLength.clear();
 
   for (System& system : systems)
   {
@@ -667,6 +679,14 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
     t1 = std::chrono::steady_clock::now();
 
     performCycle();
+
+    // the molecule count of the second half of the equilibration sets the length of a production cycle
+    if (currentCycle >= numberOfEquilibrationCycles / 2uz)
+    {
+      productionCycleLength.sample(std::transform_reduce(
+          systems.begin(), systems.end(), 0uz, std::plus<>{},
+          [](const System& system) { return system.numberOfMolecules(); }));
+    }
 
     for (System& system : systems)
     {
@@ -847,6 +867,18 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
 
       ++system_id;
     }
+  }
+
+  // the number of steps of a production cycle is fixed here (see 'ProductionCycleLength')
+  productionCycleLength.fix(
+      std::transform_reduce(systems.begin(), systems.end(), 0uz, std::plus<>{},
+                            [](const System& system) { return system.numberOfMolecules(); }),
+      systems.front().numerOfAdsorbateComponents());
+  for (std::size_t system_id{0}; system_id != streams.size(); ++system_id)
+  {
+    std::ostream stream(streams[system_id].rdbuf());
+    std::print(stream, "Production: {} Monte Carlo steps per cycle (fixed for the whole production stage)\n\n",
+               productionCycleLength.stepsPerCycle);
   }
 
   numberOfSteps = 0uz;
@@ -1208,6 +1240,12 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
 
   // not written: totalGridCreationTime
 
+  // version 3: the fixed number of steps of a production cycle
+  archive << mc.productionCycleLength.moleculeCountSum;
+  archive << mc.productionCycleLength.numberOfSamples;
+  archive << mc.productionCycleLength.stepsPerCycle;
+  archive << mc.productionCycleLength.fixed;
+
   archive << mc.totalPreInitializationSimulationTime;
   archive << mc.totalInitializationSimulationTime;
   archive << mc.totalEquilibrationSimulationTime;
@@ -1275,6 +1313,16 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
   }
 
   // not written: totalGridCreationTime
+
+  // older restart files did not store it: a resumed production fixes its cycle length at its first cycle
+  mc.productionCycleLength.clear();
+  if (versionNumber >= 3)
+  {
+    archive >> mc.productionCycleLength.moleculeCountSum;
+    archive >> mc.productionCycleLength.numberOfSamples;
+    archive >> mc.productionCycleLength.stepsPerCycle;
+    archive >> mc.productionCycleLength.fixed;
+  }
 
   archive >> mc.totalPreInitializationSimulationTime;
   archive >> mc.totalInitializationSimulationTime;

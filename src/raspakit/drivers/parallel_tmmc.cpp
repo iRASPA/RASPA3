@@ -178,7 +178,7 @@ bool growToMacrostate(System& system, RandomNumber& rng, std::size_t target)
     std::size_t attempts = 0uz;
     do
     {
-      growData = CBMC::growNewMolecule(rng, system.makeGrowContext(CBMC::CutOffMode::Full),
+      growData = CBMC::growNewMolecule(rng, system.makeGrowContext(CBMC::CutOffMode::Full).forPlacement(),
                                        system.components[componentId],
                                        {.componentId = componentId, .moleculeId = system.numberOfMolecules()});
       ++attempts;
@@ -1335,7 +1335,9 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
                 }
               }
 
-              if (cycle % optimizeMCMovesEvery == 0uz)
+              // the step sizes are tuned while the system equilibrates only: an adaptive kernel during production
+              // makes the chain depend on its history and breaks detailed balance
+              if (stage != SimulationStage::Production && cycle % optimizeMCMovesEvery == 0uz)
               {
                 system.optimizeMCMoves();
               }
