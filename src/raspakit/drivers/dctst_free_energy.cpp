@@ -408,6 +408,33 @@ DynamicallyCorrectedTSTFreeEnergy::DynamicallyCorrectedTSTFreeEnergy(System temp
     }
   };
   requirePositive(settings.fineBinWidth, "FineBinWidth");
+  requirePositive(settings.whamTolerance, "WhamTolerance");
+  // (zero blocks: the histograms of block 0 do not exist; zero bins: a modulo by zero in the bin of a coordinate)
+  if (numberOfBlocks == 0uz)
+  {
+    throw std::runtime_error("dcTST: the number of blocks must be at least one\n");
+  }
+  if (settings.numberOfFreeEnergyBins == 0uz)
+  {
+    throw std::runtime_error("dcTST: 'NumberOfFreeEnergyBins' must be positive\n");
+  }
+  if (settings.whamMaximumIterations == 0uz)
+  {
+    throw std::runtime_error("dcTST: 'WhamMaximumIterations' must be positive\n");
+  }
+  auto requireProbability = [](double value, std::string_view name)
+  {
+    if (!(value >= 0.0) || !(value <= 1.0))
+    {
+      throw std::runtime_error(std::format("dcTST: '{}' must be in [0, 1] (got {})\n", name, value));
+    }
+  };
+  requireProbability(settings.reinsertionTaggedProbability, "ReinsertionTaggedProbability");
+  requireProbability(settings.taggedMoveFraction, "TaggedMoveFraction");
+  if (settings.mirrorSymmetry && occupancyMode)
+  {
+    throw std::runtime_error("dcTST: 'MirrorSymmetry' is not available with 'CageOccupancies'\n");
+  }
   requirePositive(settings.windowSpacing, "WindowSpacing");
   requirePositive(settings.barrierFitRange, "BarrierFitRange");
   if (!(settings.windowStiffness >= 0.0) || !(settings.windowStiffness < 1.0e300))
@@ -817,7 +844,12 @@ void DynamicallyCorrectedTSTFreeEnergy::buildWindows()
 {
   const double lambda = barrier.lambda;
   const bool mirror = settings.mirrorSymmetry && !occupancyMode;
-  const bool periodic = !occupancyMode && !mirror && !settings.windowRange.has_value();
+  // the plain coordinate is periodic; a 'WindowRange' of the whole period is that period, not an interval with
+  // both of its ends (q_begin and q_begin + lambda are the same plane, and got a window each)
+  const bool plain = !occupancyMode && !mirror;
+  const bool periodic =
+      plain && (!settings.windowRange.has_value() ||
+                settings.windowRange->second - settings.windowRange->first >= lambda * (1.0 - 1e-9));
 
   // --- flattening bias from the pilot histogram ---------------------------------------------------
   if (settings.flatteningBias && settings.numberOfPilotCycles > 0uz)
@@ -902,7 +934,7 @@ void DynamicallyCorrectedTSTFreeEnergy::buildWindows()
       begin = settings.windowRange->first;
       end = settings.windowRange->second;
     }
-    const double length = end - begin;
+    const double length = periodic ? lambda : end - begin;
     std::size_t K = settings.numberOfWindows;
     if (K == 0uz) K = std::max(2uz, static_cast<std::size_t>(std::ceil(length / settings.windowSpacing)));
     if (periodic)
@@ -929,7 +961,14 @@ void DynamicallyCorrectedTSTFreeEnergy::buildWindows()
     // the smallest gap between distinct centers. A center given twice (a window run on two replicas) made the
     // gap zero: an infinite stiffness with a support of zero width, and 0.5 * inf * 0 = NaN in the bias of the
     // bin on the center. With fewer than two distinct centers the spacing is 'WindowSpacing'.
+    // On the plain coordinate the centers are points of a circle: folded into the period, and the gap across
+    // +-lambda/2 counts (centers -5.5 and 5.5 with lambda = 11.87 are 0.87 apart, not 11: the stiffness that
+    // was derived from the gap was 160 times too small).
     std::vector<double> sorted = centers;
+    if (plain)
+    {
+      for (double& center : sorted) center = barrier.reducedCoordinate(center);
+    }
     std::sort(sorted.begin(), sorted.end());
     double smallestGap = std::numeric_limits<double>::max();
     for (std::size_t k = 0; k + 1 < sorted.size(); ++k)
@@ -937,9 +976,32 @@ void DynamicallyCorrectedTSTFreeEnergy::buildWindows()
       const double gap = sorted[k + 1] - sorted[k];
       if (gap > 1e-9) smallestGap = std::min(smallestGap, gap);
     }
+    if (plain)
+    {
+      const double gap = lambda - (sorted.back() - sorted.front());
+      if (gap > 1e-9) smallestGap = std::min(smallestGap, gap);
+    }
     if (smallestGap < std::numeric_limits<double>::max()) spacing = smallestGap;
   }
   const double stiffness = (settings.windowStiffness > 0.0) ? settings.windowStiffness : 4.0 / (spacing * spacing);
+
+  // the centers of the plain coordinate in the period [-lambda/2, lambda/2), and whether they go around it: the
+  // gap across +-lambda/2 is then one between neighbours like the others (within a factor of the widest of them)
+  windowsClosePeriod = false;
+  if (plain)
+  {
+    for (double& center : centers) center = barrier.reducedCoordinate(center);
+    std::vector<double> sorted = centers;
+    std::sort(sorted.begin(), sorted.end());
+    sorted.erase(std::unique(sorted.begin(), sorted.end(), [](double a, double b) { return b - a <= 1e-9; }),
+                 sorted.end());
+    if (sorted.size() > 1uz)
+    {
+      double widestGap{0.0};
+      for (std::size_t k = 0; k + 1 < sorted.size(); ++k) widestGap = std::max(widestGap, sorted[k + 1] - sorted[k]);
+      windowsClosePeriod = (lambda - (sorted.back() - sorted.front())) <= 1.5 * widestGap;
+    }
+  }
 
   windows.clear();
   for (std::size_t k = 0; k < centers.size(); ++k)
@@ -1726,8 +1788,20 @@ void DynamicallyCorrectedTSTFreeEnergy::samplePilot(std::size_t replicaId, std::
       accumulator.beadSpeedSum += std::sqrt(2.0 * kT * inverseMass / std::numbers::pi);
       accumulator.beadSpeedCount += 1.0;
       // the orientations of the transition state: the samples on a dividing plane
-      if (std::abs(barrier.reducedCoordinate(barrier.projection(system.simulationBox, position))) <
-          DcTSTWindowAccumulator::barrierOccupancyHalfWidth)
+      bool onDividingPlane = std::abs(barrier.reducedCoordinate(barrier.projection(system.simulationBox, position))) <
+                             DcTSTWindowAccumulator::barrierOccupancyHalfWidth;
+      if (onDividingPlane && occupancyMode)
+      {
+        // of the conditioned ensemble only: the hop along +normal through this plane with the requested (n_A, n_B),
+        // the molecule itself counted in A (every crossing was taken, at the occupancies of the bulk)
+        const auto [behind, ahead] = cageLattice.cagesAcrossNearestPlane(position, barrier.normal);
+        const std::size_t own = cageLattice.cageOf(position);
+        const std::size_t mBehind = occupancy[behind] - ((own == behind) ? 1uz : 0uz);
+        const std::size_t mAhead = occupancy[ahead] - ((own == ahead) ? 1uz : 0uz);
+        onDividingPlane =
+            (mBehind + 1uz == settings.cageOccupancies->first) && (mAhead == settings.cageOccupancies->second);
+      }
+      if (onDividingPlane)
       {
         accumulator.barrierSpeedSum += std::sqrt(2.0 * kT * inverseMass / std::numbers::pi);
         accumulator.barrierSpeedCount += 1.0;
@@ -1976,6 +2050,8 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     double barrierProbabilityBin{0.0};
     double logBarrierProbabilityBin{0.0};
     double logBarrierProbability{0.0};  ///< ln P(q*), finite also when P(q*) underflows
+    bool barrierDefined{false};  ///< The fit or a bin at the plane gave ln P(q*) (no sample there otherwise).
+    double minimumFreeEnergy{0.0};  ///< The lowest -ln P of the bins of this solution (its well).
     QuadraticFit fit;
     double barrierProbability{0.0};
     double barrierOffset{0.0};
@@ -2053,6 +2129,15 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
       solution.barrierProbabilityBin = (n > 0) ? std::exp(logLargest) * sum / static_cast<double>(n) : 0.0;
       solution.logBarrierProbabilityBin =
           (n > 0) ? logLargest + std::log(sum / static_cast<double>(n)) : DcTSTWham::logZero;
+      solution.barrierDefined = (n > 0);
+    }
+    {
+      double lowest = std::numeric_limits<double>::max();
+      for (std::size_t b = 0; b < numberOfBins; ++b)
+      {
+        if (solution.defined[b]) lowest = std::min(lowest, -solution.logDensity[b]);
+      }
+      solution.minimumFreeEnergy = lowest;
     }
     // the parabolic fit of ln P over |x - x*| <= fit range
     {
@@ -2070,6 +2155,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
       {
         solution.barrierProbability = std::exp(solution.fit.a);
         solution.logBarrierProbability = solution.fit.a;
+        solution.barrierDefined = true;
         // ln P = a + b t + c t^2 has its minimum (the maximum of beta F) at t = -b / (2c) when c > 0
         solution.barrierOffset = (solution.fit.c > 0.0) ? -solution.fit.b / (2.0 * solution.fit.c) : 0.0;
       }
@@ -2167,15 +2253,20 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
   result.fitPoints = full.fit.points;
   result.barrierOffset = full.barrierOffset;
   result.curvature = -2.0 * full.fit.c;  // beta F'' = -(ln P)''
-  result.barrierFreeEnergy = -full.logBarrierProbability - minimum;
-  result.barrierFreeEnergyBin = -full.logBarrierProbabilityBin - minimum;
+  // Without a sample at the plane ln P(q*) is the marker of an empty bin (-1e300), and the barrier came out as
+  // 1e300 kT; one block without such a sample put 1e300 among the block values, whose squared deviation is
+  // beyond a double. An undefined barrier is reported as zero with an invalid fit, and such a block is left out.
+  // The block values are, like the estimate, relative to the well of their own solution.
+  result.barrierFreeEnergy = full.barrierDefined ? -full.logBarrierProbability - minimum : 0.0;
+  result.barrierFreeEnergyBin =
+      (full.logBarrierProbabilityBin > DcTSTWham::logZeroThreshold) ? -full.logBarrierProbabilityBin - minimum : 0.0;
   {
-    std::vector<double> pBin, pFit, fBin, fFit, offsets;
+    std::vector<double> pBin, pFit, fFit, offsets;
     for (const Solution& s : blockSolutions)
     {
       pBin.push_back(s.barrierProbabilityBin);
       pFit.push_back(s.barrierProbability);
-      fFit.push_back(-s.logBarrierProbability);
+      if (s.barrierDefined) fFit.push_back(-s.logBarrierProbability - s.minimumFreeEnergy);
       offsets.push_back(s.barrierOffset);
     }
     result.barrierProbabilityBinError = meanAndError(pBin).second;
@@ -2391,13 +2482,21 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
       }
     }
     // overlap with the next distinct center (repeated windows share a center and are skipped)
+    // (where the windows go around the period, the next center of the last one is the first, across +-lambda/2:
+    // that pair was left out, and a gap in the coverage at the cage center went unreported)
     result.overlap.assign(windows.size(), 0.0);
+    result.overlapDefined.assign(windows.size(), 0);
     for (std::size_t i = 0; i < order.size(); ++i)
     {
       std::size_t j = i + 1;
       while (j < order.size() && windows[order[j]].center <= windows[order[i]].center) ++j;
-      if (j == order.size()) continue;
+      if (j == order.size())
+      {
+        if (!windowsClosePeriod || !(windows[order.front()].center < windows[order[i]].center)) continue;
+        j = 0;
+      }
       result.overlap[order[i]] = result.overlapMatrix[(order[i] + 1uz) * numberOfStates + (order[j] + 1uz)];
+      result.overlapDefined[order[i]] = 1;
     }
   }
 
@@ -2569,7 +2668,7 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
     std::print(file,
                "# dcTST joint distribution P(n_A, n_B) of the occupancy n_A of the cage of a molecule of component "
                "'{}' (itself included)\n# and the occupancy n_B of the neighboring cage across its window towards "
-               "+normal (all components counted); {} samples\n",
+               "+normal (molecules of that component only); {} samples\n",
                tagged.name, occupancies.total);
     std::print(file, "# <n_A> = {:.4f} (loading + 1 in the mean-field limit), <n_B> = {:.4f}\n", occupancies.meanA,
                occupancies.meanB);
@@ -2770,10 +2869,7 @@ void DynamicallyCorrectedTSTFreeEnergy::output()
     double minimumOverlap = 1.0;
     for (std::size_t k = 0; k < windows.size(); ++k)
     {
-      bool last = true;
-      for (std::size_t j = 0; j < windows.size(); ++j)
-        if (windows[j].center > windows[k].center) last = false;
-      if (!last) minimumOverlap = std::min(minimumOverlap, profile.overlap[k]);
+      if (profile.overlapDefined[k]) minimumOverlap = std::min(minimumOverlap, profile.overlap[k]);
     }
     std::print(stream, "    minimum overlap of consecutive windows: {:.4f}{}\n\n", minimumOverlap,
                minimumOverlap < 0.05 ? "  WARNING: poor overlap, add windows or lower the stiffness" : "");

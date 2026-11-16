@@ -350,6 +350,7 @@ std::optional<CBMC::MultiTrialGrowResult> CBMC::DeviceMultiTrialGrower::growNew(
   for (Atom &atom : templateAtoms)
   {
     atom.moleculeId = static_cast<std::uint32_t>(identity.moleculeId);
+    atom.componentId = static_cast<std::uint8_t>(identity.componentId);
     atom.groupId = identity.groupId;
     atom.isFractional = identity.isFractional;
     atom.setScaling(identity.scaling);

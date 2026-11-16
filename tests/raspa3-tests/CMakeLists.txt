@@ -74,6 +74,7 @@ add_executable(unit_tests_raspa3
   mixed_framework_rigid_group_exclusions.cpp
   intramolecular_potential_fixes.cpp
   dctst_transmission_polarization_drift.cpp
+  dctst_seam_committor_and_held_components.cpp
   tmmc_property_output.cpp
   property_output_fixes.cpp
   foundationkit_fixes.cpp

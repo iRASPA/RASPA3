@@ -78,6 +78,13 @@ DcTSTBarrier::DcTSTBarrier(const SimulationBox& simulationBox, double3 fractiona
                     "which is not a whole number of 'LatticeDistance' {:.6f} [A]\n",
                     period, millerIndices.x, millerIndices.y, millerIndices.z, lambda));
   }
+  // The lattice distance is that whole fraction of the period, not the number as it was typed. The reaction
+  // coordinate is wrapped on the period and then reduced on lambda: with 'LatticeDistance' 12.28 for a period of
+  // 49.128 (four cages) the seam of the box at +-period/2 does not fold onto a plane q = k lambda but 0.004 A
+  // beside it, and with an even number of cages that plane is the barrier top: a slab of that width about q* = 0
+  // had five preimages where every other point has four (a spike of 25% in P(q*)), and one fewer for a lattice
+  // distance typed too large.
+  lambda = period / std::round(cagesPerPeriod);
 }
 
 double DcTSTBarrier::projection([[maybe_unused]] const SimulationBox& simulationBox, double3 r) const

@@ -311,6 +311,45 @@ void applyBath(RandomNumber& rng, DcTSTSettings::TrajectoryThermostat type, doub
   }
 }
 
+/**
+ * \brief Takes the momenta and the forces from the molecules of the components that are held in place.
+ *
+ * A component without a Monte Carlo move (extra-framework cations on their sites) is not sampled by the Monte
+ * Carlo stages: its molecules are part of the fixed environment of the constrained ensemble. Called after the
+ * forces have been computed, this leaves such a molecule nothing to be kicked with in the next step of velocity
+ * Verlet: its position does not change, and it carries no kinetic energy.
+ */
+void holdInPlace(std::span<const char> heldComponent, std::span<Molecule> moleculeData, std::span<AtomDynamics> dynamics,
+                 std::span<GroupState> groupData, const std::vector<Component>& components)
+{
+  std::size_t groupIndex{};
+  for (Molecule& molecule : moleculeData)
+  {
+    const Component& component = components[molecule.componentId];
+    const std::size_t numberOfRigidFragments = component.isSemiFlexible() ? component.numberOfRigidFragments() : 0uz;
+    if (heldComponent[molecule.componentId])
+    {
+      molecule.velocity = double3(0.0, 0.0, 0.0);
+      molecule.gradient = double3(0.0, 0.0, 0.0);
+      molecule.orientationMomentum = simd_quatd(0.0, 0.0, 0.0, 0.0);
+      molecule.orientationGradient = simd_quatd(0.0, 0.0, 0.0, 0.0);
+      for (AtomDynamics& dynamic : dynamics.subspan(molecule.atomIndex, molecule.numberOfAtoms))
+      {
+        dynamic.velocity = double3(0.0, 0.0, 0.0);
+        dynamic.gradient = double3(0.0, 0.0, 0.0);
+      }
+      for (std::size_t g = groupIndex; g < groupIndex + numberOfRigidFragments && g < groupData.size(); ++g)
+      {
+        groupData[g].velocity = double3(0.0, 0.0, 0.0);
+        groupData[g].gradient = double3(0.0, 0.0, 0.0);
+        groupData[g].orientationMomentum = simd_quatd(0.0, 0.0, 0.0, 0.0);
+        groupData[g].orientationGradient = simd_quatd(0.0, 0.0, 0.0, 0.0);
+      }
+    }
+    groupIndex += numberOfRigidFragments;
+  }
+}
+
 /// Mean and standard error of the mean of a set of block values.
 std::pair<double, double> meanAndError(std::span<const double> values)
 {
@@ -502,6 +541,14 @@ DynamicallyCorrectedTST::DynamicallyCorrectedTST(InputReader& reader)
   {
     throw std::runtime_error(
         "dcTST: 'CageOccupancies' n_A must be at least 1 (the tagged molecule itself is in cage A)\n");
+  }
+
+  // The handover times belong to the event-terminated trajectories. The input reader drops the default list for
+  // "FixedTime"; settings filled in by hand kept it, and the hybrid estimator was then switched on with
+  // accumulators that are never filled (a rate of zero and a concerted fraction of -1 in the output).
+  if (settings.trajectoryTermination != DcTSTSettings::TrajectoryTermination::Event)
+  {
+    settings.handoverTimes.clear();
   }
 
   // the trajectories are integrated with the system time step; the transmission functions are stored
@@ -967,6 +1014,17 @@ void DynamicallyCorrectedTST::loadFreeEnergyInput()
                  "WARNING: 'HandoverTimes' given but the cage lattice has fewer than four cages along the barrier "
                  "normal (the column A', A, B, B' would alias); the hybrid estimator is disabled\n\n");
     }
+    else if (settings.trajectoryTermination == DcTSTSettings::TrajectoryTermination::Event &&
+             (cageLattice.numberOfUnitCells[(cageLattice.axisAlongDirection(barrier.normal).axis + 1) % 3] < 2 ||
+              cageLattice.numberOfUnitCells[(cageLattice.axisAlongDirection(barrier.normal).axis + 2) % 3] < 2))
+    {
+      // a cage that is alone along a lateral axis is its own lateral neighbour: the neighbourhood state held n_A
+      // as a lateral occupancy of A, and the Markov closure counted hops from A into A as channels that end the
+      // state
+      std::print(stream,
+                 "WARNING: 'HandoverTimes' given but the cage lattice has a single cage along an axis beside the "
+                 "barrier normal (a cage would be its own lateral neighbour); the hybrid estimator is disabled\n\n");
+    }
     else
     {
       const double timeStep = front.timeStep;
@@ -1011,64 +1069,84 @@ void DynamicallyCorrectedTST::buildCommittorTable(const std::vector<double>& qGr
   committorTable.clear();
   if (qGrid.size() < 4uz) return;
 
-  // beta F on a fine uniform grid over [-lambda/2, lambda/2) around the barrier: every profile point is placed
-  // in its bin (relative to the barrier; the range of the profile is not wrapped, so a conditioned profile over
-  // cage A and a bit of B keeps its asymmetry), empty bins take the lowest beta F of the profile (the cage
-  // interiors, where e^{beta F} is negligible against the barrier region anyway)
+  // beta F on a fine uniform grid over [-lambda/2, lambda/2) around the barrier (the range of the profile is not
+  // wrapped, so a conditioned profile over cage A and a bit of B keeps its asymmetry): at every bin center inside
+  // the range of the profile, the linear interpolation of its points. The points were dropped into the bins they
+  // fall in instead; those of the free-energy driver lie on bin edges, which moved the profile, and the committor
+  // with it, by half a bin. Bins that neither the profile nor its mirror image reaches take the lowest beta F of
+  // the profile (the cage interiors, where e^{beta F} is negligible against the barrier region anyway).
   constexpr std::size_t numberOfPoints = 400;
   const double width = barrier.lambda / static_cast<double>(numberOfPoints);
-  std::vector<double> sum(numberOfPoints, 0.0);
-  std::vector<std::size_t> count(numberOfPoints, 0uz);
+  std::vector<std::pair<double, double>> profile;
   double minimum = std::numeric_limits<double>::max();
   for (std::size_t i = 0; i < qGrid.size(); ++i)
   {
     const double q = qGrid[i] - barrierOffset;
     if (q < -0.5 * barrier.lambda || q >= 0.5 * barrier.lambda) continue;
-    const std::size_t bin = std::min(numberOfPoints - 1uz, static_cast<std::size_t>(std::floor((q + 0.5 * barrier.lambda) / width)));
-    sum[bin] += betaF[i];
-    ++count[bin];
+    profile.emplace_back(q, betaF[i]);
     minimum = std::min(minimum, betaF[i]);
   }
-  if (minimum == std::numeric_limits<double>::max()) return;
+  if (profile.size() < 2uz) return;
+  std::sort(profile.begin(), profile.end());
 
   // a profile that does not cover the whole period around the barrier (the conditioned profile over cage A
   // ends a quarter cage into B) takes the missing bins from their mirror images about the barrier, so that the
   // committor does not drop to the minimum discontinuously where the profile ends
   std::vector<double> f(numberOfPoints, minimum);
-  std::vector<char> measured(numberOfPoints, 0);
-  for (std::size_t i = 0; i < numberOfPoints; ++i)
+  std::vector<std::size_t> count(numberOfPoints, 0uz);
   {
-    if (count[i] > 0uz)
+    // (a bin center within half a bin of the first or the last point takes the value of that point)
+    std::size_t segment{0};
+    for (std::size_t i = 0; i < numberOfPoints; ++i)
     {
-      f[i] = sum[i] / static_cast<double>(count[i]);
-      measured[i] = 1;
+      const double x = -0.5 * barrier.lambda + (static_cast<double>(i) + 0.5) * width;
+      if (x < profile.front().first - 0.5 * width || x > profile.back().first + 0.5 * width) continue;
+      while (segment + 2uz < profile.size() && profile[segment + 1uz].first < x) ++segment;
+      const auto& [qa, fa] = profile[segment];
+      const auto& [qb, fb] = profile[segment + 1uz];
+      const double t = (qb - qa > 1e-12) ? std::clamp((x - qa) / (qb - qa), 0.0, 1.0) : 0.0;
+      f[i] = (1.0 - t) * fa + t * fb;
+      count[i] = 1uz;
     }
   }
+  // linear interpolation between the filled bins
+  const auto interpolate = [&]() -> bool
+  {
+    std::vector<std::size_t> filled;
+    for (std::size_t i = 0; i < numberOfPoints; ++i)
+    {
+      if (count[i] > 0uz) filled.push_back(i);
+    }
+    if (filled.size() < 2uz) return false;
+    for (std::size_t k = 0; k + 1 < filled.size(); ++k)
+    {
+      const std::size_t a = filled[k], b = filled[k + 1];
+      for (std::size_t i = a + 1; i < b; ++i)
+      {
+        const double t = static_cast<double>(i - a) / static_cast<double>(b - a);
+        f[i] = (1.0 - t) * f[a] + t * f[b];
+        count[i] = 1uz;
+      }
+    }
+    return true;
+  };
+  // The mirror images only for the bins beyond the range of the profile. They were taken for every bin without
+  // a point of its own: a profile of 100 points fills every fourth of the 400 bins, the bin before each of
+  // them has a measured mirror image and took beta F(-q), and the two bins between were interpolated from
+  // beta F(q) to beta F(-q). Under the exponential the higher shoulder of an asymmetric barrier then counted
+  // on both sides and p_B(0) went to 1/2.
+  const std::vector<std::size_t> known = count;
   for (std::size_t i = 0; i < numberOfPoints; ++i)
   {
     const std::size_t mirror = numberOfPoints - 1uz - i;
-    if (!measured[i] && measured[mirror])
+    if (known[i] == 0uz && known[mirror] > 0uz)
     {
       f[i] = f[mirror];
       count[i] = 1uz;
     }
   }
-  // linear interpolation between the filled bins
-  std::vector<std::size_t> filled;
-  for (std::size_t i = 0; i < numberOfPoints; ++i)
-  {
-    if (count[i] > 0uz) filled.push_back(i);
-  }
-  if (filled.size() < 2uz) return;
-  for (std::size_t k = 0; k + 1 < filled.size(); ++k)
-  {
-    const std::size_t a = filled[k], b = filled[k + 1];
-    for (std::size_t i = a + 1; i < b; ++i)
-    {
-      const double t = static_cast<double>(i - a) / static_cast<double>(b - a);
-      f[i] = (1.0 - t) * f[a] + t * f[b];
-    }
-  }
+  // (what neither the profile nor its mirror image covers, between the two)
+  if (!interpolate()) return;
 
   // p_B(q) = int_{-lambda/2}^{q} e^{beta F} / int e^{beta F}, evaluated at the bin centres (midpoint rule)
   const double reference = *std::max_element(f.begin(), f.end());
@@ -1928,9 +2006,17 @@ void DynamicallyCorrectedTST::createConstrainedConfiguration(std::size_t replica
   const DcTSTCageLattice::AxisAlignment alignment = cageLattice.axisAlongDirection(barrier.normal);
   for (std::size_t c = 0; c < cageLattice.numberOfCages(); ++c)
   {
-    const double3 mid =
-        0.5 * (cageLattice.center(c) + cageLattice.center(cageLattice.neighborAlongAxis(c, alignment.axis, alignment.sign)));
-    if (std::abs(barrier.reducedCoordinate(barrier.projection(system.simulationBox, mid))) < 0.1 * barrier.lambda)
+    // Halfway along the minimum image of the step to the neighbour, and on this plane only. The mean of the two
+    // centers is the middle of the supercell for the pair across its boundary (the windows of the plane q = 0
+    // where that is the seam, all of them refused), and the midpoints of the other planes q = k lambda were
+    // moved here along the normal: k lattice distances, which in an oblique cell is not a lattice translation
+    // and put the window point into the wall.
+    const double3 centerOfCage = cageLattice.center(c);
+    const double3 mid = centerOfCage + 0.5 * system.simulationBox.applyPeriodicBoundaryConditions(
+                                                 cageLattice.center(cageLattice.neighborAlongAxis(
+                                                     c, alignment.axis, alignment.sign)) -
+                                                 centerOfCage);
+    if (std::abs(barrier.projection(system.simulationBox, mid)) < 0.1 * barrier.lambda)
     {
       windowPoints.push_back(barrier.projectOntoPlane(system.simulationBox, mid, 0.0));
     }
@@ -2277,6 +2363,27 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
   const std::span<Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   std::optional<Thermostat> noThermostat = std::nullopt;
 
+  // The components the Monte Carlo stages do not move (no move with a probability: immobile cations) are held in
+  // place in the trajectories too. They were given thermal velocities and integrated with the rest: degrees of
+  // freedom the constrained ensemble does not sample, released from positions no move had relaxed (a point-charge
+  // cation without a repulsion that holds it off the framework oxygens falls into them).
+  std::vector<char> heldComponent(system.components.size(), 0);
+  bool anyHeld{false};
+  for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
+  {
+    if (componentId == settings.taggedComponent) continue;
+    bool moves{false};
+    for (std::size_t index = 0; index < std::to_underlying(Move::Types::Count); ++index)
+    {
+      if (system.components[componentId].mc_moves_probabilities.getProbability(static_cast<Move::Types>(index)) > 0.0)
+      {
+        moves = true;
+      }
+    }
+    heldComponent[componentId] = moves ? 0 : 1;
+    anyHeld = anyHeld || (!moves && system.numberOfMoleculesPerComponent[componentId] > 0uz);
+  }
+
   // rigid-group states of semi-flexible molecules, derived from the current atom positions
   std::vector<GroupState> initialGroupData;
   {
@@ -2499,6 +2606,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
         system.framework, {}, &system.crossLinks);
     Integrators::updateCenterOfMassAndQuaternionGradients(moleculeSpan, atomSpan, dynamicsSpan, system.components,
                                                           groupSpan);
+    if (anyHeld) holdInPlace(heldComponent, moleculeSpan, dynamicsSpan, groupSpan, system.components);
     referenceEnergy.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
         moleculeSpan, atomSpan, dynamicsSpan, system.components, system.framework, frameworkAtoms, {},
         &system.forceField, groupSpan);
@@ -2709,16 +2817,28 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
         return;
       }
 
-      const RunningEnergy energies = Integrators::velocityVerlet(
+      RunningEnergy energies = Integrators::velocityVerlet(
           moleculeSpan, atomSpan, dynamicsSpan, system.components, system.timeStep, noThermostat, frameworkAtoms,
           system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
           system.trialEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
           system.numberOfMoleculesPerComponent, system.framework, {}, groupSpan, {}, &system.crossLinks);
+      if (anyHeld)
+      {
+        // the second half-kick of the step gave the held molecules a velocity: taken back, with the forces, before
+        // the next step moves them, and left out of the kinetic energy of the conserved quantity
+        holdInPlace(heldComponent, moleculeSpan, dynamicsSpan, groupSpan, system.components);
+        energies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+            moleculeSpan, atomSpan, dynamicsSpan, system.components, system.framework, frameworkAtoms, {},
+            &system.forceField, groupSpan);
+        energies.rotationalKineticEnergy =
+            Integrators::computeRotationalKineticEnergy(moleculeSpan, system.components, groupSpan);
+      }
 
       if (bathType != DcTSTSettings::TrajectoryThermostat::None)
       {
         applyBath(rng, bathType, settings.bathRate, system.timeStep, system.temperature, moleculeSpan, atomSpan,
                   dynamicsSpan, groupSpan, system.components);
+        if (anyHeld) holdInPlace(heldComponent, moleculeSpan, dynamicsSpan, groupSpan, system.components);
       }
       else
       {
@@ -2947,6 +3067,7 @@ void DynamicallyCorrectedTST::launchTrajectories(std::size_t replicaId, std::siz
     Integrators::createCartesianPositions(moleculeData, atoms, system.components, groupSpan);
     Integrators::initializeVelocities(rng, moleculeData, atoms, dynamics, system.components, system.temperature,
                                       system.framework, frameworkAtoms, {}, &system.forceField, groupSpan);
+    if (anyHeld) holdInPlace(heldComponent, moleculeData, dynamics, groupSpan, system.components);
     // the guest center-of-mass velocity is not removed, not even without a framework: the dividing plane is fixed
     // in the laboratory frame, and subtracting the drift would scale the velocity of the tagged bead along the
     // normal by sqrt(1 - 1/N) (zero for a single molecule), and with it <|qdot|>, k^TST and kappa
@@ -3447,6 +3568,30 @@ void DynamicallyCorrectedTST::writeAccumulatorSnapshot(std::size_t replicaId, bo
                           state.lateralB[3])] = {weight.first, weight.second};
       }
       hybrid["neighbourhood"].push_back(entry);
+    }
+    // the weights signed by the commitment of the member, which the Markov tail is summed with (the snapshot held
+    // the unsigned ones only, and the hybrid estimate could not be rebuilt from it)
+    hybrid["signedKey"] = "the same keys: sum of sign * |qdot|";
+    for (std::size_t k = 0; k < accumulator.hybridOccupancySigned.size(); ++k)
+    {
+      nlohmann::json entry = nlohmann::json::object();
+      for (const auto& [state, weight] : accumulator.hybridOccupancySigned[k])
+      {
+        entry[std::format("{},{},{},{}", state.nAPrime, state.nA, state.nB, state.nBPrime)] = weight;
+      }
+      hybrid["occupancySigned"].push_back(entry);
+    }
+    for (std::size_t k = 0; k < accumulator.hybridNeighbourhoodSigned.size(); ++k)
+    {
+      nlohmann::json entry = nlohmann::json::object();
+      for (const auto& [state, weight] : accumulator.hybridNeighbourhoodSigned[k])
+      {
+        entry[std::format("{},{},{},{}|{},{},{},{}|{},{},{},{}", state.column.nAPrime, state.column.nA, state.column.nB,
+                          state.column.nBPrime, state.lateralA[0], state.lateralA[1], state.lateralA[2],
+                          state.lateralA[3], state.lateralB[0], state.lateralB[1], state.lateralB[2],
+                          state.lateralB[3])] = weight;
+      }
+      hybrid["neighbourhoodSigned"].push_back(entry);
     }
   }
 
@@ -3955,8 +4100,10 @@ DynamicallyCorrectedTST::TransmissionResult DynamicallyCorrectedTST::analyzeTran
       using NeighbourhoodState = DcTSTTransmissionAccumulator::NeighbourhoodState;
       const std::size_t numberOfHandovers = handoverSteps.size();
       const std::size_t numberOfMembers = 2uz * result.numberOfTrajectoryPairs;
-      const double meanOccupancy =
-          static_cast<double>(system.numberOfMolecules()) / static_cast<double>(std::max(1uz, cageLattice.numberOfCages()));
+      // (of the tagged component, as the occupancies of the states are: the cations and co-adsorbates were counted
+      // in, and the lateral cages of the column states held them as molecules that hop)
+      const double meanOccupancy = static_cast<double>(system.numberOfMoleculesPerComponent[settings.taggedComponent]) /
+                                   static_cast<double>(std::max(1uz, cageLattice.numberOfCages()));
 
       // expected sign of the first axial event from the full neighbourhood (first-order Markov closure):
       // the six axial channels with s = +-1, and (variant 'lateral') the refill of A from each of its four
@@ -4877,8 +5024,9 @@ void DynamicallyCorrectedTST::output()
       hybridJson["occupancyKey"] =
           "nA',nA,nB,nB' (frame of the tagged hop, tagged molecule counted in B): weight fraction of |qdot| over all "
           "members; the fractions sum to 1 - fractionEventBefore - fractionTruncated";
-      hybridJson["meanOccupancy"] = static_cast<double>(system.numberOfMolecules()) /
-                                    static_cast<double>(std::max(1uz, cageLattice.numberOfCages()));
+      hybridJson["meanOccupancy"] =
+          static_cast<double>(system.numberOfMoleculesPerComponent[settings.taggedComponent]) /
+          static_cast<double>(std::max(1uz, cageLattice.numberOfCages()));
       if (kappa.rates.has_value())
       {
         const OccupancyRates& rates = kappa.rates.value();

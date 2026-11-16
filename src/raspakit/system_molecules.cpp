@@ -718,6 +718,7 @@ void System::updateMoleculeAtomInformation(std::size_t firstComponent)
     {
       moleculeData[molecule_index].atomIndex = atom_index - numberOfFrameworkAtoms;
       moleculeData[molecule_index].numberOfAtoms = numberOfAtoms;
+      moleculeData[molecule_index].componentId = k;
 
       for (std::size_t j = 0; j < numberOfAtoms; ++j)
       {

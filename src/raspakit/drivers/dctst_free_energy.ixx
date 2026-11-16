@@ -235,6 +235,8 @@ export struct DynamicallyCorrectedTSTFreeEnergy
 
   std::vector<DcTSTPilotAccumulator> pilot;        ///< Per replica.
   std::vector<DcTSTWindow> windows;                ///< All windows.
+  /// The windows go around the period of the plain coordinate (the last one neighbours the first across +-lambda/2).
+  bool windowsClosePeriod{false};
   std::vector<DcTSTWindowAccumulator> windowData;  ///< Per window.
   std::vector<DcTSTWindowState> windowStates;      ///< Per replica.
   std::vector<double> flatteningBias;              ///< w_0 per fine bin [kT] (zero when disabled).
@@ -330,6 +332,7 @@ export struct DynamicallyCorrectedTSTFreeEnergy
     double pilotBarrierProbabilityError{0.0};
     bool pilotBarrierDefined{false};
     std::vector<double> overlap;  ///< Overlap of consecutive windows (and pilot) in the order of the centers.
+    std::vector<char> overlapDefined;  ///< Whether window k has a next distinct center (the first one, on a ring).
     std::vector<double> windowMean;
     std::vector<double> windowSigma;
     std::vector<double> windowCounts;
