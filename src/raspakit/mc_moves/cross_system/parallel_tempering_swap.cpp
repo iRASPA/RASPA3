@@ -194,10 +194,25 @@ bool sameAtomDefinitionUpToCharge(const Atom& atomA, const Atom& atomB)
   return atomA.position == atomB.position && atomA.type == atomB.type;
 }
 
+// An external field is part of the Hamiltonian the replicas share: its energy is in the running energies that
+// travel with the configuration and in the potential energy of the acceptance rule. It is the same field in both
+// replicas when its parameters are (they are in the force field, which is compared), when both tabulate it or
+// neither does, and when the box it is laid out in is the same (the field and its grid are defined in the box,
+// and without a framework the box travels with the configuration). Any external field used to refuse the swap:
+// the replica drivers that build and share the field between their replicas then ran without a single
+// accepted exchange, and without a word.
+bool sameExternalField(const System& systemA, const System& systemB)
+{
+  if (systemA.hasExternalField != systemB.hasExternalField) return false;
+  if (!systemA.hasExternalField) return true;
+  return systemA.externalFieldInterpolationGrid.has_value() == systemB.externalFieldInterpolationGrid.has_value() &&
+         !(systemA.simulationBox != systemB.simulationBox);
+}
+
 bool compatibleMobileTopology(const System& systemA, const System& systemB)
 {
   if (!sameSoluteTempering(systemA, systemB)) return false;
-  if (!sameHamiltonianUpToSoluteTempering(systemA, systemB) || systemA.hasExternalField || systemB.hasExternalField ||
+  if (!sameHamiltonianUpToSoluteTempering(systemA, systemB) || !sameExternalField(systemA, systemB) ||
       systemA.components.size() != systemB.components.size() ||
       systemA.numberOfFrameworkAtoms != systemB.numberOfFrameworkAtoms ||
       !systemA.reactions.list.empty() || !systemB.reactions.list.empty() ||

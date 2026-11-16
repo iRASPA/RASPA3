@@ -23,6 +23,7 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_acceptance;
 import scaling;
 
 static void accumulateInterMolecularFieldDelta(System& system, std::span<const Atom> newAtoms,
@@ -493,11 +494,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
                               static_cast<double>(1 + oldN_B));
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
-    const double physicalPacc =
-        std::exp(logCorrectionFactorEwald + std::log(preFactor) + growDataA->logRosenbluthWeight -
-                 std::log(idealGasA) + growDataB->logRosenbluthWeight - std::log(idealGasB) -
-                 system.beta * energyDifference.potentialEnergy());
-    const double samplingPacc = physicalPacc * std::exp(biasTerm);
+    // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
+    const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
+        preFactor,
+        logCorrectionFactorEwald + growDataA->logRosenbluthWeight - std::log(idealGasA) +
+            growDataB->logRosenbluthWeight - std::log(idealGasB) - system.beta * energyDifference.potentialEnergy(),
+        biasTerm);
+    const double physicalPacc = acceptance.physical;
+    const double samplingPacc = acceptance.sampling;
 
     if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && oldN_T >= system.tmmc.maxMacrostate)
     {
@@ -858,11 +862,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero,
     // which would turn these quotients into +inf).
-    const double physicalPacc =
-        std::exp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasA) -
-                 retraceDataA.logRosenbluthWeight + std::log(idealGasB) - retraceDataB.logRosenbluthWeight -
-                 system.beta * energyDifference.potentialEnergy());
-    const double samplingPacc = physicalPacc * std::exp(biasTerm);
+    // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
+    const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
+        preFactor,
+        logCorrectionFactorEwald + std::log(idealGasA) - retraceDataA.logRosenbluthWeight + std::log(idealGasB) -
+            retraceDataB.logRosenbluthWeight - system.beta * energyDifference.potentialEnergy(),
+        biasTerm);
+    const double physicalPacc = acceptance.physical;
+    const double samplingPacc = acceptance.sampling;
 
     if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && oldN_T <= system.tmmc.minMacrostate)
     {

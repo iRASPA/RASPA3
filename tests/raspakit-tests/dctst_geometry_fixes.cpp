@@ -203,3 +203,36 @@ TEST(DCTST_GEOMETRY_FIXES, cage_lattice_refuses_a_cage_count_below_one)
   EXPECT_THROW(DcTSTCageLattice(cell, int3(2, 2, 2), double3(5.0, 5.0, 5.0), int3(0, 1, 1)), std::runtime_error);
   EXPECT_THROW(DcTSTCageLattice(cell, int3(2, 2, 2), double3(5.0, 5.0, 5.0), int3(1, 1, -2)), std::runtime_error);
 }
+
+// The position of a bead in its own cage along the normal, as a fraction of the cage: from the fractional
+// coordinate that names the cage, so that it lies in [-1/2, 1/2] in any cell. In the hexagonal cell the dot product
+// of the normal with the component-wise minimum image of r - center leaves that range near the lateral cage walls.
+TEST(DCTST_GEOMETRY_FIXES, the_position_in_the_own_cage_follows_the_fractional_coordinate)
+{
+  const double a = 10.0;
+  const SimulationBox unitCell(a, a, 12.0, 0.5 * std::numbers::pi, 0.5 * std::numbers::pi, 2.0 * std::numbers::pi / 3.0);
+  const SimulationBox supercell(4.0 * a, 4.0 * a, 12.0, 0.5 * std::numbers::pi, 0.5 * std::numbers::pi,
+                                2.0 * std::numbers::pi / 3.0);
+  const double3 normal = double3::cross(unitCell.cell[1], unitCell.cell[2]);
+  const double spacing = a * std::sin(std::numbers::pi / 3.0);
+  const DcTSTBarrier barrier(supercell, double3(0.5, 0.5, 0.5), normal, spacing);
+  const DcTSTCageLattice lattice(unitCell, int3(4, 4, 1), barrier.point + 0.5 * barrier.lambda * barrier.normal);
+  ASSERT_FALSE(lattice.inconsistencyWith(supercell, barrier).has_value());
+
+  RandomNumber random(7);
+  for (std::size_t trial = 0; trial < 2000uz; ++trial)
+  {
+    const std::size_t cage = static_cast<std::size_t>(random.uniform() * static_cast<double>(lattice.numberOfCages())) %
+                             lattice.numberOfCages();
+    const double3 s(random.uniform() - 0.5, random.uniform() - 0.5, random.uniform() - 0.5);
+    const double3 r = lattice.center(cage) + lattice.cell * s;
+    ASSERT_EQ(lattice.cageOf(r), cage);
+    // the distance along the normal from the center of the cage is the fraction along the first axis times the
+    // spacing of its planes
+    EXPECT_NEAR(lattice.fractionAlongDirection(r, barrier.normal) * spacing,
+                double3::dot(lattice.cell * s, barrier.normal), 1e-9);
+    EXPECT_NEAR(lattice.fractionAlongDirection(r, barrier.normal), s.x, 1e-9);
+    // against the normal it is mirrored
+    EXPECT_NEAR(lattice.fractionAlongDirection(r, -1.0 * barrier.normal), -s.x, 1e-9);
+  }
+}

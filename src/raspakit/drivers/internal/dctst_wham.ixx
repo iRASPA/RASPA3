@@ -37,7 +37,7 @@ export struct DcTSTWham
     std::vector<double> freeEnergies;  ///< g_k per state (gauge: the first state with samples at g = 0).
     std::size_t iterations{0};
     double residual{0.0};
-    bool connected{true};  ///< The sampled states form one overlap-connected group (see statesAreConnected).
+    bool connected{true};  ///< The histograms of the sampled states overlap as one group (see statesAreConnected).
     bool converged{false};  ///< residual <= tolerance and connected.
   };
 
@@ -53,11 +53,12 @@ export struct DcTSTWham
                                     std::size_t maximumIterations,
                                     const std::vector<double>& initialFreeEnergies = {});
 
-  /// Whether the sampled states (ln n_k above 'logZeroThreshold') form a single group linked through bins to
-  /// which they both contribute a non-negligible share. Free-energy differences between disconnected groups are
-  /// undetermined: the WHAM iteration then 'converges' at once on an arbitrary offset.
-  [[nodiscard]] static bool statesAreConnected(const std::vector<double>& logStateCounts,
-                                               const std::vector<double>& freeEnergies,
+  /// Whether the sampled states (ln n_k above 'logZeroThreshold') form a single group linked through bins in
+  /// which both of them have samples (and that neither forbids). Free-energy differences between groups whose
+  /// histograms do not overlap are not measured: the WHAM iteration still has a fixed point for them, set by the
+  /// biases alone.
+  [[nodiscard]] static bool statesAreConnected(const std::vector<std::vector<double>>& counts,
+                                               const std::vector<double>& logStateCounts,
                                                const std::vector<double>& logDensity,
                                                const std::vector<std::vector<double>>& reducedPotential);
 };

@@ -85,9 +85,13 @@ static void writeReplicaAnalysisOutputs(System& system, std::size_t replicaId, s
 // N the count of a single adsorbate and U the potential energy, and the reduced potential of a state is
 // u_i = beta_i U - N ln(beta_i f_i); everything that this pair or that reduced potential does not carry is
 // refused here, for the input reader and for the programmatic constructor alike.
+//
+// 'reweightsBeyondTheSample': a single state point that is reweighted to another temperature or pressure. Only a
+// single state point whose results are written at that very state point needs no reduced potential at all.
 static void validateReweightingTemplate(const System& system, std::span<const double> temperatures,
                                         std::size_t numberOfPressures,
-                                        std::span<const double> reweightingTemperatures)
+                                        std::span<const double> reweightingTemperatures,
+                                        bool reweightsBeyondTheSample = false)
 {
   if (system.components.empty())
   {
@@ -149,7 +153,10 @@ static void validateReweightingTemplate(const System& system, std::span<const do
   }
   // Across state points the reduced potential carries the molecule count of the adsorbate only: a second
   // swappable component would need its own -N_1 ln(beta f_1), whose fugacity changes along the ladder.
-  const bool severalStatePoints = temperatures.size() * numberOfPressures > 1uz;
+  // The same holds for one state point that is reweighted to another: a programmatic run of a single state with
+  // a reweighting range passed these checks, and a binary mixture, or a system without an insertion move, was
+  // then reweighted along the pressure with N_0 ln(beta f_0) alone.
+  const bool severalStatePoints = temperatures.size() * numberOfPressures > 1uz || reweightsBeyondTheSample;
   const std::size_t numberOfSwappable = static_cast<std::size_t>(
       std::ranges::count_if(system.components, [](const Component& component) { return component.swappable; }));
   if (severalStatePoints && numberOfSwappable > 1uz)
@@ -158,6 +165,26 @@ static void validateReweightingTemplate(const System& system, std::span<const do
         "[ReweightedHistogram]: {} swappable components were given; the (N, U) samples record the molecule count of "
         "the first adsorbate only, so a ladder of state points can only be reweighted for a single adsorbate\n",
         numberOfSwappable));
+  }
+  // A pair or a group swap inserts the counted molecule together with others, at the activity of the pair or
+  // the group: the sample has one count and one fugacity. Their fractional molecules are not carried by the
+  // configuration swaps either, which refuse every exchange of such a system: a homodimer group
+  // ('GroupComponents': [0, 0]) is a single swappable component, passed the checks above, and ran its ladder
+  // without one accepted swap.
+  for (const Component& component : system.components)
+  {
+    for (const Move::Types move : {Move::Types::PairSwap, Move::Types::PairSwapCBMC, Move::Types::PairSwapCFCMC,
+                                   Move::Types::PairSwapCBCFCMC, Move::Types::GroupSwap, Move::Types::GroupSwapCBMC,
+                                   Move::Types::GroupSwapCFCMC, Move::Types::GroupSwapCBCFCMC})
+    {
+      if (component.mc_moves_probabilities.getProbability(move) > 0.0)
+      {
+        throw std::runtime_error(std::format(
+            "[ReweightedHistogram]: the move '{}' of component '{}' is not supported: the (N, U) samples carry the "
+            "molecule count of one adsorbate at its own fugacity, not that of a pair or a group\n",
+            Move::moveNames[std::to_underlying(move)], component.name));
+      }
+    }
   }
   for (const VDWParameters& parameter : system.forceField.data)
   {
@@ -430,9 +457,13 @@ ReweightedHistogram::ReweightedHistogram(System templateSystem, std::vector<doub
   {
     reweightingTemperatures = temperatures;
   }
-  validateReweightingTemplate(templateSystem, temperatures, pressures.size(), reweightingTemperatures);
   reweightingPressureRange =
       parameters.reweightingPressureRange.value_or(std::make_pair(pressures.front(), pressures.back()));
+  const bool reweightsBeyondTheSample =
+      std::ranges::any_of(reweightingTemperatures, [&](double T) { return T != temperatures.front(); }) ||
+      reweightingPressureRange.first != pressures.front() || reweightingPressureRange.second != pressures.front();
+  validateReweightingTemplate(templateSystem, temperatures, pressures.size(), reweightingTemperatures,
+                              reweightsBeyondTheSample);
 
   validateReweightingRun(numberOfBlocks, temperatures, pressures, reweightingTemperatures, reweightingPressureRange);
 
@@ -1446,6 +1477,8 @@ void ReweightedHistogram::performReweightingAnalysis()
   std::vector<std::uint32_t> binMoleculeCount;      // N of the bin
   std::vector<double> binEnergySum;                 // sum of the sampled energies in the bin
   std::vector<std::vector<double>> binBlockCounts;  // per-bin sample count per block
+  // per bin: whether state i has a sample there in block j (at i * numberOfBlocks + j), for the overlap test
+  std::vector<std::vector<bool>> binSampledBy;
   std::vector<std::vector<double>> stateBlockCounts(numberOfReplicas,
                                                     std::vector<double>(numberOfBlocks, 0.0));
 
@@ -1463,10 +1496,12 @@ void ReweightedHistogram::performReweightingAnalysis()
         binMoleculeCount.push_back(sample.numberOfMolecules);
         binEnergySum.push_back(0.0);
         binBlockCounts.emplace_back(numberOfBlocks, 0.0);
+        binSampledBy.emplace_back(numberOfReplicas * numberOfBlocks, false);
       }
       const std::size_t binId = it->second;
       binEnergySum[binId] += sample.energy;
       binBlockCounts[binId][sample.block] += 1.0;
+      binSampledBy[binId][stateId * numberOfBlocks + sample.block] = true;
       stateBlockCounts[stateId][sample.block] += 1.0;
     }
   }
@@ -1497,15 +1532,18 @@ void ReweightedHistogram::performReweightingAnalysis()
     constexpr double logZero = -1e300;
   constexpr double logZeroThreshold = -1e299;
 
-  // Whether the sampled states form one group linked through bins to which both contribute a non-negligible
-  // share n_k exp(g_k - u_k(b)) / sum_l n_l exp(g_l - u_l(b)) of the mixture. The WHAM equations fix the free
-  // energy difference of two states only through such bins: when the states fall apart into groups that share
-  // none (a phase transition or a barrier no replica crosses, or overlap below double precision), each group is
-  // invariant under its own shift of g and the iteration 'converges' at once on an arbitrary offset.
-  auto statesAreConnected = [&](const std::vector<double>& logStateCounts, const std::vector<double>& freeEnergies,
-                                const std::vector<double>& logDensityOfStates) -> bool
+  // Whether the sampled states form one group linked through (N, U) bins in which both of them have samples
+  // (of one block, or of all of them). The free-energy difference of two states is measured only there. The share
+  // n_k exp(g_k - u_k(b)) of a state in the mixture of a bin is no such evidence: WHAM knows the samples of a bin
+  // by their sum only, and two states with disjoint histograms still have a unique fixed point. A replica that
+  // stays in the empty box (0, 0) and one that stays condensed at (N_1, U_1), on either side of a nucleation
+  // barrier neither crosses, converge on g_1 = -(N_1 / 2) ln(f_1 / f_0), each credited with a share of the
+  // samples of the other that is far above any threshold: a condensation step at sqrt(f_0 f_1) was reported as
+  // converged, whatever the free energy of the condensed phase.
+  auto statesAreConnected = [&](const std::vector<double>& logStateCounts,
+                                const std::vector<double>& logDensityOfStates,
+                                std::optional<std::size_t> block) -> bool
   {
-    constexpr double logOverlapShare = -27.631021115928547;  // ln 1e-12
     std::vector<std::size_t> parent(numberOfReplicas);
     std::iota(parent.begin(), parent.end(), 0uz);
     auto find = [&](std::size_t k)
@@ -1517,30 +1555,23 @@ void ReweightedHistogram::performReweightingAnalysis()
       }
       return k;
     };
-    std::vector<double> logShare(numberOfReplicas);
+    auto sampled = [&](std::size_t binId, std::size_t stateId)
+    {
+      const std::vector<bool>& flags = binSampledBy[binId];
+      if (block.has_value()) return static_cast<bool>(flags[stateId * numberOfBlocks + block.value()]);
+      for (std::size_t j = 0; j < numberOfBlocks; ++j)
+      {
+        if (flags[stateId * numberOfBlocks + j]) return true;
+      }
+      return false;
+    };
     for (std::size_t binId = 0; binId < numberOfBins; ++binId)
     {
       if (logDensityOfStates[binId] <= logZeroThreshold) continue;
-      double largest = logZero;
-      for (std::size_t stateId = 0; stateId < numberOfReplicas; ++stateId)
-      {
-        logShare[stateId] = logZero;
-        if (logStateCounts[stateId] <= logZeroThreshold) continue;
-        logShare[stateId] = logStateCounts[stateId] + freeEnergies[stateId] -
-                            reducedPotential[binId * numberOfReplicas + stateId];
-        largest = std::max(largest, logShare[stateId]);
-      }
-      if (largest <= logZeroThreshold) continue;
-      double sum = 0.0;
-      for (std::size_t stateId = 0; stateId < numberOfReplicas; ++stateId)
-      {
-        if (logShare[stateId] > logZeroThreshold) sum += std::exp(logShare[stateId] - largest);
-      }
-      const double logNormalization = largest + std::log(sum);
       std::optional<std::size_t> first;
       for (std::size_t stateId = 0; stateId < numberOfReplicas; ++stateId)
       {
-        if (logShare[stateId] <= logZeroThreshold || logShare[stateId] - logNormalization < logOverlapShare) continue;
+        if (logStateCounts[stateId] <= logZeroThreshold || !sampled(binId, stateId)) continue;
         if (!first.has_value())
         {
           first = stateId;
@@ -1579,7 +1610,7 @@ void ReweightedHistogram::performReweightingAnalysis()
   };
   auto solveWham = [&](const std::vector<double>& logStateCounts, const std::vector<double>& logBinCounts,
                        std::vector<double>& freeEnergies, std::vector<double>& logDensityOfStates,
-                       std::size_t maximumNumberOfIterations) -> WhamConvergence
+                       std::size_t maximumNumberOfIterations, std::optional<std::size_t> block) -> WhamConvergence
   {
     const double tolerance = whamTolerance;
     std::vector<double> updatedFreeEnergies(numberOfReplicas);
@@ -1671,7 +1702,7 @@ void ReweightedHistogram::performReweightingAnalysis()
     // the density of states that belongs to the returned free energies (inside the loop it is one iteration and
     // one gauge shift behind them)
     updateDensity();
-    return {iteration, residual, statesAreConnected(logStateCounts, freeEnergies, logDensityOfStates)};
+    return {iteration, residual, statesAreConnected(logStateCounts, logDensityOfStates, block)};
   };
 
   // Reweights the density of states to an arbitrary state point (beta, ln(beta f)): the weight of
@@ -1792,7 +1823,7 @@ void ReweightedHistogram::performReweightingAnalysis()
   std::vector<double> freeEnergies(numberOfReplicas, 0.0);
   std::vector<double> logDensityOfStates;
   const WhamConvergence convergence =
-      solveWham(logStateCounts, logBinCounts, freeEnergies, logDensityOfStates, whamMaximumIterations);
+      solveWham(logStateCounts, logBinCounts, freeEnergies, logDensityOfStates, whamMaximumIterations, std::nullopt);
   const std::size_t iterations = convergence.iterations;
   const double residual = convergence.residual;
   whamIterations = iterations;
@@ -1806,9 +1837,9 @@ void ReweightedHistogram::performReweightingAnalysis()
              residual, whamTolerance, whamMaximumIterations);
   if (!convergence.connected)
   {
-    std::print(stream, "    WARNING: the sampled state points fall apart into groups whose (N, U) distributions do not\n");
-    std::print(stream, "             overlap; the free-energy offsets between the groups, and every reweighted result\n");
-    std::print(stream, "             that spans them, are undetermined. Densify the ladders across the gap.\n\n");
+    std::print(stream, "    WARNING: the sampled state points fall apart into groups whose (N, U) histograms share no bin;\n");
+    std::print(stream, "             the free-energy offsets between the groups, and every reweighted result that spans\n");
+    std::print(stream, "             them, are not measured. Densify the ladders across the gap.\n\n");
   }
   else if (!whamConverged)
   {
@@ -1843,7 +1874,7 @@ void ReweightedHistogram::performReweightingAnalysis()
     std::vector<double> blockFreeEnergies = freeEnergies;
     const auto [blockIterations, blockResidual, blockConnected] =
         solveWham(blockLogStateCounts, blockLogBinCounts, blockFreeEnergies, blockLogDensityOfStates[block],
-                  whamMaximumIterations);
+                  whamMaximumIterations, block);
     blockIsValid[block] = blockResidual <= whamTolerance && blockConnected;
     if (!blockIsValid[block])
     {

@@ -31,6 +31,14 @@ struct StableRootSelection
   EquationOfState::FluidState state;
 };
 
+// A root of the cubic is a fluid when its molar volume exceeds the co-volume, Z > B. The cubic always has one
+// such root (it is -2 B^2 at Z = B for Peng-Robinson and Soave-Redlich-Kwong alike), but it has three real roots
+// with two of them below B whenever A < B + B^2: a supercritical light gas at ambient conditions (hydrogen at
+// 298 K and 1 bar: Z = 1.000277, 0.000238, -0.000170 with B = 0.000660), and any gas at a high enough pressure.
+// The fugacity coefficient of those two is the exponential of ln(Z - B) of a negative number; they were worked
+// out for every root, and a positive lowest root below B was taken for a liquid.
+static bool isFluidRoot(double compressibility, double Bmix) { return compressibility > Bmix; }
+
 template <typename MolFractionOf>
 static StableRootSelection selectStableRoot(const std::vector<std::vector<double>>& fugacityCoefficients,
                                             std::size_t numberOfComponents, MolFractionOf molFractionOf)
@@ -229,12 +237,12 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
             double temp = 0.0;
             for (std::size_t k = 0; k < components.size(); k++) temp += 2.0 * components[k].molFraction * Aij[i][k];
 
+            // (a root at or below the co-volume is not a fluid: see 'isFluidRoot')
             fugacityCoefficients[i][j] =
-                idealGas ? 1.0
-                         : std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) -
-                                    std::log(compressibility[j] - Bmix) -
-                                    Amix * (temp / Amix - B[i] / Bmix) * std::log(1.0 + Bmix / compressibility[j]) /
-                                        Bmix);
+                (idealGas || !isFluidRoot(compressibility[j], Bmix))
+                    ? 1.0
+                    : std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) - std::log(compressibility[j] - Bmix) -
+                               (temp - Amix * (B[i] / Bmix)) * std::log(1.0 + Bmix / compressibility[j]) / Bmix);
           }
         }
       }
@@ -251,13 +259,14 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
             double temp = 0.0;
             for (std::size_t k = 0; k < components.size(); ++k) temp += 2.0 * components[k].molFraction * Aij[i][k];
 
+            // (a root at or below the co-volume is not a fluid: see 'isFluidRoot')
             fugacityCoefficients[i][j] =
-                idealGas ? 1.0
-                         : std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) -
-                                    std::log(compressibility[j] - Bmix) -
-                                    (Amix / (2.0 * std::sqrt(2.0) * Bmix)) * (temp / Amix - B[i] / Bmix) *
-                                        std::log((compressibility[j] + (1.0 + std::sqrt(2.0)) * Bmix) /
-                                                 (compressibility[j] + (1.0 - std::sqrt(2)) * Bmix)));
+                (idealGas || !isFluidRoot(compressibility[j], Bmix))
+                    ? 1.0
+                    : std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) - std::log(compressibility[j] - Bmix) -
+                               ((temp - Amix * (B[i] / Bmix)) / (2.0 * std::sqrt(2.0) * Bmix)) *
+                                   std::log((compressibility[j] + (1.0 + std::sqrt(2.0)) * Bmix) /
+                                            (compressibility[j] + (1.0 - std::sqrt(2)) * Bmix)));
           }
         }
       }
@@ -273,7 +282,7 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
   double excess_volume = simulationBox.volume * heliumVoidFraction;
 
   const StableRootSelection stableRoot =
-      (numberOfSolutions != 1 && compressibility[2] > 0.0)
+      (numberOfSolutions != 1 && isFluidRoot(compressibility[2], Bmix))
           ? selectStableRoot(fugacityCoefficients, components.size(),
                              [&](std::size_t i) { return components[i].swappable ? components[i].molFraction : 0.0; })
           : StableRootSelection{0uz, FluidState::Unknown};
@@ -305,7 +314,7 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
       }
       else
       {
-        if (compressibility[2] > 0.0)
+        if (isFluidRoot(compressibility[2], Bmix))
         {
           // one root for the whole mixture (see selectStableRoot above the function)
           const std::size_t root = stableRoot.root;
@@ -543,12 +552,12 @@ std::vector<EquationOfState::FluidResult> EquationOfState::computeFluidPropertie
               temp += 2.0 * equationOfStateProperties[k].molFraction * Aij[i][k];
             }
 
+            // (a root at or below the co-volume is not a fluid: see 'isFluidRoot')
             fugacityCoefficients[i][j] =
-                idealGas ? 1.0
-                         : std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) -
-                                    std::log(compressibility[j] - Bmix) -
-                                    Amix * (temp / Amix - B[i] / Bmix) * std::log(1.0 + Bmix / compressibility[j]) /
-                                        Bmix);
+                (idealGas || !isFluidRoot(compressibility[j], Bmix))
+                    ? 1.0
+                    : std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) - std::log(compressibility[j] - Bmix) -
+                               (temp - Amix * (B[i] / Bmix)) * std::log(1.0 + Bmix / compressibility[j]) / Bmix);
           }
         }
       }
@@ -568,13 +577,14 @@ std::vector<EquationOfState::FluidResult> EquationOfState::computeFluidPropertie
               temp += 2.0 * equationOfStateProperties[k].molFraction * Aij[i][k];
             }
 
+            // (a root at or below the co-volume is not a fluid: see 'isFluidRoot')
             fugacityCoefficients[i][j] =
-                idealGas ? 1.0
-                         : std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) -
-                                    std::log(compressibility[j] - Bmix) -
-                                    (Amix / (2.0 * std::sqrt(2.0) * Bmix)) * (temp / Amix - B[i] / Bmix) *
-                                        std::log((compressibility[j] + (1.0 + std::sqrt(2.0)) * Bmix) /
-                                                 (compressibility[j] + (1.0 - std::sqrt(2)) * Bmix)));
+                (idealGas || !isFluidRoot(compressibility[j], Bmix))
+                    ? 1.0
+                    : std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) - std::log(compressibility[j] - Bmix) -
+                               ((temp - Amix * (B[i] / Bmix)) / (2.0 * std::sqrt(2.0) * Bmix)) *
+                                   std::log((compressibility[j] + (1.0 + std::sqrt(2.0)) * Bmix) /
+                                            (compressibility[j] + (1.0 - std::sqrt(2)) * Bmix)));
           }
         }
       }
@@ -590,7 +600,7 @@ std::vector<EquationOfState::FluidResult> EquationOfState::computeFluidPropertie
   //double excess_volume = simulationBox.volume * heliumVoidFraction;
 
   const StableRootSelection stableRoot =
-      (numberOfSolutions != 1 && compressibility[2] > 0.0)
+      (numberOfSolutions != 1 && isFluidRoot(compressibility[2], Bmix))
           ? selectStableRoot(
                 fugacityCoefficients, equationOfStateProperties.size(), [&](std::size_t i)
                 { return equationOfStateProperties[i].swappable ? equationOfStateProperties[i].molFraction : 0.0; })
@@ -623,7 +633,7 @@ std::vector<EquationOfState::FluidResult> EquationOfState::computeFluidPropertie
       }
       else
       {
-        if (compressibility[2] > 0.0)
+        if (isFluidRoot(compressibility[2], Bmix))
         {
           // one root for the whole mixture (see selectStableRoot above computeComponentFluidProperties)
           const std::size_t root = stableRoot.root;

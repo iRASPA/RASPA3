@@ -154,7 +154,7 @@ export struct System
   // # fractional molecules for CFCMC grand-canonical or CFCMC Widom
   std::vector<std::size_t> numberOfGCFractionalMoleculesPerComponent_CFCMC{};
 
-  // # fractional molecules for pair-CFCMC grand-canonical
+  // no longer allocated (the CB/CFCMC swap shares the molecule of the CFCMC swap); kept for the restart files
   std::vector<std::size_t> numberOfPairGCFractionalMoleculesPerComponent_CFCMC{};
 
   // # fractional molecules for ion-pair insertion/deletion CFCMC (PairSwapCFCMC)
@@ -655,15 +655,21 @@ export struct System
   // see the bias (a cation count outside the adsorbate's window would be refused as out of bound, and
   // biased by the adsorbate's ln Pi otherwise) nor write into the collection matrix.
 
-  /// The component whose molecule count is the TMMC macrostate: the first adsorbate (component 0 when
-  /// there is none).
+  /// The component whose molecule count is the TMMC macrostate: the first adsorbate whose count changes
+  /// (a swappable one), the first adsorbate when none does, and component 0 when there is no adsorbate. An
+  /// adsorbate of a fixed number listed before the exchanged species (a co-adsorbed solvent, a template) is
+  /// part of the environment like a cation: taken as the tracked component, the macrostate never moved and the
+  /// samples carried the fugacity of a component that has none.
   [[nodiscard]] std::size_t tmmcComponent() const
   {
+    std::optional<std::size_t> firstAdsorbate;
     for (std::size_t componentId = 0uz; componentId < components.size(); ++componentId)
     {
-      if (components[componentId].type == Component::Type::Adsorbate) return componentId;
+      if (components[componentId].type != Component::Type::Adsorbate) continue;
+      if (components[componentId].swappable) return componentId;
+      if (!firstAdsorbate.has_value()) firstAdsorbate = componentId;
     }
-    return 0uz;
+    return firstAdsorbate.value_or(0uz);
   }
   /// Whether the transition matrix biases and records the moves of 'componentId': TMMC is on and the
   /// component is the one whose count is the macrostate.

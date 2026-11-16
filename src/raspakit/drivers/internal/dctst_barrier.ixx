@@ -126,6 +126,13 @@ export struct DcTSTCageLattice
   /// point near a lateral cage wall, in the cages beside the column.
   [[nodiscard]] std::pair<std::size_t, std::size_t> cagesAcrossNearestPlane(double3 r, double3 direction) const;
 
+  /// Where 'r' sits in its own cage along 'direction', as a fraction of the cage: -1/2 at the boundary plane
+  /// behind it, +1/2 at the one ahead. Taken from the fractional coordinate along the cage axis, like 'cageOf',
+  /// so that the cage and the position in it belong together in any cell. The dot product of 'direction' with a
+  /// component-wise minimum image of r - center jumps in an oblique cell, and put a molecule of cage A beyond
+  /// the plane to cage B.
+  [[nodiscard]] double fractionAlongDirection(double3 r, double3 direction) const;
+
   /// A uniformly distributed random point inside cage 'cage'.
   [[nodiscard]] double3 randomPointInCage(RandomNumber& random, std::size_t cage) const;
 

@@ -604,3 +604,126 @@ TEST(REWEIGHTED_HISTOGRAM_WHAM, sips_fisher_shifts_interior_rungs_up)
   }
   EXPECT_GE(sipsAboveOne, langmuirAboveOne);
 }
+
+namespace
+{
+
+// Two state points of a pressure ladder, with the samples given by hand: 'samples[i]' are the molecule counts of
+// replica i, repeated in every block (all at zero energy).
+ReweightedHistogram makeTwoStateDriver()
+{
+  System system = makeIdealParticleSystem();
+  system.tmmc.maxMacrostate = 50;
+  system.components[0].mc_moves_probabilities.setProbability(Move::Types::Swap, 1.0);
+  system.components[0].swappable = true;
+  ReweightedHistogramParameters parameters;
+  parameters.numberOfPreInitializationCycles = 0;
+  parameters.numberOfInitializationCycles = 0;
+  parameters.numberOfEquilibrationCycles = 0;
+  parameters.numberOfProductionCycles = 10;
+  parameters.numberOfBlocks = 5;
+  parameters.parallelTemperingSwapEvery = 0;
+  parameters.writeBinaryRestartEvery = 0;
+  parameters.reweightingTemperatures = {300.0};
+  parameters.reweightingNumberOfPressures = 3;
+  return ReweightedHistogram(std::move(system), {300.0}, {1e4, 2e4}, parameters);
+}
+
+void setSamples(ReweightedHistogram& simulation, const std::vector<std::vector<std::uint32_t>>& samples)
+{
+  simulation.reweightingSamples.assign(2, {});
+  for (std::size_t replica = 0; replica < 2uz; ++replica)
+  {
+    for (std::size_t block = 0; block < 5uz; ++block)
+    {
+      for (std::size_t repeat = 0; repeat < 20uz; ++repeat)
+      {
+        for (const std::uint32_t count : samples[replica])
+        {
+          simulation.reweightingSamples[replica].push_back(ReweightedHistogram::Sample{
+              .energy = 0.0, .numberOfMolecules = count, .block = static_cast<std::uint32_t>(block)});
+        }
+      }
+    }
+  }
+}
+
+}  // namespace
+
+// One replica stays in the empty box and the other in a filled one, on either side of a barrier neither crosses.
+// The WHAM iteration has a fixed point all the same, g_1 = -(N_1 / 2) ln(f_1 / f_0), on which it converges with
+// each state credited with a share of the samples of the other: reported as converged and connected, with a step
+// in the reweighted isotherm at sqrt(f_0 f_1) that no sample measured.
+TEST(REWEIGHTED_HISTOGRAM_WHAM, states_without_a_common_bin_are_not_connected)
+{
+  TemporaryDirectory workspace;
+  ScopedCurrentPath currentPath(workspace.path());
+
+  ReweightedHistogram simulation = makeTwoStateDriver();
+  setSamples(simulation, {{0}, {15}});
+  simulation.setup();
+  simulation.performReweightingAnalysis();
+  EXPECT_FALSE(simulation.whamConverged);
+  EXPECT_EQ(simulation.whamUnconvergedBlocks, 5uz);
+}
+
+TEST(REWEIGHTED_HISTOGRAM_WHAM, states_with_a_common_bin_are_connected)
+{
+  TemporaryDirectory workspace;
+  ScopedCurrentPath currentPath(workspace.path());
+
+  ReweightedHistogram simulation = makeTwoStateDriver();
+  setSamples(simulation, {{0, 1}, {1, 2}});
+  simulation.setup();
+  simulation.performReweightingAnalysis();
+  EXPECT_TRUE(simulation.whamConverged);
+  EXPECT_EQ(simulation.whamUnconvergedBlocks, 0uz);
+}
+
+// A single state point that is reweighted to other pressures needs what a ladder needs: one adsorbate whose count
+// changes. Only the programmatic constructor can make such a run, and it passed with a system without an
+// insertion move, or with a binary mixture.
+TEST(REWEIGHTED_HISTOGRAM_WHAM, a_single_state_reweighted_elsewhere_is_held_to_the_rules_of_a_ladder)
+{
+  auto make = [](std::pair<double, double> range, std::vector<double> reweightingTemperatures, bool swap)
+  {
+    System system = makeIdealParticleSystem();
+    system.tmmc.maxMacrostate = 50;
+    if (swap)
+    {
+      system.components[0].mc_moves_probabilities.setProbability(Move::Types::Swap, 1.0);
+      system.components[0].swappable = true;
+    }
+    ReweightedHistogramParameters parameters;
+    parameters.numberOfProductionCycles = 10;
+    parameters.writeBinaryRestartEvery = 0;
+    parameters.reweightingTemperatures = std::move(reweightingTemperatures);
+    parameters.reweightingPressureRange = range;
+    return ReweightedHistogram(std::move(system), {300.0}, {1e4}, parameters);
+  };
+  // at the sampled state point nothing is reweighted
+  EXPECT_NO_THROW(make({1e4, 1e4}, {300.0}, false));
+  EXPECT_THROW(make({1e3, 1e5}, {300.0}, false), std::runtime_error);
+  EXPECT_THROW(make({1e4, 1e4}, {320.0}, false), std::runtime_error);
+  EXPECT_NO_THROW(make({1e3, 1e5}, {300.0}, true));
+}
+
+// A group swap inserts the counted molecule with others, at the activity of the group, and its fractional molecules
+// are not carried by the configuration swaps: a homodimer group is one swappable component and passed the checks.
+TEST(REWEIGHTED_HISTOGRAM_WHAM, pair_and_group_swaps_are_refused)
+{
+  for (const Move::Types move : {Move::Types::GroupSwapCFCMC, Move::Types::GroupSwapCBCFCMC, Move::Types::GroupSwap,
+                                 Move::Types::PairSwapCFCMC})
+  {
+    System system = makeIdealParticleSystem();
+    system.tmmc.maxMacrostate = 50;
+    system.components[0].mc_moves_probabilities.setProbability(Move::Types::Swap, 1.0);
+    system.components[0].swappable = true;
+    ReweightedHistogramParameters parameters;
+    parameters.numberOfProductionCycles = 10;
+    parameters.writeBinaryRestartEvery = 0;
+    EXPECT_NO_THROW(ReweightedHistogram(system, {300.0}, {1e4, 2e4}, parameters));
+    system.components[0].mc_moves_probabilities.setProbability(move, 1.0);
+    EXPECT_THROW(ReweightedHistogram(system, {300.0}, {1e4, 2e4}, parameters), std::runtime_error);
+  }
+}

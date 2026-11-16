@@ -1142,9 +1142,8 @@ void DynamicallyCorrectedTSTFreeEnergy::startWindow(std::size_t replicaId, std::
     double x, target;
     if (occupancyMode)
     {
-      const std::size_t ownCage = cageLattice.cageOf(position);
-      x = double3::dot(system.simulationBox.applyPeriodicBoundaryConditions(position - cageLattice.center(ownCage)),
-                       barrier.normal);
+      // (from the fractional coordinate along the cage axis; see 'fractionAlongDirection')
+      x = barrier.lambda * cageLattice.fractionAlongDirection(position, barrier.normal);
       target = windowInCageB ? window.center - barrier.lambda : window.center;
     }
     else
@@ -1754,8 +1753,13 @@ void DynamicallyCorrectedTSTFreeEnergy::samplePilot(std::size_t replicaId, std::
       accumulator.occupancyPairs[block][DcTSTPilotAccumulator::occupancyIndex(nA, nB)] += 1.0;
       if (occupancyMode && nA == settings.cageOccupancies->first && nB == settings.cageOccupancies->second)
       {
-        const double xc = double3::dot(
-            system.simulationBox.applyPeriodicBoundaryConditions(position - cageLattice.center(cage)), barrier.normal);
+        // The position in the own cage, in [-lambda/2, lambda/2): the fraction of the cage along the normal, from
+        // the same fractional coordinate that named the cage. The dot product with a component-wise minimum
+        // image jumped in an oblique cell, and where the cage axis runs against the normal the boundary point
+        // that 'cageOf' gives to this cage sits at +lambda/2: both put pilot samples in bins that the
+        // reweighting forbids to the pilot.
+        double xc = barrier.lambda * cageLattice.fractionAlongDirection(position, barrier.normal);
+        if (xc >= 0.5 * barrier.lambda) xc = std::nextafter(0.5 * barrier.lambda, 0.0);
         if (grid.contains(xc)) accumulator.conditionedHistogram[block][grid.bin(xc)] += 1.0;
       }
     }

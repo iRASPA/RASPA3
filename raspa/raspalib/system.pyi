@@ -137,16 +137,12 @@ class System():
 
     @property
     def property_number_of_molecules_histogram(self) -> PropertyNumberOfMoleculesHistogram | None:
-        """Return the number of molecule-histogram property, if configured."""
+        """Return the molecule-count histogram property, if configured."""
+        ...
 
     @property
     def average_energy_histogram(self) -> PropertyEnergyHistogram | None:
         """Return the energy-histogram property, if configured."""
-        ...
-
-    @property
-    def average_number_of_molecules_histogram(self) -> PropertyNumberOfMoleculesHistogram | None:
-        """Return the molecule-count histogram property, if configured."""
         ...
 
     @property

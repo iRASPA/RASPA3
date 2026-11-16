@@ -16,6 +16,11 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
   // A bin is usable when at least one state with samples can reach it (its reduced potential there is not the
   // forbidden ~1e30). Samples in a bin that every sampled state forbids can not be weighted: they are left out
   // of ln M_b and of ln n_k alike. Leaving a state without samples can strand further bins, hence the loop.
+  // The samples a state has in a bin it forbids itself (a pilot sample just past its dividing surface, say) are
+  // left out in the same way, whatever the other states do there: the state is excluded from the mixture of that
+  // bin, so that counting them in n_k inflated its weight in every other bin, and counting them in M_b put
+  // samples there that no state of the mixture accounts for.
+  auto allows = [&](std::size_t k, std::size_t b) { return -reducedPotential[k][b] > forbiddenLogWeight; };
   std::vector<double> stateTotals(numberOfStates, 0.0);
   std::vector<bool> binUsable(numberOfBins, true);
   for (bool changed = true; changed;)
@@ -26,7 +31,7 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
       stateTotals[k] = 0.0;
       for (std::size_t b = 0; b < numberOfBins; ++b)
       {
-        if (binUsable[b]) stateTotals[k] += counts[k][b];
+        if (binUsable[b] && allows(k, b)) stateTotals[k] += counts[k][b];
       }
     }
     for (std::size_t b = 0; b < numberOfBins; ++b)
@@ -35,7 +40,7 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
       bool reachable = false;
       for (std::size_t k = 0; k < numberOfStates && !reachable; ++k)
       {
-        reachable = stateTotals[k] > 0.0 && -reducedPotential[k][b] > forbiddenLogWeight;
+        reachable = stateTotals[k] > 0.0 && allows(k, b);
       }
       if (!reachable)
       {
@@ -58,7 +63,7 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
     double total{0.0};
     for (std::size_t k = 0; k < numberOfStates; ++k)
     {
-      total += counts[k][b];
+      if (allows(k, b)) total += counts[k][b];
     }
     if (total > 0.0) logBinCounts[b] = std::log(total);
   }
@@ -138,7 +143,10 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
         if (result.logDensity[b] <= logZeroThreshold) continue;
         largest = std::max(largest, result.logDensity[b] - reducedPotential[k][b]);
       }
-      if (largest <= logZeroThreshold)
+      // A state that forbids every bin with a density (a pilot without samples in occupancy mode) has a largest
+      // term of about -1e30, far above the 'log of zero': its g became +1e30 instead of the 0 of a state that
+      // takes no part.
+      if (largest <= forbiddenLogWeight)
       {
         updated[k] = 0.0;
         continue;
@@ -170,21 +178,22 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
 
   result.iterations = iteration;
   result.residual = residual;
-  result.connected = statesAreConnected(logStateCounts, result.freeEnergies, result.logDensity, reducedPotential);
+  result.connected = statesAreConnected(counts, logStateCounts, result.logDensity, reducedPotential);
   result.converged = residual <= tolerance && result.connected;
   return result;
 }
 
-bool DcTSTWham::statesAreConnected(const std::vector<double>& logStateCounts, const std::vector<double>& freeEnergies,
-                                   const std::vector<double>& logDensity,
+bool DcTSTWham::statesAreConnected(const std::vector<std::vector<double>>& counts,
+                                   const std::vector<double>& logStateCounts, const std::vector<double>& logDensity,
                                    const std::vector<std::vector<double>>& reducedPotential)
 {
-  // The WHAM equations fix the free-energy difference of two states only through bins both contribute to. When
-  // the sampled states fall apart into groups that share no bin, every group is invariant under its own shift
-  // of g and the iteration converges at once on an arbitrary offset between them. State k contributes to bin b
-  // the share n_k exp(g_k - u_k(b)) / sum_l n_l exp(g_l - u_l(b)) of its mixture; two states are linked by a
-  // bin where both shares exceed 'overlapShare'.
-  constexpr double logOverlapShare = -27.631021115928547;  // ln 1e-12
+  // The free-energy difference of two states is measured only where both of them sampled: two states are linked
+  // by a bin that holds samples of both (and that neither forbids). The share n_k exp(g_k - u_k(b)) of a state in
+  // the mixture of a bin is no such evidence. WHAM knows the samples of a bin by their sum only, so that two
+  // states with fully disjoint histograms and a finite bias on each other's bins have a unique fixed point: for
+  // counts {{n, 0}, {0, n}} and biases {{0, u}, {u, 0}} it is g = {0, 0} for every u, each state being credited
+  // with the share e^-u of the samples of the other. The iteration converged on it, the shares were far above any
+  // threshold, and a free-energy difference across a barrier that no state crossed was reported as converged.
   const std::size_t numberOfStates = logStateCounts.size();
   std::vector<std::size_t> parent(numberOfStates);
   std::iota(parent.begin(), parent.end(), 0uz);
@@ -198,30 +207,14 @@ bool DcTSTWham::statesAreConnected(const std::vector<double>& logStateCounts, co
     return k;
   };
 
-  std::vector<double> logShare(numberOfStates);
   for (std::size_t b = 0; b < logDensity.size(); ++b)
   {
     if (logDensity[b] <= logZeroThreshold) continue;
-    double largest = logZero;
-    for (std::size_t k = 0; k < numberOfStates; ++k)
-    {
-      logShare[k] = logZero;
-      if (logStateCounts[k] <= logZeroThreshold) continue;
-      logShare[k] = logStateCounts[k] + freeEnergies[k] - reducedPotential[k][b];
-      largest = std::max(largest, logShare[k]);
-    }
-    if (largest <= forbiddenLogWeight) continue;
-    double sum{0.0};
-    for (std::size_t k = 0; k < numberOfStates; ++k)
-    {
-      if (logShare[k] > logZeroThreshold) sum += std::exp(logShare[k] - largest);
-    }
-    if (!(sum > 0.0)) continue;
-    const double logNormalization = largest + std::log(sum);
     std::optional<std::size_t> first;
     for (std::size_t k = 0; k < numberOfStates; ++k)
     {
-      if (logShare[k] <= logZeroThreshold || logShare[k] - logNormalization < logOverlapShare) continue;
+      if (logStateCounts[k] <= logZeroThreshold) continue;
+      if (!(counts[k][b] > 0.0) || !(-reducedPotential[k][b] > forbiddenLogWeight)) continue;
       if (!first.has_value())
       {
         first = k;

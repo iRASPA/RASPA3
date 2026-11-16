@@ -330,6 +330,13 @@ std::pair<std::size_t, std::size_t> DcTSTCageLattice::cagesAcrossNearestPlane(do
   return {neighborAlongAxis(own, alignment.axis, -alignment.sign), own};
 }
 
+double DcTSTCageLattice::fractionAlongDirection(double3 r, double3 direction) const
+{
+  const AxisAlignment alignment = axisAlongDirection(direction);
+  const double f = (inverseCell * (r - origin))[static_cast<std::size_t>(alignment.axis)];
+  return static_cast<double>(alignment.sign) * (f - std::floor(f + 0.5));
+}
+
 double3 DcTSTCageLattice::randomPointInCage(RandomNumber& random, std::size_t cage) const
 {
   return center(cage) + cell * double3(random.uniform() - 0.5, random.uniform() - 0.5, random.uniform() - 0.5);

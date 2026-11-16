@@ -1437,6 +1437,12 @@ std::size_t gurvichCapForSystem(const System& system, double liquidVolume)
   }
   return gurvichCap;
 }
+bool fractionalMoleculesAreDecoupled(const Component& component)
+{
+  return component.lambdaGC.currentBin == 0uz && component.lambdaPairSwap.currentBin == 0uz &&
+         component.lambdaPairSwapCB.currentBin == 0uz && component.lambdaGroupSwap.currentBin == 0uz &&
+         component.lambdaGroupSwapCB.currentBin == 0uz && component.lambdaGibbs.currentBin == 0uz;
+}
 }  // namespace
 
 NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa, std::size_t maximumCycles)
@@ -1458,6 +1464,10 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
   pinNitrogenBETPressure(system, pressurePa);
   system.tmmc.doTMMC = false;
   system.tmmc.rejectOutOfBound = false;
+  // The scout fills the empty host, as the Henry probe inserts into it: the guests the input created
+  // ('CreateNumberOfMolecules') are removed. Started above its equilibrium the loading falls block after block,
+  // and the plateau was read off that descent.
+  removeSwappableIntegerMolecules(system);
 
   const std::size_t seed =
       1uz + static_cast<std::size_t>(std::llround(std::abs(std::log(std::max(pressurePa, 1.0e-30))) * 1000.0)) %
@@ -1518,7 +1528,10 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
         // fractional molecule is decoupled: at lambda = 0 the bias, a function of lambda alone, is the same
         // for every N, and the conditional distribution of N is the unbiased one. At any other lambda the
         // configuration holds N molecules plus a partially coupled one.
-        if (hasFractionalAdsorbate && system.components[probeComponent].lambdaGC.currentBin == 0uz)
+        // Every lambda coordinate of the probe has to be there: next to the GC one it may carry the fractional
+        // molecules of a pair or a group swap (a homodimer group, say), with histograms of their own (an unused
+        // histogram stays at bin 0).
+        if (hasFractionalAdsorbate && fractionalMoleculesAreDecoupled(system.components[probeComponent]))
         {
           const double occupancy = static_cast<double>(system.numberOfIntegerMoleculesPerComponent[probeComponent]);
           blockSum += occupancy;
@@ -1565,8 +1578,10 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
 
     if (!isFirstBlock)
     {
+      // a plateau is a block mean that neither grows nor falls: taken one-sided, every block of a falling loading
+      // (a relaxation after a jump of the lambda bias) counted as stable, and the scout stopped on the way down
       const double growth = blockMean - previousBlockMean;
-      if (growth <= scoutPlateauTolerance * std::max(1.0, previousBlockMean))
+      if (std::abs(growth) <= scoutPlateauTolerance * std::max(1.0, previousBlockMean))
       {
         ++stableBlocks;
         plateauSum += blockSum;

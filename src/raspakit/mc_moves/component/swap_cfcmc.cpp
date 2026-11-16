@@ -28,6 +28,7 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_acceptance;
 import scaling;
 import intra_molecular_potentials;
 
@@ -390,11 +391,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                           : lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // the conformation was drawn at full coupling and is placed at the new lambda: the change of its intramolecular
     // Coulomb kernel with the scaling is not part of the generation probability
-    double physicalPacc = preFactor * std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() +
-                                                               energyDifferenceStep2.potentialEnergy() +
-                                                               polarizationDifference.potentialEnergy() +
-                                                               system.intraCoulombScalingEnergy(trialMolecule.second)));
-    double samplingPacc = physicalPacc * std::exp(biasTerm);
+    // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
+    const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
+        preFactor,
+        -system.beta *
+            (energyDifferenceStep1.potentialEnergy() + energyDifferenceStep2.potentialEnergy() +
+             polarizationDifference.potentialEnergy() + system.intraCoulombScalingEnergy(trialMolecule.second)),
+        biasTerm);
+    const double physicalPacc = acceptance.physical;
+    const double samplingPacc = acceptance.sampling;
 
     if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
     {
@@ -769,12 +774,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
                             ? 0.0
                             : lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
       // the reverse insertion draws the removed conformation at full coupling and places it at the old lambda
-      double physicalPacc =
-          preFactor *
-          std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() + energyDifferenceStep2.potentialEnergy() +
-                                   polarizationDifference.potentialEnergy() -
-                                   system.intraCoulombScalingEnergy(oldFractionalMolecule)));
-      double samplingPacc = physicalPacc * std::exp(biasTerm);
+      // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
+      const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
+          preFactor,
+          -system.beta *
+              (energyDifferenceStep1.potentialEnergy() + energyDifferenceStep2.potentialEnergy() +
+               polarizationDifference.potentialEnergy() - system.intraCoulombScalingEnergy(oldFractionalMolecule)),
+          biasTerm);
+      const double physicalPacc = acceptance.physical;
+      const double samplingPacc = acceptance.sampling;
 
       if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
       {

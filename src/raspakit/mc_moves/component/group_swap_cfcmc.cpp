@@ -23,6 +23,7 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_acceptance;
 import scaling;
 
 // The group CFCMC move generalizes the ion-pair CFCMC move to K = 1 + #satellites molecules that
@@ -568,11 +569,15 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     }
 
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-    const double physicalPacc =
-        std::exp(std::log(preFactor) + logRosenbluthRatio -
-                 system.beta * (energyDifference.potentialEnergy() + trialExtraDifference.potentialEnergy() +
-                                polarizationDifference.potentialEnergy() + intraCoulombScaling));
-    const double samplingPacc = physicalPacc * std::exp(biasTerm);
+    // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
+    const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
+        preFactor,
+        logRosenbluthRatio -
+            system.beta * (energyDifference.potentialEnergy() + trialExtraDifference.potentialEnergy() +
+                           polarizationDifference.potentialEnergy() + intraCoulombScaling),
+        biasTerm);
+    const double physicalPacc = acceptance.physical;
+    const double samplingPacc = acceptance.sampling;
 
     if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && tmmcOldN >= system.tmmc.maxMacrostate)
     {
@@ -995,11 +1000,15 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     }
 
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-    const double physicalPacc =
-        std::exp(std::log(preFactor) + logRosenbluthRatio -
-                 system.beta * (energyDifference.potentialEnergy() + removalExtraDifference.potentialEnergy() +
-                                polarizationDifference.potentialEnergy() + intraCoulombScaling));
-    const double samplingPacc = physicalPacc * std::exp(biasTerm);
+    // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
+    const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
+        preFactor,
+        logRosenbluthRatio -
+            system.beta * (energyDifference.potentialEnergy() + removalExtraDifference.potentialEnergy() +
+                           polarizationDifference.potentialEnergy() + intraCoulombScaling),
+        biasTerm);
+    const double physicalPacc = acceptance.physical;
+    const double samplingPacc = acceptance.sampling;
 
     if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && tmmcOldN <= system.tmmc.minMacrostate)
     {

@@ -91,20 +91,21 @@ void System::determineFractionalComponents()
     numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC[i] = 0;
 
     // fixed-lambda thermodynamic integration pins a fractional molecule in the GC slot without
-    // any lambda-changing move being enabled
+    // any lambda-changing move being enabled.
+    // The CFCMC and the CB/CFCMC swaps (and their Widom moves) are two ways of moving along the one coordinate
+    // 'lambdaGC' of the component: they share its fractional molecule, as GibbsSwapCFCMC and GibbsSwapCBCFCMC
+    // share theirs. With both enabled each used to get a molecule of its own while reading and writing the same
+    // 'lambdaGC.currentBin': one move left its molecule coupled at lambda > 0, the other put the bin back to
+    // zero for a molecule at scaling zero, and what was then sampled as an integer state at lambda = 0 carried
+    // the interactions of the first.
     const bool needsGCSlot = components[i].mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
                              components[i].mc_moves_probabilities.getProbability(Move::Types::WidomCFCMC) > 0.0 ||
+                             components[i].mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0 ||
+                             components[i].mc_moves_probabilities.getProbability(Move::Types::WidomCBCFCMC) > 0.0 ||
                              pinsFixedLambda(components[i], Component::FixedLambdaCoordinate::GC);
     if (needsGCSlot)
     {
       numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 1;
-      components[i].hasFractionalMolecule = true;
-    }
-
-    if (components[i].mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0 ||
-        components[i].mc_moves_probabilities.getProbability(Move::Types::WidomCBCFCMC) > 0.0)
-    {
-      numberOfPairGCFractionalMoleculesPerComponent_CFCMC[i] = 1;
       components[i].hasFractionalMolecule = true;
     }
 
@@ -288,10 +289,11 @@ std::size_t System::indexOfFractionalMoleculeForMove(Move::Types move, std::size
   {
     case Move::Types::SwapCFCMC:
     case Move::Types::WidomCFCMC:
-      return indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
     case Move::Types::SwapCBCFCMC:
     case Move::Types::WidomCBCFCMC:
-      return indexOfPairGCFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
+      // one molecule for the coordinate 'lambdaGC', whichever of the moves changes it (a restart of a run with
+      // the CB move alone has its molecule in the same first slot, counted in the other array)
+      return indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
     case Move::Types::PairSwapCFCMC:
       return indexOfPairSwapFractionalMoleculesPerComponent_CFCMC(selectedComponent) + subIndex;
     case Move::Types::PairSwapCBCFCMC:

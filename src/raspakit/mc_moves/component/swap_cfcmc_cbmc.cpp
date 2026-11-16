@@ -28,6 +28,7 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_acceptance;
 import scaling;
 
 namespace
@@ -360,9 +361,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                           ? 0.0
                           : lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero).
-    double physicalPacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + growData->logRosenbluthWeight -
-                                   std::log(idealGasRosenbluthWeight) - system.beta * energyDifference.potentialEnergy());
-    double samplingPacc = physicalPacc * std::exp(biasTerm);
+    // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
+    const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
+        preFactor,
+        logCorrectionFactorEwald + growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeight) -
+            system.beta * energyDifference.potentialEnergy(),
+        biasTerm);
+    const double physicalPacc = acceptance.physical;
+    const double samplingPacc = acceptance.sampling;
 
     // Retrieve bias from transition matrix
     if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
@@ -695,11 +701,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                             : lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
       // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero,
       // which would turn this quotient into +inf).
-      double physicalPacc = std::exp(
-          logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasRosenbluthWeight) -
-          retraceData.logRosenbluthWeight -
-          system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
-      double samplingPacc = physicalPacc * std::exp(biasTerm);
+      // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
+      const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
+          preFactor,
+          logCorrectionFactorEwald + std::log(idealGasRosenbluthWeight) - retraceData.logRosenbluthWeight -
+              system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy()),
+          biasTerm);
+      const double physicalPacc = acceptance.physical;
+      const double samplingPacc = acceptance.sampling;
 
       // Retrieve bias from transition matrix
       if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)

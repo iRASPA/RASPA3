@@ -69,15 +69,15 @@ const std::vector<double> MCMoveProbabilities::normalizedMap() const
 
 void MCMoveProbabilities::removeRedundantMoves()
 {
-  if (probabilities[std::to_underlying(Move::Types::WidomCFCMC)] > 0.0 && 
-      probabilities[std::to_underlying(Move::Types::SwapCFCMC)] > 0.0)
+  // The four moves act on one fractional molecule and one lambda coordinate. A swap samples that coordinate
+  // over all of its range already, with either way of moving along it: a Widom move of either kind adds nothing
+  // (WidomCBCFCMC next to SwapCFCMC, and the reverse, used to be kept).
+  const bool swaps = probabilities[std::to_underlying(Move::Types::SwapCFCMC)] > 0.0 ||
+                     probabilities[std::to_underlying(Move::Types::SwapCBCFCMC)] > 0.0;
+  if (swaps)
   {
-    setProbability((Move::Types::WidomCFCMC), 0.0);
-  }
-  if (probabilities[std::to_underlying(Move::Types::WidomCBCFCMC)] > 0.0 && 
-      probabilities[std::to_underlying(Move::Types::SwapCBCFCMC)] > 0.0)
-  {
-    setProbability((Move::Types::WidomCBCFCMC), 0.0);
+    setProbability(Move::Types::WidomCFCMC, 0.0);
+    setProbability(Move::Types::WidomCBCFCMC, 0.0);
   }
 }
 
