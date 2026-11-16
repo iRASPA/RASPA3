@@ -279,7 +279,9 @@ bool compatibleMobileTopology(const System& systemA, const System& systemB)
 // The change of the TMMC log-bias of 'replica' when its configuration 'from' is replaced by 'to', with the semantics
 // of TransitionMatrix::biasFactor exactly: a macrostate outside the window refuses the swap (empty) when the window
 // rejects out-of-bound states and leaves it unbiased (0) otherwise, whether or not a bias is in use; inside the
-// window the bias difference counts only while a bias is active, clamped like the factor of the single-box moves.
+// window the bias difference counts only while a bias is active. It is a logarithm that is added to the others
+// of the swap and compared as one: it is not clamped (the factor of a single-box move is, because it is
+// exponentiated on its own). Clamped per replica, +700 and -685 added up to 0 where the swap has +15.
 std::optional<double> tmmcLogBiasChange(const System& replica, const System& from, const System& to)
 {
   if (!replica.tmmc.doTMMC) return 0.0;
@@ -303,7 +305,7 @@ std::optional<double> tmmcLogBiasChange(const System& replica, const System& fro
     return 0.0;
   }
   if (!replica.tmmc.useBias || (!replica.tmmc.useTMBias && !replica.tmmc.useWangLandau)) return 0.0;
-  return std::clamp(replica.tmmc.bias[newIndex] - replica.tmmc.bias[oldIndex], -500.0, 500.0);
+  return replica.tmmc.bias[newIndex] - replica.tmmc.bias[oldIndex];
 }
 
 // Solute tempering: E_target(X) - E_holder(X) for the configuration X held by 'holder', i.e. the energy

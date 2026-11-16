@@ -25,6 +25,7 @@ import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_acceptance;
 import mc_moves_gibbs_swap_serial_common;
 
 // All systems have a fractional molecule, only one of these is 'active', the others are switched off with 'lambda=0'.
@@ -435,7 +436,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     const double tmmcBias = tmmcTrial.biasFactor();
     tmmcTrial.recordTransfer(physicalAcceptance);
 
-    if (random.uniform() < physicalAcceptance * std::exp(biasTerm) * tmmcBias)
+    if (MC_Moves::acceptedWithBias(random.uniform(), tmmcBias, physicalAcceptance * std::exp(biasTerm)))
     {
       componentA.mc_moves_statistics.addAccepted(move, 0);
 

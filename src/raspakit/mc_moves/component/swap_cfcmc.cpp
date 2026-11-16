@@ -413,7 +413,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
 
     // Apply acceptance/rejection rule
-    if (random.uniform() < biasTransitionMatrix * samplingPacc)
+    if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, samplingPacc))
     {
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
@@ -795,7 +795,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       double biasTransitionMatrix = system.tmmcBiasFactor(selectedComponent, newN, oldN);
 
       // Apply acceptance/rejection rule
-      if (random.uniform() < biasTransitionMatrix * samplingPacc)
+      if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, samplingPacc))
       {
         Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
         component.lambdaGC.setCurrentBin(newBin);
@@ -984,14 +984,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     component.mc_moves_statistics.addConstructed(move, 2);
 
     const double energyTerm = -system.beta * energyDifference.potentialEnergy();
-    const double physicalPacc = std::min(1.0, std::exp(energyTerm));
     const double biasTerm = chain ? 0.0 : (lambda.biasFactor[newBin] - lambda.biasFactor[oldBin]);
+    // the exponents are held to the range of a double (see 'biasedAcceptance'): the decoupled fractional molecule
+    // of bin 0 overlaps freely, and coupling it one bin can gain more energy than an exponential holds
+    const MC_Moves::BiasedAcceptance hopAcceptance = MC_Moves::biasedAcceptance(energyTerm, biasTerm);
+    const double physicalPacc = std::min(1.0, hopAcceptance.physical);
     const double tmmcBias = chain ? system.tmmc.biasFactor(oldN, oldN, newBin, oldBin) : 1.0;
     const double3 hopPacc =
         lambdaHopTMMCPacc(system, selectedComponent, insertionDisabled, deletionDisabled, newBin, oldBin, physicalPacc);
 
     // Apply acceptance/rejection rule
-    if (random.uniform() < tmmcBias * std::exp(energyTerm + biasTerm))
+    if (MC_Moves::acceptedWithBias(random.uniform(), tmmcBias, hopAcceptance.sampling))
     {
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
       component.mc_moves_statistics.addAccepted(move, 2);

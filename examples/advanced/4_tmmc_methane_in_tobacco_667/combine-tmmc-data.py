@@ -25,6 +25,8 @@ CRITICAL_TEMPERATURE = 190.564  # [K]
 CRITICAL_PRESSURE = 4599200.0  # [Pa]
 ACENTRIC_FACTOR = 0.01142
 
+PENG_ROBINSON_CRITICAL_COMPRESSIBILITY = 0.3074
+
 # a valley of ln Pi shallower than this is noise, not a second phase (the threshold of the RASPA3 drivers)
 BIMODAL_DEPTH_THRESHOLD = 0.2
 
@@ -59,7 +61,13 @@ def peng_robinson_fugacity(temperature, pressure, tc=CRITICAL_TEMPERATURE, pc=CR
     stable = min(roots, key=ln_phi)
     fugacity = pressure * np.exp(ln_phi(stable))
     if with_phase:
-        return fugacity, len(roots) > 1 and stable < max(roots)
+        # with a vapour root beside it, the smaller root; alone (above the vapour spinodal the vapour root is gone,
+        # and the one root left is the compressed liquid), a root below the critical compressibility
+        if len(roots) > 1:
+            liquid = stable < max(roots)
+        else:
+            liquid = temperature < tc and stable < PENG_ROBINSON_CRITICAL_COMPRESSIBILITY
+        return fugacity, liquid
     return fugacity
 
 
@@ -102,7 +110,13 @@ def combine_windows(directories):
         window = window.assign(lnpi=window["lnpi"] + shift)
         # the macrostates the combined distribution does not have yet (below its range as well as above)
         combined = pd.concat([combined, window[~window["N"].isin(combined["N"])]], ignore_index=True)
-    return combined.sort_values("N").reset_index(drop=True)
+    combined = combined.sort_values("N").reset_index(drop=True)
+    # the normalization, the peaks and the saddle take the rows as consecutive macrostates
+    steps = np.diff(combined["N"].to_numpy())
+    if np.any(steps != 1):
+        missing = combined["N"].to_numpy()[:-1][steps != 1] + 1
+        raise ValueError(f"the combined ln Pi has no macrostate N = {int(missing[0])}: the windows leave a gap")
+    return combined
 
 
 def normalized(lnpi):

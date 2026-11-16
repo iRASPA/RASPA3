@@ -23,6 +23,7 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_acceptance;
 
 static std::size_t reversePairDeletionPartnerCount(const System& system, std::size_t componentB,
                                                    const double3& positionA, std::span<const Atom> trialMoleculeB,
@@ -267,7 +268,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   const double biasTransitionMatrix =
       tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, oldN) : 1.0;
 
-  if (random.uniform() < biasTransitionMatrix * Pacc)
+  if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, Pacc))
   {
     componentA.mc_moves_statistics.addAccepted(Move::Types::PairSwapCBMC, 0);
 
@@ -518,7 +519,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   const double biasTransitionMatrix =
       tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, oldN) : 1.0;
 
-  if (random.uniform() < biasTransitionMatrix * Pacc)
+  if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, Pacc))
   {
     componentA.mc_moves_statistics.addAccepted(Move::Types::PairSwap, 0);
 

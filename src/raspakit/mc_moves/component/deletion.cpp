@@ -28,6 +28,7 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_acceptance;
 import intra_molecular_potentials;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNumber& random, System& system,
@@ -174,7 +175,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
 
     // Apply acceptance/rejection rule
-    if (random.uniform() < biasTransitionMatrix * Pacc)
+    if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, Pacc))
     {
       // Move accepted; update acceptance statistics
       component.mc_moves_statistics.addAccepted(move, 1);

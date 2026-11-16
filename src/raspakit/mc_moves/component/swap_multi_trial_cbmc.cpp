@@ -19,6 +19,7 @@ import transition_matrix;
 import interactions_ewald;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_acceptance;
 import mc_moves_multi_trial_common;
 
 // Multiple-try CBMC swap. Insertion:
@@ -88,7 +89,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveMultiTri
   const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
   const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
 
-  if (random.uniform() < biasTransitionMatrix * Pacc)
+  if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, Pacc))
   {
     component.mc_moves_statistics.addAccepted(move, 0);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
@@ -163,7 +164,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveMultiTria
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
   const double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
 
-  if (random.uniform() < biasTransitionMatrix * Pacc)
+  if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, Pacc))
   {
     component.mc_moves_statistics.addAccepted(move, 1);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);

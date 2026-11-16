@@ -315,6 +315,11 @@ void TransitionMatrix::clearStatisticsKeepBias()
   numberOfUpdates = 0;
   std::fill(cmatrix.begin(), cmatrix.end(), double3(0.0, 0.0, 0.0));
   std::fill(histogram.begin(), histogram.end(), 0uz);
+  // ln Pi belongs to the statistics that were dropped (the bias is kept on its own): left in place it was written
+  // next to an empty collection matrix until the first rebuild, and for good when production visited nothing
+  std::fill(lnpi.begin(), lnpi.end(), 0.0);
+  std::fill(forward_lnpi.begin(), forward_lnpi.end(), 0.0);
+  std::fill(reverse_lnpi.begin(), reverse_lnpi.end(), 0.0);
 };
 
 // Clear Collection matrix stats (used after initialization cycles)

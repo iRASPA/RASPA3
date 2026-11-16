@@ -276,6 +276,30 @@ TEST(INPUT_READER_TMMC, parallel_tmmc_rejects_the_moves_the_transition_matrix_ca
   EXPECT_NE(temperingRefusal.find("must be zero"), std::string::npos) << temperingRefusal;
 }
 
+// The parallel driver runs one scheme (Wang-Landau, then the transition-matrix bias, the statistics restarted at
+// production): a macrostate switch that asks for another was read and overwritten without a word.
+TEST(INPUT_READER_TMMC, parallel_tmmc_rejects_macrostate_switches_it_overrides)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+
+  nlohmann::json imposed = readParallelTMMCExample();
+  imposed["Systems"][0]["MacroStateUseBias"] = true;
+  imposed["Systems"][0]["MacroStateUseWangLandau"] = true;
+  imposed["Systems"][0]["MacroStateRezeroAfterInitialization"] = false;
+  EXPECT_EQ(refusalOf(std::move(imposed), "ptmmc_flags_imposed", workspace.path()), "");
+
+  for (const auto& [keyword, value] : {std::pair{"MacroStateUseBias", false},
+                                       std::pair{"MacroStateUseWangLandau", false},
+                                       std::pair{"MacroStateRezeroAfterInitialization", true}})
+  {
+    nlohmann::json input = readParallelTMMCExample();
+    input["Systems"][0][keyword] = value;
+    const std::string refusal = refusalOf(std::move(input), "ptmmc_flags", workspace.path());
+    EXPECT_NE(refusal.find(keyword), std::string::npos) << keyword << ": " << refusal;
+  }
+}
+
 // Its walkers are grown into their windows, so what is created may lie below the macrostate range, which
 // for a single transition-matrix run it may not.
 TEST(INPUT_READER_TMMC, parallel_tmmc_may_create_fewer_molecules_than_the_range_starts_at)

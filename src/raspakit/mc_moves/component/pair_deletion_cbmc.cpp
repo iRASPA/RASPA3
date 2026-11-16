@@ -20,6 +20,7 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_acceptance;
 
 // Polarization energy change when the pair (molecule A, molecule B) is removed. The two removed molecules lose their
 // own polarization energy (evaluated with their full stored field, which already contains the framework, reciprocal
@@ -310,7 +311,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwapCBMC, 1);
 
-  if (random.uniform() < biasTransitionMatrix * Pacc)
+  if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, Pacc))
   {
     componentA.mc_moves_statistics.addAccepted(Move::Types::PairSwapCBMC, 1);
 
@@ -559,7 +560,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
 
   componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwap, 1);
 
-  if (random.uniform() < biasTransitionMatrix * Pacc)
+  if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, Pacc))
   {
     componentA.mc_moves_statistics.addAccepted(Move::Types::PairSwap, 1);
 

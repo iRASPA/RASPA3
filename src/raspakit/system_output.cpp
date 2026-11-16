@@ -1313,7 +1313,15 @@ std::string System::writeMCMoveStatistics() const
 
     // the GC lambda statistics, of a component that has that coordinate (a pair, group or conventional Gibbs
     // fractional molecule alone does not: its histograms are written below)
-    if (component.hasFractionalMolecule && usesGCLambda(componentId))
+    // (not on an (N, lambda) TMMC chain: the matrix flattens that walk with the histogram's own bias at zero, and
+    // the excess chemical potential read from it came out as zero; it is in ln Pi of the chain)
+    if (component.hasFractionalMolecule && usesGCLambda(componentId) && tmmcOwnsGCLambda(componentId))
+    {
+      std::print(stream, "    Lambda statistics: the lambda of this component is part of the TMMC (N, lambda) chain;\n"
+                         "    its free energy is in ln Pi of the transition matrix ({})\n\n",
+                 tmmc.statisticsFileName);
+    }
+    else if (component.hasFractionalMolecule && usesGCLambda(componentId))
     {
       double imposedChemicalPotential = std::log(beta * component.fugacityCoefficient.value_or(1.0) * 
                                                  component.molFraction * pressure) / beta;
@@ -1397,7 +1405,7 @@ nlohmann::json System::jsonMCMoveStatistics() const
     nlohmann::json subMoves = component.jsonSubMoveStatistics();
     if (!subMoves.empty()) status[component.name]["subMoves"] = subMoves;
 
-    if (component.hasFractionalMolecule && usesGCLambda(componentId))
+    if (component.hasFractionalMolecule && usesGCLambda(componentId) && !tmmcOwnsGCLambda(componentId))
     {
       double imposedChemicalPotential =
           std::log(beta * component.fugacityCoefficient.value_or(1.0) * component.molFraction * pressure) / beta;

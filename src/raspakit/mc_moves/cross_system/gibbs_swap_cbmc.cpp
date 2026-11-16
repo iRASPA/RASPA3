@@ -24,6 +24,7 @@ import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_acceptance;
 
 namespace
 {
@@ -217,7 +218,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   // Apply Metropolis acceptance criterion.  The collection matrix above sees
   // only the unbiased physical probability.
-  if (random.uniform() < tmmcBias * physicalAcceptance)
+  if (MC_Moves::acceptedWithBias(random.uniform(), tmmcBias, physicalAcceptance))
   {
     // Update accepted move statistics for system A
     componentA.mc_moves_statistics.addAccepted(move);

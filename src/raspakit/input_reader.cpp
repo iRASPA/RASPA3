@@ -5757,6 +5757,25 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                 i, trackedComponent, tracked.name, keyword, Move::moveNames[std::to_underlying(move)]));
           }
         }
+        // The bias of a Gibbs transfer is carried by one box of the pair (System::gibbsTransferTMMCBiasFactor), which
+        // is the change of one function of the state for two boxes only: among three the pairs take the bias of
+        // different boxes, and around a cycle of transfers the factors do not multiply to one.
+        if (systems.size() > 2uz)
+        {
+          for (const auto& [move, keyword] :
+               {std::pair{Move::Types::GibbsSwapCBMC, "GibbsSwapCBMCProbability"},
+                std::pair{Move::Types::GibbsSwapMultiTrialCBMC, "GibbsSwapMultiTrialProbability"}})
+          {
+            if (tracked.mc_moves_probabilities.getProbability(move) != 0.0)
+            {
+              throw std::runtime_error(std::format(
+                  "Error [TMMC, system {}, component {} ('{}')]: '{}' must be zero with {} systems; the transition-"
+                  "matrix bias of a Gibbs transfer is that of one box of the pair, which satisfies detailed balance "
+                  "between two boxes only. Use two systems.\n",
+                  i, trackedComponent, tracked.name, keyword, systems.size()));
+            }
+          }
+        }
         const bool lambdaChain = (tracked.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
                                   tracked.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0) &&
                                  tracked.lambdaGC.numberOfSamplePoints > 1uz;
@@ -5878,6 +5897,51 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                 i, componentId, component.name, keyword, Move::moveNames[std::to_underlying(move)],
                 systems[i].components[trackedComponent].name,
                 systems[i].groupMoleculeCountChange(componentId, trackedComponent)));
+          }
+        }
+      }
+      // A group driven by another component that holds one molecule of the TMMC component steps the matrix through
+      // that satellite (System::groupSwapTMMCMember), so what is asked of a group swap of the TMMC component itself
+      // is asked of it too: on an (N, lambda) chain it is an integer jump the matrix cannot hold, and a CFCMC group
+      // swap on several lambda bins walks inside one macrostate. Only the moves of the TMMC component were looked
+      // at: such a move passed, its fractional molecules were made, and every one of its trials was refused.
+      if (trackedComponent < systems[i].components.size())
+      {
+        const Component& tracked = systems[i].components[trackedComponent];
+        const bool lambdaChainOfTracked =
+            (tracked.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
+             tracked.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0) &&
+            tracked.lambdaGC.numberOfSamplePoints > 1uz;
+        for (std::size_t componentId = 0uz; componentId < systems[i].components.size(); ++componentId)
+        {
+          if (componentId == trackedComponent) continue;  // checked with the moves of the tracked component above
+          if (systems[i].groupMoleculeCountChange(componentId, trackedComponent) != 1uz) continue;
+          const Component& component = systems[i].components[componentId];
+          const std::array satelliteGroupSwapMoves{
+              std::tuple{Move::Types::GroupSwap, "GroupSwapConventionalProbability", false, false},
+              std::tuple{Move::Types::GroupSwapCBMC, "GroupSwapProbability", false, false},
+              std::tuple{Move::Types::GroupSwapCFCMC, "CFCMC_GroupSwapProbability", true, false},
+              std::tuple{Move::Types::GroupSwapCBCFCMC, "CFCMC_CBMC_GroupSwapProbability", true, true}};
+          for (const auto& [move, keyword, fractional, configurationalBias] : satelliteGroupSwapMoves)
+          {
+            if (component.mc_moves_probabilities.getProbability(move) == 0.0) continue;
+            if (lambdaChainOfTracked)
+            {
+              throw std::runtime_error(std::format(
+                  "Error [TMMC, system {}, component {} ('{}')]: '{}' must be zero together with a CFCMC swap of "
+                  "'{}' (a member of its group) on several lambda bins; the group swap changes N with the chain's "
+                  "lambda unchanged, a jump the (N, lambda) transition matrix cannot hold.\n",
+                  i, componentId, component.name, keyword, tracked.name));
+            }
+            const auto& histogram = configurationalBias ? component.lambdaGroupSwapCB : component.lambdaGroupSwap;
+            if (fractional && histogram.numberOfSamplePoints > 1uz)
+            {
+              throw std::runtime_error(std::format(
+                  "Error [TMMC, system {}, component {} ('{}')]: '{}' needs 'NumberOfLambdaBins' 1 under TMMC (its "
+                  "group holds the TMMC component '{}'); the move walks its lambda inside one macrostate of the N "
+                  "chain, biased by its own Wang-Landau factors, which the transition matrix cannot see.\n",
+                  i, componentId, component.name, keyword, tracked.name));
+            }
           }
         }
       }
@@ -6322,6 +6386,26 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       systems.size()));
     }
     requireSingleCountedAdsorbate(systems.front(), "ParallelTMMC");
+    // The driver runs one scheme: Wang-Landau explores the windows, the transition-matrix bias takes over in
+    // production, and the statistics restart at production. The macrostate switches are fixed by it; a value that
+    // asks for something else was read and overwritten without a word.
+    if (parsed_data.contains("Systems") && parsed_data["Systems"].is_array() && !parsed_data["Systems"].empty())
+    {
+      for (const auto& [keyword, imposed] : {std::pair{"MacroStateUseBias", true},
+                                             std::pair{"MacroStateUseWangLandau", true},
+                                             std::pair{"MacroStateRezeroAfterInitialization", false}})
+      {
+        const auto& value = parsed_data["Systems"][0];
+        if (value.contains(keyword) && value[keyword].is_boolean() && value[keyword].get<bool>() != imposed)
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: 'ParallelTMMC' runs with '{}' {}; remove the key (the driver explores "
+                          "its windows with Wang-Landau, switches to the transition-matrix bias in production and "
+                          "restarts the statistics there)\n",
+                          keyword, imposed));
+        }
+      }
+    }
     System& system = systems.front();
     system.tmmc.doTMMC = true;
     system.tmmc.useBias = true;
@@ -6361,14 +6445,18 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       tmmcNumberOfWindows, system.tmmc.minMacrostate, system.tmmc.maxMacrostate));
     }
     // of the adsorbate: the cations are there from the start and are not part of the macrostate
-    const std::size_t initialNumberOfMolecules = system.tmmcComponent() < system.initialNumberOfMolecules.size()
-                                                     ? system.initialNumberOfMolecules[system.tmmcComponent()]
-                                                     : 0uz;
+    // (the molecules that are there, not only the ones 'CreateNumberOfMolecules' asks for: those read from a
+    // 'RestartFileName' are not in that number, and passed)
+    const std::size_t initialNumberOfMolecules =
+        system.tmmcComponent() < system.numberOfIntegerMoleculesPerComponent.size()
+            ? system.numberOfIntegerMoleculesPerComponent[system.tmmcComponent()]
+            : 0uz;
     if (initialNumberOfMolecules > system.tmmc.minMacrostate)
     {
       throw std::runtime_error(
-          std::format("[Input reader]: 'ParallelTMMC' fills every window from below by growing molecules; "
-                      "'CreateNumberOfMolecules' ({}) must not exceed 'MacroStateMinimumNumberOfMolecules' ({})\n",
+          std::format("[Input reader]: 'ParallelTMMC' fills every window from below by growing molecules; the "
+                      "initial number of molecules ({}, from 'CreateNumberOfMolecules' or 'RestartFileName') must "
+                      "not exceed 'MacroStateMinimumNumberOfMolecules' ({})\n",
                       initialNumberOfMolecules, system.tmmc.minMacrostate));
     }
   }

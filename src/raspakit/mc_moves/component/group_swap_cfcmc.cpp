@@ -589,7 +589,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     const double biasTransitionMatrix =
         tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, tmmcOldN) : 1.0;
 
-    if (random.uniform() < biasTransitionMatrix * samplingPacc)
+    if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, samplingPacc))
     {
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
 
@@ -1020,7 +1020,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     const double biasTransitionMatrix =
         tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, tmmcOldN) : 1.0;
 
-    if (random.uniform() < biasTransitionMatrix * samplingPacc)
+    if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, samplingPacc))
     {
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
       lambda.setCurrentBin(newBin);

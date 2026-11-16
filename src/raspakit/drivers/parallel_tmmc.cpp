@@ -144,6 +144,32 @@ bool growToMacrostate(System& system, RandomNumber& rng, std::size_t target)
 {
   // the macrostate is the count of the tracked adsorbate (a cation may come before it in the list)
   const std::size_t componentId = system.tmmcComponent();
+  // A template that already holds more molecules than the window starts at (put together in code, or read from a
+  // restart file, which 'CreateNumberOfMolecules' does not count) is brought down to it. Growing only upward left
+  // the lower windows above their range, where the walk is let back in by unbiased deletions alone, which a
+  // condensing fugacity never accepts: those windows collected nothing. The energies and the Ewald sums are
+  // computed after the growth, for the molecules that are then there.
+  while (system.numberOfIntegerMoleculesPerComponent[componentId] > target)
+  {
+    const std::size_t first = system.numberOfFractionalMoleculesPerComponent[componentId];
+    std::optional<std::size_t> selectedMolecule{};
+    for (std::size_t moleculeId = system.numberOfMoleculesPerComponent[componentId]; moleculeId-- > first;)
+    {
+      // a cross-linked molecule can not leave the system
+      if (system.crossLinks.moleculeIsLinked(componentId, moleculeId)) continue;
+      selectedMolecule = moleculeId;
+      break;
+    }
+    if (!selectedMolecule.has_value())
+    {
+      throw std::runtime_error(std::format(
+          "[ParallelTMMC]: the template system holds {} cross-linked molecules of the adsorbate, more than the "
+          "macrostate {} its window starts at\n",
+          system.numberOfIntegerMoleculesPerComponent[componentId], target));
+    }
+    system.deleteMolecule(componentId, selectedMolecule.value(),
+                          system.spanOfMolecule(componentId, selectedMolecule.value()));
+  }
   while (system.numberOfIntegerMoleculesPerComponent[componentId] < target)
   {
     // The grow filters every trial against the blocking pockets, so the returned molecule needs no
@@ -466,6 +492,48 @@ void ParallelTMMC::initializeWalkers(System templateSystem)
     throw std::runtime_error(
         "[ParallelTMMC]: the macrostate is the molecule count of a single adsorbate; more than one swappable "
         "component was given\n");
+  }
+  // The numbers of the run, for the input reader and the programmatic constructor alike. The walkers insert at
+  // the fugacity of the reference pressure: at zero ('ExternalPressure' left out) no insertion is accepted, a
+  // deletion divides by it, and the analysis takes its logarithm. The block count sizes the block snapshots.
+  auto requirePositive = [](double value, std::string_view what)
+  {
+    if (!(value > 0.0) || !(value < 1e300))
+    {
+      throw std::runtime_error(std::format("[ParallelTMMC]: {} must be positive and finite (got {})\n", what, value));
+    }
+  };
+  requirePositive(referencePressure, "the reference pressure ('ExternalPressure')");
+  for (const double temperature : temperatures) requirePositive(temperature, "every temperature");
+  if (numberOfBlocks == 0uz)
+  {
+    throw std::runtime_error("[ParallelTMMC]: 'NumberOfBlocks' must be at least 1\n");
+  }
+  if (!autoReweightingPressureRange || nitrogenBETPressurePlan.has_value())
+  {
+    requirePositive(reweightingPressureRange.first, "the lower bound of the reweighting pressure range");
+    requirePositive(reweightingPressureRange.second, "the upper bound of the reweighting pressure range");
+    if (!(reweightingPressureRange.first < reweightingPressureRange.second))
+    {
+      throw std::runtime_error(std::format(
+          "[ParallelTMMC]: the reweighting pressure range must be [min, max] with min < max (got [{}, {}])\n",
+          reweightingPressureRange.first, reweightingPressureRange.second));
+    }
+  }
+  // A given ideal-gas Rosenbluth weight is the intramolecular partition function at one temperature. The walkers
+  // of another temperature divided their CBMC swaps by it all the same, which shifts the fugacity of that isotherm
+  // by W_IG(T) / W_IG(T_0) (ReweightedHistogram refuses the same).
+  if (std::ranges::any_of(temperatures, [&](double T) { return T != temperatures.front(); }))
+  {
+    const Component& component = templateSystem.components[templateSystem.tmmcComponent()];
+    if (component.idealGasRosenbluthWeight.has_value() && component.idealGasRosenbluthWeight.value() != 1.0)
+    {
+      throw std::runtime_error(std::format(
+          "[ParallelTMMC]: an 'IdealGasRosenbluthWeight' on '{}' is the intramolecular partition function at one "
+          "temperature; it can not be used across a temperature ladder (run the temperatures one at a time, each "
+          "with its own weight)\n",
+          component.name));
+    }
   }
   {
     const Component& component = templateSystem.components[templateSystem.tmmcComponent()];
@@ -1422,7 +1490,11 @@ void ParallelTMMC::output()
             system.loadings = LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent,
                                           system.simulationBox);
 
-            // final per-walker transition-matrix statistics file
+            // final per-walker transition-matrix statistics file, with ln Pi and the bias of the collection matrix
+            // as it stands: they were last rebuilt at a multiple of 'TMMCUpdateEvery' steps (or at the switch to
+            // the transition-matrix bias, a quarter into production), and the file held that ln Pi next to the
+            // final collection matrix and histogram
+            system.tmmc.recomputeLnPiAndBias();
             system.tmmc.writeStatistics();
           });
     }

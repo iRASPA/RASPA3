@@ -23,6 +23,7 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_acceptance;
 
 // Group insertion/deletion move for overall-neutral groups of charged molecules (a generalization
 // of the Orkoulas-Panagiotopoulos ion-pair swap to an arbitrary number of satellite molecules).
@@ -391,7 +392,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
   const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
   const double biasTransitionMatrix = tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, oldN) : 1.0;
 
-  if (random.uniform() < biasTransitionMatrix * Pacc)
+  if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, Pacc))
   {
     centralComponent.mc_moves_statistics.addAccepted(move, 0);
 
@@ -759,7 +760,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
 
   centralComponent.mc_moves_statistics.addConstructed(move, 1);
 
-  if (random.uniform() < biasTransitionMatrix * Pacc)
+  if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, Pacc))
   {
     centralComponent.mc_moves_statistics.addAccepted(move, 1);
 

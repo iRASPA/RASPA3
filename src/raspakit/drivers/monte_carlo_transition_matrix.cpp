@@ -106,6 +106,35 @@ MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(const SimulationSchedule&
       outputJsons(systems.size()),
       estimation(numberOfBlocks, schedule.numberOfProductionCycles)
 {
+  // What the input reader sets up for a TMMC system, for systems put together in code as well. A CFCMC swap on
+  // several lambda bins walks the (N, lambda) chain: left on the plain N chain the move refuses itself
+  // (System::cfcmcSwapFitsTMMC). And each box writes its own statistics file: under the one default name the
+  // boxes of a Gibbs run wrote over each other.
+  for (std::size_t i = 0uz; i < this->systems.size(); ++i)
+  {
+    System& system = this->systems[i];
+    if (!system.tmmc.doTMMC || system.components.empty()) continue;
+    const Component& component = system.components[system.tmmcComponent()];
+    const bool usesCFCMCSwap = component.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
+                               component.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0;
+    if (usesCFCMCSwap && component.lambdaGC.numberOfSamplePoints > 1uz && !system.tmmc.lambdaChain())
+    {
+      system.tmmc.numberOfLambdaBins = component.lambdaGC.numberOfSamplePoints;
+    }
+    if (this->systems.size() > 1uz && system.tmmc.statisticsFileName == TransitionMatrix{}.statisticsFileName)
+    {
+      system.tmmc.statisticsFileName = std::format("tmmc/tmmc_statistics.s{}.txt", i);
+    }
+    // the bias of a Gibbs transfer is that of one box of the pair, a rule for two boxes
+    // (System::gibbsTransferTMMCBiasFactor)
+    if (this->systems.size() > 2uz && system.tmmcTracksGibbsTransfers())
+    {
+      throw std::runtime_error(std::format(
+          "[MonteCarloTransitionMatrix]: system {} makes Gibbs transfers of its TMMC component among {} systems; "
+          "the transition-matrix bias of a Gibbs transfer satisfies detailed balance between two boxes only\n",
+          i, this->systems.size()));
+    }
+  }
 }
 
 System& MonteCarloTransitionMatrix::randomSystem()

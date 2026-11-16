@@ -29,6 +29,7 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_acceptance;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(RandomNumber& random, System& system,
                                                                              std::size_t selectedComponent)
@@ -151,7 +152,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   double biasTransitionMatrix = system.tmmcIntegerSwapBiasFactor(selectedComponent, newN, oldN);
 
   // Apply acceptance/rejection criterion
-  if (random.uniform() < biasTransitionMatrix * Pacc)
+  if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, Pacc))
   {
     // Move accepted; update acceptance statistics
     component.mc_moves_statistics.addAccepted(move, 0);

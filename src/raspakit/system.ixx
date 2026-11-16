@@ -680,6 +680,15 @@ export struct System
   {
     return tmmcTracks(componentId) ? tmmc.biasFactor(newN, oldN) : 1.0;
   }
+  /// Whether the transition matrix owns the GC lambda of 'componentId': on an (N, lambda) chain the lambda hops and
+  /// the endpoint crossings of the tracked component are biased by the matrix and leave the bias factors of the
+  /// histogram 'lambdaGC' out. A bias that is not applied is not one to reweight by (a 'LambdaBiasFileName' read
+  /// in multiplied every sampled average by exp(-bias) all the same), and the histogram, flattened by the matrix
+  /// with its own bias at zero, holds no excess chemical potential: ln Pi of the chain does.
+  [[nodiscard]] bool tmmcOwnsGCLambda(std::size_t componentId) const
+  {
+    return tmmcTracks(componentId) && tmmc.lambdaChain();
+  }
   /// Whether the integer swaps of 'componentId' (Swap, SwapCBMC, SwapMultiTrialCBMC, the pair and group
   /// swaps, and every Gibbs transfer: N -> N +/- 1 with the lambda of the chain unchanged) are steps of the
   /// transition matrix. On a plain N chain they are. On the (N, lambda) chain of SwapCFCMC/SwapCBCFCMC the
@@ -711,6 +720,10 @@ export struct System
   /// first in the driver's list of systems (the lower address; the systems live in one vector), so that a move
   /// and its reverse, called with the roles of the boxes exchanged, see the same bias function of the state. The
   /// other box contributes only its window bound. On an (N, lambda) chain a Gibbs transfer is refused (0).
+  /// This is a rule for two boxes: among three, the pairs (0, 1) and (0, 2) take the bias of box 0 and the pair
+  /// (1, 2) that of box 1, which is not the change of one function of the state (around the cycle 1 -> 0, 2 -> 1,
+  /// 0 -> 2 the factors do not multiply to one). The input reader and the driver refuse TMMC with Gibbs transfers
+  /// among more than two boxes (tmmcTracksGibbsTransfers).
   [[nodiscard]] static double gibbsTransferTMMCBiasFactor(System& gaining, System& losing, std::size_t componentId,
                                                           std::size_t oldNGaining, std::size_t oldNLosing)
   {
@@ -719,23 +732,41 @@ export struct System
     if ((gainingTracks && gaining.tmmc.lambdaChain()) || (losingTracks && losing.tmmc.lambdaChain())) return 0.0;
     if (losingTracks && oldNLosing == 0uz) return 0.0;
 
-    auto windowFactor = [](const System& system, std::size_t newN) -> double
+    // The window bound of the box that does not carry the bias, with the rule of TransitionMatrix::biasFactor: a
+    // step out of the window is refused, and a box that starts outside its window (a restart file) is let back in
+    // by the steps toward it. Held to the new count alone, a box above its window refused the transfer that
+    // brought it one molecule closer, while the window of the other box refused the reverse: neither box moved.
+    auto windowFactor = [](const System& system, std::size_t newN, std::size_t oldN) -> double
     {
-      const bool outside = newN < system.tmmc.minMacrostate || newN > system.tmmc.maxMacrostate;
-      return (outside && system.tmmc.rejectOutOfBound) ? 0.0 : 1.0;
+      if (!system.tmmc.rejectOutOfBound) return 1.0;
+      const std::size_t lowest = system.tmmc.minMacrostate;
+      const std::size_t highest = system.tmmc.maxMacrostate;
+      if (oldN > highest) return newN < oldN ? 1.0 : 0.0;
+      if (oldN < lowest) return newN > oldN ? 1.0 : 0.0;
+      return (newN < lowest || newN > highest) ? 0.0 : 1.0;
     };
     const bool gainingIsReference = gainingTracks && (!losingTracks || &gaining < &losing);
     if (gainingIsReference)
     {
       return gaining.tmmc.biasFactor(oldNGaining + 1uz, oldNGaining) *
-             (losingTracks ? windowFactor(losing, oldNLosing - 1uz) : 1.0);
+             (losingTracks ? windowFactor(losing, oldNLosing - 1uz, oldNLosing) : 1.0);
     }
     if (losingTracks)
     {
       return losing.tmmc.biasFactor(oldNLosing - 1uz, oldNLosing) *
-             (gainingTracks ? windowFactor(gaining, oldNGaining + 1uz) : 1.0);
+             (gainingTracks ? windowFactor(gaining, oldNGaining + 1uz, oldNGaining) : 1.0);
     }
     return 1.0;
+  }
+  /// Whether this system makes Gibbs transfers of the component its transition matrix tracks (the transfers
+  /// gibbsTransferTMMCBiasFactor biases), which only two boxes can share.
+  [[nodiscard]] bool tmmcTracksGibbsTransfers() const
+  {
+    if (!tmmc.doTMMC || components.empty()) return false;
+    const Component& tracked = components[tmmcComponent()];
+    return std::ranges::any_of(std::array{Move::Types::GibbsSwapCBMC, Move::Types::GibbsSwapMultiTrialCBMC},
+                               [&](Move::Types move)
+                               { return tracked.mc_moves_probabilities.getProbability(move) != 0.0; });
   }
   /// The change of the molecule count of 'componentId' by one group insertion of the group of
   /// 'centralComponent' (the central molecule and its satellites; a group deletion removes the same).
@@ -1058,7 +1089,11 @@ export struct System
       // the GC lambda bias is the active box's: the inactive box of a serial Gibbs swap holds a switched-off
       // placeholder and is not reweighted by it
       // (and only of a component that has a GC lambda coordinate at all, see usesGCLambda)
-      w *= (containsTheFractionalMolecule && usesGCLambda(componentId) ? component.lambdaGC.weight() : 1.0) *
+      // (nor on an (N, lambda) chain, where the moves leave the bias of the GC histogram out, see
+      // tmmcOwnsGCLambda)
+      w *= (containsTheFractionalMolecule && usesGCLambda(componentId) && !tmmcOwnsGCLambda(componentId)
+                ? component.lambdaGC.weight()
+                : 1.0) *
            component.lambdaGibbs.weight();
 
       if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCFCMC))

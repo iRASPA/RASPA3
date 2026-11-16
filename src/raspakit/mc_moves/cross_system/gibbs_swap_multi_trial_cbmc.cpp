@@ -17,6 +17,7 @@ import simulationbox;
 import interactions_ewald;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_acceptance;
 import mc_moves_multi_trial_common;
 
 namespace
@@ -163,7 +164,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMoveMu
   const double tmmcBias = tmmcTrial.biasFactor();
   tmmcTrial.recordTransfer(physicalAcceptance);
 
-  if (random.uniform() < tmmcBias * physicalAcceptance)
+  if (MC_Moves::acceptedWithBias(random.uniform(), tmmcBias, physicalAcceptance))
   {
     componentA.mc_moves_statistics.addAccepted(move);
     Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
