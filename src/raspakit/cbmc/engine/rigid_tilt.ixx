@@ -25,6 +25,6 @@ export namespace CBMC
  * of the body is that of the component's reference atoms, exactly. 'chainAtoms' is the chain the step
  * grows in; its next-beads are used as scratch and restored on return (see CBMC::ScratchBeads).
  */
-std::vector<Atom> generateRigidTilt(RandomNumber &random, std::size_t numberOfTrialMovesPerOpenBead, double beta,
+std::optional<std::vector<Atom>> generateRigidTilt(RandomNumber &random, std::size_t numberOfTrialMovesPerOpenBead, double beta,
                                     const Component &component, std::vector<Atom> &chainAtoms, const GrowStep &step);
 }  // namespace CBMC

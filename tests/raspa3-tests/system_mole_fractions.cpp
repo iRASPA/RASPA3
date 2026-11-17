@@ -113,6 +113,47 @@ TEST(SYSTEM_MOLE_FRACTIONS, the_partner_of_a_pair_swap_on_one_ion_is_swappable_t
   EXPECT_DOUBLE_EQ(mixture.components[2].molFraction, 0.5);
 }
 
+// One anion component as the partner of two cations: it can carry the mole fraction of one salt only (it took
+// that of the driver listed last), and with the CFCMC pair moves the two pairs would rescale the same fractional
+// molecule at two lambdas. Refused: each pair takes a component of its own.
+TEST(SYSTEM_MOLE_FRACTIONS, a_partner_shared_by_two_pair_swaps_is_refused)
+{
+  const ForceField forceField = makeForceField();
+  for (const Move::Types move : {Move::Types::PairSwapCBMC, Move::Types::PairSwapCFCMC, Move::Types::PairSwapCBCFCMC})
+  {
+    Component sodium = makeComponent(forceField, "sodium", false, 1.0);
+    sodium.mc_moves_probabilities.setProbability(move, 1.0);
+    sodium.pairComponentId = 2;
+    sodium.maximumPairDistance = 5.0;
+    Component potassium = makeComponent(forceField, "potassium", false, 1.0);
+    potassium.mc_moves_probabilities.setProbability(move, 1.0);
+    potassium.pairComponentId = 2;
+    potassium.maximumPairDistance = 5.0;
+    const Component chloride = makeComponent(forceField, "chloride", false, 1.0);
+    EXPECT_THROW((void)makeSystem({sodium, potassium, chloride}), std::runtime_error);
+  }
+}
+
+// The pair sphere is wrapped onto the box by the insertion and looked at by minimum image in the deletion: with a
+// radius above half the smallest width of the box the two count different sets of partners. Refused at the start,
+// and the moves are not performed in a box that has shrunk below it.
+TEST(SYSTEM_MOLE_FRACTIONS, a_pair_sphere_wider_than_the_box_is_refused)
+{
+  const ForceField forceField = makeForceField();
+  Component cation = makeComponent(forceField, "cation", false, 1.0);
+  cation.mc_moves_probabilities.setProbability(Move::Types::PairSwapCBMC, 1.0);
+  cation.pairComponentId = 1;
+  const Component anion = makeComponent(forceField, "anion", false, 1.0);
+
+  cation.maximumPairDistance = 15.0;  // half the 30 Angstrom box: the largest that fits
+  const System fits = makeSystem({cation, anion});
+  EXPECT_TRUE(fits.pairSphereFitsBox(15.0));
+  EXPECT_FALSE(fits.pairSphereFitsBox(15.1));
+
+  cation.maximumPairDistance = 16.0;
+  EXPECT_THROW((void)makeSystem({cation, anion}), std::runtime_error);
+}
+
 TEST(SYSTEM_MOLE_FRACTIONS, the_target_of_an_identity_change_is_swappable_too)
 {
   const ForceField forceField = makeForceField();

@@ -71,9 +71,11 @@ CBMC::FlexibleBase sampleBase(RandomNumber &random, const CBMC::GrowthSettings &
   }
   if (step.rigidBody)
   {
-    return {CBMC::generateRigidTilt(random, settings.numberOfTrialMovesPerOpenBead, beta, component, chainAtoms,
-                                    step),
-            1.0};
+    std::optional<std::vector<Atom>> tilt =
+        CBMC::generateRigidTilt(random, settings.numberOfTrialMovesPerOpenBead, beta, component, chainAtoms, step);
+    // no tilt with the declared chirality of the hinge: every direction is dead
+    if (!tilt.has_value()) return {CBMC::stepBeadPositions(chainAtoms, step), 1.0, true};
+    return {std::move(tilt.value()), 1.0};
   }
   return CBMC::sampleExactFlexibleBase(random, beta, component, chainAtoms, step);
 }
@@ -164,9 +166,10 @@ std::vector<CBMC::StepTrial> seedTrials(RandomNumber &random, const CBMC::Growth
   {
     for (std::size_t i = first; i != numberOfTrialDirections; ++i)
     {
-      trials[i] = {
-          CBMC::generateRigidTilt(random, settings.numberOfTrialMovesPerOpenBead, beta, component, chainAtoms, step),
-          0.0};
+      std::optional<std::vector<Atom>> tilt =
+          CBMC::generateRigidTilt(random, settings.numberOfTrialMovesPerOpenBead, beta, component, chainAtoms, step);
+      trials[i] = tilt.has_value() ? CBMC::StepTrial{std::move(tilt.value()), 0.0}
+                                   : CBMC::StepTrial{CBMC::stepBeadPositions(chainAtoms, step), 0.0, true};
     }
     if (pinnedOld.has_value()) trials[0] = {std::move(pinnedOld.value()), 0.0};
     return trials;
@@ -210,6 +213,32 @@ std::vector<CBMC::StepTrial> seedTrials(RandomNumber &random, const CBMC::Growth
     trials[i] = {{placeFlexibleSeedBead(random, beta, chainAtoms, step)}, 0.0};
   }
   if (pinnedOld.has_value()) trials[0] = {std::move(pinnedOld.value()), 0.0};
+  return trials;
+}
+
+// Anchored ring closure (a ring closed from a placed rigid unit it is bonded to at a second atom, see
+// 'GrowStep::RingSamplerData::placedFrame'): the ring has no orientation and no spin to choose, so the trial
+// directions are independent conformations of the ring, each drawn by the internal Monte-Carlo on all the bonded
+// terms of the step, each with a torsion weight of one. With 'pinOld' the old conformation is trial 0.
+std::vector<CBMC::StepTrial> anchoredRingTrials(RandomNumber &random, const CBMC::GrowthSettings &settings, double beta,
+                                                const Component &component, std::vector<Atom> &chainAtoms,
+                                                const CBMC::GrowStep &step, std::size_t numberOfTrialDirections,
+                                                bool pinOld)
+{
+  std::vector<CBMC::StepTrial> trials(numberOfTrialDirections);
+  std::size_t first = 0;
+  if (pinOld)
+  {
+    trials[0] = {CBMC::stepBeadPositions(chainAtoms, step), 0.0};
+    first = 1;
+  }
+  for (std::size_t i = first; i != numberOfTrialDirections; ++i)
+  {
+    std::optional<std::vector<Atom>> ring =
+        CBMC::generateRingConformation(random, settings, beta, component, chainAtoms, step);
+    trials[i] = ring.has_value() ? CBMC::StepTrial{std::move(ring.value()), 0.0}
+                                 : CBMC::StepTrial{CBMC::stepBeadPositions(chainAtoms, step), 0.0, true};
+  }
   return trials;
 }
 
@@ -299,6 +328,10 @@ std::vector<CBMC::StepTrial> CBMC::generateGrowTrials(RandomNumber &random, cons
     return bridgeTrials(random, settings, beta, forceField, simulationBox, chainAtoms, step, numberOfTrialDirections,
                         false);
   }
+  if (step.kind == GrowStep::Kind::CloseRing && step.ring.anchored())
+  {
+    return anchoredRingTrials(random, settings, beta, component, chainAtoms, step, numberOfTrialDirections, false);
+  }
   if (!step.previousBead.has_value())
   {
     return seedTrials(random, settings, beta, component, chainAtoms, step, numberOfTrialDirections, std::nullopt);
@@ -318,6 +351,10 @@ std::vector<CBMC::StepTrial> CBMC::generateRetraceTrials(RandomNumber &random, c
   {
     return bridgeTrials(random, settings, beta, forceField, simulationBox, chainAtoms, step, numberOfTrialDirections,
                         true);
+  }
+  if (step.kind == GrowStep::Kind::CloseRing && step.ring.anchored())
+  {
+    return anchoredRingTrials(random, settings, beta, component, chainAtoms, step, numberOfTrialDirections, true);
   }
   if (!step.previousBead.has_value())
   {

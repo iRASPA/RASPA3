@@ -464,6 +464,21 @@ export struct System
   void accountTopologyChange();
 
   void precomputeTotalRigidEnergy() noexcept;
+  /// Rebuilds the stored Ewald structure factors (and, with polarization, the stored electric field) from the
+  /// current positions and box. Needed before an incremental Monte Carlo move that follows a phase that moved
+  /// the atoms without maintaining them: the integrators fill 'trialEik' only.
+  void refreshStoredEwaldStructureFactors() noexcept;
+  /// Whether a sphere of the given radius (the maximum pair or group distance) fits the box under the minimum
+  /// image: 2 R <= the smallest perpendicular width. The pair and group moves place a partner in the sphere and
+  /// count partners by minimum image; in a smaller box the two no longer describe the same set, in either
+  /// direction, so the moves are not performed there (refused at the start, see 'checkPairAndGroupDistances').
+  [[nodiscard]] bool pairSphereFitsBox(double radius) const noexcept
+  {
+    const double3 widths = simulationBox.perpendicularWidths();
+    return 2.0 * radius <= std::min({widths.x, widths.y, widths.z});
+  }
+  /// Throws when a maximum pair or group distance of a component with such a move does not fit the box.
+  void checkPairAndGroupDistances() const;
 
   /// Whether molecular dynamics conserves a total momentum that can be removed from the velocities (with its three
   /// degrees of freedom): more than one mobile entity, no lab-fixed framework atoms and no external field.

@@ -11,6 +11,7 @@ import randomnumbers;
 import component;
 import move_statistics;
 import bend_potential;
+import chiral_center;
 import intra_molecular_potentials;
 import cbmc_util;
 import cbmc_constants;
@@ -52,18 +53,26 @@ class RigidTiltSampler
   {
   }
 
-  std::vector<Atom> sample()
+  // Empty when no orientation with the declared parity of the hinge's chiral centres was found.
+  std::optional<std::vector<Atom>> sample()
   {
-    if (!step_.previousBead.has_value() || step_.rigidTilt.bends.empty())
+    const bool uniform = !step_.previousBead.has_value() || step_.rigidTilt.bends.empty();
+    bool placed = false;
+    for (std::size_t attempt = 0; attempt != Constants::ringParityMaximumReorientations && !placed; ++attempt)
     {
-      uniformOrientation();
+      if (uniform)
+      {
+        uniformOrientation();
+        placed = parityPreserved();
+      }
+      else
+      {
+        const double3 coneDirection = alignToJunctionBend();
+        placed = selectRoll(coneDirection);
+      }
     }
-    else
-    {
-      const double3 coneDirection = alignToJunctionBend();
-      selectRoll(coneDirection);
-      relax();
-    }
+    if (!placed) return std::nullopt;
+    if (!uniform) relax();
 
     std::vector<Atom> result(nextBeads_.size());
     for (std::size_t k = 0; k != nextBeads_.size(); ++k) result[k] = chain_[nextBeads_[k]];
@@ -109,6 +118,18 @@ class RigidTiltSampler
     }
   }
 
+  // Whether every chiral centre the tilt decides has its declared parity (that of the reference geometry). The
+  // bonded model is achiral, so without this the body is placed on either side of the junction alike.
+  bool parityPreserved() const
+  {
+    for (const ChiralCenter& center : step_.rigidTilt.chiralCenters)
+    {
+      if (CBMC::chiralSignedVolume(center.ids, chain_) * CBMC::chiralSignedVolume(center.ids, component_.atoms) < 0.0)
+        return false;
+    }
+    return true;
+  }
+
   // the spin-invariant bends of the step (see 'GrowStep::RigidTiltData::bends')
   double bendEnergy()
   {
@@ -122,8 +143,11 @@ class RigidTiltSampler
   }
 
   // Rosenbluth selection of the roll about the cone direction on a randomly offset grid.
-  void selectRoll(const double3 &coneDirection)
+  // Returns false when no roll on the grid has the declared parity.
+  bool selectRoll(const double3 &coneDirection)
   {
+    constexpr double deadLogFactor = -1.0e300;
+    std::size_t numberOfDeadRolls = 0;
     constexpr std::size_t numberOfRollAngles = Constants::rigidTiltRollGridPoints;
     const double rollOffset = 2.0 * std::numbers::pi * random_.uniform();
     auto rollAngleOf = [&](std::size_t r)
@@ -134,11 +158,18 @@ class RigidTiltSampler
     {
       placeRoll(coneDirection, rollAngleOf(r));
       logRollBoltzmannFactors[r] = -beta_ * bendEnergy();
+      if (!parityPreserved())
+      {
+        logRollBoltzmannFactors[r] = deadLogFactor;
+        ++numberOfDeadRolls;
+      }
     }
+    if (numberOfDeadRolls == numberOfRollAngles) return false;
 
     const std::size_t selected = CBMC::selectTrialPosition(random_, logRollBoltzmannFactors).index;
     placeRoll(coneDirection, rollAngleOf(selected));
     currentEnergy_ = bendEnergy();
+    return true;
   }
 
   // Adaptive step size: the maximum rotation angle is read from the anchor bead's CBMC statistics and
@@ -168,7 +199,7 @@ class RigidTiltSampler
       chain_[nextBeads_[k]].position = anchorPosition_ + axis.rotateAroundAxis(saved_[k] - anchorPosition_, angle);
     }
     const double trialEnergy = bendEnergy();
-    if (random_.uniform() < std::exp(-beta_ * (trialEnergy - currentEnergy_)))
+    if (parityPreserved() && random_.uniform() < std::exp(-beta_ * (trialEnergy - currentEnergy_)))
     {
       currentEnergy_ = trialEnergy;
       rotationStats_.accepted += 1.0;
@@ -201,7 +232,7 @@ class RigidTiltSampler
 };
 }  // namespace
 
-std::vector<Atom> CBMC::generateRigidTilt(RandomNumber &random, std::size_t numberOfTrialMovesPerOpenBead,
+std::optional<std::vector<Atom>> CBMC::generateRigidTilt(RandomNumber &random, std::size_t numberOfTrialMovesPerOpenBead,
                                           double beta, const Component &component, std::vector<Atom> &chainAtoms,
                                           const GrowStep &step)
 {

@@ -127,10 +127,78 @@ class RingSampler
     }
   }
 
+  // Anchored ring (see 'GrowStep::RingSamplerData::placedFrame'): the seed is laid onto the placed rigid unit, the
+  // rotation that carries the unit of the seed geometry onto the unit in the chain. The unit is rigid, so the two
+  // are congruent and the ring leaves the seed closed onto every atom of the unit it is bonded to. A unit whose
+  // atoms lie on one line leaves the rotation about that line open: it is drawn at random, and sampled further
+  // by 'tiltMove'.
+  void placeSeedOnFrame(const std::vector<Atom> &seedAtoms)
+  {
+    const std::vector<std::size_t> &frame = ring_.placedFrame;
+    const double3 seedOrigin = seedAtoms[frame[0]].position;
+
+    // the frame atom farthest from the anchor, and the one farthest from the line through the two
+    std::size_t first = frame[1];
+    for (std::size_t atom : frame)
+    {
+      if ((seedAtoms[atom].position - seedOrigin).length() > (seedAtoms[first].position - seedOrigin).length())
+        first = atom;
+    }
+    const double3 seedU = seedAtoms[first].position - seedOrigin;
+    std::size_t second = first;
+    double largestCross = 0.0;
+    for (std::size_t atom : frame)
+    {
+      const double cross = double3::cross(seedU, seedAtoms[atom].position - seedOrigin).length();
+      if (cross > largestCross)
+      {
+        largestCross = cross;
+        second = atom;
+      }
+    }
+
+    const double3 chainU = chain_[first].position - anchorPosition_;
+    if (largestCross < Constants::degenerateAxisLength * seedU.length())
+    {
+      const double3x3 alignment = double3x3::computeRotationMatrix(seedU.normalized(), chainU.normalized());
+      frameAxis_ = chainU.normalized();
+      const double angle = 2.0 * std::numbers::pi * random_.uniform();
+      for (std::size_t atom : nextBeads_)
+      {
+        chain_[atom].position = anchorPosition_ + frameAxis_->rotateAroundAxis(
+                                                      alignment * (seedAtoms[atom].position - seedOrigin), angle);
+      }
+      return;
+    }
+
+    const auto basisOf = [](const double3 &u, const double3 &v)
+    {
+      const double3 e1 = u.normalized();
+      const double3 e3 = double3::cross(u, v).normalized();
+      return std::array<double3, 3>{e1, double3::cross(e3, e1), e3};
+    };
+    const std::array<double3, 3> seedBasis = basisOf(seedU, seedAtoms[second].position - seedOrigin);
+    const std::array<double3, 3> chainBasis = basisOf(chainU, chain_[second].position - anchorPosition_);
+    for (std::size_t atom : nextBeads_)
+    {
+      const double3 relative = seedAtoms[atom].position - seedOrigin;
+      chain_[atom].position = anchorPosition_ + double3::dot(relative, seedBasis[0]) * chainBasis[0] +
+                              double3::dot(relative, seedBasis[1]) * chainBasis[1] +
+                              double3::dot(relative, seedBasis[2]) * chainBasis[2];
+    }
+  }
+
   // Returns whether the seed has the declared parity of every monitored centre.
   bool seed()
   {
     const std::vector<Atom> &seedAtoms = seedGeometry();
+
+    if (ring_.anchored())
+    {
+      // no orientation to draw again: a seed of the wrong parity is no seed
+      placeSeedOnFrame(seedAtoms);
+      return parityPreserved();
+    }
 
     placeSeedWithRotation(seedAtoms, random_.randomRotationMatrix());
     if (!parityPreserved() && step_.previousBead.has_value())
@@ -176,7 +244,9 @@ class RingSampler
   void relax()
   {
     currentEnergy_ = baseEnergy();
-    const bool haveJunction = step_.previousBead.has_value();
+    // the whole ring turns about its anchor at a junction, or about the line of an anchored ring's collinear unit;
+    // an anchored ring held by a unit off one line does not turn at all
+    const bool haveJunction = ring_.anchored() ? frameAxis_.has_value() : step_.previousBead.has_value();
     const std::size_t numberOfTrials = 2 * settings_.numberOfTrialMovesPerOpenBead * nextBeads_.size();
 
     for (std::size_t trial = 0; trial != numberOfTrials; ++trial)
@@ -255,7 +325,7 @@ class RingSampler
   // Whole-ring tilt about the anchor (junction steps only): relaxes the junction bends.
   void tiltMove()
   {
-    const double3 axis = random_.randomVectorOnUnitSphere();
+    const double3 axis = frameAxis_.has_value() ? frameAxis_.value() : random_.randomVectorOnUnitSphere();
     const double angle = randomAngle(rotationStats_.maxChange);
     saveNextBeads();
     for (std::size_t atom : nextBeads_)
@@ -371,6 +441,8 @@ class RingSampler
   std::vector<Atom> &chain_;
   const CBMC::ScratchBeads scratch_;
   const double3 anchorPosition_;
+  /// Anchored ring on a unit whose atoms lie on one line: that line, the one rotation left to the ring.
+  std::optional<double3> frameAxis_{};
   std::vector<std::pair<const std::array<std::size_t, 4> *, double>> monitoredCenters_{};
   double currentEnergy_{0.0};
 

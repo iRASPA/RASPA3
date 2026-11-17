@@ -372,7 +372,7 @@ void prepareRigidTilt(CBMC::GrowStep &step, const ConnectivityTable &connectivit
 
 // Move units, fixed-bond pivots, crankshaft candidates and monitored chiral centres of a ring step.
 void prepareRingSampler(CBMC::GrowStep &step, const ConnectivityTable &connectivity, const FragmentGraph &graph,
-                        const std::vector<ChiralCenter> &chiralCenters)
+                        const std::vector<bool> &placed, const std::vector<ChiralCenter> &chiralCenters)
 {
   if (step.kind != CBMC::GrowStep::Kind::CloseRing) return;
 
@@ -417,6 +417,11 @@ void prepareRingSampler(CBMC::GrowStep &step, const ConnectivityTable &connectiv
     positioned[currentBead] = true;
     if (step.previousBead.has_value()) positioned[step.previousBead.value()] = true;
     for (std::size_t atom : nextBeads) positioned[atom] = true;
+    // an anchored ring is closed onto the placed unit: its atoms are positions a crankshaft can turn about
+    if (ring.anchored())
+    {
+      for (std::size_t atom : ring.placedFrame) positioned[atom] = true;
+    }
 
     for (std::size_t atom : nextBeads)
     {
@@ -442,6 +447,8 @@ void prepareRingSampler(CBMC::GrowStep &step, const ConnectivityTable &connectiv
     {
       if (id == currentBead) return true;
       if (step.previousBead.has_value() && id == step.previousBead.value()) return true;
+      // an anchored ring has no orientation left to decide a parity with: every centre it completes is monitored
+      if (ring.anchored() && id < placed.size() && placed[id]) return true;
       return contains(nextBeads, id);
     };
     for (const ChiralCenter &center : chiralCenters)
@@ -466,7 +473,9 @@ void routeNonBondedTerms(CBMC::GrowStep &step, const ConnectivityTable &connecti
   Potentials::IntraMolecularPotentials &external = step.nonBonded.external;
   Potentials::IntraMolecularPotentials &spin = step.spin.potentials;
 
-  const bool hasSpin = step.previousBead.has_value() || step.kind == CBMC::GrowStep::Kind::CloseBridge;
+  // (an anchored ring has no spin either: see 'GrowStep::RingSamplerData::placedFrame')
+  const bool hasSpin =
+      (step.previousBead.has_value() && !step.ring.anchored()) || step.kind == CBMC::GrowStep::Kind::CloseBridge;
   if (!hasSpin)
   {
     external.vanDerWaals = step.intra.vanDerWaals;
@@ -527,6 +536,32 @@ void CBMC::prepareStep(GrowStep& step, const ConnectivityTable& connectivity, co
   step.flexibleAttach =
       step.kind == CBMC::GrowStep::Kind::AttachFragment && !step.rigidBody && step.previousBead.has_value();
 
+  // A ring closed from a placed rigid unit it contains, bonded to that unit at a second atom: see
+  // 'GrowStep::RingSamplerData::placedFrame'.
+  if (step.kind == CBMC::GrowStep::Kind::CloseRing)
+  {
+    const Fragment &anchorFragment = fragmentGraph.fragments[fragmentGraph.atomFragmentIds[currentBead]];
+    if (anchorFragment.isRigidBody())
+    {
+      const bool heldTwice = std::ranges::any_of(
+          anchorFragment.atoms,
+          [&](std::size_t atom)
+          {
+            return atom != currentBead && atom < placed.size() && placed[atom] &&
+                   std::ranges::any_of(nextBeads, [&](std::size_t next) { return connectivity[next, atom]; });
+          });
+      if (heldTwice)
+      {
+        step.ring.placedFrame.push_back(currentBead);
+        for (std::size_t atom : anchorFragment.atoms)
+        {
+          if (atom != currentBead) step.ring.placedFrame.push_back(atom);
+        }
+      }
+    }
+  }
+  const bool anchoredRing = step.ring.anchored();
+
   // The intramolecular non-bonded pairs of the step: short-range ones to the spin selection, the rest
   // to the external stage (a seed step has no spin and keeps them all external).
   routeNonBondedTerms(step, connectivity);
@@ -539,7 +574,7 @@ void CBMC::prepareStep(GrowStep& step, const ConnectivityTable& connectivity, co
   }
 
   prepareRigidTilt(step, connectivity);
-  prepareRingSampler(step, connectivity, fragmentGraph, chiralCenters);
+  prepareRingSampler(step, connectivity, fragmentGraph, placed, chiralCenters);
 
   // Torsion-selection potentials: the junction-crossing torsions of a ring-closure step (the internal
   // ring torsions are sampled by the conformational MC and would be double counted), all torsions
@@ -549,6 +584,14 @@ void CBMC::prepareStep(GrowStep& step, const ConnectivityTable& connectivity, co
     // The complement -- bonds and the spin-invariant bends and torsions -- is what the internal
     // conformational MC of the ring samples.
     step.ring.internalPotentials.bonds = step.intra.bonds;
+    if (anchoredRing)
+    {
+      // Nothing is left to the spin: with the spin, the bond that closes the ring onto the second placed atom was
+      // neither in the spin weight nor kept by the rotation, and the ring was torn from the unit at no cost.
+      step.ring.internalPotentials.bends = step.intra.bends;
+      step.ring.internalPotentials.torsions = step.intra.torsions;
+      return;
+    }
     for (const TorsionPotential &torsion : step.intra.torsions)
     {
       (isSpinVariantRingTorsion(torsion.identifiers, currentBead, nextBeads) ? step.spin.potentials
@@ -615,6 +658,9 @@ void CBMC::prepareStep(GrowStep& step, const ConnectivityTable& connectivity, co
       // the base sampler of a flexible attach rejects the wrong parity; a ring closure monitors these centres in
       // its own sampler (all four atoms are in the step)
       if (step.flexibleAttach) step.base.determinedChiralCenters.push_back(center);
+      // a rigid body hinged on the centre: its tilt decides the parity (these centres fell through both branches,
+      // and a planar ring hinged on a stereocentre was grown as the racemate)
+      if (step.rigidBody) step.rigidTilt.chiralCenters.push_back(center);
     }
     else if (settled && grownHere > 0)
     {

@@ -73,7 +73,8 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMoveMultiTrialCBMC(RandomNumbe
 
   const double logAcceptance = growData->logMeanWeight - retraceData.logMeanWeight +
                                growData->logProposalCorrection + retraceData.logProposalCorrection;
-  if (random.uniform() < std::exp(logAcceptance))
+  // the exponent held to the range of a double: a regrowth out of a high-energy state overflowed to infinity
+  if (random.uniform() < std::exp(std::min(700.0, logAcceptance)))
   {
     component.mc_moves_statistics.addAccepted(move);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);

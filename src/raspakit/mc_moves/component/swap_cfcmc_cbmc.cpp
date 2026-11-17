@@ -94,6 +94,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
   // Store the current number of integer molecules
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
+  // The Widom form of the move (lambda moves only) is tuned through the lambda channel of the swap statistics and
+  // reported under its own name as well: its trials and acceptances were booked on the swap move alone, which a
+  // run with only the Widom move does not list, and a step past either end was left out of the trials.
+  const bool widomForm = insertionDisabled && deletionDisabled;
+  const auto countWidomWallRejection = [&]
+  {
+    if (!widomForm) return;
+    component.mc_moves_statistics.addTrial(move, 2);
+    component.mc_moves_statistics.addTrial(Move::Types::WidomCBCFCMC);
+  };
+
   // Get index of the fractional molecule for the component
   std::size_t indexFractionalMolecule =
       system.indexOfFractionalMoleculeForMove(Move::Types::SwapCBCFCMC, selectedComponent);
@@ -102,6 +113,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
   {
     if (insertionDisabled)
     {
+      // a step of the Widom form past an end of the lambda path: a refused lambda move, counted as one
+      countWidomWallRejection();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
@@ -434,6 +447,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
   {
     if (deletionDisabled)
     {
+      // a step of the Widom form past an end of the lambda path: a refused lambda move, counted as one
+      countWidomWallRejection();
       return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
     // Steps for deletion Lambda_new = -epsilon
@@ -781,6 +796,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     double newLambda = deltaLambda * static_cast<double>(newBin);
 
     component.mc_moves_statistics.addTrial(move, 2);
+    if (widomForm) component.mc_moves_statistics.addTrial(Move::Types::WidomCBCFCMC);
 
     // Get the fractional molecule
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, indexFractionalMolecule);
@@ -922,6 +938,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     }
 
     component.mc_moves_statistics.addConstructed(move, 2);
+    if (widomForm) component.mc_moves_statistics.addConstructed(Move::Types::WidomCBCFCMC);
 
     const double energyTerm = -system.beta * energyDifference.potentialEnergy();
     const double biasTerm = chain ? 0.0 : (lambda.biasFactor[newBin] - lambda.biasFactor[oldBin]);
@@ -939,6 +956,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       // Accept the move and update Ewald sums
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
       component.mc_moves_statistics.addAccepted(move, 2);
+      if (widomForm) component.mc_moves_statistics.addAccepted(Move::Types::WidomCBCFCMC);
 
       if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
       {

@@ -191,6 +191,7 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   // energy evaluation, including the initial chain growth.
   forceField.initializeAutomaticCutOff(simulationBox);
   forceField.initializeEwaldParameters(simulationBox);
+  checkPairAndGroupDistances();
 
   CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
       eik_x, eik_y, eik_z, eik_xy, forceField, simulationBox, double3(0.0, 0.0, 0.0), 1.0);
@@ -479,6 +480,14 @@ void System::rescaleMolarFractions()
     const std::size_t partner = component.pairComponentId.value();
     if (partner < components.size() && partner != componentId && !drivesPairSwap(components[partner]))
     {
+      // one fraction per salt: a partner of two drivers took the fraction of whichever was listed last
+      if (pairDriverOf[partner].has_value() && pairDriverOf[partner].value() != componentId)
+      {
+        throw std::runtime_error(std::format(
+            "[System]: component '{}' is the pair-swap partner of both '{}' and '{}'; it can carry the mole "
+            "fraction of one salt only. Give each pair a component of its own (the same molecule defined twice).\n",
+            components[partner].name, components[pairDriverOf[partner].value()].name, component.name));
+      }
       pairDriverOf[partner] = componentId;
     }
   }
@@ -864,6 +873,55 @@ void System::precomputeTotalRigidEnergy() noexcept
 {
   Interactions::precomputeEwaldFourierRigid(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, forceField,
                                             simulationBox, spanOfRigidFrameworkAtoms());
+}
+
+void System::checkPairAndGroupDistances() const
+{
+  const auto has = [](const Component& component, std::initializer_list<Move::Types> moves)
+  {
+    return std::ranges::any_of(
+        moves, [&](Move::Types move) { return component.mc_moves_probabilities.getProbability(move) > 0.0; });
+  };
+  const double3 widths = simulationBox.perpendicularWidths();
+  const double smallestWidth = std::min({widths.x, widths.y, widths.z});
+  for (const Component& component : components)
+  {
+    if (component.maximumPairDistance.has_value() &&
+        has(component, {Move::Types::PairSwap, Move::Types::PairSwapCBMC, Move::Types::PairSwapCFCMC,
+                        Move::Types::PairSwapCBCFCMC}) &&
+        !pairSphereFitsBox(component.maximumPairDistance.value()))
+    {
+      throw std::runtime_error(std::format(
+          "[System]: the maximum pair distance {} of component '{}' exceeds half the smallest perpendicular width "
+          "{} of the box; the pair sphere would overlap its own periodic images\n",
+          component.maximumPairDistance.value(), component.name, smallestWidth));
+    }
+    if (component.maximumGroupDistance.has_value() &&
+        has(component, {Move::Types::GroupSwap, Move::Types::GroupSwapCBMC, Move::Types::GroupSwapCFCMC,
+                        Move::Types::GroupSwapCBCFCMC}) &&
+        !pairSphereFitsBox(component.maximumGroupDistance.value()))
+    {
+      throw std::runtime_error(std::format(
+          "[System]: the maximum group distance {} of component '{}' exceeds half the smallest perpendicular width "
+          "{} of the box; the group sphere would overlap its own periodic images\n",
+          component.maximumGroupDistance.value(), component.name, smallestWidth));
+    }
+  }
+}
+
+void System::refreshStoredEwaldStructureFactors() noexcept
+{
+  if (forceField.computePolarization)
+  {
+    // the stored electric field of the molecules goes with the structure factors
+    computeTotalEnergies();
+    return;
+  }
+  if (fixedFrameworkStoredEik.empty()) precomputeTotalRigidEnergy();
+  Interactions::computeEwaldFourierEnergy(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField,
+                                          simulationBox, components, numberOfMoleculesPerComponent,
+                                          spanOfMoleculeAtoms(), netChargeFramework, framework,
+                                          spanOfFrameworkAtoms());
 }
 
 bool System::conservesCenterOfMassMomentum() const noexcept

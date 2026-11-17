@@ -93,6 +93,62 @@ static void rejectExternalClosure(const ConnectivityTable& connectivity, const s
   }
 }
 
+// FIXED and RIGID bends and FIXED torsions are constraints without energy. The samplers hold one where they draw
+// the constrained coordinate itself: the bend previous-current-next of a bead grown in a flexible attach step and
+// the junction bend of a hinged rigid body (both through 'BendPotential::generateBendAngle'), and any such term
+// inside one rigid body, whose geometry is not sampled at all. Everywhere else the term contributed its zero
+// energy and nothing more: a sibling bend at a branch point, a bend to a placed side group, the bends of a ring
+// or of a bridge closure and every FIXED torsion across a sampled bond were left free. A reptation that met such
+// a bend as the anchor bend from one end and as a sibling bend from the other also carried its cone
+// normalization in one direction only. The plan is refused, with the term.
+static void rejectUnenforcedHolonomicTerms(const CBMC::GrowStep &step, const FragmentGraph &graph)
+{
+  const auto insideOneRigidBody = [&](std::span<const std::size_t> identifiers)
+  {
+    const std::size_t fragment = graph.atomFragmentIds[identifiers.front()];
+    return graph.fragments[fragment].isRigidBody() &&
+           std::ranges::all_of(identifiers, [&](std::size_t atom) { return graph.atomFragmentIds[atom] == fragment; });
+  };
+  const auto joins = [](const BendPotential &bend, std::size_t center, std::size_t a, std::size_t b)
+  {
+    return bend.identifiers[1] == center && ((bend.identifiers[0] == a && bend.identifiers[2] == b) ||
+                                             (bend.identifiers[0] == b && bend.identifiers[2] == a));
+  };
+
+  for (const BendPotential &bend : step.intra.bends)
+  {
+    if (bend.type != BendType::Fixed && bend.type != BendType::Rigid) continue;
+    if (insideOneRigidBody(bend.identifiers)) continue;
+    if (step.previousBead.has_value())
+    {
+      const std::size_t previous = step.previousBead.value();
+      if (step.flexibleAttach && std::ranges::any_of(step.nextBeads, [&](std::size_t next)
+                                                     { return joins(bend, step.currentBead, previous, next); }))
+      {
+        continue;
+      }
+      if (step.rigidBody && joins(bend, step.currentBead, previous, step.rigidTilt.innerBead)) continue;
+    }
+    throw std::runtime_error(std::format(
+        "CBMC growth plan: the {} bend {}-{}-{} is not held as a constraint when atom(s) {} are grown from atom {} "
+        "(a fixed bend is only held as the bend previous-current-next of a grown bead, or inside a rigid group); "
+        "it would be left free. Use a stiff harmonic bend, or make the atoms one rigid group.\n",
+        bend.type == BendType::Fixed ? "FIXED" : "RIGID", bend.identifiers[0], bend.identifiers[1],
+        bend.identifiers[2], step.nextBeads, step.currentBead));
+  }
+  for (const TorsionPotential &torsion : step.intra.torsions)
+  {
+    if (torsion.type != TorsionType::Fixed) continue;
+    if (insideOneRigidBody(torsion.identifiers)) continue;
+    throw std::runtime_error(std::format(
+        "CBMC growth plan: the FIXED torsion {}-{}-{}-{} is not held as a constraint when atom(s) {} are grown "
+        "from atom {} (a fixed torsion is only held inside a rigid group); it would be left free. Use a stiff "
+        "torsion potential, or make the atoms one rigid group.\n",
+        torsion.identifiers[0], torsion.identifiers[1], torsion.identifiers[2], torsion.identifiers[3],
+        step.nextBeads, step.currentBead));
+  }
+}
+
 // Shortest path (through unplaced beads) from 'start' to a placed bead other than 'currentBead': the
 // closure target of a guided bead and the atoms along the way (start first, target last). Breadth
 // first, so the path is the shortest; ties are broken deterministically (lowest target index at the
@@ -664,6 +720,8 @@ std::vector<CBMC::GrowStep> CBMC::buildGrowthPlan(
     std::vector<bool> placedFlags(numberOfBeads, false);
     for (std::size_t bead : placed) placedFlags[bead] = true;
     CBMC::prepareStep(step, connectivity, fragmentGraph, placedFlags, intraMolecularPotentials.chiralCenters);
+
+    rejectUnenforcedHolonomicTerms(step, fragmentGraph);
 
     attachLookaheadGuide(step, connectivity, fragmentGraph, placedFlags, intraMolecularPotentials);
 

@@ -33,7 +33,7 @@ import mc_moves_cputime;
 // the move exact, and the exact polarization contribution is still part of the accepted energy difference.
 static double3 computeMoleculeForce(
     System &system, std::span<const Atom> selectedAtoms,
-    const EwaldStructureFactor &structureFactor)
+    const EwaldStructureFactor &structureFactor, bool linked)
 {
   std::vector<AtomDynamics> dynamics(selectedAtoms.size());
 
@@ -41,8 +41,15 @@ static double3 computeMoleculeForce(
                                                  system.spanOfFrameworkAtoms(), selectedAtoms, dynamics,
                                                  system.interpolationGrids);
 
-  Interactions::computeInterMolecularGradientMolecule(system.forceField, system.simulationBox,
-                                                      system.spanOfMoleculeAtoms(), selectedAtoms, dynamics);
+  // A cross-linked molecule: the pair sum below counts the pairs its links exclude (bonded neighbours an
+  // Angstrom apart), whose forces of r^-13 send the drift hundreds of Angstrom away. The drift is a bias only,
+  // any function of the configuration keeps the move exact, so the inter-molecular part is left out of it for
+  // such a molecule (linked or not is the same before and after the move).
+  if (!linked)
+  {
+    Interactions::computeInterMolecularGradientMolecule(system.forceField, system.simulationBox,
+                                                        system.spanOfMoleculeAtoms(), selectedAtoms, dynamics);
+  }
 
   Interactions::computeEwaldFourierGradientSingleMolecule(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                           structureFactor, system.forceField, system.simulationBox,
@@ -75,7 +82,7 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMove(RandomNumber &rand
 
   // Force on the selected molecule in the current configuration (uses the maintained structure factor S_old).
   double3 forceOld = timed(system, component, move, Move::Timing::Integration,
-                           [&] { return computeMoleculeForce(system, molecule_atoms, system.storedEik); });
+                           [&] { return computeMoleculeForce(system, molecule_atoms, system.storedEik, system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule)); });
 
   // Biased trial displacement of the center of mass: Delta r = b * F_old + sigma * xi.
   double3 xi(random.Gaussian(), random.Gaussian(), random.Gaussian());
@@ -184,7 +191,7 @@ std::optional<RunningEnergy> MC_Moves::translationSmartMCMove(RandomNumber &rand
   // other molecules are unchanged, so the current 'spanOfMoleculeAtoms()' (still holding the old positions of
   // the moved molecule) is used; the self-interaction is excluded by molecule id.
   double3 forceNew = timed(system, component, move, Move::Timing::Integration,
-                           [&] { return computeMoleculeForce(system, trialMolecule.second, system.trialEik); });
+                           [&] { return computeMoleculeForce(system, trialMolecule.second, system.trialEik, system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule)); });
 
   component.mc_moves_statistics.addConstructed(move);
 

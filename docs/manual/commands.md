@@ -2303,7 +2303,8 @@ acceptance) and
     The integration time step in picoseconds for `MD`. Default: `0.0005`.
 
 -   `"HybridMCMoveNumberOfSteps" : integer`\
-    The number of Molecular Dynamics steps used per hybrid MC move.
+    The number of Molecular Dynamics steps used per hybrid MC move; at least
+    1. Default: `10`. The initial time step of the move is `"TimeStep"`.
 
 -   `"Ensemble" : string`\
     Sets the Molecular Dynamics ensemble:

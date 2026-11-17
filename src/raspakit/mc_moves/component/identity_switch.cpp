@@ -324,9 +324,9 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
 
   // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
   const double acceptanceProbability =
-      std::exp(logCorrectionFactor + exchangeB.grown->logRosenbluthWeight +
-               exchangeA.grown->logRosenbluthWeight - exchangeA.retraced.logRosenbluthWeight -
-               exchangeB.retraced.logRosenbluthWeight);
+      std::exp(std::min(700.0, logCorrectionFactor + exchangeB.grown->logRosenbluthWeight +
+                                   exchangeA.grown->logRosenbluthWeight - exchangeA.retraced.logRosenbluthWeight -
+                                   exchangeB.retraced.logRosenbluthWeight));
 
   if (random.uniform() < acceptanceProbability)
   {

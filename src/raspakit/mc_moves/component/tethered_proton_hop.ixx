@@ -25,8 +25,9 @@ export namespace MC_Moves
  * \param random Random-number generator.
  * \param system The system holding the framework, molecules and force field.
  * \param selectedComponent Index of the proton component.
- * \param selectedMolecule Index of the proton (integer molecule) to relocate; also selects the
- *        candidate group Component::tetheredProtonHopSiteGroups[selectedMolecule].
+ * \param selectedMolecule Index of the proton (integer molecule) to relocate. Its candidate group is the group
+ *        that holds the site nearest to it, not the group of the same index: fractional molecules shift the
+ *        index and a deletion permutes it. A fractional molecule is not moved.
  * \return The energy difference on acceptance, std::nullopt otherwise.
  */
 std::optional<RunningEnergy> tetheredProtonHopMove(RandomNumber& random, System& system,

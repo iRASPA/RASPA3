@@ -2326,7 +2326,9 @@ std::pair<Molecule, std::vector<Atom>> Component::rotate(const Molecule &molecul
 
   if (rigid)
   {
-    simd_quatd q = rotation * trialMolecule.orientation;
+    // normalized: the rotation matrix below is that of a unit quaternion, and the product of many rotations drifts
+    // off the unit sphere, which stretched and sheared the rigid geometry over a long run
+    simd_quatd q = (rotation * trialMolecule.orientation).normalized();
     double3x3 M = double3x3::buildRotationMatrixInverse(q);
 
     trialMolecule.orientation = q;

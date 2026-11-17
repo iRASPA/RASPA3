@@ -56,6 +56,18 @@ CBMC::TetherSchedule CBMC::scheduleTethers(const GrowContext &context, const Com
       const auto it = std::ranges::find(plan[seg].nextBeads, exclusion.atom);
       schedule.perStep[seg].overlapExempt.push_back(
           {static_cast<std::size_t>(std::distance(plan[seg].nextBeads.begin(), it)), exclusion.partnerIndex});
+
+      // the exclusion goes with the step that places the atom (once per atom of a tether)
+      if (lastStep.has_value() && seg < lastStep.value())
+      {
+        const std::pair<std::size_t, std::size_t> entry{index, exclusion.atom};
+        if (std::ranges::find(schedule.perStep[seg].earlyExclusions, entry) ==
+            schedule.perStep[seg].earlyExclusions.end())
+        {
+          schedule.perStep[seg].earlyExclusions.push_back(entry);
+          schedule.perStep[lastStep.value()].exclusionsTakenEarlier.push_back(entry);
+        }
+      }
     }
   }
   return schedule;
@@ -82,7 +94,14 @@ std::optional<CBMC::StepTrialEnergy> CBMC::evaluateStepTrial(const GrowContext &
   {
     external.value() += Interactions::computeCrossLinkTetherEnergy(context.forceField, context.simulationBox,
                                                                     component, chainAtoms, context.crossLinkTethers,
-                                                                    stepTethers.tethers);
+                                                                    stepTethers.tethers,
+                                                                    stepTethers.exclusionsTakenEarlier);
+  }
+  if (!stepTethers.earlyExclusions.empty())
+  {
+    external.value() += Interactions::computeCrossLinkTetherExclusionEnergy(
+        context.forceField, context.simulationBox, chainAtoms, context.crossLinkTethers,
+        stepTethers.earlyExclusions);
   }
 
   return StepTrialEnergy{external.value(), intra};

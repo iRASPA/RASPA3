@@ -5339,10 +5339,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("HybridMCMoveNumberOfSteps") && value["HybridMCMoveNumberOfSteps"].is_number_unsigned())
       {
         systems[systemId].numberOfHybridMCSteps = value["HybridMCMoveNumberOfSteps"].get<std::size_t>();
-        if (value.contains("TimeStep") && value["TimeStep"].is_number())
+        // a trajectory of no steps proposes the configuration it started from: always accepted, and the time step
+        // was tuned up to its limit on that
+        if (systems[systemId].numberOfHybridMCSteps == 0)
         {
-          systems[systemId].mc_moves_statistics.setMaxChange(Move::Types::HybridMC, value["TimeStep"].get<double>());
+          throw std::runtime_error("[Input reader]: 'HybridMCMoveNumberOfSteps' must be at least 1\n");
         }
+      }
+      // the time step of the hybrid move, with or without a number of steps given (it was read only with one)
+      if (value.contains("TimeStep") && value["TimeStep"].is_number())
+      {
+        systems[systemId].mc_moves_statistics.setMaxChange(Move::Types::HybridMC, value["TimeStep"].get<double>());
       }
 
       systemId++;

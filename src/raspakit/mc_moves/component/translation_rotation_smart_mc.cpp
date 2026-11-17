@@ -31,7 +31,7 @@ import mc_moves_rotation_smart_mc;
 // configuration for the Metropolis-Hastings correction to keep the move exact.
 static void computeMoleculeGradients(
     System &system, std::span<const Atom> selectedAtoms,
-    const EwaldStructureFactor &structureFactor,
+    const EwaldStructureFactor &structureFactor, bool linked,
     std::vector<AtomDynamics> &dynamics)
 {
   dynamics.assign(selectedAtoms.size(), AtomDynamics{});
@@ -40,8 +40,15 @@ static void computeMoleculeGradients(
                                                  system.spanOfFrameworkAtoms(), selectedAtoms, dynamics,
                                                  system.interpolationGrids);
 
-  Interactions::computeInterMolecularGradientMolecule(system.forceField, system.simulationBox,
-                                                      system.spanOfMoleculeAtoms(), selectedAtoms, dynamics);
+  // A cross-linked molecule: the pair sum below counts the pairs its links exclude (bonded neighbours an
+  // Angstrom apart), whose forces of r^-13 send the drift hundreds of Angstrom away. The drift is a bias only,
+  // any function of the configuration keeps the move exact, so the inter-molecular part is left out of it for
+  // such a molecule (linked or not is the same before and after the move).
+  if (!linked)
+  {
+    Interactions::computeInterMolecularGradientMolecule(system.forceField, system.simulationBox,
+                                                        system.spanOfMoleculeAtoms(), selectedAtoms, dynamics);
+  }
 
   Interactions::computeEwaldFourierGradientSingleMolecule(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                           structureFactor, system.forceField, system.simulationBox,
@@ -115,7 +122,7 @@ std::optional<RunningEnergy> MC_Moves::translationRotationSmartMCMove(RandomNumb
   // gradient evaluation (uses the maintained structure factor S_old).
   time_begin = std::chrono::steady_clock::now();
   std::vector<AtomDynamics> dynamicsOld;
-  computeMoleculeGradients(system, molecule_atoms, system.storedEik, dynamicsOld);
+  computeMoleculeGradients(system, molecule_atoms, system.storedEik, system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule), dynamicsOld);
   double3 forceOld = computeMoleculeForce(dynamicsOld);
   double3 torqueOld = computeMoleculeTorque(component, molecule, molecule_atoms, dynamicsOld);
   time_end = std::chrono::steady_clock::now();
@@ -240,7 +247,7 @@ std::optional<RunningEnergy> MC_Moves::translationRotationSmartMCMove(RandomNumb
   // holding the old positions of the moved molecule) is used; the self-interaction is excluded by molecule id.
   time_begin = std::chrono::steady_clock::now();
   std::vector<AtomDynamics> dynamicsNew;
-  computeMoleculeGradients(system, trialMolecule.second, system.trialEik, dynamicsNew);
+  computeMoleculeGradients(system, trialMolecule.second, system.trialEik, system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule), dynamicsNew);
   double3 forceNew = computeMoleculeForce(dynamicsNew);
   double3 torqueNew = computeMoleculeTorque(component, trialMolecule.first, trialMolecule.second, dynamicsNew);
   time_end = std::chrono::steady_clock::now();

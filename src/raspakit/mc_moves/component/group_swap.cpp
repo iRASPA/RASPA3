@@ -97,7 +97,9 @@ static bool validGroupDefinition(const System& system, const Component& centralC
   {
     return false;
   }
-  if (centralComponent.maximumGroupDistance.value() <= 0.0)
+  // a sphere wider than the box wraps onto itself: the insertion would propose images the deletion counts once
+  if (centralComponent.maximumGroupDistance.value() <= 0.0 ||
+      !system.pairSphereFitsBox(centralComponent.maximumGroupDistance.value()))
   {
     return false;
   }

@@ -1031,6 +1031,14 @@ molecule \f$A\f$ (the distance is drawn as \f$r = R_\text{max}\sqrt[3]{u}\f$, un
 the sphere volume). Keeping the pair together at insertion is essential for
 oppositely charged species.
 
+\f$R_\text{max}\f$ may not exceed half the smallest perpendicular width of the
+box: a wider sphere overlaps its own periodic images, and the insertion would
+then propose partners the deletion counts once. The input is refused
+otherwise, and in a box that shrinks below \f$2R_\text{max}\f$ (a volume move)
+the pair moves are not performed. A partner component belongs to one pair:
+two salts that share an ion (NaCl and KCl) each take a component of their own
+for it, the same molecule defined twice.
+
 Steps:
 
 - select a random box,
@@ -1350,6 +1358,9 @@ Comput. **3**, 1451-1463 (2007). <https://doi.org/10.1021/ct7000039>
 Keyword: `"GroupSwapConventionalProbability"` (component move), together with
 the group definition `"GroupComponents"` (a list of component ids, repetitions
 allowed) and `"MaximumGroupDistance"` \f$R_\text{max}\f$
+
+As for the pair swap, \f$R_\text{max}\f$ may not exceed half the smallest
+perpendicular width of the box.
 
 The generalization of the pair swap to a *group* of molecules: one molecule of
 the selected (central) component \f$0\f$ plus the satellite molecules listed in

@@ -512,7 +512,8 @@ RunningEnergy Interactions::computeCrossLinkTetherEnergy(const ForceField &force
                                                          const Component &component,
                                                          std::span<const Atom> moleculeAtoms,
                                                          std::span<const CrossLinkTether> tethers,
-                                                         std::span<const std::size_t> selected)
+                                                         std::span<const std::size_t> selected,
+                                                         std::span<const std::pair<std::size_t, std::size_t>> takenEarlier)
 {
   RunningEnergy energy{};
   auto noGradient = [](std::size_t, const double3 &) {};
@@ -544,12 +545,43 @@ RunningEnergy Interactions::computeCrossLinkTetherEnergy(const ForceField &force
               std::ranges::any_of(tether.exclusions, [&](const CrossLinkTether::Exclusion &exclusion)
                                   { return exclusion.atom == local && exclusion.partnerAtom == partnerLocal; });
           if (!held) return ExclusionTerms::None;
+          // subtracted at the step that placed the atom
+          if (std::ranges::find(takenEarlier, std::pair{index, local}) != takenEarlier.end())
+            return ExclusionTerms::None;
           // the regrowth left a pair above the overlap criterion out of the external energy
           return aboveOverlapCriterion(forceField, simulationBox, moleculeAtoms[local], atomB(partnerLocal))
                      ? ExclusionTerms::EwaldOnly
                      : ExclusionTerms::Full;
         },
         nullptr);
+  }
+  return energy;
+}
+
+RunningEnergy Interactions::computeCrossLinkTetherExclusionEnergy(
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
+    std::span<const CrossLinkTether> tethers, std::span<const std::pair<std::size_t, std::size_t>> selected)
+{
+  RunningEnergy energy{};
+  for (const auto &[index, atom] : selected)
+  {
+    const CrossLinkTether &tether = tethers[index];
+    auto atomB = [&](std::size_t local) -> const Atom &
+    {
+      if (local == tether.partnerSiteAtom) return tether.partnerSite;
+      const auto it = std::ranges::find_if(tether.partnerNeighbours,
+                                           [local](const auto &entry) { return entry.first == local; });
+      return it->second;
+    };
+    for (const CrossLinkTether::Exclusion &exclusion : tether.exclusions)
+    {
+      if (exclusion.atom != atom) continue;
+      const Atom &partner = atomB(exclusion.partnerAtom);
+      // the regrowth left a pair above the overlap criterion out of the external energy
+      const bool pairCounted = !aboveOverlapCriterion(forceField, simulationBox, moleculeAtoms[atom], partner);
+      excludePair<0>(forceField, simulationBox, moleculeAtoms[atom], partner, energy, [](const double3 &) {}, nullptr,
+                     pairCounted);
+    }
   }
   return energy;
 }

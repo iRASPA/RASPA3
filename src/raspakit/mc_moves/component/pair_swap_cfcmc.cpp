@@ -133,7 +133,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
   const double R_max = componentA.maximumPairDistance.value();
-  if (R_max <= 0.0)
+  // a sphere wider than the box wraps onto itself: the insertion would propose images the deletion counts once
+  if (R_max <= 0.0 || !system.pairSphereFitsBox(R_max))
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
@@ -1066,7 +1067,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
 
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
 
-    if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm))
+    // the exponent held to the range of a double: a step out of a high-energy state overflowed to infinity
+    if (random.uniform() <
+        std::exp(std::min(700.0, -system.beta * energyDifference.potentialEnergy() + biasTerm)))
     {
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
       componentA.mc_moves_statistics.addAccepted(move, 2);

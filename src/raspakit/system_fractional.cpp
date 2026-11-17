@@ -126,6 +126,24 @@ void System::determineFractionalComponents()
 
   // ion-pair CFCMC moves need a fractional molecule on both components of the pair
   // (done in a separate pass because a component allocates the slot of its pair partner)
+  //
+  // A component holds one pair fractional molecule of each kind, and the pair moves address it as sub-slot 0. Two
+  // pairs through one component (NaCl and KCl sharing one Cl component) would rescale, insert and delete the same
+  // fractional molecule at two lambdas: the system is refused, each pair takes a component of its own.
+  std::vector<std::optional<std::size_t>> pairSlotOwner(components.size());
+  std::vector<std::optional<std::size_t>> pairCBSlotOwner(components.size());
+  const auto claimPairSlot = [&](std::vector<std::optional<std::size_t>>& owner, std::size_t member,
+                                 std::size_t driver, std::string_view move)
+  {
+    if (owner[member].has_value() && owner[member].value() != driver)
+    {
+      throw std::runtime_error(std::format(
+          "[System]: component '{}' is in the {} pairs of both '{}' and '{}'; the pairs would share its one "
+          "fractional molecule. Give each pair a component of its own (the same molecule defined twice).\n",
+          components[member].name, move, components[owner[member].value()].name, components[driver].name));
+    }
+    owner[member] = driver;
+  };
   for (std::size_t i = 0; i < components.size(); ++i)
   {
     if (!components[i].pairComponentId.has_value() || components[i].pairComponentId.value() >= components.size())
@@ -133,6 +151,20 @@ void System::determineFractionalComponents()
       continue;
     }
     const std::size_t partner = components[i].pairComponentId.value();
+    if (partner != i)
+    {
+      if (components[i].mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0 ||
+          pinsFixedLambda(components[i], Component::FixedLambdaCoordinate::PairSwap))
+      {
+        claimPairSlot(pairSlotOwner, i, i, "PairSwapCFCMC");
+        claimPairSlot(pairSlotOwner, partner, i, "PairSwapCFCMC");
+      }
+      if (components[i].mc_moves_probabilities.getProbability(Move::Types::PairSwapCBCFCMC) > 0.0)
+      {
+        claimPairSlot(pairCBSlotOwner, i, i, "PairSwapCBCFCMC");
+        claimPairSlot(pairCBSlotOwner, partner, i, "PairSwapCBCFCMC");
+      }
+    }
 
     if (components[i].mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0 ||
         pinsFixedLambda(components[i], Component::FixedLambdaCoordinate::PairSwap))

@@ -79,7 +79,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
 
   Component& componentBRef = system.components[componentB];
   const double R_max = componentA.maximumPairDistance.value();
-  if (R_max <= 0.0)
+  // a sphere wider than the box wraps onto itself: the insertion would propose images the deletion counts once
+  if (R_max <= 0.0 || !system.pairSphereFitsBox(R_max))
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
@@ -331,7 +332,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
 
   Component& componentBRef = system.components[componentB];
   const double R_max = componentA.maximumPairDistance.value();
-  if (R_max <= 0.0)
+  // a sphere wider than the box wraps onto itself: the insertion would propose images the deletion counts once
+  if (R_max <= 0.0 || !system.pairSphereFitsBox(R_max))
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }

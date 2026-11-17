@@ -165,8 +165,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     // the reverse insertion draws the conformation from the molecule's own ideal-gas distribution: the Ewald
     // compensation of its intramolecular pairs is not part of that generation probability (see
     // 'System::intraCoulombScalingEnergy')
-    double Pacc = preFactor * std::exp(-system.beta * (energyDifference.potentialEnergy() -
-                                                       system.intraCoulombScalingEnergy(molecule)));
+    // The exponent is added to the logarithm of the prefactor and held to the range of a double: the Boltzmann
+    // factor of a strongly bound ion underflowed to zero before the prefactor could bring it back.
+    double Pacc = MC_Moves::biasedAcceptance(preFactor,
+                                             -system.beta * (energyDifference.potentialEnergy() -
+                                                             system.intraCoulombScalingEnergy(molecule)),
+                                             0.0)
+                      .physical;
     std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
     // Check if TMMC is enabled and if new state is below minimum macrostate

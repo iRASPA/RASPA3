@@ -30,11 +30,10 @@ std::optional<RunningEnergy> MC_Moves::tetheredProtonHopMove(RandomNumber& rando
 
   component.mc_moves_statistics.addTrial(move, 0);
 
-  // The candidate group of the selected proton. With one proton per tether site (one integer
-  // molecule per group) the molecule index selects the group directly.
-  if (selectedMolecule >= component.tetheredProtonHopSiteGroups.size()) return std::nullopt;
-  const std::vector<double3>& fractionalSites = component.tetheredProtonHopSiteGroups[selectedMolecule];
-  if (fractionalSites.size() < 2) return std::nullopt;
+  // Fractional molecules (a Widom or reaction slot of the component) come first among the molecules of a
+  // component and are not tethered protons.
+  if (selectedMolecule < system.numberOfFractionalMoleculesPerComponent[selectedComponent]) return std::nullopt;
+  if (component.tetheredProtonHopSiteGroups.empty()) return std::nullopt;
   if (system.crossLinks.moleculeIsLinked(selectedComponent, selectedMolecule)) return std::nullopt;
 
   std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
@@ -43,6 +42,40 @@ std::optional<RunningEnergy> MC_Moves::tetheredProtonHopMove(RandomNumber& rando
   const std::size_t startingBead = component.startingBead;
   const double3 currentPosition = molecule_atoms[startingBead].position;
 
+  // The candidate group of the selected proton is the group that holds the site nearest to it (minimum image).
+  // The molecule index does not tell: the fractional molecules of the component shift it, and a deletion moves
+  // the last molecule into the freed place, so the index named the group of another Al, whose site-to-site
+  // vector then carried the proton into the framework. A site listed in two groups goes to the first.
+  struct SiteOfGroup
+  {
+    std::size_t group;
+    std::size_t site;
+  };
+  const auto nearestSiteOfAllGroups = [&](const double3& position)
+  {
+    SiteOfGroup nearest{0, 0};
+    double nearestDistanceSquared = std::numeric_limits<double>::max();
+    for (std::size_t g = 0; g < component.tetheredProtonHopSiteGroups.size(); ++g)
+    {
+      const std::vector<double3>& sites = component.tetheredProtonHopSiteGroups[g];
+      for (std::size_t i = 0; i < sites.size(); ++i)
+      {
+        const double3 dr =
+            system.simulationBox.applyPeriodicBoundaryConditions(system.simulationBox.cell * sites[i] - position);
+        const double distanceSquared = dr.length_squared();
+        if (distanceSquared < nearestDistanceSquared)
+        {
+          nearestDistanceSquared = distanceSquared;
+          nearest = {g, i};
+        }
+      }
+    }
+    return nearest;
+  };
+  const SiteOfGroup current = nearestSiteOfAllGroups(currentPosition);
+  const std::vector<double3>& fractionalSites = component.tetheredProtonHopSiteGroups[current.group];
+  if (fractionalSites.size() < 2) return std::nullopt;
+
   // Candidate positions in Cartesian coordinates (sites are stored as fractional coordinates in the
   // simulation box).
   std::vector<double3> cartesianSites(fractionalSites.size());
@@ -50,25 +83,7 @@ std::optional<RunningEnergy> MC_Moves::tetheredProtonHopMove(RandomNumber& rando
   {
     cartesianSites[i] = system.simulationBox.cell * fractionalSites[i];
   }
-
-  // The site a position belongs to is the nearest candidate (minimum image).
-  const auto nearestSite = [&](const double3& position)
-  {
-    std::size_t nearest = 0;
-    double nearestDistanceSquared = std::numeric_limits<double>::max();
-    for (std::size_t i = 0; i < cartesianSites.size(); ++i)
-    {
-      const double3 dr = system.simulationBox.applyPeriodicBoundaryConditions(cartesianSites[i] - position);
-      const double distanceSquared = dr.length_squared();
-      if (distanceSquared < nearestDistanceSquared)
-      {
-        nearestDistanceSquared = distanceSquared;
-        nearest = i;
-      }
-    }
-    return nearest;
-  };
-  const std::size_t currentSite = nearestSite(currentPosition);
+  const std::size_t currentSite = current.site;
 
   // Propose a different site of the same group, drawn uniformly among the remaining candidates.
   std::size_t targetSite = static_cast<std::size_t>(random.uniform_integer(0, cartesianSites.size() - 2));
@@ -88,7 +103,8 @@ std::optional<RunningEnergy> MC_Moves::tetheredProtonHopMove(RandomNumber& rando
   // The reverse hop must classify the trial position as belonging to the target site; when the offset is so
   // large that the trial position is nearer to another site (the Voronoi cells of the sites differ in
   // shape), the reverse proposal would never be generated and the move is rejected.
-  if (nearestSite(trialMolecule.second[startingBead].position) != targetSite)
+  const SiteOfGroup reverse = nearestSiteOfAllGroups(trialMolecule.second[startingBead].position);
+  if (reverse.group != current.group || reverse.site != targetSite)
   {
     return std::nullopt;
   }

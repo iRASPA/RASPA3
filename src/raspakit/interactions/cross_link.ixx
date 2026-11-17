@@ -109,10 +109,21 @@ std::vector<CrossLinkTether> makeCrossLinkTethers(const std::vector<Component> &
 /// 'moleculeAtoms' of the regrown molecule (local atom order). The same terms as the table-based
 /// energy of the link (bond, formation energy, junction bends, and the non-bonded exclusions across
 /// the link), so the energies of a regrowth are consistent with the system's accounting.
+/// 'takenEarlier' lists the exclusions, as (tether, atom of the regrown molecule), that an earlier growth step
+/// already subtracted ('computeCrossLinkTetherExclusionEnergy'); they are left out here.
 RunningEnergy computeCrossLinkTetherEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
                                            const Component &component, std::span<const Atom> moleculeAtoms,
                                            std::span<const CrossLinkTether> tethers,
-                                           std::span<const std::size_t> selected);
+                                           std::span<const std::size_t> selected,
+                                           std::span<const std::pair<std::size_t, std::size_t>> takenEarlier = {});
+
+/// The non-bonded exclusions alone of the pairs 'selected', as (tether, atom of the regrown molecule): every
+/// pair of that atom the tether excludes. Evaluated at the growth step that places the atom, so the excluded
+/// pair is taken out of the external energy of the step that put it in.
+RunningEnergy computeCrossLinkTetherExclusionEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                    std::span<const Atom> moleculeAtoms,
+                                                    std::span<const CrossLinkTether> tethers,
+                                                    std::span<const std::pair<std::size_t, std::size_t>> selected);
 
 /// Total cross-link energy with the gradients added to 'moleculeDynamics' (indexed like 'moleculeAtoms').
 RunningEnergy computeCrossLinkGradient(const ForceField &forceField, const SimulationBox &simulationBox,

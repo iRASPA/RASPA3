@@ -178,6 +178,10 @@ MC_Moves::ParticleExchangeResult MC_Moves::performMolecularDynamicsSwap(RandomNu
 
   // The integrator moved every atom since the previous exchange attempt; the cell list is rebuilt on first use.
   system.invalidateCellList();
+  // and it filled the trial structure factors only: the stored ones, which the exchange takes its Fourier
+  // energy difference against, were those of the last full energy evaluation (unallocated without one, of
+  // another size after a change of the cell)
+  system.refreshStoredEwaldStructureFactors();
 
   if (random.uniform() < 0.5)
   {

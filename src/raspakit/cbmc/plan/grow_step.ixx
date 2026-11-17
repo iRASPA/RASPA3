@@ -237,6 +237,10 @@ struct GrowStep
     /// spin axis) are weighted by the torsion spin selection; in the tilt as well they were counted twice, and the
     /// orientation drawn with a weight the Rosenbluth factor does not carry.
     std::vector<BendPotential> bends{};
+    /// Declared chiral centres centred on the hinge whose neighbours are all the previous bead or atoms of the
+    /// body: the tilt decides their parity (the body turned over about the junction has the other one) and keeps
+    /// the declared one, as the base sampler of a flexible attach and the ring sampler do for theirs.
+    std::vector<ChiralCenter> chiralCenters{};
   };
   RigidTiltData rigidTilt{};
 
@@ -266,6 +270,14 @@ struct GrowStep
     /// Declared chiral centres whose four atoms are all positioned during this step (ring body, anchor,
     /// junction neighbour); their parity is kept during the internal MC.
     std::vector<ChiralCenter> monitoredChiralCenters{};
+    /// A ring closed from a rigid unit it contains (the ring atoms of indane grown from its placed phenyl): the
+    /// atoms of that unit, the anchor first, when a grown bead is bonded to one of them besides the anchor. The
+    /// ring is then held at more than one point: it has no orientation about the anchor and no spin about the
+    /// junction to choose. Its seed is laid onto this frame, every bonded term of the step is sampled by the
+    /// internal Monte-Carlo, and the trial directions are independent conformations (see cbmc_operators). Empty
+    /// for a ring hinged on its anchor alone.
+    std::vector<std::size_t> placedFrame{};
+    [[nodiscard]] bool anchored() const noexcept { return !placedFrame.empty(); }
   };
   RingSamplerData ring{};
 };

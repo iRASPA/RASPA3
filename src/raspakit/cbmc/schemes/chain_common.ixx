@@ -49,6 +49,14 @@ struct StepTethers
   /// The pairs of an atom placed at this step (index in 'GrowStep::nextBeads') with a partner atom that a tether
   /// excludes: no overlap of the step's external energy (see OverlapExemption).
   std::vector<OverlapExemption> overlapExempt{};
+  /// Exclusions, as (tether, atom), of an atom placed at this step whose tether is evaluated at a later one: the
+  /// excluded pair entered the external energy of this step and is subtracted here. Left to the later step, a
+  /// pair below the overlap criterion but far above kT stayed in the weight of this one: a correct partition for
+  /// the Rosenbluth sums, which are kept as logarithms, but an open probability of zero in recoil growth for a
+  /// direction, the existing one included, whose only fault was a pair that has no energy.
+  std::vector<std::pair<std::size_t, std::size_t>> earlyExclusions{};
+  /// The same pairs at the step that evaluates their tether: left out there.
+  std::vector<std::pair<std::size_t, std::size_t>> exclusionsTakenEarlier{};
 };
 
 struct TetherSchedule

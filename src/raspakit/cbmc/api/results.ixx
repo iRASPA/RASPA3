@@ -36,8 +36,9 @@ enum class FirstBeadScheme : std::size_t
   /// A single trial at 'GrowRequest::firstBeadPosition', its Boltzmann factor as weight. Identity
   /// change: the new molecule takes the position of the old one.
   Pinned = 2,
-  /// A single trial at 'GrowRequest::firstBeadPosition' with weight one: the caller sampled the
-  /// position and accounts for its bias (distance-biased pair and group insertion).
+  /// A single trial at 'GrowRequest::firstBeadPosition', its Boltzmann factor as weight: the caller sampled
+  /// the position and accounts for the density it was proposed with (distance-biased pair and group
+  /// insertion). Unlike 'Pinned', the grow is not held to 'minimumRosenbluthFactor'.
   Fixed = 3,
   /// No first-bead stage: the beads in 'GrowRequest::beadsAlreadyPlaced' keep their positions from
   /// the given molecule and only the remaining beads are (re)grown. Partial reinsertion.

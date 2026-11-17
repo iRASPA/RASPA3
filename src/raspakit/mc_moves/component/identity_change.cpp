@@ -198,10 +198,12 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
   const double idealGasRosenbluthWeightNew = newComponentData.idealGasRosenbluthWeight.value_or(1.0);
   const double idealGasRosenbluthWeightOld = oldComponentData.idealGasRosenbluthWeight.value_or(1.0);
-  const double fugacityNew =
-      newComponentData.molFraction * newComponentData.fugacityCoefficient.value_or(1.0) * system.pressure;
-  const double fugacityOld =
-      oldComponentData.molFraction * oldComponentData.fugacityCoefficient.value_or(1.0) * system.pressure;
+  // The ratio of the two fugacities: the pressure they share cancels and is left out. With it, a fixed-N
+  // semi-grand run without an external pressure (pressure zero) formed 0/0.
+  const double fugacityNew = newComponentData.molFraction * newComponentData.fugacityCoefficient.value_or(1.0);
+  const double fugacityOld = oldComponentData.molFraction * oldComponentData.fugacityCoefficient.value_or(1.0);
+  // a component absent from the reservoir: nothing is changed into it, and nothing of it is there to change back
+  if (!(fugacityNew > 0.0) || !(fugacityOld > 0.0)) return std::nullopt;
   const double numberOfMoleculesOld =
       static_cast<double>(system.numberOfIntegerMoleculesPerComponent[oldComponent]);
   const double numberOfMoleculesNew =

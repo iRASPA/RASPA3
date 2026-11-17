@@ -189,7 +189,11 @@ FirstBeadData retracePinnedFirstBead(const GrowContext &context, const Component
   return FirstBeadData(atom, oldEnergy, -context.beta * oldEnergy.potentialEnergy());
 }
 
-// --- Fixed first bead: a single trial at the given position with weight one -------------------------
+// --- Fixed first bead: a single trial at a position the caller proposed ------------------------------
+// The weight is the Boltzmann factor of the bead. The caller accounts for the density the position was proposed
+// with (the radial bias of a pair or group insertion), not for the energy of the bead: with a weight of one the
+// external energy of the first bead of a satellite, all of the energy of a monoatomic one, was left out of the
+// acceptance rule while the Fourier part of its Ewald energy was kept.
 
 std::optional<FirstBeadData> growFixedFirstBead(const GrowContext &context, const Component &component,
                                                 const Atom &atom)
@@ -198,13 +202,13 @@ std::optional<FirstBeadData> growFixedFirstBead(const GrowContext &context, cons
       computeExternalNonOverlappingEnergy(context, component, std::span<const Atom>(&atom, 1));
   if (!energy) return std::nullopt;
 
-  return FirstBeadData(atom, energy.value(), 0.0);
+  return FirstBeadData(atom, energy.value(), -context.beta * energy->potentialEnergy());
 }
 
 FirstBeadData retraceFixedFirstBead(const GrowContext &context, const Component &component, const Atom &atom)
 {
   const RunningEnergy oldEnergy = existingFirstBeadEnergy(context, component, atom);
-  return FirstBeadData(atom, oldEnergy, 0.0);
+  return FirstBeadData(atom, oldEnergy, -context.beta * oldEnergy.potentialEnergy());
 }
 }  // namespace
 

@@ -176,8 +176,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
   // the conformation is a sample of the molecule's own ideal-gas distribution: the Ewald compensation of its
   // intramolecular pairs is not part of the generation probability (see 'System::intraCoulombScalingEnergy')
-  double Pacc = preFactor * std::exp(-system.beta * (energyDifference.potentialEnergy() +
-                                                     system.intraCoulombScalingEnergy(trialMolecule.second)));
+  // The exponent is added to the logarithm of the prefactor and held to the range of a double: the Boltzmann
+  // factor of a strongly bound ion overflowed on its own, and a prefactor of zero times that is not a number.
+  double Pacc = MC_Moves::biasedAcceptance(preFactor,
+                                           -system.beta * (energyDifference.potentialEnergy() +
+                                                           system.intraCoulombScalingEnergy(trialMolecule.second)),
+                                           0.0)
+                    .physical;
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
   // Calculate acceptance probability and bias from the transition matrix.

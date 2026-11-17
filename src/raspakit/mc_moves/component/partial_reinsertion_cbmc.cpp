@@ -167,7 +167,8 @@ std::optional<RunningEnergy> MC_Moves::partialReinsertionMove(RandomNumber &rand
       growData->logRosenbluthWeight - retraceData.logRosenbluthWeight;
 
   // Apply Metropolis acceptance criterion.
-  if (random.uniform() < std::exp(logAcceptance))
+  // the exponent held to the range of a double: a regrowth out of a high-energy state overflowed to infinity
+  if (random.uniform() < std::exp(std::min(700.0, logAcceptance)))
   {
     // Move is accepted; update statistics and state.
     component.mc_moves_statistics.addAccepted(move);

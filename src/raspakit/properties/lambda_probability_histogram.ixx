@@ -117,8 +117,16 @@ export struct PropertyLambdaProbabilityHistogram
     // a single point: every step is a direct crossing of one end of the lambda path (a fraction of a bin would
     // truncate to no step at all)
     if (numberOfSamplePoints <= 1) return static_cast<int>(currentBin) + (random.uniform() < 0.5 ? -1 : 1);
-    return static_cast<int>(currentBin) +
-           static_cast<int>(scale * static_cast<double>(numberOfSamplePoints) * 2.0 * (random.uniform() - 0.5));
+    // A step of 1 .. K bins either way, K = max(1, floor(scale * points)), each with the same probability (a
+    // symmetric proposal). The truncated real step it replaces was zero for every draw once scale * points fell
+    // to one or below (two points from the start, ten points at the smallest scale): lambda then never moved, and
+    // above that a share of the moves evaluated the full energy of a step to the bin they were in and were
+    // counted as accepted, which the step-size optimization read as room to shrink further.
+    const int maximumStep = std::max(1, static_cast<int>(scale * static_cast<double>(numberOfSamplePoints)));
+    const int draw = std::min(2 * maximumStep - 1,
+                              static_cast<int>(random.uniform() * static_cast<double>(2 * maximumStep)));
+    const int step = draw < maximumStep ? draw - maximumStep : draw - maximumStep + 1;
+    return static_cast<int>(currentBin) + step;
   }
 
   inline void setCurrentBin(std::size_t index) { currentBin = index; }
