@@ -306,11 +306,20 @@ ExclusionPairTerm chargeExclusionPairTerm(const ForceField& forceField, const At
   return term;
 }
 
+// The separation of an excluded pair of one molecule: that of the two atoms in the molecule, whose atoms are stored
+// as one whole molecule (not wrapped into the box atom by atom). The exclusion takes the direct interaction of the
+// pair out of the Coulomb sum, which is the term at this separation. At the minimum image it was, for a rigid
+// molecule that reaches past half the box (every pair of a rigid molecule is excluded), the term of the nearest
+// periodic image of the partner instead: an image the molecule does interact with, picked by the orientation, so
+// that the energy had a cusp wherever the nearest image switched. The excluded pairs of a framework and of the
+// links between molecules do cross the box and keep the minimum image.
+inline double3 excludedPairSeparation(const Atom& atomA, const Atom& atomB) { return atomA.position - atomB.position; }
+
 void addChargeExclusionPairEnergy(RunningEnergy& energy, const ForceField& forceField,
-                                  const SimulationBox& simulationBox, const Atom& atomA, const Atom& atomB,
-                                  double sign)
+                                  [[maybe_unused]] const SimulationBox& simulationBox, const Atom& atomA,
+                                  const Atom& atomB, double sign)
 {
-  const double3 dr = simulationBox.applyPeriodicBoundaryConditions(atomA.position - atomB.position);
+  const double3 dr = excludedPairSeparation(atomA, atomB);
   const ExclusionPairTerm term = chargeExclusionPairTerm(forceField, atomA, atomB, double3::dot(dr, dr), sign);
   if (!term.active) return;
   energy.ewald_exclusion += term.energy;
@@ -340,8 +349,7 @@ void addChargeExclusionGradient(RunningEnergy& energy, const ForceField& forceFi
   forEachExcludedPair(components, atoms,
                       [&](std::size_t i, std::size_t j)
                       {
-                        const double3 dr =
-                            simulationBox.applyPeriodicBoundaryConditions(atoms[i].position - atoms[j].position);
+                        const double3 dr = excludedPairSeparation(atoms[i], atoms[j]);
                         const ExclusionPairTerm term =
                             chargeExclusionPairTerm(forceField, atoms[i], atoms[j], double3::dot(dr, dr), sign);
                         if (!term.active) return;
@@ -378,8 +386,7 @@ void addChargeExclusionStrainDerivative(EnergyStatus& energy, double3x3& strainD
   forEachExcludedPair(components, atoms,
                       [&](std::size_t i, std::size_t j)
                       {
-                        const double3 dr =
-                            simulationBox.applyPeriodicBoundaryConditions(atoms[i].position - atoms[j].position);
+                        const double3 dr = excludedPairSeparation(atoms[i], atoms[j]);
                         const ExclusionPairTerm term =
                             chargeExclusionPairTerm(forceField, atoms[i], atoms[j], double3::dot(dr, dr), 1.0);
                         if (!term.active) return;
@@ -1315,10 +1322,11 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
         const double chargeProduct = Units::CoulombicConversionFactor * frameworkAtoms[i].scalingCoulomb *
                                      frameworkAtoms[j].scalingCoulomb * frameworkAtoms[i].charge *
                                      frameworkAtoms[j].charge;
-        const double erfTerm = std::erf(alpha * r);
-        energySum.ewald_exclusion -= chargeProduct * erfTerm / r;
-        const double gaussTerm = 2.0 * alpha * std::numbers::inv_sqrtpi * std::exp(-alpha_squared * rr);
-        const double f1 = -chargeProduct * (gaussTerm / rr - erfTerm / (r * rr));
+        // erf(alpha r)/r and its derivative factor from the kernel that takes the series at small r: the closed
+        // forms are 0/0 for two sites on top of each other, where the term is the finite 2 alpha/sqrt(pi)
+        const Potentials::EwaldExclusionFactors exclusion = Potentials::ewaldExclusionFactors(alpha, 1.0, r);
+        energySum.ewald_exclusion -= chargeProduct * exclusion.potential;
+        const double f1 = -chargeProduct * exclusion.firstDerivativeFactor;
         const double3 gradient = f1 * dr;
         // a lab-fixed atom carries no gradient, as in the pair, bonded and Fourier routines
         if (!framework->isFixedAtom(i)) frameworkDynamics[i].gradient += gradient;
@@ -2448,15 +2456,20 @@ void Interactions::computeEwaldFourierElectrostaticPotential(
   const bool omitInterInteractions = forceField.omitInterInteractions;
 
   // the potential of the excluded intramolecular pairs: the derivative of their exclusion energy
-  auto addExclusionPotential = [&](double (*kernel)(const ForceField&, double, double))
+  auto addExclusionPotential = [&](double (*kernel)(const ForceField&, double, double, double))
   {
     forEachExcludedPair(components, moleculeAtomPositions,
                         [&](std::size_t i, std::size_t j)
                         {
-                          const double3 dr = simulationBox.applyPeriodicBoundaryConditions(
-                              moleculeAtomPositions[i].position - moleculeAtomPositions[j].position);
+                          const double3 dr =
+                              excludedPairSeparation(moleculeAtomPositions[i], moleculeAtomPositions[j]);
                           const double rr = double3::dot(dr, dr);
-                          const double value = Units::CoulombicConversionFactor * kernel(forceField, rr, std::sqrt(rr));
+                          // the kernel takes the product of the Coulomb scalings of the pair: the exclusion
+                          // energy of a scaled pair is taken at r + delta (1 - scaling), and so is its potential
+                          const double value =
+                              Units::CoulombicConversionFactor *
+                              kernel(forceField, rr, std::sqrt(rr),
+                                     moleculeAtomPositions[i].scalingCoulomb * moleculeAtomPositions[j].scalingCoulomb);
                           electricPotentialMolecules[i] +=
                               moleculeAtomPositions[j].scalingCoulomb * moleculeAtomPositions[j].charge * value;
                           electricPotentialMolecules[j] +=
@@ -2475,9 +2488,9 @@ void Interactions::computeEwaldFourierElectrostaticPotential(
     }
     // completion of the shifted pair sum, V(r) - 1/r, inside the cutoff
     addExclusionPotential(
-        [](const ForceField& field, double rr, double r)
+        [](const ForceField& field, double rr, double r, double)
         {
-          if (rr >= field.cutOffCoulomb * field.cutOffCoulomb) return 0.0;
+          if (rr >= field.cutOffCoulomb * field.cutOffCoulomb || r <= 0.0) return 0.0;
           return Potentials::coulombRealSpaceFactors(field, r).potential - 1.0 / r;
         });
     return;
@@ -2606,8 +2619,11 @@ void Interactions::computeEwaldFourierElectrostaticPotential(
     }
 
     // Subtract the exclusion potential of the excluded intramolecular pairs
-    addExclusionPotential([](const ForceField& field, double, double r)
-                          { return -std::erf(field.EwaldAlpha * r) / r; });
+    // (the kernel of the exclusion energy: the offset form of a scaled pair, and the series at small r, where
+    // erf(alpha r)/r is 0/0 in closed form)
+    addExclusionPotential(
+        [](const ForceField& field, double, double r, double scalingTotal)
+        { return -Potentials::ewaldExclusionFactors(field.EwaldAlpha, scalingTotal, r).potential; });
   }
 
   // The net-charge correction (neutralizing background and the net charge's own images, Bogusz et al.) is

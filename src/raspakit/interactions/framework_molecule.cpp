@@ -701,20 +701,24 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
   RunningEnergy energySum{};
 
   bool useCharge = forceField.useCharge;
-  // Any mobile host atom disables energy grids and receives Newton's-third-law gradients.
-  const bool mobileFramework =
-      framework && framework->hasMobileAtoms() && frameworkDynamics.size() == frameworkAtoms.size();
+  // Any mobile host atom disables the energy grids, which hold the framework as it was built (as in the energy
+  // routines), and the mobile atoms take the reaction gradients when the caller asks for them. The two were one
+  // condition: a caller that wants the gradients of the molecule only (the smart Monte Carlo moves) then read the
+  // grids of the framework at its initial positions.
+  const bool liveFramework = framework && framework->hasMobileAtoms();
+  const bool mobileFramework = liveFramework && frameworkDynamics.size() == frameworkAtoms.size();
+  const bool gridsApply = !liveFramework;
 
   if (moleculeAtoms.empty()) return energySum;
 
-  if (!mobileFramework) prefetchGridCells(forceField, interpolationGrids, moleculeAtoms, 0, gridPrefetchDistance);
+  if (gridsApply) prefetchGridCells(forceField, interpolationGrids, moleculeAtoms, 0, gridPrefetchDistance);
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
     std::size_t indexA = static_cast<std::size_t>(it1 - moleculeAtoms.begin());
     const Atom& moleculeAtom = *it1;
     std::size_t typeA = static_cast<std::size_t>(moleculeAtom.type);
 
-    if (!mobileFramework && readsGrid(forceField, interpolationGrids, moleculeAtom))
+    if (gridsApply && readsGrid(forceField, interpolationGrids, moleculeAtom))
     {
       prefetchGridCell(forceField, interpolationGrids, moleculeAtoms, indexA + gridPrefetchDistance);
       if (useCharge)
@@ -908,7 +912,8 @@ void Interactions::computeFrameworkMoleculeElectrostaticPotential(const ForceFie
       {
         double r = std::sqrt(rr);
 
-        double potential = Potentials::potentialElectrostatics(forceField, 1.0, r, 1.0);
+        double potential =
+            Potentials::potentialElectrostatics(forceField, 1.0, r, 1.0, scalingCoulombA * it2->scalingCoulomb);
 
         std::size_t indexB = static_cast<std::size_t>(std::distance(moleculeAtoms.begin(), it2));
         electricPotentialMolecules[indexB] += scalingCoulombA * chargeA * potential;

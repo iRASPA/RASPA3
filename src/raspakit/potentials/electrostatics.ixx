@@ -26,14 +26,19 @@ export namespace Potentials
  * \return The computed electrostatic potential.
  */
 [[clang::always_inline]] inline double potentialElectrostatics(const ForceField& forcefield, const double& scalingB,
-                                                               const double& r, const double& chargeB)
+                                                               const double& r, const double& chargeB,
+                                                               const double scalingTotal = 1.0)
 {
   switch (forcefield.chargeMethod)
   {
     [[likely]] case ForceField::ChargeMethod::Ewald:
     {
+      // 'scalingTotal' is the product of the Coulomb scalings of the two sites: the real-space energy of a scaled
+      // pair is taken at s = r + delta (1 - scalingTotal) (see 'potentialCoulomb'), and so is its potential; at r
+      // the potential was that of another energy, and 0/0 for a decoupled site on top of another one.
       double alpha = forcefield.EwaldAlpha;
-      double temp = Units::CoulombicConversionFactor * scalingB * chargeB * std::erfc(alpha * r) / r;
+      const double s = r + EwaldChargeOffsetDelta * (1.0 - scalingTotal);
+      double temp = Units::CoulombicConversionFactor * scalingB * chargeB * std::erfc(alpha * s) / s;
       return temp;
     }
     case ForceField::ChargeMethod::Coulomb:

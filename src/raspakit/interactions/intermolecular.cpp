@@ -998,7 +998,8 @@ void Interactions::computeInterMolecularElectrostaticPotential(const ForceField&
         {
           double r = std::sqrt(rr);
 
-          double potential = Potentials::potentialElectrostatics(forceField, 1.0, r, 1.0);
+          double potential =
+              Potentials::potentialElectrostatics(forceField, 1.0, r, 1.0, scalingCoulombA * scalingCoulombB);
 
           std::size_t indexA = static_cast<std::size_t>(std::distance(moleculeAtoms.begin(), it1));
           electricPotentialMolecules[indexA] += scalingCoulombB * chargeB * potential;

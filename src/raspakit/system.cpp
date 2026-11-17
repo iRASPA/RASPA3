@@ -884,6 +884,7 @@ void System::checkPairAndGroupDistances() const
   };
   const double3 widths = simulationBox.perpendicularWidths();
   const double smallestWidth = std::min({widths.x, widths.y, widths.z});
+
   for (const Component& component : components)
   {
     if (component.maximumPairDistance.has_value() &&

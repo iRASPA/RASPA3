@@ -38,7 +38,7 @@ static void computeMoleculeGradients(
 
   Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox,
                                                  system.spanOfFrameworkAtoms(), selectedAtoms, dynamics,
-                                                 system.interpolationGrids);
+                                                 system.interpolationGrids, system.framework);
 
   // A cross-linked molecule: the pair sum below counts the pairs its links exclude (bonded neighbours an
   // Angstrom apart), whose forces of r^-13 send the drift hundreds of Angstrom away. The drift is a bias only,

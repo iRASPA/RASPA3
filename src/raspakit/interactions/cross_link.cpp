@@ -80,7 +80,9 @@ void excludePair(const ForceField &forceField, const SimulationBox &simulationBo
         });
   }
 
-  if (!forceField.useCharge || r <= 0.0) return;
+  // two sites on top of each other: the Ewald exclusion is finite there (2 alpha/sqrt(pi), from the series of the
+  // kernel) and is taken; the completion of a shifted pair sum, V(r) - 1/r, is not defined
+  if (!forceField.useCharge) return;
   const double prefactor = Units::CoulombicConversionFactor * x.charge * y.charge;
 
   if (forceField.usesEwaldFourier() && !forceField.omitInterInteractions)
@@ -93,7 +95,7 @@ void excludePair(const ForceField &forceField, const SimulationBox &simulationBo
     energy.ewald_exclusion -= scaling * prefactor * exclusion.potential;
     if constexpr (Order >= 1) accumulate(-scaling * prefactor * exclusion.firstDerivativeFactor * dr);
   }
-  else if (forceField.usesRealSpaceChargeCorrections() && !forceField.omitInterInteractions &&
+  else if (forceField.usesRealSpaceChargeCorrections() && !forceField.omitInterInteractions && r > 0.0 &&
            rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
   {
     // Completion of the shifted pair sum for the finite-cutoff charge methods: q_i q_j (V(r) - 1/r). Like the Ewald

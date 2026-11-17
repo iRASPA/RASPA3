@@ -82,6 +82,8 @@ ExternalFieldValue externalFieldValue(const ForceField& forceField, const Simula
     return value;
   }
 
+  // The analytic surfaces (the polynomial test functions, Muller-Brown) are functions of the position itself, laid
+  // out around the origin and not periodic: they are evaluated where the atom is, also outside the unit cell.
   const double fieldEnergy = Interactions::analyticExternalFieldEnergy(forceField, posA);
   // the confining geometry is periodic: test the position wrapped into the unit cell, so that a molecule that
   // drifted out of the cell, or a bead of a chain overhanging its edge, is tested against its own image of the

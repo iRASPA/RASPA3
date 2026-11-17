@@ -287,7 +287,8 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
       const std::size_t i = excludedPair[0];
       const std::size_t j = excludedPair[1];
       {
-        double3 dr = simulationBox.applyPeriodicBoundaryConditions(span[i].position - span[j].position);
+        // the separation of the two atoms in the molecule, not the minimum image (see 'addChargeExclusionPairEnergy')
+        double3 dr = span[i].position - span[j].position;
         const double rr = double3::dot(dr, dr);
         if (rr >= cutOffSquared) continue;
         const double r = std::sqrt(rr);
@@ -395,8 +396,9 @@ void addShiftedExclusionHessian(RunningEnergy& energySum, const ForceField& forc
       const double3 gradientI = f1 * dr;
       if (frameworkDynamics.size() == frameworkAtoms.size())
       {
-        frameworkDynamics[i].gradient += gradientI;
-        frameworkDynamics[j].gradient -= gradientI;
+        // a lab-fixed atom carries no gradient, as in the gradient routines
+        if (!framework->isFixedAtom(i)) frameworkDynamics[i].gradient += gradientI;
+        if (!framework->isFixedAtom(j)) frameworkDynamics[j].gradient -= gradientI;
       }
 
       if (mixed)
@@ -1011,8 +1013,9 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
         const std::size_t i = excludedPair[0];
         const std::size_t j = excludedPair[1];
         {
-          double3 dr = span[i].position - span[j].position;
-          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+          // the separation of the two atoms in the molecule, not the minimum image (see
+          // 'addChargeExclusionPairEnergy')
+          const double3 dr = span[i].position - span[j].position;
           const double rr = double3::dot(dr, dr);
           const double r = std::sqrt(rr);
 
@@ -1112,17 +1115,18 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
         const double chargeProduct = Units::CoulombicConversionFactor * frameworkAtoms[i].scalingCoulomb *
                                      frameworkAtoms[j].scalingCoulomb * frameworkAtoms[i].charge *
                                      frameworkAtoms[j].charge;
-        const double erfTerm = std::erf(alpha * r);
-        const double gaussTerm = 2.0 * alpha * std::numbers::inv_sqrtpi * std::exp(-alpha_squared * rr);
-        energySum.ewald_exclusion -= chargeProduct * erfTerm / r;
-        const double f1 = -chargeProduct * (gaussTerm / rr - erfTerm / (r * rr));
-        const double f2 = chargeProduct * (2.0 * alpha_squared * gaussTerm / rr + 3.0 * gaussTerm / (rr * rr) -
-                                           3.0 * erfTerm / (r * rr * rr));
+        // erf(alpha r)/r and its derivative factors from the kernel that takes the series at small r (the closed
+        // forms are 0/0 for two sites on top of each other)
+        const Potentials::EwaldExclusionFactors exclusion = Potentials::ewaldExclusionFactors(alpha, 1.0, r);
+        energySum.ewald_exclusion -= chargeProduct * exclusion.potential;
+        const double f1 = -chargeProduct * exclusion.firstDerivativeFactor;
+        const double f2 = -chargeProduct * exclusion.secondDerivativeFactor;
         const double3 gradientI = f1 * dr;
         if (frameworkDynamics.size() == frameworkAtoms.size())
         {
-          frameworkDynamics[i].gradient += gradientI;
-          frameworkDynamics[j].gradient -= gradientI;
+          // a lab-fixed atom carries no gradient, as in the gradient routines
+          if (!framework->isFixedAtom(i)) frameworkDynamics[i].gradient += gradientI;
+          if (!framework->isFixedAtom(j)) frameworkDynamics[j].gradient -= gradientI;
         }
         if (mixed)
         {

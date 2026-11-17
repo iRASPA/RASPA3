@@ -1968,7 +1968,9 @@ void SpatialDecompositionForceEngine::bondedAtomsUnit(System& system, const Bond
       for (const std::uint32_t b : exclusions.partnersOf(a))
       {
         const Atom& atomB = moleculeAtoms[b];
-        const double3 dr = box.applyPeriodicBoundaryConditions(atomA.position - atomB.position);
+        // the separation of the two atoms in the molecule (positions are stored unwrapped per molecule), not the
+        // minimum image: as the device kernel and the exclusion of the Monte Carlo energies
+        const double3 dr = atomA.position - atomB.position;
         const Interactions::ChargeExclusionPairTerm term =
             Interactions::chargeExclusionPairTerm(forceField, atomA, atomB, double3::dot(dr, dr));
         if (!term.active) continue;

@@ -83,7 +83,9 @@ PairValue pairValue(const ForceField &forceField, const Atom &a, const Atom &b, 
     }
     case PairState::Excluded:
     {
-      if (!forceField.useCharge || r <= 0.0) break;
+      // two sites on top of each other: the Ewald exclusion is finite there and is taken, the completion of a
+      // shifted pair sum is not defined
+      if (!forceField.useCharge) break;
       const double prefactor = Units::CoulombicConversionFactor * a.charge * b.charge;
       if (prefactor == 0.0) break;
       const double scalingTotal = a.scalingCoulomb * b.scalingCoulomb;
@@ -98,7 +100,8 @@ PairValue pairValue(const ForceField &forceField, const Atom &a, const Atom &b, 
         value.exclusion -= scalingTotal * prefactor * exclusionFactors.potential;
         if constexpr (Order >= 1) value.factor -= scalingTotal * prefactor * exclusionFactors.firstDerivativeFactor;
       }
-      else if (forceField.usesRealSpaceChargeCorrections() && rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
+      else if (forceField.usesRealSpaceChargeCorrections() && r > 0.0 &&
+               rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
       {
         // completion of the shifted pair sum of the finite-cutoff charge methods: q_i q_j (V(r) - 1/r)
         const Potentials::CoulombRealSpaceFactors factors = Potentials::coulombRealSpaceFactors(forceField, r);

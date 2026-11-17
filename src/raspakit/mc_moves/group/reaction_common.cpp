@@ -77,13 +77,19 @@ void acceptChargedEwaldMove(System& system) noexcept
 // exclusion pairs on moleculeId, so multi-molecule spans yield the intra-molecular exclusion terms directly, and
 // its trial sums are the stored ones plus the change of every moved atom: no molecule-by-molecule replay is
 // needed to arrive at them.
-[[nodiscard]] RunningEnergy computeChargedGroupEwaldDifference(System& system, std::span<const Atom> newAtoms,
-                                                               std::span<const Atom> oldAtoms) noexcept
+//
+// 'externalChargeDerivative' is the dU/dlambda-group charge of the atoms outside the move
+// ('System::ewaldMoveChargeDerivative' of 'oldAtoms'). It is read from the atoms of the system, which must then
+// still be the old ones: a move that has already written its new scalings and groups into the system passes the
+// value it took before it did so.
+[[nodiscard]] RunningEnergy computeChargedGroupEwaldDifference(
+    System& system, std::span<const Atom> newAtoms, std::span<const Atom> oldAtoms,
+    std::optional<std::array<double, maximumNumberOfDUDlambdaGroups>> externalChargeDerivative = std::nullopt) noexcept
 {
   return Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
       system.simulationBox, system.components, newAtoms, oldAtoms, system.ewaldMoveNetCharge(),
-      system.ewaldMoveChargeDerivative(oldAtoms));
+      externalChargeDerivative.has_value() ? *externalChargeDerivative : system.ewaldMoveChargeDerivative(oldAtoms));
 }
 
 // Molecule-molecule tail-correction change of replacing 'oldAtoms' by 'newAtoms' against the background of the
@@ -1320,6 +1326,19 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     writeAtomsToSpans(selectedMolecules, demotedOldAtoms);
   };
 
+  // The dU/dlambda-group charge of the atoms outside the move, for the Ewald difference below. It is the charge of
+  // the tagged atoms of the system less that of the atoms the move replaces, and is taken here, while the system
+  // still holds the old groups: after the write below the promoted molecules have lost their group and the
+  // demoted ones have gained theirs, and the difference taken then was off by the charge of both, which went
+  // into the running dU/dlambda of the net-charge term at every accepted boundary move that changed the net
+  // charge.
+  std::array<double, maximumNumberOfDUDlambdaGroups> externalChargeDerivative{};
+  {
+    std::vector<Atom> replacedAtoms = rescaleOldAtoms;
+    replacedAtoms.insert(replacedAtoms.end(), ghostOldAtoms.begin(), ghostOldAtoms.end());
+    externalChargeDerivative = system.ewaldMoveChargeDerivative(replacedAtoms);
+  }
+
   // apply the new scalings in memory so that the CBMC growth of the new ghost fractional molecules
   // sees the final configuration
   writeAtomsToSpans(promotedMoleculeIds, promotedNewAtoms);
@@ -1362,7 +1381,8 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     tailDifference = computeGroupSwapTailEnergyDifference(system, fullNewAtoms, fullOldAtoms);
     if (system.forceField.useCharge)
     {
-      fourierDifference = computeChargedGroupEwaldDifference(system, fullNewAtoms, fullOldAtoms);
+      fourierDifference =
+          computeChargedGroupEwaldDifference(system, fullNewAtoms, fullOldAtoms, externalChargeDerivative);
     }
     energyDifference =
         rescaleDifference.value() + (growData->energies - retraceData->energies) + tailDifference + fourierDifference;
@@ -1381,7 +1401,8 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     energyDifference = completeDifference.value() + ghostInternalDifference + rescaleIntraCoulomb;
     if (system.forceField.useCharge)
     {
-      energyDifference += computeChargedGroupEwaldDifference(system, fullNewAtoms, fullOldAtoms);
+      energyDifference +=
+          computeChargedGroupEwaldDifference(system, fullNewAtoms, fullOldAtoms, externalChargeDerivative);
     }
   }
 

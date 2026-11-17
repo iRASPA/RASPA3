@@ -321,8 +321,10 @@ void addMoleculeEwaldExclusion(const System& system, ForceConstants& forceConsta
       const std::size_t i = excludedPair[0];
       const std::size_t j = excludedPair[1];
       {
+        // the separation of the two atoms in the molecule, not the minimum image (as in the energy and gradient
+        // of the exclusion)
         const double3 rawSeparation = atoms[i].position - atoms[j].position;
-        const double3 dr = box.applyPeriodicBoundaryConditions(rawSeparation);
+        const double3 dr = rawSeparation;
         const double rr = double3::dot(dr, dr);
         const double r = std::sqrt(rr);
 
@@ -399,11 +401,10 @@ void addFrameworkEwaldExclusion(const System& system, ForceConstants& forceConst
     double f1, f2;
     if (fourier)
     {
-      const double erfTerm = std::erf(alpha * r);
-      const double gaussTerm = 2.0 * alpha * std::numbers::inv_sqrtpi * std::exp(-alphaSquared * rr);
-      f1 = -chargeProduct * (gaussTerm / rr - erfTerm / (r * rr));
-      f2 = chargeProduct *
-           (2.0 * alphaSquared * gaussTerm / rr + 3.0 * gaussTerm / (rr * rr) - 3.0 * erfTerm / (r * rr * rr));
+      // the kernel that takes the series at small r (the closed forms are 0/0 for two sites on top of each other)
+      const Potentials::EwaldExclusionFactors exclusion = Potentials::ewaldExclusionFactors(alpha, 1.0, r);
+      f1 = -chargeProduct * exclusion.firstDerivativeFactor;
+      f2 = -chargeProduct * exclusion.secondDerivativeFactor;
     }
     else
     {

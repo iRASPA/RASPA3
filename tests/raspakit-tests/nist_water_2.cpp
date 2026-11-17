@@ -960,6 +960,19 @@ TEST(nist_water_2, Test_NIST_water_300_monoclinic)
   {
     moleculeAtomPositions[i].position = water_positions[i];
   }
+  // The reference configuration lists the atoms wrapped into the cell one by one, which splits the molecules that
+  // lie across a face. The atoms of a molecule are stored as one whole molecule (the exclusion of an intramolecular
+  // pair is taken at the separation of its atoms in the molecule): each atom is placed at its image nearest the
+  // first atom of its molecule. The energies of the reference do not depend on the image.
+  for (size_t i = 0; i < moleculeAtomPositions.size(); ++i)
+  {
+    size_t first = i;
+    while (first > 0 && moleculeAtomPositions[first - 1].moleculeId == moleculeAtomPositions[i].moleculeId) --first;
+    moleculeAtomPositions[i].position =
+        moleculeAtomPositions[first].position +
+        system.simulationBox.applyPeriodicBoundaryConditions(moleculeAtomPositions[i].position -
+                                                             moleculeAtomPositions[first].position);
+  }
 
   RunningEnergy energy = system.computeTotalEnergies();
 
