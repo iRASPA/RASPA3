@@ -29,7 +29,8 @@ namespace
 
 // A single Lennard-Jones component with CFCMC swaps (so that lambda sampling is active) in an empty box;
 // 'swapMove' selects the CFCMC move (the single-box swap, or the serial Gibbs swap for a pair of boxes).
-System makeMethaneCFCMCSystem(std::size_t numberOfMolecules, Move::Types swapMove = Move::Types::SwapCFCMC)
+System makeMethaneCFCMCSystem(std::size_t numberOfMolecules, Move::Types swapMove = Move::Types::SwapCFCMC,
+                              std::size_t numberOfLambdaBins = 21uz)
 {
   const ForceField forceField({{"CH4", false, 16.04246, 0.0, 0.0, 6, false}}, {{158.5, 3.72}},
                               ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
@@ -37,8 +38,8 @@ System makeMethaneCFCMCSystem(std::size_t numberOfMolecules, Move::Types swapMov
   probabilities.setProbability(Move::Types::Translation, 1.0);
   probabilities.setProbability(swapMove, 1.0);
   Component methane(forceField, "methane", 190.564, 4599200, 0.01142,
-                    {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt,
-                    false);
+                    {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, numberOfLambdaBins, probabilities,
+                    std::nullopt, false);
   methane.lambdaGC.computeDUdlambda = true;
   return System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {methane}, {},
                 {numberOfMolecules}, 5);
@@ -372,10 +373,13 @@ TEST(MC_DRIVER_BOOKKEEPING, transition_matrix_setup_prepares_fractional_molecule
 }
 
 
-// Equipped for a transition matrix over the (N, lambda) chain: the matrix biases the chain, lambda included.
+// Equipped for a transition matrix over the (N, lambda) chain: the matrix biases the chain, lambda included. The
+// matrix has the lambda grid of the CFCMC swap of its component, as the driver sets it for a system put together
+// in code (a matrix of one lambda bin beside a swap on several is made a chain by the driver, with the arrays of
+// the matrix still sized for one bin until its initialization stage); a single bin is a matrix over N alone.
 System makeTMMCChainSystem(std::size_t numberOfLambdaBins)
 {
-  System system = makeMethaneCFCMCSystem(10);
+  System system = makeMethaneCFCMCSystem(10, Move::Types::SwapCFCMC, numberOfLambdaBins);
   system.tmmc.doTMMC = true;
   system.tmmc.useBias = true;
   system.tmmc.useTMBias = true;
@@ -444,11 +448,25 @@ TEST(MC_DRIVER_BOOKKEEPING, transition_matrix_wang_landau_is_driven_and_handed_o
     }
     EXPECT_TRUE(visitedStatesArePenalized);
 
+    // the bias the hand-over gives: -ln Pi of the collection matrix as it stands at the end of the equilibration
+    TransitionMatrix handedOver = matrix;
+    handedOver.switchToTMBias();
+    ASSERT_FALSE(handedOver.useWangLandau);
+    bool biasIsOfTheMatrix = false;
+    for (std::size_t i = 0; i < handedOver.bias.size(); ++i)
+    {
+      EXPECT_DOUBLE_EQ(handedOver.bias[i], -handedOver.lnpi[i]) << "state " << i;
+      if (handedOver.bias[i] != matrix.bias[i]) biasIsOfTheMatrix = true;
+    }
+    EXPECT_TRUE(biasIsOfTheMatrix) << "the hand-over left the Wang-Landau bias in place";
+
+    // production starts with that bias and drops the statistics it was derived from, ln Pi with them (a ln Pi
+    // left in place was written next to an empty collection matrix)
     tmmc.production();
     EXPECT_FALSE(matrix.useWangLandau);
     for (std::size_t i = 0; i < matrix.bias.size(); ++i)
     {
-      EXPECT_DOUBLE_EQ(matrix.bias[i], -matrix.lnpi[i]) << "state " << i;
+      EXPECT_DOUBLE_EQ(matrix.bias[i], handedOver.bias[i]) << "state " << i;
     }
   }
   std::filesystem::current_path(previous);
