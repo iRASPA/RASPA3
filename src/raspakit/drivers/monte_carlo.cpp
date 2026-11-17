@@ -156,7 +156,7 @@ void MonteCarlo::setup()
     // The serial Gibbs swap shares one active fractional molecule between its boxes: on in the first box, off in
     // the others. Every other system (independent boxes with their own CFCMC moves, the conventional Gibbs swap
     // with a fractional molecule in each box) owns its fractional molecules and keeps them active.
-    system.containsTheFractionalMolecule = !(system.usesGibbsSwapCFCMC() && system_id != 0uz);
+    system.setContainsTheFractionalMolecules(!(system.usesGibbsSwapCFCMC() && system_id != 0uz));
 
     // inactive fractional molecules must not contribute dUdlambda: set their groupId to zero
     system.initializeGibbsSwapFractionalMoleculeGroupIds();
@@ -684,8 +684,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
 
     for (Component& component : system.components)
     {
-      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
-                                             system.containsTheFractionalMolecule);
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
       component.lambdaGC.clear();
       if (component.usesGibbsConventionalCFCMC())
       {
@@ -768,8 +767,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
         for (Component& component : system.components)
         {
           component.lambdaGC.WangLandauIteration(
-              PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
-              system.containsTheFractionalMolecule);
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
           if (component.usesGibbsConventionalCFCMC())
           {
             component.lambdaGibbs.WangLandauIteration(
@@ -855,8 +853,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       component.mc_moves_statistics.clearMoveStatistics();
       component.mc_moves_cputime.clearTimingStatistics();
 
-      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
-                                             system.containsTheFractionalMolecule);
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
       component.lambdaGC.clear();
       if (component.usesGibbsConventionalCFCMC())
       {

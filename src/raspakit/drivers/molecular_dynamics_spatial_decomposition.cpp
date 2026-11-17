@@ -683,7 +683,7 @@ void MolecularDynamicsSpatialDecomposition::setup()
     // as in MonteCarlo::setup: the serial Gibbs swap shares one active fractional molecule between its boxes (on in
     // the first, off in the others); every other system owns its fractional molecules and keeps them active (they
     // were switched off in every system after the first, which stopped their dU/dlambda sampling)
-    system.containsTheFractionalMolecule = !(system.usesGibbsSwapCFCMC() && system_id != 0uz);
+    system.setContainsTheFractionalMolecules(!(system.usesGibbsSwapCFCMC() && system_id != 0uz));
     system.initializeGibbsSwapFractionalMoleculeGroupIds();
 
     if (system.forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Polynomial)
@@ -1223,8 +1223,7 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
 
     for (Component& component : system.components)
     {
-      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
-                                             system.containsTheFractionalMolecule);
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
       component.lambdaGC.clear();
     }
 
@@ -1341,8 +1340,7 @@ void MolecularDynamicsSpatialDecomposition::production()
     {
       component.mc_moves_statistics.clearMoveStatistics();
       component.mc_moves_cputime.clearTimingStatistics();
-      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
-                                             system.containsTheFractionalMolecule);
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
       component.lambdaGC.clear();
     }
 

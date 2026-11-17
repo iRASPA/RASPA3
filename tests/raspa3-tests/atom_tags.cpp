@@ -421,8 +421,8 @@ TEST(ATOM_TAGS, gibbs_cfcmc_lambda_interchange_keeps_the_tags_of_the_atoms_that_
   std::size_t fractionalMoleculeSystem = 0;
   for (int attempt = 0; attempt < 5000; ++attempt)
   {
-    System& systemA = systems[0].containsTheFractionalMolecule ? systems[0] : systems[1];
-    System& systemB = systems[0].containsTheFractionalMolecule ? systems[1] : systems[0];
+    System& systemA = systems[0].containsTheFractionalMolecule(0) ? systems[0] : systems[1];
+    System& systemB = systems[0].containsTheFractionalMolecule(0) ? systems[1] : systems[0];
     const std::size_t countA = systemA.numberOfMoleculesPerComponent[0];
     std::map<std::uint32_t, double3> positionOfTagA;
     std::map<std::uint32_t, double3> positionOfTagB;
@@ -485,8 +485,8 @@ TEST(ATOM_TAGS, gibbs_cbcfcmc_lambda_interchange_keeps_the_tags_of_the_regrown_m
   std::size_t fractionalMoleculeSystem = 0;
   for (int attempt = 0; attempt < 5000; ++attempt)
   {
-    System& systemA = systems[0].containsTheFractionalMolecule ? systems[0] : systems[1];
-    System& systemB = systems[0].containsTheFractionalMolecule ? systems[1] : systems[0];
+    System& systemA = systems[0].containsTheFractionalMolecule(0) ? systems[0] : systems[1];
+    System& systemB = systems[0].containsTheFractionalMolecule(0) ? systems[1] : systems[0];
     const std::size_t countA = systemA.numberOfMoleculesPerComponent[0];
     std::map<std::uint32_t, double3> positionOfTagA;
     std::map<std::uint32_t, double3> positionOfTagB;

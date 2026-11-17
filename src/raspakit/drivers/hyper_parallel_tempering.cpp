@@ -372,7 +372,7 @@ void HyperParallelTempering::performReplicaCycle(std::size_t replicaId, Simulati
         break;
     }
 
-    system.components[selectedComponent].lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
+    system.components[selectedComponent].lambdaGC.sampleOccupancy(system.gcFractionalMoleculeIsActive(selectedComponent));
     system.pairSwapLambdaSampleOccupancy();
     system.reactionLambdaSampleOccupancy();
   }
@@ -487,8 +487,7 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
       {
         for (Component& component : system.components)
         {
-          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
-                                                 system.containsTheFractionalMolecule);
+          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
           component.lambdaGC.clear();
         }
         system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
@@ -509,8 +508,7 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
           component.mc_moves_statistics.clearMoveStatistics();
           component.mc_moves_cputime.clearTimingStatistics();
 
-          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
-                                                 system.containsTheFractionalMolecule);
+          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
           component.lambdaGC.clear();
         }
         system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
@@ -690,8 +688,7 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
                 for (Component& component : system.components)
                 {
                   component.lambdaGC.WangLandauIteration(
-                      PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
-                      system.containsTheFractionalMolecule);
+                      PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
                 }
                 system.pairSwapLambdaWangLandauIteration(
                     PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);

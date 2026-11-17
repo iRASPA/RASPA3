@@ -112,7 +112,7 @@ export struct System
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{3};
+  std::uint64_t versionNumber{4};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -214,7 +214,25 @@ export struct System
   // system was constructed with. Only the deviatoric part of the imposed pressure tensor refers to it
   // (see 'MC_Moves::anisotropicPressureWork'); a hydrostatic pressure tensor does not depend on it.
   SimulationBox referenceSimulationBox;
-  bool containsTheFractionalMolecule{true};
+  /// Per component: whether this box holds the fractional molecule of the serial Gibbs CFCMC swaps of that
+  /// component (the other box of the pair then holds a switched-off placeholder, 'lambda = 0'). Each component has
+  /// its own entry: a transfer of the fractional molecule of one component leaves those of the others where they
+  /// are. (One flag for the whole box made the fractional molecules of the other components follow, switched on
+  /// in place at the position of a placeholder; that position is no coordinate of the state -- it is a copy of
+  /// the other box's -- and the volume moves and the transfer then aimed at different distributions.) One for
+  /// every component of a box that does not take part in a serial Gibbs CFCMC swap.
+  std::vector<std::uint8_t> containsTheFractionalMoleculeOfComponent;
+  /// Sets the entry of every component (see 'containsTheFractionalMoleculeOfComponent').
+  void setContainsTheFractionalMolecules(bool value)
+  {
+    containsTheFractionalMoleculeOfComponent.assign(components.size(), value ? std::uint8_t{1} : std::uint8_t{0});
+  }
+  /// Whether this box holds the serial Gibbs CFCMC fractional molecule of 'componentId' (true without an entry).
+  bool containsTheFractionalMolecule(std::size_t componentId) const
+  {
+    return componentId >= containsTheFractionalMoleculeOfComponent.size() ||
+           containsTheFractionalMoleculeOfComponent[componentId] != 0;
+  }
 
   // A contiguous list of adsorbate atoms per component for easy and fast looping
   // The atoms-order is defined as increasing per component and molecule.
@@ -1178,8 +1196,8 @@ export struct System
   }
 
   /// Wang-Landau updates the GC lambda bias only while this box holds a real fractional molecule.
-  /// `containsTheFractionalMolecule` alone is not enough: it defaults to true on system 0 for Gibbs
-  /// ownership, including conventional GCMC that has no lambda coordinate.
+  /// `containsTheFractionalMolecule` alone is not enough: it is true for every component of a box outside a
+  /// serial Gibbs swap, including conventional GCMC that has no lambda coordinate.
   /// 'hasFractionalMolecule' is not enough either: it is also set for a component whose only fractional molecule
   /// is that of a conventional Gibbs, a pair or a group CFCMC move (the partner and the satellites included).
   /// Such a component never leaves bin 0 of its GC histogram, which was lowered there on every step, some twenty
@@ -1189,9 +1207,9 @@ export struct System
     return gcFractionalMoleculeIsActive(componentId) && usesGCLambda(componentId);
   }
   /// Whether the fractional molecule of 'componentId' on the GC lambda coordinate is active in this box.
-  /// 'containsTheFractionalMolecule' is a property of the box and belongs to the serial Gibbs CFCMC swaps: the
-  /// fractional molecules of the components that use them are active in one box at a time and switched off in the
-  /// other. The fractional molecule of a box-local move (SwapCFCMC, SwapCBCFCMC, their Widom moves, a pinned GC
+  /// 'containsTheFractionalMolecule' belongs to the serial Gibbs CFCMC swaps: the fractional molecule of a
+  /// component that uses them is active in one box at a time and switched off in the other, each component on
+  /// its own. The fractional molecule of a box-local move (SwapCFCMC, SwapCBCFCMC, their Widom moves, a pinned GC
   /// lambda) of another component in the same boxes never leaves its box and is never switched off: read through
   /// the flag of the box, its Wang-Landau bias, lambda histogram, dU/dlambda and its factor in System::weight()
   /// were dropped whenever the Gibbs fractional molecule of the other component was in the other box.
@@ -1200,7 +1218,7 @@ export struct System
     if (componentId < numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC.size() &&
         numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0uz)
     {
-      return containsTheFractionalMolecule;
+      return containsTheFractionalMolecule(componentId);
     }
     return true;
   }

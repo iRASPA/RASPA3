@@ -197,7 +197,7 @@ export struct PropertyLambdaProbabilityHistogram
   inline double weight() const { return std::exp(-biasFactor[currentBin]); }
 
   void WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase,
-                           bool containsTheFractionalMolecule, double value = 1.0);
+                           bool containsTheFractionalMolecule = true, double value = 1.0);
 
   std::pair<std::vector<double>, std::vector<double>> result();
 

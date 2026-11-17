@@ -190,15 +190,15 @@ TEST(TMMC_CHAIN_CEILING_AND_LINKS, gibbs_placeholder_carries_no_volume_factor)
   std::vector<System> boxes{makeBox(20), makeBox(10)};
   MonteCarlo mc(SimulationSchedule{1, 0, 0, 1, 1000, 10000, 5000, 5000}, boxes, 7uz, 5, false);
   mc.setup();
-  ASSERT_TRUE(mc.systems[0].containsTheFractionalMolecule);
-  ASSERT_FALSE(mc.systems[1].containsTheFractionalMolecule);
+  ASSERT_TRUE(mc.systems[0].containsTheFractionalMolecule(0));
+  ASSERT_FALSE(mc.systems[1].containsTheFractionalMolecule(0));
   ASSERT_EQ(mc.systems[0].moleculeData.size(), 21uz);
   ASSERT_EQ(mc.systems[1].moleculeData.size(), 11uz);
   EXPECT_DOUBLE_EQ(MC_Moves::numberOfScaledMolecules(mc.systems[0]), 21.0);
   EXPECT_DOUBLE_EQ(MC_Moves::numberOfScaledMolecules(mc.systems[1]), 10.0);
 
   // the count follows the fractional molecule
-  std::swap(mc.systems[0].containsTheFractionalMolecule, mc.systems[1].containsTheFractionalMolecule);
+  std::swap(mc.systems[0].containsTheFractionalMoleculeOfComponent, mc.systems[1].containsTheFractionalMoleculeOfComponent);
   EXPECT_DOUBLE_EQ(MC_Moves::numberOfScaledMolecules(mc.systems[0]), 20.0);
   EXPECT_DOUBLE_EQ(MC_Moves::numberOfScaledMolecules(mc.systems[1]), 11.0);
 }

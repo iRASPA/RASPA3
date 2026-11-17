@@ -581,7 +581,7 @@ void System::exchangeConfiguration(System& other)
   std::swap(translationalCenterOfMassConstraint, other.translationalCenterOfMassConstraint);
   std::swap(translationalDegreesOfFreedom, other.translationalDegreesOfFreedom);
   std::swap(rotationalDegreesOfFreedom, other.rotationalDegreesOfFreedom);
-  std::swap(containsTheFractionalMolecule, other.containsTheFractionalMolecule);
+  std::swap(containsTheFractionalMoleculeOfComponent, other.containsTheFractionalMoleculeOfComponent);
   // The cross-link topology belongs to the configuration; the bond types (Hamiltonian) stay.
   crossLinks.swapTopology(other.crossLinks);
   // the time-correlation properties belong to the trajectory: their time origins and sums follow the walker, so

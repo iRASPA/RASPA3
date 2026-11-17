@@ -1496,8 +1496,7 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
 
   for (Component& component : system.components)
   {
-    component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
-                                           system.containsTheFractionalMolecule);
+    component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
   }
   // the probe is the adsorbate (System::tmmcComponent), which fixed extra-framework cations may precede; the
   // scout took component 0, and counted the cations of such a framework as the loading
@@ -1553,8 +1552,7 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
     // block, as in the equilibration stage of the drivers, instead of growing the bias at a fixed rate
     for (Component& component : system.components)
     {
-      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
-                                             system.containsTheFractionalMolecule);
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
     }
 
     // a block without a decoupled sample carries no information: it is not counted towards the plateau

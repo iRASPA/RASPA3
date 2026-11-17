@@ -31,9 +31,10 @@ import mc_moves_gibbs_swap_serial_common;
 import intra_molecular_potentials;
 
 // All systems have a fractional molecule, only one of these is 'active', the others are switched off with 'lambda=0'.
-// Serial CFCMC: at most one simulation box has containsTheFractionalMolecule==true; systemA must be that box. The flag
-// is a property of the box, so when a move transfers the activity, the fractional molecules of the other swappable
-// components follow (see mc_moves_gibbs_swap_serial_common). Integer insertions use random placement.
+// Serial CFCMC: for each component at most one simulation box has 'containsTheFractionalMolecule(component)';
+// systemA must be that box for the selected component. Every component has its own flag: a move transfers the
+// activity of the fractional molecule of the selected component only (see mc_moves_gibbs_swap_serial_common).
+// Integer insertions use random placement.
 // Implementation advantage: the number of fractional molecules per system remains constant.
 
 using namespace MC_Moves::GibbsSwapSerialCommon;
@@ -130,7 +131,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   double switchValue = random.uniform();
 
-  if (!systemA.containsTheFractionalMolecule || systemB.containsTheFractionalMolecule)
+  if (!systemA.containsTheFractionalMolecule(selectedComponent) ||
+      systemB.containsTheFractionalMolecule(selectedComponent))
   {
     return std::nullopt;
   }
@@ -156,8 +158,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // make copy of old fractional molecules for reference and restoring
     const std::vector<Atom> oldFractionalMoleculeA(fractionalMoleculeA.begin(), fractionalMoleculeA.end());
     const std::vector<Atom> oldFractionalMoleculeB(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
-    const FractionalSnapshot snapshotA = saveFractionalMolecules(systemA);
-    const FractionalSnapshot snapshotB = saveFractionalMolecules(systemB);
+    const FractionalSnapshot snapshotA = saveFractionalMolecules(systemA, selectedComponent);
+    const FractionalSnapshot snapshotB = saveFractionalMolecules(systemB, selectedComponent);
 
     // Snapshot effective tail-correction counts for both systems; threaded through the sequential sub-steps.
     std::vector<double> tailEffA = systemA.effectiveNumberOfPseudoAtomsVDW;
@@ -170,7 +172,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     double netChargeA = systemA.ewaldMoveNetCharge();
     double netChargeB = systemB.ewaldMoveNetCharge();
 
-    // System A: the fractional slot takes the inactive placeholder of B; all fractional molecules of A switch off
+    // System A: the fractional slot takes the inactive placeholder of B and switches off
     //=============================================================================================================
 
     std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
@@ -185,15 +187,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     RunningEnergy intraFractionalDifferenceA = componentA.intraMolecularPotentials.computeInternalEnergies(
         systemA.forceField, systemA.simulationBox, fractionalMoleculeA);
 
-    // Combined flag-swap energy for all fractional molecules in A (selected: placeholder + off; others: off),
-    // computed in one batch to count the cross-terms exactly once, and applied to memory so the remainder of the
-    // move sees the post-flag-swap background.
+    // Flag-swap energy of the fractional slot of A (the placeholder, switched off), applied to memory so the
+    // remainder of the move sees the post-flag-swap background.
     std::optional<RunningEnergy> flagSwapFractionalDifferenceA =
         timed(systemA, componentA, move, Move::Timing::LambdaInterchangeNonEwald,
               [&]
               {
                 return computeFlagSwapFractionalEnergyDifference(systemA, tailEffA, tailGroupA, netChargeA, snapshotA,
-                                                                 selectedComponent, false, oldLambda, systemA);
+                                                                 false, oldLambda);
               });
     if (!flagSwapFractionalDifferenceA.has_value())
     {
@@ -201,7 +202,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       return std::nullopt;
     }
 
-    applyFlagSwapScaling(systemA, selectedComponent, false, oldLambda, systemA);
+    applyFlagSwapScaling(systemA, selectedComponent, false, oldLambda);
 
     // System A, step 2: the old fractional molecule becomes an integer molecule at its position
     std::vector<Atom> newMolecule(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end());
@@ -279,7 +280,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                       moleculeDifferenceA2.value() + EwaldFourierDifferenceA2 + tailEnergyDifferenceA2;
 
     // System B: Changing a randomly selected molecule in the other simulation box into a fractional molecule
-    // (at the same lambda); the fractional molecules of the other components switch on
+    // (at the same lambda)
     //================================================================================================================
 
     std::size_t indexSelectedIntegerMoleculeB = systemB.randomIntegerMoleculeOfComponent(random, selectedComponent);
@@ -456,24 +457,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                                    oldFractionalMoleculeB);
               });
 
-    std::optional<RunningEnergy> flagSwapOtherComponentsDifferenceB = computeFlagSwapOtherComponentsEnergyDifference(
-        systemB, tailEffB, tailGroupB, netChargeB, snapshotB, selectedComponent, true, systemA);
-    if (!flagSwapOtherComponentsDifferenceB.has_value())
-    {
-      restoreFractionalMolecules(systemA, snapshotA);
-      restoreB();
-      return std::nullopt;
-    }
-
     RunningEnergy energyDifferenceB = externalFieldDifferenceB.value() + frameworkDifferenceB.value() +
                                       moleculeDifferenceB.value() + EwaldFourierDifferenceB + tailEnergyDifferenceB +
                                       externalFieldDifferenceB2.value() + frameworkDifferenceB2.value() +
                                       moleculeDifferenceB2.value() + EwaldFourierDifferenceB2 + tailEnergyDifferenceB2 +
-                                      intraFractionalDifferenceB + flagSwapOtherComponentsDifferenceB.value();
+                                      intraFractionalDifferenceB;
 
-    // the other components' fractional molecules change owner with the flag as well
-    double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin] +
-                      otherComponentsBiasChange(systemA, systemB, selectedComponent);
+    double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin];
 
     double preFactor = static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                        (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent]));
@@ -506,8 +496,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       restoreFractionalMolecules(systemA, snapshotA);
       restoreB();
 
-      syncOtherComponentLambdaBins(systemA, systemB, selectedComponent);
-      std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
+      transferFractionalMoleculeOwnership(systemA, systemB, selectedComponent);
       std::swap(componentA.lambdaGC.currentBin, componentB.lambdaGC.currentBin);
 
       // A: the fractional molecule becomes an integer molecule in place (its atoms keep their tags, dynamics and
@@ -531,10 +520,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       systemB.swapMolecules(selectedComponent, indexSelectedIntegerMoleculeB, indexFractionalMoleculeB);
       systemB.deleteMolecule(selectedComponent, indexSelectedIntegerMoleculeB, selectedIntegerMoleculeB);
 
-      // all fractional molecules take the scaling of their box's new activity state
+      // the fractional slots of the component take the scaling of their box's new activity state
       const double activeLambda = componentB.lambdaGC.lambdaValue();
-      applyFlagSwapScaling(systemA, selectedComponent, false, activeLambda, systemA);
-      applyFlagSwapScaling(systemB, selectedComponent, true, activeLambda, systemA);
+      applyFlagSwapScaling(systemA, selectedComponent, false, activeLambda);
+      applyFlagSwapScaling(systemB, selectedComponent, true, activeLambda);
+      // the placeholder now in A came with the coordinates of the other box: its image inside the box of A
+      parkInactiveFractionalMolecule(systemA, selectedComponent);
 
       systemA.computeTailCorrectionCounts();
       systemB.computeTailCorrectionCounts();
@@ -563,8 +554,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // make copy of old fractional molecule for reference and restoring
     const std::vector<Atom> oldFractionalMoleculeA(fractionalMoleculeA.begin(), fractionalMoleculeA.end());
     const std::vector<Atom> oldFractionalMoleculeB(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
-    const FractionalSnapshot snapshotA = saveFractionalMolecules(systemA);
-    const FractionalSnapshot snapshotB = saveFractionalMolecules(systemB);
+    const FractionalSnapshot snapshotA = saveFractionalMolecules(systemA, selectedComponent);
+    const FractionalSnapshot snapshotB = saveFractionalMolecules(systemB, selectedComponent);
 
     // Snapshot effective tail-correction counts for both systems; threaded through the sequential sub-steps.
     std::vector<double> tailEffA = systemA.effectiveNumberOfPseudoAtomsVDW;
@@ -594,7 +585,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     systemA.cellListAtomsMoved(fractionalMoleculeA);
     systemB.cellListAtomsMoved(fractionalMoleculeB);
 
-    // Rejection: the molecules back to their systems, then the pre-move state of every fractional molecule.
+    // Rejection: the molecules back to their systems, then the pre-move state of the fractional slots.
     auto undoExchange = [&]()
     {
       systemA.exchangeMolecule(systemB, selectedComponent, indexFractionalMoleculeA, indexFractionalMoleculeB);
@@ -611,15 +602,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         componentA.intraMolecularPotentials.computeInternalEnergies(systemA.forceField, systemA.simulationBox,
                                                                     oldFractionalMoleculeA);
 
-    // Combined flag-swap energy for all fractional molecules in A (selected: placeholder + off; others: off),
-    // computed in one batch to count the cross-terms exactly once, and applied to memory so the remainder of the
-    // move sees the post-flag-swap background.
+    // Flag-swap energy of the fractional slot of A (the placeholder, switched off), applied to memory so the
+    // remainder of the move sees the post-flag-swap background.
     std::optional<RunningEnergy> flagSwapFractionalDifferenceA =
         timed(systemA, componentA, move, Move::Timing::LambdaShuffleNonEwald,
               [&]
               {
                 return computeFlagSwapFractionalEnergyDifference(systemA, tailEffA, tailGroupA, netChargeA, snapshotA,
-                                                                 selectedComponent, false, oldLambda, systemA);
+                                                                 false, oldLambda);
               });
     if (!flagSwapFractionalDifferenceA.has_value())
     {
@@ -629,7 +619,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     RunningEnergy energyDifferenceA = intraEnergyDifferenceA + flagSwapFractionalDifferenceA.value();
 
-    applyFlagSwapScaling(systemA, selectedComponent, false, oldLambda, systemA);
+    applyFlagSwapScaling(systemA, selectedComponent, false, oldLambda);
 
     // System B: the fractional molecule arrives at a random position (with an ideal-gas conformation)
     std::pair<Molecule, std::vector<Atom>> trialMolecule =
@@ -717,23 +707,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                                    oldFractionalMoleculeB);
               });
 
-    std::optional<RunningEnergy> flagSwapOtherComponentsDifferenceB = computeFlagSwapOtherComponentsEnergyDifference(
-        systemB, tailEffB, tailGroupB, netChargeB, snapshotB, selectedComponent, true, systemA);
-    if (!flagSwapOtherComponentsDifferenceB.has_value())
-    {
-      undoExchange();
-      return std::nullopt;
-    }
-
     RunningEnergy energyDifferenceB = externalFieldDifferenceB.value() + frameworkDifferenceB.value() +
                                       moleculeDifferenceB.value() + EwaldEnergyDifferenceB + tailEnergyDifferenceB +
-                                      intraEnergyDifferenceB + flagSwapOtherComponentsDifferenceB.value();
+                                      intraEnergyDifferenceB;
 
     componentA.mc_moves_statistics.addConstructed(move, 1);
 
-    // the other components' fractional molecules change owner with the flag as well
-    double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin] +
-                      otherComponentsBiasChange(systemA, systemB, selectedComponent);
+    double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin];
 
     double preFactor = systemB.simulationBox.volume / systemA.simulationBox.volume;
 
@@ -766,14 +746,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       trialMolecule.first.atomIndex = fractionalRecordB.atomIndex;
       fractionalRecordB = trialMolecule.first;
 
-      syncOtherComponentLambdaBins(systemA, systemB, selectedComponent);
-      std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
+      transferFractionalMoleculeOwnership(systemA, systemB, selectedComponent);
       std::swap(componentA.lambdaGC.currentBin, componentB.lambdaGC.currentBin);
 
-      // all fractional molecules take the scaling of their box's new activity state
+      // the fractional slots of the component take the scaling of their box's new activity state
       const double activeLambda = componentB.lambdaGC.lambdaValue();
-      applyFlagSwapScaling(systemA, selectedComponent, false, activeLambda, systemA);
-      applyFlagSwapScaling(systemB, selectedComponent, true, activeLambda, systemA);
+      applyFlagSwapScaling(systemA, selectedComponent, false, activeLambda);
+      applyFlagSwapScaling(systemB, selectedComponent, true, activeLambda);
+      // the placeholder now in A came with the coordinates of the other box: its image inside the box of A
+      parkInactiveFractionalMolecule(systemA, selectedComponent);
 
       systemA.computeTailCorrectionCounts();
       systemB.computeTailCorrectionCounts();

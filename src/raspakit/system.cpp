@@ -150,6 +150,7 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
       interpolationGrids(forceField.pseudoAtoms.size() + 1, std::nullopt)
 {
   input_pressureTensorDiagonal = double3(input_pressure, input_pressure, input_pressure);
+  setContainsTheFractionalMolecules(true);
   pressureTensorDiagonal = double3(pressure, pressure, pressure);
 
   // Temperature-dependent potentials (Feynman-Hibbs) require the external temperature;
@@ -2034,7 +2035,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.timeStep;
 
   archive << s.simulationBox;
-  archive << s.containsTheFractionalMolecule;
+  archive << s.containsTheFractionalMoleculeOfComponent;
 
   archive << s.atomData;
   archive << s.atomDynamics;
@@ -2216,7 +2217,17 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.timeStep;
 
   archive >> s.simulationBox;
-  archive >> s.containsTheFractionalMolecule;
+  if (versionNumber >= 4)
+  {
+    archive >> s.containsTheFractionalMoleculeOfComponent;
+  }
+  else
+  {
+    // an older restart has one flag for the box: the fractional molecules of all components were in the same box
+    bool containsTheFractionalMolecule;
+    archive >> containsTheFractionalMolecule;
+    s.setContainsTheFractionalMolecules(containsTheFractionalMolecule);
+  }
 
   archive >> s.atomData;
   archive >> s.atomDynamics;

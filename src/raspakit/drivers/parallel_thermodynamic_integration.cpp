@@ -101,7 +101,7 @@ void ParallelThermodynamicIntegration::setup()
     system.forceField.initializeEwaldParameters(system.simulationBox);
 
     // every replica carries its own fractional molecule(s), pinned at its lambda
-    system.containsTheFractionalMolecule = true;
+    system.setContainsTheFractionalMolecules(true);
   }
 
   std::filesystem::create_directories("output");
@@ -266,7 +266,7 @@ void ParallelThermodynamicIntegration::performReplicaCycle(std::size_t replicaId
         break;
     }
 
-    system.components[selectedComponent].lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
+    system.components[selectedComponent].lambdaGC.sampleOccupancy(system.gcFractionalMoleculeIsActive(selectedComponent));
     // pinned pair- and group-swap lambda histograms
     system.pairSwapLambdaSampleOccupancy();
   }

@@ -31,6 +31,8 @@ import mc_moves_move_types;
 import randomnumbers;
 import scaling;
 import mc_moves_translation;
+import mc_moves_volume;
+import mc_moves_gibbs_volume;
 import mc_moves_gibbs_swap_cfcmc;
 import mc_moves_gibbs_swap_cbcfcmc;
 import mc_moves_gibbs_conventional_common;
@@ -585,8 +587,8 @@ TEST(MC_GIBBS_DRIFT, binary_mixture_propane_butane_cfcbmc_gibbs_only_single_acce
   {
     for (std::size_t component = 0; component < 2; ++component)
     {
-      System &systemA = systemVapor.containsTheFractionalMolecule ? systemVapor : systemLiquid;
-      System &systemB = systemVapor.containsTheFractionalMolecule ? systemLiquid : systemVapor;
+      System &systemA = systemVapor.containsTheFractionalMolecule(component) ? systemVapor : systemLiquid;
+      System &systemB = systemVapor.containsTheFractionalMolecule(component) ? systemLiquid : systemVapor;
 
       RunningEnergy beforeA = systemA.computeTotalEnergies();
       RunningEnergy beforeB = systemB.computeTotalEnergies();
@@ -643,9 +645,9 @@ TEST(MC_GIBBS_DRIFT, binary_mixture_propane_butane_cfcbmc_gibbs_only_many_accept
   std::size_t acceptCount = 0;
   for (int attempt = 0; attempt < 2000; ++attempt)
   {
-    System &systemA = systemVapor.containsTheFractionalMolecule ? systemVapor : systemLiquid;
-    System &systemB = systemVapor.containsTheFractionalMolecule ? systemLiquid : systemVapor;
-    const std::size_t component = systemA.randomComponent(random);
+    const std::size_t component = systemVapor.randomComponent(random);
+    System &systemA = systemVapor.containsTheFractionalMolecule(component) ? systemVapor : systemLiquid;
+    System &systemB = systemVapor.containsTheFractionalMolecule(component) ? systemLiquid : systemVapor;
 
     RunningEnergy beforeA = systemA.computeTotalEnergies();
     RunningEnergy beforeB = systemB.computeTotalEnergies();
@@ -669,10 +671,21 @@ TEST(MC_GIBBS_DRIFT, binary_mixture_propane_butane_cfcbmc_gibbs_only_many_accept
     ASSERT_NEAR(delta->second.moleculeMoleculeVDW, (afterB - beforeB).moleculeMoleculeVDW, 1e-6);
     ASSERT_NEAR(delta->second.totalDudlambdaVDW(), (afterB - beforeB).totalDudlambdaVDW(), 1e-6);
 
-    // the inactive box has all its fractional molecules switched off with groupId 0,
-    // so it must have no dUdlambda contribution at all
-    const RunningEnergy &inactiveAfter = systemA.containsTheFractionalMolecule ? afterB : afterA;
-    ASSERT_NEAR(inactiveAfter.totalDudlambdaVDW(), 0.0, 1e-8);
+    // every component has its own flag: a box that holds the fractional molecule of no component has all its
+    // fractional slots switched off with groupId 0, so it must have no dUdlambda contribution at all
+    for (const auto &[heldBox, after] : {std::pair<const System *, const RunningEnergy *>{&systemA, &afterA},
+                                     std::pair<const System *, const RunningEnergy *>{&systemB, &afterB}})
+    {
+      bool holdsAFractionalMolecule = false;
+      for (std::size_t c = 0; c < heldBox->components.size(); ++c)
+      {
+        holdsAFractionalMolecule = holdsAFractionalMolecule || heldBox->containsTheFractionalMolecule(c);
+      }
+      if (!holdsAFractionalMolecule)
+      {
+        ASSERT_NEAR(after->totalDudlambdaVDW(), 0.0, 1e-8);
+      }
+    }
 
     expectNoEnergyDrift(systemA);
     expectNoEnergyDrift(systemB);
@@ -751,8 +764,8 @@ void runGibbsSwapCellListCheck(Move::Types gibbsSwapMove)
   {
     for (std::size_t component = 0; component < 2; ++component)
     {
-      System& systemA = systems[0].containsTheFractionalMolecule ? systems[0] : systems[1];
-      System& systemB = systems[0].containsTheFractionalMolecule ? systems[1] : systems[0];
+      System& systemA = systems[0].containsTheFractionalMolecule(component) ? systems[0] : systems[1];
+      System& systemB = systems[0].containsTheFractionalMolecule(component) ? systems[1] : systems[0];
       // current lists before the attempt, so that the move maintains them instead of starting from none
       (void)systemA.cellList();
       (void)systemB.cellList();
@@ -796,6 +809,243 @@ TEST(MC_GIBBS_DRIFT, gibbs_cbcfcmc_keeps_both_cell_lists_current)
   runGibbsSwapCellListCheck(Move::Types::GibbsSwapCBCFCMC);
 }
 
+// Every component of a serial Gibbs CFCMC swap has its own fractional molecule and its own flag for the box that
+// holds it. A move of one component must leave the fractional slots of the other component alone in both boxes
+// (their atoms, their flag, their lambda bin): with one flag for the box they followed the transfer and were
+// switched on in place at the position of a placeholder -- a copy of a position of the other box, no coordinate of
+// the state -- while the volume moves and the weight V_B / V_A of the transfer count a placeholder as drawn anew.
+// The two boxes then hold the fractional molecules of different components, and the energy differences of the
+// moves must still be those of a recomputation.
+namespace
+{
+void runGibbsSwapLeavesOtherComponentsAlone(Move::Types gibbsSwapMove)
+{
+  const ForceField forceField = makeAlkaneForceField();
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(gibbsSwapMove, 1.0);
+  Component propane = makeAlkaneFromExample(forceField, 0, "propane", probabilities, true);
+  Component butane = makeAlkaneFromExample(forceField, 1, "butane", probabilities, true);
+  std::vector<System> systems{
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 500.0, 1e4, 1.0, {}, {propane, butane}, {}, {10, 10},
+             5, MCMoveProbabilities()),
+      System(forceField, SimulationBox(40.0, 40.0, 40.0), false, 500.0, 1e4, 1.0, {}, {propane, butane}, {}, {10, 10},
+             5, MCMoveProbabilities())};
+  setupSerialGibbsCFCMC(systems);
+  auto fractionalAtoms = [&](const System& system, std::size_t component)
+  {
+    const std::size_t index = system.indexOfFractionalMoleculeForMove(gibbsSwapMove, component);
+    std::span<const Atom> molecule = system.spanOfMolecule(component, index);
+    return std::vector<Atom>(molecule.begin(), molecule.end());
+  };
+  auto expectSameAtoms = [](const std::vector<Atom>& a, const std::vector<Atom>& b)
+  {
+    ASSERT_EQ(a.size(), b.size());
+    for (std::size_t k = 0; k < a.size(); ++k)
+    {
+      EXPECT_EQ(a[k].position.x, b[k].position.x);
+      EXPECT_EQ(a[k].position.y, b[k].position.y);
+      EXPECT_EQ(a[k].position.z, b[k].position.z);
+      EXPECT_EQ(a[k].scalingVDW, b[k].scalingVDW);
+      EXPECT_EQ(a[k].scalingCoulomb, b[k].scalingCoulomb);
+      EXPECT_EQ(a[k].groupId, b[k].groupId);
+      EXPECT_EQ(a[k].isFractional, b[k].isFractional);
+    }
+  };
+
+  RandomNumber random(42);
+  std::size_t fractionalMoleculeSystem = 0;
+  std::size_t transfers = 0;
+  std::size_t splitOwnership = 0;
+  for (int attempt = 0; attempt < 1500; ++attempt)
+  {
+    const std::size_t component = static_cast<std::size_t>(attempt % 2);
+    const std::size_t other = 1 - component;
+    const std::size_t a = systems[0].containsTheFractionalMolecule(component) ? 0 : 1;
+    System& systemA = systems[a];
+    System& systemB = systems[1 - a];
+
+    const std::array<std::vector<Atom>, 2> otherBefore{fractionalAtoms(systems[0], other),
+                                                       fractionalAtoms(systems[1], other)};
+    const std::array<bool, 2> otherFlagBefore{systems[0].containsTheFractionalMolecule(other),
+                                              systems[1].containsTheFractionalMolecule(other)};
+    const std::array<std::size_t, 2> otherBinBefore{systems[0].components[other].lambdaGC.currentBin,
+                                                    systems[1].components[other].lambdaGC.currentBin};
+    const RunningEnergy beforeA = systemA.computeTotalEnergies();
+    const RunningEnergy beforeB = systemB.computeTotalEnergies();
+
+    const std::optional<std::pair<RunningEnergy, RunningEnergy>> delta =
+        (gibbsSwapMove == Move::Types::GibbsSwapCFCMC)
+            ? MC_Moves::GibbsSwapMove_CFCMC(random, systemA, systemB, component, fractionalMoleculeSystem)
+            : MC_Moves::GibbsSwapMove_CBCFCMC(random, systemA, systemB, component, fractionalMoleculeSystem);
+
+    SCOPED_TRACE("attempt " + std::to_string(attempt) + " component " + std::to_string(component));
+    for (std::size_t box = 0; box < 2; ++box)
+    {
+      expectSameAtoms(fractionalAtoms(systems[box], other), otherBefore[box]);
+      EXPECT_EQ(systems[box].containsTheFractionalMolecule(other), otherFlagBefore[box]);
+      EXPECT_EQ(systems[box].components[other].lambdaGC.currentBin, otherBinBefore[box]);
+    }
+    // exactly one box holds the fractional molecule of each component
+    for (std::size_t c = 0; c < 2; ++c)
+    {
+      EXPECT_NE(systems[0].containsTheFractionalMolecule(c), systems[1].containsTheFractionalMolecule(c));
+    }
+    if (systems[0].containsTheFractionalMolecule(0) != systems[0].containsTheFractionalMolecule(1)) ++splitOwnership;
+
+    if (delta.has_value())
+    {
+      if (!systemA.containsTheFractionalMolecule(component)) ++transfers;
+      const RunningEnergy afterA = systemA.computeTotalEnergies();
+      const RunningEnergy afterB = systemB.computeTotalEnergies();
+      ASSERT_NEAR(delta->first.potentialEnergy(), (afterA - beforeA).potentialEnergy(), 1e-6);
+      ASSERT_NEAR(delta->second.potentialEnergy(), (afterB - beforeB).potentialEnergy(), 1e-6);
+      ASSERT_NEAR(delta->first.totalDudlambdaVDW(), (afterA - beforeA).totalDudlambdaVDW(), 1e-6);
+      ASSERT_NEAR(delta->second.totalDudlambdaVDW(), (afterB - beforeB).totalDudlambdaVDW(), 1e-6);
+    }
+
+    // the placeholders of the box that does not hold a component's fractional molecule carry no volume factor
+    for (std::size_t box = 0; box < 2; ++box)
+    {
+      std::size_t placeholders = 0;
+      for (std::size_t c = 0; c < 2; ++c) placeholders += systems[box].containsTheFractionalMolecule(c) ? 0 : 1;
+      EXPECT_DOUBLE_EQ(MC_Moves::numberOfScaledMolecules(systems[box]),
+                       static_cast<double>(systems[box].moleculeData.size() - placeholders));
+    }
+  }
+  EXPECT_GT(transfers, 0uz);
+  // the fractional molecules of the two components were in different boxes along the way
+  EXPECT_GT(splitOwnership, 0uz);
+}
+}  // namespace
+
+// Ideal-gas components with a serial Gibbs CFCMC swap each, and the Gibbs volume move. Every molecule, the M
+// fractional ones included, is then independently in box A with probability x = V_A / V, so with k of the M
+// fractional molecules in A the volume fraction is distributed as x^k (1 - x)^(M - k): <x> = (k + 1) / (M + 2),
+// each k one part in M + 1 of the time (for two components <x> = 1/4, 1/2 and 3/4, each a third of the time).
+// With one flag for the box the fractional molecules of all components changed box together at the weight
+// V_B / V_A of one of them, against a volume move that counts all M: no distribution satisfies both for M > 1,
+// and the states with the fractional molecules in different boxes did not exist.
+// (The seeds are ones at which the unbounded coordinates of a placeholder ended the run.)
+namespace
+{
+void runIdealGasGibbsCFCMCVolume(std::size_t numberOfComponents, std::size_t seed)
+{
+  const ForceField forceField({{"A", false, 16.0, 0.0, 0.0, 8, false}}, {{0.0, 3.0}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 2.0, 2.0, 2.0, false, false, false);
+  MCMoveProbabilities probabilities{};
+  probabilities.setProbability(Move::Types::GibbsSwapCFCMC, 1.0);
+  auto makeBox = [&]()
+  {
+    std::vector<Component> components;
+    for (std::size_t c = 0; c != numberOfComponents; ++c)
+    {
+      components.push_back(Component(forceField, "component" + std::to_string(c), 64.0, 1.0e6, 0.02,
+                                     {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21,
+                                     probabilities, std::nullopt, false));
+    }
+    return System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, components, {},
+                  std::vector<std::size_t>(numberOfComponents, 3), 5);
+  };
+  std::vector<System> systems{makeBox(), makeBox()};
+  setupSerialGibbsCFCMC(systems);
+  for (System &system : systems)
+  {
+    system.mc_moves_statistics.setMaxChange(Move::Types::GibbsVolume, 1.0);
+  }
+
+  RandomNumber random(seed);
+  std::size_t fractionalMoleculeSystem = 0;
+  std::vector<double> sumFraction(numberOfComponents + 1, 0.0);
+  std::vector<std::size_t> count(numberOfComponents + 1, 0);
+  constexpr std::size_t steps = 400000;
+  for (std::size_t step = 0; step != steps; ++step)
+  {
+    if (random.uniform() < 0.4)
+    {
+      if (const auto energy = MC_Moves::GibbsVolumeMove(random, systems[0], systems[1], 0))
+      {
+        systems[0].runningEnergies += energy->first;
+        systems[1].runningEnergies += energy->second;
+      }
+    }
+    else
+    {
+      const std::size_t component = systems[0].randomComponent(random);
+      const std::size_t a = systems[0].containsTheFractionalMolecule(component) ? 0 : 1;
+      if (const auto energy =
+              MC_Moves::GibbsSwapMove_CFCMC(random, systems[a], systems[1 - a], component, fractionalMoleculeSystem))
+      {
+        systems[a].runningEnergies += energy->first;
+        systems[1 - a].runningEnergies += energy->second;
+      }
+    }
+    std::size_t k = 0;
+    for (std::size_t c = 0; c != numberOfComponents; ++c) k += systems[0].containsTheFractionalMolecule(c) ? 1 : 0;
+    sumFraction[k] += systems[0].simulationBox.volume /
+                      (systems[0].simulationBox.volume + systems[1].simulationBox.volume);
+    ++count[k];
+
+    // A switched-off placeholder stays inside its box. It enters with the coordinates it had in the other box and
+    // is scaled by every volume move of its new box: left there, the coordinates grew without bound over the
+    // transfers (and the stencil of the cell list overflowed).
+    if (step % 1000 == 0)
+    {
+      for (const System &system : systems)
+      {
+        for (std::size_t c = 0; c != numberOfComponents; ++c)
+        {
+          if (system.containsTheFractionalMolecule(c)) continue;
+          const std::size_t index = system.indexOfFractionalMoleculeForMove(Move::Types::GibbsSwapCFCMC, c);
+          const double3 fractional =
+              system.simulationBox.inverseCell * system.spanOfMolecule(c, index).front().position;
+          for (const double coordinate : {fractional.x, fractional.y, fractional.z})
+          {
+            ASSERT_GE(coordinate, -1.0e-9) << "step " << step;
+            ASSERT_LE(coordinate, 1.0 + 1.0e-9) << "step " << step;
+          }
+        }
+      }
+    }
+  }
+
+  const double M = static_cast<double>(numberOfComponents);
+  for (std::size_t k = 0; k <= numberOfComponents; ++k)
+  {
+    SCOPED_TRACE("fractional molecules in the first box: " + std::to_string(k));
+    EXPECT_NEAR(static_cast<double>(count[k]) / static_cast<double>(steps), 1.0 / (M + 1.0), 0.05);
+    ASSERT_GT(count[k], 0uz);
+    EXPECT_NEAR(sumFraction[k] / static_cast<double>(count[k]), static_cast<double>(k + 1) / (M + 2.0), 0.03);
+  }
+  // six integer molecules of each component in all, wherever the fractional molecules are
+  for (std::size_t component = 0; component != numberOfComponents; ++component)
+  {
+    EXPECT_EQ(systems[0].numberOfIntegerMoleculesPerComponent[component] +
+                  systems[1].numberOfIntegerMoleculesPerComponent[component],
+              6uz);
+  }
+}
+}  // namespace
+
+TEST(MC_GIBBS_DRIFT, ideal_gas_gibbs_cfcmc_volume_follows_the_fractional_molecule)
+{
+  runIdealGasGibbsCFCMCVolume(1, 1);
+}
+
+TEST(MC_GIBBS_DRIFT, ideal_gas_mixture_gibbs_cfcmc_volume_follows_each_fractional_molecule)
+{
+  runIdealGasGibbsCFCMCVolume(2, 2);
+}
+
+TEST(MC_GIBBS_DRIFT, gibbs_cfcmc_transfer_leaves_the_fractional_molecules_of_other_components_alone)
+{
+  runGibbsSwapLeavesOtherComponentsAlone(Move::Types::GibbsSwapCFCMC);
+}
+
+TEST(MC_GIBBS_DRIFT, gibbs_cbcfcmc_transfer_leaves_the_fractional_molecules_of_other_components_alone)
+{
+  runGibbsSwapLeavesOtherComponentsAlone(Move::Types::GibbsSwapCBCFCMC);
+}
+
 // The transfer sub-move of the serial Gibbs CFCMC swap switches the selected integer molecule of B off and copies it
 // into the fractional slot of B, where the copy is evaluated against the cell list of B. The list caches the scaling
 // of every atom: unless both molecules are refreshed in it, the copy meets its switched-off original at its own
@@ -821,9 +1071,9 @@ TEST(MC_GIBBS_DRIFT, gibbs_cfcmc_transfer_with_cell_lists_returns_the_recomputed
   std::size_t fractionalMoleculeSystem = 0;
   for (int attempt = 0; attempt < 1500; ++attempt)
   {
-    System& systemA = systems[0].containsTheFractionalMolecule ? systems[0] : systems[1];
-    System& systemB = systems[0].containsTheFractionalMolecule ? systems[1] : systems[0];
     const std::size_t component = static_cast<std::size_t>(attempt % 2);
+    System& systemA = systems[0].containsTheFractionalMolecule(component) ? systems[0] : systems[1];
+    System& systemB = systems[0].containsTheFractionalMolecule(component) ? systems[1] : systems[0];
 
     // the recomputation rebuilds both lists; every other pair of attempts then drops the list of B, so that the move
     // builds it in the middle of the transfer
@@ -920,8 +1170,12 @@ void runMixtureGibbsSwapDrift(Move::Types gibbsSwapMove, bool withArgon = false)
 
   mc.run();
 
-  // exactly one box holds the active fractional molecules, and the activity flag governs every component
-  EXPECT_NE(mc.systems[0].containsTheFractionalMolecule, mc.systems[1].containsTheFractionalMolecule);
+  // for every component exactly one box holds the active fractional molecule (each component has its own flag)
+  for (std::size_t componentId = 0; componentId < mc.systems[0].components.size(); ++componentId)
+  {
+    EXPECT_NE(mc.systems[0].containsTheFractionalMolecule(componentId),
+              mc.systems[1].containsTheFractionalMolecule(componentId));
+  }
   for (System &s : mc.systems)
   {
     expectNoEnergyDrift(s);
@@ -933,7 +1187,7 @@ void runMixtureGibbsSwapDrift(Move::Types gibbsSwapMove, bool withArgon = false)
       for (const Atom &atom : s.spanOfMolecule(componentId, index))
       {
         Atom expected = atom;
-        if (s.containsTheFractionalMolecule)
+        if (s.containsTheFractionalMolecule(componentId))
         {
           expected.setScalingToFractional(component.lambdaGC.lambdaValue(), component.lambdaGC.dUdlambdaGroupId);
         }
@@ -1003,7 +1257,7 @@ void runGibbsSwapExternalFieldDrift(Move::Types gibbsSwapMove)
   MonteCarlo mc = MonteCarlo({300, 0, 100, 100, 1000, 10000, 5000, 5000}, systems, 42uz, 5, false);
   mc.run();
 
-  EXPECT_NE(mc.systems[0].containsTheFractionalMolecule, mc.systems[1].containsTheFractionalMolecule);
+  EXPECT_NE(mc.systems[0].containsTheFractionalMolecule(0), mc.systems[1].containsTheFractionalMolecule(0));
   // the swap (x), shuffle (y) and lambda (z) sub-moves all got accepted
   const MoveStatistics<double3> &statistics =
       std::get<MoveStatistics<double3>>(mc.systems[0].components[0].mc_moves_statistics[gibbsSwapMove]);
@@ -1305,7 +1559,7 @@ TEST(MC_GIBBS_DRIFT, gibbs_swap_cfcmc_respects_blocked_pockets)
   std::size_t fractionalMoleculeSystem{0};
   for (std::size_t attempt = 0; attempt < 3000; ++attempt)
   {
-    const std::size_t a = systems[0].containsTheFractionalMolecule ? 0 : 1;
+    const std::size_t a = systems[0].containsTheFractionalMolecule(0) ? 0 : 1;
     const std::size_t b = 1 - a;
     const auto delta = MC_Moves::GibbsSwapMove_CFCMC(random, systems[a], systems[b], 0, fractionalMoleculeSystem);
     if (delta.has_value())
@@ -1330,7 +1584,7 @@ TEST(MC_GIBBS_DRIFT, gibbs_swap_cfcmc_respects_blocked_pockets)
   EXPECT_GT(accepted.x, 0.0);
   EXPECT_GT(accepted.y, 0.0);
   EXPECT_GT(accepted.z, 0.0);
-  EXPECT_NE(systems[0].containsTheFractionalMolecule, systems[1].containsTheFractionalMolecule);
+  EXPECT_NE(systems[0].containsTheFractionalMolecule(0), systems[1].containsTheFractionalMolecule(0));
   expectNoEnergyDrift(systems[0]);
   expectNoEnergyDrift(systems[1]);
 }

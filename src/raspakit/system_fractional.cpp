@@ -686,7 +686,7 @@ void System::initializeGibbsSwapFractionalMoleculeGroupIds() noexcept
     const std::size_t fractionalMoleculeIndex = indexOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(componentId);
     std::span<Atom> fractionalMolecule = spanOfMolecule(componentId, fractionalMoleculeIndex);
     const std::uint8_t groupId =
-        containsTheFractionalMolecule ? components[componentId].lambdaGC.dUdlambdaGroupId : std::uint8_t{0};
+        containsTheFractionalMolecule(componentId) ? components[componentId].lambdaGC.dUdlambdaGroupId : std::uint8_t{0};
     for (Atom& atom : fractionalMolecule)
     {
       atom.groupId = groupId;

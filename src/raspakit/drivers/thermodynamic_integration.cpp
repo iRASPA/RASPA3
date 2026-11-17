@@ -58,7 +58,7 @@ void ThermodynamicIntegration::setup()
     system.forceField.initializeEwaldParameters(system.simulationBox);
 
     // every system carries its own fractional molecule, pinned at the fixed lambda
-    system.containsTheFractionalMolecule = true;
+    system.setContainsTheFractionalMolecules(true);
   }
 
   std::filesystem::create_directories("output");

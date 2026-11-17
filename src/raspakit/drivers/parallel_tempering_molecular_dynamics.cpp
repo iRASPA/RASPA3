@@ -365,7 +365,7 @@ void ParallelTemperingMolecularDynamics::performReplicaMonteCarloCycle(std::size
         break;
     }
 
-    system.components[selectedComponent].lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
+    system.components[selectedComponent].lambdaGC.sampleOccupancy(system.gcFractionalMoleculeIsActive(selectedComponent));
   }
 }
 
@@ -506,8 +506,7 @@ void ParallelTemperingMolecularDynamics::runStage(SimulationStage stage, std::si
       {
         for (Component& component : system.components)
         {
-          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
-                                                 system.containsTheFractionalMolecule);
+          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
           component.lambdaGC.clear();
         }
       }
@@ -525,8 +524,7 @@ void ParallelTemperingMolecularDynamics::runStage(SimulationStage stage, std::si
           component.mc_moves_statistics.clearMoveStatistics();
           component.mc_moves_cputime.clearTimingStatistics();
 
-          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
-                                                 system.containsTheFractionalMolecule);
+          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
           component.lambdaGC.clear();
         }
       }

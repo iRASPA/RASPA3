@@ -1246,7 +1246,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
     case Move::Types::GibbsSwapCFCMC:
     case Move::Types::GibbsSwapCBCFCMC:
     {
-      if (selectedSystem.containsTheFractionalMolecule)
+      if (selectedSystem.containsTheFractionalMolecule(selectedComponent))
       {
         std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
             moveType == Move::Types::GibbsSwapCFCMC
@@ -1260,7 +1260,7 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
           selectedSecondSystem.runningEnergies += energy.value().second;
         }
       }
-      else if (selectedSecondSystem.containsTheFractionalMolecule)
+      else if (selectedSecondSystem.containsTheFractionalMolecule(selectedComponent))
       {
         std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
             moveType == Move::Types::GibbsSwapCFCMC
@@ -2241,7 +2241,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
     case Move::Types::GibbsSwapCFCMC:
     case Move::Types::GibbsSwapCBCFCMC:
     {
-      if (selectedSystem.containsTheFractionalMolecule)
+      if (selectedSystem.containsTheFractionalMolecule(selectedComponent))
       {
         std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
             moveType == Move::Types::GibbsSwapCFCMC
@@ -2255,7 +2255,7 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
           selectedSecondSystem.runningEnergies += energy.value().second;
         }
       }
-      else if (selectedSecondSystem.containsTheFractionalMolecule)
+      else if (selectedSecondSystem.containsTheFractionalMolecule(selectedComponent))
       {
         std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
             moveType == Move::Types::GibbsSwapCFCMC
@@ -3268,7 +3268,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
     case Move::Types::GibbsSwapCFCMC:
     case Move::Types::GibbsSwapCBCFCMC:
     {
-      if (selectedSystem.containsTheFractionalMolecule)
+      if (selectedSystem.containsTheFractionalMolecule(selectedComponent))
       {
         selectedSystem.components[selectedComponent].mc_moves_statistics.addAllCounts(moveType);
 
@@ -3288,7 +3288,7 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
         selectedSystem.components[selectedComponent].mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
         selectedSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
       }
-      else if (selectedSecondSystem.containsTheFractionalMolecule)
+      else if (selectedSecondSystem.containsTheFractionalMolecule(selectedComponent))
       {
         selectedSecondSystem.components[selectedComponent].mc_moves_statistics.addAllCounts(moveType);
         std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =

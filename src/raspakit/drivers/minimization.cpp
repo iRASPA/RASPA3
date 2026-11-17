@@ -338,7 +338,7 @@ void Minimization::setup()
     // molecules as in MonteCarlo::setup (the state comes from the restart on a resume).
     if (!resumedFromBinaryRestart)
     {
-      system.containsTheFractionalMolecule = !(system.usesGibbsSwapCFCMC() && systemIndex != 0uz);
+      system.setContainsTheFractionalMolecules(!(system.usesGibbsSwapCFCMC() && systemIndex != 0uz));
       system.initializeGibbsSwapFractionalMoleculeGroupIds();
       if (system.usesGibbsConventionalCFCMC())
       {
@@ -573,8 +573,7 @@ void Minimization::equilibrate()
     system.runningEnergies = system.computeTotalEnergies();
     for (Component& component : system.components)
     {
-      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
-                                             system.containsTheFractionalMolecule);
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
       component.lambdaGC.clear();
       if (component.usesGibbsConventionalCFCMC())
       {
@@ -624,8 +623,7 @@ void Minimization::equilibrate()
         for (Component& component : system.components)
         {
           component.lambdaGC.WangLandauIteration(
-              PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
-              system.containsTheFractionalMolecule);
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
           if (component.usesGibbsConventionalCFCMC())
           {
             component.lambdaGibbs.WangLandauIteration(

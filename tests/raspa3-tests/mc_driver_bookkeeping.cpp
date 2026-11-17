@@ -90,20 +90,20 @@ TEST(MC_DRIVER_BOOKKEEPING, independent_boxes_keep_their_fractional_molecules_ac
   mc.setup();
   for (const System& system : mc.systems)
   {
-    EXPECT_TRUE(system.containsTheFractionalMolecule);
+    EXPECT_TRUE(system.containsTheFractionalMolecule(0));
     EXPECT_TRUE(system.lambdaWangLandauIsActive(0));
   }
   RandomNumber random(7);
   std::vector<System> tmmcIndependent{makeMethaneCFCMCSystem(20), makeMethaneCFCMCSystem(10)};
   MonteCarloTransitionMatrix tmmc(makeSchedule(1, 0, 1), tmmcIndependent, random, 5);
-  for (const System& system : tmmc.systems) EXPECT_TRUE(system.containsTheFractionalMolecule);
+  for (const System& system : tmmc.systems) EXPECT_TRUE(system.containsTheFractionalMolecule(0));
 
   std::vector<System> gibbs{makeMethaneCFCMCSystem(20, Move::Types::GibbsSwapCFCMC),
                             makeMethaneCFCMCSystem(10, Move::Types::GibbsSwapCFCMC)};
   MonteCarlo serial(makeSchedule(1, 0, 1), gibbs, 7uz, 5, false);
   serial.setup();
-  EXPECT_TRUE(serial.systems[0].containsTheFractionalMolecule);
-  EXPECT_FALSE(serial.systems[1].containsTheFractionalMolecule);
+  EXPECT_TRUE(serial.systems[0].containsTheFractionalMolecule(0));
+  EXPECT_FALSE(serial.systems[1].containsTheFractionalMolecule(0));
 
   // the GC lambda bias reweights the box that holds the active fractional molecule, not the placeholder's box
   for (System& system : serial.systems)
@@ -352,8 +352,8 @@ TEST(MC_DRIVER_BOOKKEEPING, transition_matrix_setup_prepares_fractional_molecule
     MonteCarloTransitionMatrix tmmc(makeSchedule(0, 0, 0), systems, random, 5);
     tmmc.setup();
 
-    EXPECT_TRUE(tmmc.systems[0].containsTheFractionalMolecule);
-    EXPECT_FALSE(tmmc.systems[1].containsTheFractionalMolecule);
+    EXPECT_TRUE(tmmc.systems[0].containsTheFractionalMolecule(0));
+    EXPECT_FALSE(tmmc.systems[1].containsTheFractionalMolecule(0));
     for (std::size_t systemId : {0uz, 1uz})
     {
       System& system = tmmc.systems[systemId];
@@ -518,8 +518,8 @@ TEST(MC_DRIVER_BOOKKEEPING, transition_matrix_samples_the_count_of_the_adsorbate
   EXPECT_LT(tmmc.systems[0].numberOfIntegerMoleculesPerComponent[0], 5uz);
 }
 
-// 'containsTheFractionalMolecule' is the flag of the serial Gibbs CFCMC swaps: the fractional molecules of the
-// components that use them are active in one box at a time. A co-adsorbate with a box-local CFCMC swap keeps its
+// 'containsTheFractionalMolecule' is the per-component flag of the serial Gibbs CFCMC swaps: the fractional molecule
+// of a component that uses them is active in one box at a time. A co-adsorbate with a box-local CFCMC swap keeps its
 // own fractional molecule in every box, biased and present throughout: its Wang-Landau updates, its lambda
 // histogram and its factor in the weight of the box must not follow the flag of the other component.
 TEST(MC_DRIVER_BOOKKEEPING, box_local_cfcmc_component_stays_active_in_the_box_without_the_gibbs_fractional_molecule)
@@ -549,13 +549,13 @@ TEST(MC_DRIVER_BOOKKEEPING, box_local_cfcmc_component_stays_active_in_the_box_wi
   ASSERT_NE(localWeight, 1.0);
 
   // the box that holds the Gibbs fractional molecule: both are active
-  system.containsTheFractionalMolecule = true;
+  system.setContainsTheFractionalMolecules(true);
   EXPECT_TRUE(system.gcFractionalMoleculeIsActive(0uz));
   EXPECT_TRUE(system.gcFractionalMoleculeIsActive(1uz));
   EXPECT_DOUBLE_EQ(system.weight(), gibbsWeight * localWeight);
 
   // the other box: the Gibbs fractional molecule is a switched-off placeholder, the local one is as it was
-  system.containsTheFractionalMolecule = false;
+  system.setContainsTheFractionalMolecules(false);
   EXPECT_FALSE(system.gcFractionalMoleculeIsActive(0uz));
   EXPECT_TRUE(system.gcFractionalMoleculeIsActive(1uz));
   EXPECT_FALSE(system.lambdaWangLandauIsActive(0uz));

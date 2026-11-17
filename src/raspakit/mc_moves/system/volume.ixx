@@ -41,7 +41,8 @@ SavedVolumeState saveVolumeState(const System& system);
 
 /// Centres of mass that carry a factor V in the weight of a volume move: every record in 'moleculeData',
 /// including the reserved fractional slots, except the switched-off placeholders of the serial Gibbs CFCMC swap
-/// in the box that does not hold the fractional molecule. The configuration-space Jacobian is (V_new / V_old)^n
+/// in the box that does not hold the fractional molecule of their component (each component on its own, see
+/// 'System::containsTheFractionalMoleculeOfComponent'). The configuration-space Jacobian is (V_new / V_old)^n
 /// with this n; loadings and TMMC keep using the integer count.
 ///
 /// A placeholder is scaled with the box but its position is not a coordinate of the state: it is drawn anew
@@ -52,11 +53,12 @@ SavedVolumeState saveVolumeState(const System& system);
 [[nodiscard]] inline double numberOfScaledMolecules(const System& system)
 {
   std::size_t count = system.moleculeData.size();
-  if (!system.containsTheFractionalMolecule)
+  for (std::size_t componentId = 0;
+       componentId < system.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC.size(); ++componentId)
   {
-    for (const std::size_t placeholders : system.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC)
+    if (!system.containsTheFractionalMolecule(componentId))
     {
-      count -= std::min(count, placeholders);
+      count -= std::min(count, system.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId]);
     }
   }
   return static_cast<double>(count);
