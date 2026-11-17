@@ -92,6 +92,8 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
   std::ostringstream stream;
 
   double conv = Units::EnergyToKelvin;
+  // (a histogram without sample points has nothing to report, and no last bin)
+  if (numberOfSamplePoints == 0uz) return {};
   std::size_t lastBin = numberOfSamplePoints - 1;
 
   std::print(stream, "    Lambda histogram and bias:\n");
@@ -122,11 +124,17 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
 
   // the profile is reported relative to its minimum; the minimum is kept in internal energy units and
   // converted with the profile (converting it alone, as was done, mixed units in the reduced-units branch)
+  // (over the sampled bins: an unsampled bin is left at zero, which is no free energy, and taken as the minimum
+  // it shifted the profile)
   double minimum_free_energy = 0.0;
-  auto minimum_iterator = std::ranges::min_element(freeEnergy.first);
-  if (minimum_iterator != freeEnergy.first.end())
   {
-    minimum_free_energy = *minimum_iterator;
+    bool found = false;
+    for (std::size_t bin = 0; bin < freeEnergy.first.size(); ++bin)
+    {
+      if (!(histogram_avg.first[bin] > 0.0)) continue;
+      if (!found || freeEnergy.first[bin] < minimum_free_energy) minimum_free_energy = freeEnergy.first[bin];
+      found = true;
+    }
   }
 
   switch (Units::unitSystem)
@@ -378,6 +386,8 @@ nlohmann::json PropertyLambdaProbabilityHistogram::jsonAveragesStatistics(
 {
   nlohmann::json status;
 
+  // (a histogram without sample points has nothing to report, and no last bin)
+  if (numberOfSamplePoints == 0uz) return {};
   std::size_t lastBin = numberOfSamplePoints - 1;
 
   /*

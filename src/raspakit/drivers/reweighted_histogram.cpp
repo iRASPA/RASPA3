@@ -1053,7 +1053,8 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
                   system.currentExcessPressureTensor = freshPressure->second / system.simulationBox.volume;
                   freshPressureTime = std::chrono::steady_clock::now() - start;
                 }
-                system.sampleProperties(replicaId, estimation.currentBin, cycle);
+                // (the pressure is sampled in the cycles its tensor was computed for)
+                system.sampleProperties(replicaId, estimation.currentBin, cycle, false, freshPressure.has_value());
 
                 // the raw (N, U) reweighting sample of this replica: the molecule count of the
                 // single adsorbate component and the potential energy, tagged with the block.

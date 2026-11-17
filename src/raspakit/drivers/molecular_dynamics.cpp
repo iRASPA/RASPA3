@@ -1392,7 +1392,9 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     // sample properties
     for (std::size_t system_id{0}; System& system : systems)
     {
-      system.sampleProperties(system_id, estimation.currentBin, currentCycle);
+      // (the pressure is sampled in the cycles its tensor was computed for)
+      system.sampleProperties(system_id, estimation.currentBin, currentCycle, false,
+                              currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz);
       // MD forces from the integrator step above are current; reuse them for the force-based RDF.
       if (system.forceBasedRDFSampleDue(currentCycle))
       {

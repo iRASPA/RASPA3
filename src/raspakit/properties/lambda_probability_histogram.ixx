@@ -164,15 +164,31 @@ export struct PropertyLambdaProbabilityHistogram
     normalize(*std::min_element(biasFactor.cbegin(), biasFactor.cend()));
   }
 
+  /// 'w' is the weight of the configuration, exp(-sum of the biases of every fractional molecule)
+  /// ('System::weight'), and 'ownBiasInWeight' says whether the bias of this histogram is one of them.
+  ///
+  /// The histogram and dU/dlambda are kept under the bias of this histogram itself (the results take it out: the
+  /// free-energy profile and the excess chemical potential add the bias back, and dU/dlambda at one lambda does not
+  /// feel it), but the biases of the other fractional molecules in the box have to go: a sample counts with
+  /// exp(-sum of their biases), which is 'w' over the factor of this histogram. Counted with one, the
+  /// distribution along this lambda and the average dU/dlambda at each lambda were those of a system in which the
+  /// other fractional molecules are biased, as soon as two fractional molecules shared a box. With one fractional
+  /// molecule the factor is exactly one.
   void sampleHistogram(std::size_t blockIndex, double fluidDensity, double dUdlambda,
-                       bool containsTheFractionalMolecule, double w)
+                       bool containsTheFractionalMolecule, double w, bool ownBiasInWeight = true)
   {
     if (containsTheFractionalMolecule)
     {
-      bookKeepingLambda[blockIndex][currentBin] += 1.0;
+      double weightOfTheOthers = w;
+      if (ownBiasInWeight)
+      {
+        const double own = weight();
+        weightOfTheOthers = (own > 0.0 && std::isfinite(own) && std::isfinite(w)) ? w / own : 1.0;
+      }
+      bookKeepingLambda[blockIndex][currentBin] += weightOfTheOthers;
 
-      bookKeepingDUdlambda[blockIndex][currentBin].first += dUdlambda;
-      bookKeepingDUdlambda[blockIndex][currentBin].second += 1.0;
+      bookKeepingDUdlambda[blockIndex][currentBin].first += weightOfTheOthers * dUdlambda;
+      bookKeepingDUdlambda[blockIndex][currentBin].second += weightOfTheOthers;
     }
 
     density.addSample(blockIndex, fluidDensity, w);

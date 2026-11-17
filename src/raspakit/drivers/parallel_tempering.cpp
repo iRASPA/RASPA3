@@ -687,7 +687,8 @@ void ParallelTempering::runStage(SimulationStage stage, std::size_t numberOfCycl
                   system.currentExcessPressureTensor = freshPressure->second / system.simulationBox.volume;
                   freshPressureTime = std::chrono::steady_clock::now() - start;
                 }
-                system.sampleProperties(replicaId, estimation.currentBin, cycle);
+                // (the pressure is sampled in the cycles its tensor was computed for)
+                system.sampleProperties(replicaId, estimation.currentBin, cycle, false, freshPressure.has_value());
 
                 // analysis-property files (RDFs, density grid, histograms, molecule properties);
                 // the writers gate on their own 'writeEvery'

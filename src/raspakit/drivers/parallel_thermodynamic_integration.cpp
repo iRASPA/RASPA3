@@ -472,7 +472,8 @@ void ParallelThermodynamicIntegration::runStage(SimulationStage stage, std::size
                   system.currentExcessPressureTensor = freshPressure->second / system.simulationBox.volume;
                   freshPressureTime = std::chrono::steady_clock::now() - start;
                 }
-                system.sampleProperties(replicaId, estimation.currentBin, cycle);
+                // (the pressure is sampled in the cycles its tensor was computed for)
+                system.sampleProperties(replicaId, estimation.currentBin, cycle, false, freshPressure.has_value());
 
                 // energy/pressure averages for the per-replica final report
                 if (cycle % 10uz == 0uz || cycle % printEvery == 0uz)

@@ -1567,7 +1567,7 @@ export struct System
    *        reduced on the device and are current every cycle.
    */
   void sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle,
-                        bool kineticEnergiesFromRunningEnergies = false);
+                        bool kineticEnergiesFromRunningEnergies = false, bool excessPressureIsCurrent = true);
   void samplePropertiesEvolution(std::size_t absoluteCurrentCycle);
 
   void writeCPUTimeStatistics(std::ostream& stream) const;

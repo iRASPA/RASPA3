@@ -376,7 +376,8 @@ void ThermodynamicIntegration::production()
         system.currentExcessPressureTensor = freshPressure->second / system.simulationBox.volume;
         freshPressureTime = std::chrono::steady_clock::now() - start;
       }
-      system.sampleProperties(system_id, estimation.currentBin, currentCycle);
+      // (the pressure is sampled in the cycles its tensor was computed for)
+      system.sampleProperties(system_id, estimation.currentBin, currentCycle, false, freshPressure.has_value());
 
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {

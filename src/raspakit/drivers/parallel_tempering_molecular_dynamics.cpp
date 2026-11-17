@@ -678,7 +678,9 @@ void ParallelTemperingMolecularDynamics::runStage(SimulationStage stage, std::si
 
               if (stage == SimulationStage::Production)
               {
-                system.sampleProperties(replicaId, estimation.currentBin, cycle);
+                // (the pressure is sampled in the cycles its tensor was computed for)
+                system.sampleProperties(replicaId, estimation.currentBin, cycle, false,
+                                        cycle % 10uz == 0uz || cycle % printEvery == 0uz);
                 // the gradients of the integrator step are current; reuse them for the force-based RDF
                 if (system.forceBasedRDFSampleDue(cycle))
                 {

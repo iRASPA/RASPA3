@@ -627,7 +627,7 @@ void System::removeAtomFromTailCorrectionCounts(const Atom& atom)
 }
 
 void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle,
-                              bool kineticEnergiesFromRunningEnergies)
+                              bool kineticEnergiesFromRunningEnergies, bool excessPressureIsCurrent)
 {
   std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
   double w = weight();
@@ -689,7 +689,14 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
   // the mobile framework points count with the molecules (an empty flexible framework reported only its virial)
   double currentIdealPressure = static_cast<double>(numberOfIdealGasPressurePoints()) / (beta * simulationBox.volume);
 
-  averagePressure.addSample(currentBlock, currentIdealPressure, currentExcessPressureTensor, w);
+  // The excess pressure tensor is that of the configuration it was computed for. The drivers compute it every few
+  // cycles; sampled every cycle, a tensor up to nine cycles old was paired with the ideal-gas pressure and the
+  // weight of the present configuration, which the average over a varying weight (CFCMC) or a varying number of
+  // molecules does not survive. It is sampled when the driver says it is current.
+  if (excessPressureIsCurrent)
+  {
+    averagePressure.addSample(currentBlock, currentIdealPressure, currentExcessPressureTensor, w);
+  }
 
   for (std::size_t componentId{0}; Component& component : components)
   {
@@ -699,8 +706,11 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
     double lambda = component.lambdaGC.lambdaValue();
     double dudlambda = currentDUdlambda(lambda, component.lambdaGC.dUdlambdaGroupId);
     // (active per component: only the fractional molecules of the serial Gibbs swaps follow the flag of the box)
-    component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda,
-                                       gcFractionalMoleculeIsActive(componentId), w);
+    // (the bias of this histogram is a factor of 'w' under the gating of System::weight)
+    component.lambdaGC.sampleHistogram(
+        currentBlock, componentDensity, dudlambda, gcFractionalMoleculeIsActive(componentId), w,
+        component.hasFractionalMolecule && gcFractionalMoleculeIsActive(componentId) && usesGCLambda(componentId) &&
+            !tmmcOwnsGCLambda(componentId));
 
     if (component.usesGibbsConventionalCFCMC())
     {

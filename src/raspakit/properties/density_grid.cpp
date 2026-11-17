@@ -101,6 +101,20 @@ inline void depositEquitable(std::mdspan<double, std::dextents<std::size_t, 5>> 
 }
 }
 
+namespace
+{
+// The grid point of a fractional coordinate. The fractional part s - floor(s) of a coordinate just below zero
+// rounds to exactly one, and one times the number of points is the index past the last point: the count was
+// written outside the grid. That coordinate is the last point.
+inline std::size_t gridIndex(double fraction, double size, std::size_t numberOfPoints)
+{
+  if (numberOfPoints == 0uz) return 0uz;
+  const double scaled = fraction * size;
+  if (!(scaled > 0.0)) return 0uz;
+  return std::min(static_cast<std::size_t>(scaled), numberOfPoints - 1uz);
+}
+}  // namespace
+
 void PropertyDensityGrid::sample(const std::optional<Framework> &framework, const SimulationBox &simulationBox,
                                  std::span<const Atom> moleculeAtoms, std::size_t currentCycle)
 {
@@ -137,8 +151,8 @@ void PropertyDensityGrid::sample(const std::optional<Framework> &framework, cons
     const double3 s = (simulationBox.inverseCell * pos).fract();
     if (binningMode == Binning::Standard)
     {
-      data_cell[comp, channel, static_cast<std::size_t>(s.x * gridSize.x), static_cast<std::size_t>(s.y * gridSize.y),
-                static_cast<std::size_t>(s.z * gridSize.z)]++;
+      data_cell[comp, channel, gridIndex(s.x, gridSize.x, numberOfGridPoints.x),
+                gridIndex(s.y, gridSize.y, numberOfGridPoints.y), gridIndex(s.z, gridSize.z, numberOfGridPoints.z)]++;
     }
     else
     {
@@ -154,8 +168,9 @@ void PropertyDensityGrid::sample(const std::optional<Framework> &framework, cons
                             .fract();
       if (binningMode == Binning::Standard)
       {
-        data_unitcell[comp, channel, static_cast<std::size_t>(t.x * gridSize.x), static_cast<std::size_t>(t.y * gridSize.y),
-                      static_cast<std::size_t>(t.z * gridSize.z)]++;
+        data_unitcell[comp, channel, gridIndex(t.x, gridSize.x, numberOfGridPoints.x),
+                      gridIndex(t.y, gridSize.y, numberOfGridPoints.y),
+                      gridIndex(t.z, gridSize.z, numberOfGridPoints.z)]++;
       }
       else
       {

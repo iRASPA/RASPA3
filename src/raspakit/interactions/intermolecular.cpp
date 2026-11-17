@@ -693,7 +693,11 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
 
       EnergyDuDlambda temp(
           preFactor * scalingVDWA * scalingVDWB * forceField(typeA, typeB).tailCorrectionEnergy, 0.0);
-      energy.componentEnergy(compA, compB).VanDerWaalsTailCorrection += 2.0 * temp;
+      // half on (A, B) and half on (B, A), as the pair energies are booked: the report of a pair of components adds
+      // the two entries (twice one of them). Booked whole on (A, B), the tail correction between two components
+      // was reported doubled.
+      energy.componentEnergy(compA, compB).VanDerWaalsTailCorrection += temp;
+      energy.componentEnergy(compB, compA).VanDerWaalsTailCorrection += temp;
 
       // skip interactions within the same molecule
       if (molA != molB)
@@ -802,9 +806,9 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
 
   // Tail correction, aggregated. The brute-force routine books, for every atom pair i < j (same molecule or
   // not), 2 * preFactor * s_i s_j C(t_i, t_j) on the component pair (c_i, c_j) and the self term once on
-  // (c_i, c_i). Molecules are stored grouped by component, so c_i <= c_j there; the same booking follows
+  // (c_i, c_i), the pair of two components split evenly over (c_i, c_j) and (c_j, c_i). The same booking follows
   // from scaling-weighted type counts per component: (c, c) receives preFactor * sum_{t,t'} n_c,t n_c,t' C,
-  // (c, c') with c < c' receives 2 * preFactor * sum_{t,t'} n_c,t n_c',t' C.
+  // (c, c') and (c', c) each receive preFactor * sum_{t,t'} n_c,t n_c',t' C.
   {
     const std::size_t numberOfTypes = forceField.numberOfPseudoAtoms;
     const std::size_t numberOfComponents = components.size();
@@ -828,9 +832,12 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
             sum += countA * typeCounts[compB * numberOfTypes + typeB] * forceField(typeA, typeB).tailCorrectionEnergy;
           }
         }
-        const double factor = compA == compB ? 1.0 : 2.0;
-        energy.componentEnergy(compA, compB).VanDerWaalsTailCorrection +=
-            EnergyDuDlambda(factor * preFactor * sum, 0.0);
+        // the pair of two components is booked half on (A, B) and half on (B, A), as in the brute-force routine
+        energy.componentEnergy(compA, compB).VanDerWaalsTailCorrection += EnergyDuDlambda(preFactor * sum, 0.0);
+        if (compA != compB)
+        {
+          energy.componentEnergy(compB, compA).VanDerWaalsTailCorrection += EnergyDuDlambda(preFactor * sum, 0.0);
+        }
       }
     }
   }
