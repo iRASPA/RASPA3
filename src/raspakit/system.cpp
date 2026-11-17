@@ -1385,7 +1385,28 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
         Interactions::computeFrameworkIntraMolecularEnergyStrainDerivative(
             forceField, *framework, simulationBox, spanOfFrameworkAtoms(), pressureFrameworkSpan);
     pressureInfo.second += frameworkIntraStrain;
-    (void)frameworkIntraEnergy;
+
+    // The energy of the framework with itself, which the running energies carry: its bonded terms and
+    // intra-framework pairs, and the Ewald terms among its own charges (the Fourier sum of the mobile atoms with
+    // themselves and with the fixed ones, their self and exclusion terms and the net-charge term). The Ewald energy
+    // is quadratic in the charges, and the entries above hold its framework-molecule and molecule-molecule parts:
+    // the framework part is the Ewald energy without the molecules. It was left out, so the average energies of a
+    // flexible or mixed framework lacked it and disagreed with the running energies.
+    double frameworkEwaldEnergy = 0.0;
+    if (forceField.useCharge)
+    {
+      std::vector<std::complex<double>> scratchEikX(eik_x), scratchEikY(eik_y), scratchEikZ(eik_z),
+          scratchEikXY(eik_xy);
+      EwaldStructureFactor scratchStoredEik = storedEik;
+      frameworkEwaldEnergy = Interactions::computeEwaldFourierEnergy(
+                                 scratchEikX, scratchEikY, scratchEikZ, scratchEikXY, fixedFrameworkStoredEik,
+                                 scratchStoredEik, forceField, simulationBox, components,
+                                 numberOfMoleculesPerComponent, std::span<const Atom>{}, netChargeFramework, framework,
+                                 spanOfFrameworkAtoms())
+                                 .potentialEnergy();
+    }
+    pressureInfo.first.frameworkEnergy =
+        EnergyDuDlambda(frameworkIntraEnergy.potentialEnergy() + frameworkEwaldEnergy, 0.0);
   }
 
   // Cross-links act between molecules, so unlike the intramolecular potentials their forces do not cancel

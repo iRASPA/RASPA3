@@ -25,6 +25,7 @@ import phonon_dynamical_matrix;
 import phonon_force_constants;
 import minimization_generalized_coordinates;
 import running_energy;
+import energy_status;
 import interactions_hessian_ewald;
 import interactions_ewald;
 import interactions_hessian_intramolecular;
@@ -540,6 +541,23 @@ TEST(minimization_hessian_mixed_framework, molecular_pressure_matches_finite_dif
 
     const double3x3 virial = system.computeMolecularPressure().second;
     EXPECT_NEAR(virial.trace() / (3.0 * system.simulationBox.volume), fd, 1.0e-4 * std::abs(fd) + 1.0e-8)
+        << "charged " << charged;
+  }
+}
+
+// The energy status of the molecular pressure holds the energy of a framework with mobile atoms with itself (its
+// bonded terms, intra-framework pairs and the Ewald terms among its own charges): its total is the potential energy of
+// the running energies (it left the framework out, so the average energies disagreed with the running energies).
+TEST(minimization_hessian_mixed_framework, energy_status_of_the_pressure_holds_the_framework_energy)
+{
+  for (const bool charged : {false, true})
+  {
+    System system = makeMixedFrameworkSystem(charged);
+    const double potentialEnergy = system.computeTotalEnergies().potentialEnergy();
+    EnergyStatus status = system.computeMolecularPressure().first;
+    status.sumTotal();
+    EXPECT_NE(status.frameworkEnergy.energy, 0.0);
+    EXPECT_NEAR(status.totalEnergy.energy, potentialEnergy, 1.0e-8 * std::abs(potentialEnergy) + 1.0e-8)
         << "charged " << charged;
   }
 }

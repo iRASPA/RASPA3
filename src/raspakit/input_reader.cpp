@@ -5486,6 +5486,31 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
+  // A tabulated external field is laid out on the box the simulation starts with: the volume moves scale the box
+  // without rebuilding the grid, so the atoms would read a field of the old cell (and a restart, which rebuilds the
+  // grid on the new box, would change the energy surface).
+  for (std::size_t i = 0uz; i < systems.size(); ++i)
+  {
+    const bool tabulatedField =
+        systems[i].hasExternalField &&
+        (systems[i].forceField.settings.useExternalFieldGrid ||
+         systems[i].forceField.potentialEnergySurfaceType == ForceField::PotentialEnergySurfaceType::GridFile);
+    if (!tabulatedField) continue;
+    for (const auto& [move, name] :
+         {std::pair{Move::Types::VolumeChange, "VolumeMoveProbability"},
+          std::pair{Move::Types::AnisotropicVolumeChange, "AnisotropicVolumeMoveProbability"},
+          std::pair{Move::Types::GibbsVolume, "GibbsVolumeMoveProbability"}})
+    {
+      if (systems[i].mc_moves_probabilities.getProbability(move) > 0.0)
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: system {} has an external field on a grid, which the volume move ('{}') would not "
+            "rebuild for the new box; use the analytic field without 'UseExternalFieldGrid'\n",
+            i, name));
+      }
+    }
+  }
+
   // The Gibbs moves pair a system with a neighbour in the list of systems (see randomPairAdjacentIntegers): with a
   // single system the pair is that system twice, and the volume exchange then scaled it before saving it as the
   // second system, so a rejection restored the trial box. Both boxes are at one temperature, and the volume

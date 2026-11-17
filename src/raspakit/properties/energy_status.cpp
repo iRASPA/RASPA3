@@ -41,6 +41,8 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &compon
              Units::displayedUnitOfEnergyString);
   std::print(stream, "    cross-links:                             {: .6e} [{}/-]\n", conv * crossLinkEnergy.energy,
              Units::displayedUnitOfEnergyString);
+  std::print(stream, "    framework (mobile atoms):                {: .6e} [{}/-]\n", conv * frameworkEnergy.energy,
+             Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda:                              {: .6e} [{}/-]\n", conv * totalEnergy.dUdlambda,
              Units::displayedUnitOfEnergyString);
   std::print(stream, "    translational kinetic energy:            {: .6e} [{}/-]\n", conv * translationalKineticEnergy,
@@ -135,6 +137,8 @@ std::string EnergyStatus::repr() const
              Units::displayedUnitOfEnergyString);
   std::print(stream, "    cross-links:                             {: .6e} [{}/-]\n", conv * crossLinkEnergy.energy,
              Units::displayedUnitOfEnergyString);
+  std::print(stream, "    framework (mobile atoms):                {: .6e} [{}/-]\n", conv * frameworkEnergy.energy,
+             Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda:                              {: .6e} [{}/-]\n", conv * totalEnergy.dUdlambda,
              Units::displayedUnitOfEnergyString);
   std::print(stream, "    translational kinetic energy:            {: .6e} [{}/-]\n", conv * translationalKineticEnergy,
@@ -165,6 +169,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Energy
   archive << e.interComponentEnergies;
   archive << e.polarizationEnergy;
   archive << e.crossLinkEnergy;
+  archive << e.frameworkEnergy;
   archive << e.dUdlambda;
   archive << e.translationalKineticEnergy;
   archive << e.rotationalKineticEnergy;
@@ -202,6 +207,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyStatus
   archive >> e.interComponentEnergies;
   archive >> e.polarizationEnergy;
   archive >> e.crossLinkEnergy;
+  if (versionNumber >= 2) archive >> e.frameworkEnergy;
   archive >> e.dUdlambda;
   archive >> e.translationalKineticEnergy;
   archive >> e.rotationalKineticEnergy;

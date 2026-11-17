@@ -954,6 +954,10 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine,
              Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.crossLinkEnergy.energy,
              conv * energyData.first.crossLinkEnergy.energy, conv * energyData.second.crossLinkEnergy.energy,
              Units::displayedUnitOfEnergyString);
+  std::print(stream, "Framework energy{}        {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.frameworkEnergy.energy,
+             conv * energyData.first.frameworkEnergy.energy, conv * energyData.second.frameworkEnergy.energy,
+             Units::displayedUnitOfEnergyString);
 
   std::print(stream, "\n");
 
