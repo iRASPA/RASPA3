@@ -4,6 +4,8 @@ module mc_moves_random_translation;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import double3;
@@ -159,7 +161,7 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &rando
   component.mc_moves_statistics.addConstructed(move, selectedDirection);
 
   // Apply Metropolis acceptance criterion
-  if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
+  if (random.uniform() < MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy()))
   {
     // Move accepted, update accepted move counts
     component.mc_moves_statistics.addAccepted(move, selectedDirection);

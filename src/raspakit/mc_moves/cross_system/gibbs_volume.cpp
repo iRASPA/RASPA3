@@ -4,6 +4,8 @@ module mc_moves_gibbs_volume;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -107,7 +109,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   const double deltaUB = newTotalEnergyB.potentialEnergy() - oldTotalEnergyB.potentialEnergy();
 
   // apply acceptance/rejection rule
-  if (random.uniform() < std::exp(-systemA.beta * deltaUA - systemB.beta * deltaUB +
+  if (random.uniform() < MC_Moves::boundedExp(-systemA.beta * deltaUA - systemB.beta * deltaUB +
                                   ((numberOfMoleculesA + 1.0) * std::log(newVolumeA / oldVolumeA)) +
                                   ((numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
   {

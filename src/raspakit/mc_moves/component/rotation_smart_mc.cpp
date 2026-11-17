@@ -4,6 +4,8 @@ module mc_moves_rotation_smart_mc;
 
 import std;
 
+import mc_moves_acceptance;
+
 import ewald_structure_factor;
 
 import component;
@@ -271,7 +273,7 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMove(RandomNumber &random,
   // Metropolis-Hastings correction for the asymmetric rotation proposal (the aliased rotation vectors included)
   const double logBias = logRotationProposalRatio(angularDisplacement, b * torqueOld, b * torqueNew, sigma);
 
-  if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + logBias))
+  if (random.uniform() < MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy() + logBias))
   {
     component.mc_moves_statistics.addAccepted(move);
 

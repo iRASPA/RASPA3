@@ -4,6 +4,8 @@ module mc_moves_random_rotation;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -155,7 +157,7 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber& random, 
   component.mc_moves_statistics.addConstructed(move, statisticsChannel);
 
   // Apply acceptance/rejection rule based on Metropolis criterion
-  if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
+  if (random.uniform() < MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy()))
   {
     // Move accepted; update statistics
     component.mc_moves_statistics.addAccepted(move, statisticsChannel);

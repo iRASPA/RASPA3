@@ -4,6 +4,8 @@ module mc_moves_lambda_exchange;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import double3;
@@ -318,7 +320,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::LambdaExchange(
   const double exponent = -systemA.beta * trialA->energyDifference.potentialEnergy() -
                           systemB.beta * trialB->energyDifference.potentialEnergy();
 
-  if (random.uniform() < std::exp(exponent))
+  if (random.uniform() < MC_Moves::boundedExp(exponent))
   {
     acceptLambdaRescale(systemA, trialA.value());
     acceptLambdaRescale(systemB, trialB.value());

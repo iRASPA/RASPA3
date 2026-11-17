@@ -4,6 +4,8 @@ module mc_moves_cross_link_formation;
 
 import std;
 
+import mc_moves_acceptance;
+
 import running_energy;
 import randomnumbers;
 import system;
@@ -59,7 +61,7 @@ std::optional<RunningEnergy> MC_Moves::crossLinkFormationScissionMove(RandomNumb
     const double numberOfLinksAfter = static_cast<double>(table.links.size() + 1);
     const double proposalRatio = numberOfFreeSites / (numberOfLinksAfter * (1.0 / n_i + 1.0 / n_j));
 
-    if (random.uniform() < proposalRatio * std::exp(-system.beta * energyDifference.potentialEnergy()))
+    if (random.uniform() < proposalRatio * MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy()))
     {
       system.mc_moves_statistics.addAccepted(move, formationDirection);
       table.addLink(newLink);
@@ -92,7 +94,7 @@ std::optional<RunningEnergy> MC_Moves::crossLinkFormationScissionMove(RandomNumb
 
   const double proposalRatio = numberOfLinksBefore * (1.0 / n_i + 1.0 / n_j) / numberOfFreeSites;
 
-  if (random.uniform() < proposalRatio * std::exp(-system.beta * energyDifference.potentialEnergy()))
+  if (random.uniform() < proposalRatio * MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy()))
   {
     system.mc_moves_statistics.addAccepted(move, scissionDirection);
     return energyDifference;

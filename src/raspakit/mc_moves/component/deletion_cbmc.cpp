@@ -134,7 +134,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
                        (system.beta * fugacity * system.simulationBox.volume);
     // Rosenbluth weight through its exact logarithm: the raw weight of a long chain underflows to zero,
     // which would turn this quotient into +inf and unconditionally accept every deletion.
-    double Pacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasRosenbluthWeight) -
+    double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasRosenbluthWeight) -
                            retraceData.logRosenbluthWeight);
     std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 

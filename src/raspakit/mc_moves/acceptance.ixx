@@ -6,6 +6,21 @@ import std;
 
 export namespace MC_Moves
 {
+/**
+ * \brief exp(x) with the exponent held to the range of a double.
+ *
+ * The acceptance rules compare a uniform number with exp(ln P). Beyond |ln P| of about 709 the exponential is
+ * infinite or zero; the code is built with -ffast-math, under which a comparison against an infinity is not
+ * defined, and a product with a second factor (inf * 0) is not a number. The value is held finite: above 700 it
+ * is exp(700), which is accepted whatever the uniform number, and below -700 it is zero, which is rejected.
+ */
+inline double boundedExp(double exponent)
+{
+  constexpr double limit = 700.0;
+  if (!(exponent > -limit)) return 0.0;
+  return std::exp(std::min(exponent, limit));
+}
+
 /// The acceptance probability of a move with and without the bias of its sampling.
 struct BiasedAcceptance
 {

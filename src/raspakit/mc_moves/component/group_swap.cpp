@@ -379,7 +379,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupInsertion(RandomNum
         satelliteGrowData[j].logRosenbluthWeight - std::log(idealGasSatellite);
   }
 
-  const double Pacc = std::exp(logPacc);
+  const double Pacc = MC_Moves::boundedExp(logPacc);
 
   // the macrostate is the count of the tracked member of the group: the central molecule or a single satellite
   // (System::groupSwapTMMCMember); a group without a tracked molecule is not a step of the matrix
@@ -745,7 +745,7 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
                std::log(idealGasSatellite) - retraceData[1 + j].logRosenbluthWeight;
   }
 
-  const double Pacc = std::exp(logPacc);
+  const double Pacc = MC_Moves::boundedExp(logPacc);
 
   // the macrostate is the count of the tracked member of the group: the central molecule or a single satellite
   // (System::groupSwapTMMCMember); a group without a tracked molecule is not a step of the matrix

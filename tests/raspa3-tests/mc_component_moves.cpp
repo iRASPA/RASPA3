@@ -11,6 +11,7 @@ import mc_moves_swap_cfcmc_cbmc;
 import mc_moves_group_swap;
 import mc_moves_tethered_proton_hop;
 import mc_moves_volume;
+import mc_moves_acceptance;
 import mc_moves_move_types;
 import mc_moves_pair_deletion_cbmc;
 import mc_moves_pair_insertion_cbmc;
@@ -991,4 +992,18 @@ TEST(MC_COMPONENT_MOVES, a_volume_trial_box_smaller_than_the_pair_sphere_is_refu
   // the same box holds a sphere of radius 1.0
   for (Component& component : system.components) component.maximumPairDistance = 1.0;
   EXPECT_TRUE(MC_Moves::volumeTrialBoxFitsCutOffs(system, smallBox));
+}
+
+// The exponential of an acceptance rule is held finite: an exponent beyond the range of a double is an accepted or
+// a rejected move, not an infinity (whose comparison is not defined under -ffast-math) or, as a product of two
+// exponentials, not a number.
+TEST(MC_COMPONENT_MOVES, the_exponential_of_an_acceptance_rule_is_finite)
+{
+  EXPECT_DOUBLE_EQ(MC_Moves::boundedExp(-1.5), std::exp(-1.5));
+  EXPECT_DOUBLE_EQ(MC_Moves::boundedExp(2.5), std::exp(2.5));
+  EXPECT_EQ(MC_Moves::boundedExp(-1.0e4), 0.0);
+  EXPECT_DOUBLE_EQ(MC_Moves::boundedExp(1.0e4), std::exp(700.0));
+  EXPECT_GT(MC_Moves::boundedExp(1.0e4), 1.0e300);
+  // a bias of +800 against an energy term of -800: of order one, where exp(800) * exp(-800) is inf * 0
+  EXPECT_DOUBLE_EQ(MC_Moves::boundedExp(800.0 - 800.5), std::exp(-0.5));
 }

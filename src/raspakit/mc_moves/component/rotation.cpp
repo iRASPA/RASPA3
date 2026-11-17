@@ -4,6 +4,8 @@ module mc_moves_rotation;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -159,7 +161,7 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   component.mc_moves_statistics.addConstructed(move, selectedDirection);
 
   // apply acceptance/rejection rule
-  if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
+  if (random.uniform() < MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy()))
   {
     component.mc_moves_statistics.addAccepted(move, selectedDirection);
 

@@ -4,6 +4,8 @@ module mc_moves_cross_link_swap;
 
 import std;
 
+import mc_moves_acceptance;
+
 import running_energy;
 import randomnumbers;
 import system;
@@ -56,7 +58,7 @@ std::optional<RunningEnergy> MC_Moves::crossLinkSwapMove(RandomNumber& random, S
 
   system.mc_moves_statistics.addConstructed(move);
 
-  if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
+  if (random.uniform() < MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy()))
   {
     system.mc_moves_statistics.addAccepted(move);
     table.addLink(newLink);

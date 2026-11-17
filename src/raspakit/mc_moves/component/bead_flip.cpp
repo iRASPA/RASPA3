@@ -4,6 +4,8 @@ module mc_moves_bead_flip;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -153,7 +155,7 @@ std::optional<RunningEnergy> MC_Moves::beadFlipMove(RandomNumber &random, System
   component.mc_moves_statistics.addConstructed(move, channel);
 
   // Metropolis criterion (symmetric proposal).
-  if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
+  if (random.uniform() < MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy()))
   {
     component.mc_moves_statistics.addAccepted(move, channel);
 

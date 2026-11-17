@@ -197,7 +197,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   // Rosenbluth weights through their exact logarithms: the raw weights of long chains underflow to
   // zero, which would turn this cross-box ratio into 0/0 (NaN) or x/0 (inf).
-  const double physicalAcceptance = std::exp(
+  const double physicalAcceptance = MC_Moves::boundedExp(
       logCorrectionFactorEwaldA - logCorrectionFactorEwaldB + growData->logRosenbluthWeight -
       retraceData.logRosenbluthWeight +
       std::log((static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) *

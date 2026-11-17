@@ -4,6 +4,8 @@ module mc_moves_cross_link_exchange;
 
 import std;
 
+import mc_moves_acceptance;
+
 import running_energy;
 import randomnumbers;
 import system;
@@ -70,7 +72,7 @@ std::optional<RunningEnergy> MC_Moves::crossLinkExchangeMove(RandomNumber& rando
   const double proposalRatio =
       static_cast<double>(linksOfC.size()) / static_cast<double>(table.linkCount(b));
 
-  if (random.uniform() < proposalRatio * std::exp(-system.beta * energyDifference.potentialEnergy()))
+  if (random.uniform() < proposalRatio * MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy()))
   {
     system.mc_moves_statistics.addAccepted(move);
     // Remove the higher id first: removing a link moves the last link into its slot.

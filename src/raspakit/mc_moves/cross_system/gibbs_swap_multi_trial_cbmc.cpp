@@ -152,7 +152,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMoveMu
       timed(systemA, componentA, move, Move::Timing::Ewald,
             [&] { return longRangeDifference(systemB, {}, oldMolecule, true); });
 
-  const double physicalAcceptance = std::exp(
+  const double physicalAcceptance = MC_Moves::boundedExp(
       growData->logMeanWeight - retraceData.logMeanWeight + growData->logProposalCorrection +
       retraceData.logProposalCorrection +
       std::log((static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) *

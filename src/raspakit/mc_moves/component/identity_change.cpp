@@ -4,6 +4,8 @@ module mc_moves_identity_change;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -211,7 +213,7 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
 
   // The two Rosenbluth weights enter through their exact logarithms: the raw weights of long chains
   // underflow to zero, which would turn this cross-component ratio into 0/0 (NaN) or x/0 (inf).
-  const double acceptanceProbability = std::exp(
+  const double acceptanceProbability = MC_Moves::boundedExp(
       logCorrectionFactorEwald - system.beta * tailEnergyDifference.potentialEnergy() +
       growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeightNew) - retraceData.logRosenbluthWeight +
       std::log(idealGasRosenbluthWeightOld) +

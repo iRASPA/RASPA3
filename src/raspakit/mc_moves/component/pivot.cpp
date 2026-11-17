@@ -4,6 +4,8 @@ module mc_moves_pivot;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -152,7 +154,7 @@ std::optional<RunningEnergy> MC_Moves::pivotMove(RandomNumber &random, System &s
   component.mc_moves_statistics.addSubConstructed(move, bondIndex);
 
   // Apply acceptance/rejection rule based on Metropolis criterion
-  if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
+  if (random.uniform() < MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy()))
   {
     component.mc_moves_statistics.addAccepted(move, channel);
     component.mc_moves_statistics.addSubAccepted(move, bondIndex);

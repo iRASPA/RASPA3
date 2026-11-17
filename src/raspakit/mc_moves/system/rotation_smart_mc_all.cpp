@@ -4,6 +4,8 @@ module mc_moves_rotation_smart_mc_all;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import molecule;
 import atom;
@@ -204,7 +206,7 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMoveAll(RandomNumber &rand
   // a configuration a CBMC move could not retrace (a pair above the overlap criterion, an atom outside a
   // confining wall) is refused as the volume move refuses it; the test is on the pairs, not on the totals
   if (!overlap &&
-      random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + logBias))
+      random.uniform() < MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy() + logBias))
   {
     system.mc_moves_statistics.addAccepted(move);
 

@@ -4,6 +4,8 @@ module mc_moves_volume;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -174,7 +176,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber& random, System& 
   system.mc_moves_statistics.addConstructed(move);
 
   // Apply acceptance/rejection rule
-  if (random.uniform() < std::exp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
+  if (random.uniform() < MC_Moves::boundedExp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
                                   (system.pressure * (newVolume - oldVolume) +
                                    (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *
                                       system.beta))
@@ -249,7 +251,7 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
   const double pressureWork = anisotropicPressureWork(system, saved.box, newBox);
 
   if (random.uniform() <
-      std::exp((numberOfMolecules + 1.0) * std::log(volumeRatio) -
+      MC_Moves::boundedExp((numberOfMolecules + 1.0) * std::log(volumeRatio) -
                (pressureWork + (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) * system.beta))
   {
     system.mc_moves_statistics.addAccepted(move);

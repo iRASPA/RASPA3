@@ -423,7 +423,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // retrace of an integer molecule (A and B) and of the fractional molecule at the same lambda (B and A) pair up,
     // so the ideal-gas reference weights cancel; their energies are in the weights and must not be counted again.
     const double physicalAcceptance =
-        std::exp(std::log(preFactor) + growDataA->logRosenbluthWeight - retraceDataA.logRosenbluthWeight +
+        MC_Moves::boundedExp(std::log(preFactor) + growDataA->logRosenbluthWeight - retraceDataA.logRosenbluthWeight +
                  growDataB->logRosenbluthWeight - retraceDataB.logRosenbluthWeight -
                  systemA.beta * (unbiasedDifferenceA.potentialEnergy() + unbiasedDifferenceB.potentialEnergy()));
     if (!tmmcTrial.transferIsInBounds())
@@ -436,7 +436,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     const double tmmcBias = tmmcTrial.biasFactor();
     tmmcTrial.recordTransfer(physicalAcceptance);
 
-    if (MC_Moves::acceptedWithBias(random.uniform(), tmmcBias, physicalAcceptance * std::exp(biasTerm)))
+    // (the bias is added to the exponent: the product with an exponential of its own can overflow)
+    if (MC_Moves::acceptedWithBias(random.uniform(), tmmcBias,
+                                   MC_Moves::biasedAcceptance(physicalAcceptance, 0.0, biasTerm).sampling))
     {
       componentA.mc_moves_statistics.addAccepted(move, 0);
 
@@ -685,7 +687,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // and the retrace in A are both of the fractional molecule at the same lambda, so the ideal-gas reference weight
     // cancels; their energies are in the weights and must not be counted again here.
     if (random.uniform() <
-        std::exp(std::log(preFactor) + growData->logRosenbluthWeight - retraceDataA.logRosenbluthWeight -
+        MC_Moves::boundedExp(std::log(preFactor) + growData->logRosenbluthWeight - retraceDataA.logRosenbluthWeight -
                  systemA.beta * (unbiasedDifferenceA.potentialEnergy() + unbiasedDifferenceB.potentialEnergy()) +
                  biasTerm))
     {
@@ -798,7 +800,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     double biasTerm = lambdaA.biasFactor[newBin] - lambdaA.biasFactor[oldBin];
 
-    if (random.uniform() < std::exp(-systemA.beta * energyDifference.potentialEnergy() + biasTerm))
+    if (random.uniform() < MC_Moves::boundedExp(-systemA.beta * energyDifference.potentialEnergy() + biasTerm))
     {
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
 

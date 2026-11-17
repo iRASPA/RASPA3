@@ -4,6 +4,8 @@ module mc_moves_gibbs_identity_change;
 
 import std;
 
+import mc_moves_acceptance;
+
 import randomnumbers;
 import running_energy;
 import system;
@@ -284,7 +286,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsIdentityCh
   }
 
   const double acceptanceProbability =
-      std::exp(boxIData.logCorrectionFactorEwald + boxIIData.logCorrectionFactorEwald +
+      MC_Moves::boundedExp(boxIData.logCorrectionFactorEwald + boxIIData.logCorrectionFactorEwald +
                boxIData.logRosenbluthNew + boxIIData.logRosenbluthNew - boxIData.logRosenbluthOld -
                boxIIData.logRosenbluthOld +
                std::log(numberOfMoleculesA_boxI * numberOfMoleculesB_boxII /

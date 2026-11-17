@@ -4,6 +4,8 @@ module mc_moves_reptation;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -205,7 +207,7 @@ std::optional<RunningEnergy> MC_Moves::reptationMove(RandomNumber &random, Syste
       -system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()) +
       growData->logRosenbluthWeight - retraceData.logRosenbluthWeight + logBaseNormalizationCorrection;
 
-  if (random.uniform() < std::exp(logAcceptance))
+  if (random.uniform() < MC_Moves::boundedExp(logAcceptance))
   {
     component.mc_moves_statistics.addAccepted(move);
     component.mc_moves_statistics.addSubAccepted(move, direction);

@@ -4,6 +4,8 @@ module mc_moves_concerted_rotation;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -222,7 +224,7 @@ std::optional<RunningEnergy> MC_Moves::concertedRotationMove(RandomNumber &rando
                                std::log(static_cast<double>(forwardSolutions.size())) -
                                std::log(static_cast<double>(backwardSolutions.size())) + std::log(jacobianOld) -
                                std::log(jacobianNew);
-  if (random.uniform() < std::exp(logAcceptance))
+  if (random.uniform() < MC_Moves::boundedExp(logAcceptance))
   {
     component.mc_moves_statistics.addAccepted(move, channel);
 

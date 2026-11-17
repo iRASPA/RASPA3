@@ -4,6 +4,8 @@ module mc_moves_double_rebridging;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -243,7 +245,7 @@ std::optional<RunningEnergy> MC_Moves::intramolecularDoubleRebridgingMove(Random
 
   const double logAcceptance =
       -system.beta * energyDifference.potentialEnergy() + closure1->logWeight + closure2->logWeight + logChart;
-  if (random.uniform() < std::exp(logAcceptance))
+  if (random.uniform() < MC_Moves::boundedExp(logAcceptance))
   {
     component.mc_moves_statistics.addAccepted(move);
 

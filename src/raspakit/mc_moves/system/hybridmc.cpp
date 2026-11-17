@@ -4,6 +4,8 @@ module mc_moves_hybridmc;
 
 import std;
 
+import mc_moves_acceptance;
+
 import ewald_structure_factor;
 
 import running_energy;
@@ -229,7 +231,7 @@ std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System
 
   // a configuration a CBMC move could not retrace (a pair above the overlap criterion, an atom outside a
   // confining wall) is refused as the volume move refuses it; the test is on the pairs, not on the totals
-  if (!overlap && random.uniform() < std::exp(-system.beta * deltaH))
+  if (!overlap && random.uniform() < MC_Moves::boundedExp(-system.beta * deltaH))
   {
     system.mc_moves_statistics.addAccepted(move);
     // the adaptive HMC step size is a property of the move, not of the system (the MD drivers read 'timeStep')
@@ -480,7 +482,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   const double deltaH = (newEnergy.potentialEnergy() + finalKinetic) - (oldEnergy.potentialEnergy() + initialKinetic);
 
   // accept or reject based on energy difference
-  if (!overlap && random.uniform() < std::exp(-system.beta * deltaH))
+  if (!overlap && random.uniform() < MC_Moves::boundedExp(-system.beta * deltaH))
   {
     system.mc_moves_statistics.addAccepted(move);
 

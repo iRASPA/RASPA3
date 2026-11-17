@@ -4,6 +4,8 @@ module mc_moves_pivot_cbmc;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -217,7 +219,7 @@ std::optional<RunningEnergy> MC_Moves::pivotCBMCMove(RandomNumber &random, Syste
   // Acceptance: the Rosenbluth ratio times the Metropolis factor of the part not in the bias.
   const double logAcceptance =
       logWeightNew.value() - logWeightOld - system.beta * ewaldFourierEnergy.potentialEnergy();
-  if (logAcceptance >= 0.0 || random.uniform() < std::exp(logAcceptance))
+  if (logAcceptance >= 0.0 || random.uniform() < MC_Moves::boundedExp(logAcceptance))
   {
     component.mc_moves_statistics.addAccepted(move, channel);
     component.mc_moves_statistics.addSubAccepted(move, bondIndex);

@@ -296,7 +296,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   const double preFactor = (N_A / (system.beta * fugacityA * system.simulationBox.volume)) *
                            (k * distanceBias / (system.beta * fugacityB * sphereVolume));
 
-  const double Pacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasA * idealGasB) -
+  const double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasA * idealGasB) -
                                logRosenbluthWeight);
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
@@ -546,7 +546,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   const double preFactor = (N_A / (system.beta * fugacityA * system.simulationBox.volume)) *
                            (k / (system.beta * fugacityB * sphereVolume));
 
-  const double Pacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasA * idealGasB) -
+  const double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasA * idealGasB) -
                                logRosenbluthWeight);
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];

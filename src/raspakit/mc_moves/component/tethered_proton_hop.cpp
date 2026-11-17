@@ -4,6 +4,8 @@ module mc_moves_tethered_proton_hop;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import molecule;
 import atom;
@@ -205,7 +207,7 @@ std::optional<RunningEnergy> MC_Moves::tetheredProtonHopMove(RandomNumber& rando
   component.mc_moves_statistics.addConstructed(move, 0);
 
   // Symmetric proposal: plain Metropolis acceptance on the energy difference.
-  if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
+  if (random.uniform() < MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy()))
   {
     component.mc_moves_statistics.addAccepted(move, 0);
 

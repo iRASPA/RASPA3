@@ -4,6 +4,8 @@ module mc_moves_reaction_common;
 
 import std;
 
+import mc_moves_acceptance;
+
 import ewald_structure_factor;
 
 import component;
@@ -854,7 +856,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     }
 
     const double acceptanceProbability =
-        std::exp(-system.beta * scalingDifference->potentialEnergy() + biasNew - biasOld);
+        MC_Moves::boundedExp(-system.beta * scalingDifference->potentialEnergy() + biasNew - biasOld);
 
     // the trial configuration has been constructed; counted before the Metropolis test
     system.mc_moves_statistics.addConstructed(move);
@@ -1006,7 +1008,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       const double idealGasOld = idealGasRosenbluthWeightProduct(system, oldStoichiometry);
       // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
       acceptanceProbability =
-          std::exp(growData->logRosenbluthWeight - std::log(idealGasNew) - retraceData->logRosenbluthWeight +
+          MC_Moves::boundedExp(growData->logRosenbluthWeight - std::log(idealGasNew) - retraceData->logRosenbluthWeight +
                    std::log(idealGasOld) + logCorrectionFactor + equilibriumTerm + biasNew - biasOld);
     }
     else
@@ -1016,7 +1018,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       const double intraCoulombScaling =
           intraCoulombScalingFromAtomGroups(system, newAtoms) - intraCoulombScalingFromAtomGroups(system, oldAtoms);
       acceptanceProbability =
-          std::exp(-system.beta * (energyDifference.potentialEnergy() - internalDifference.potentialEnergy() +
+          MC_Moves::boundedExp(-system.beta * (energyDifference.potentialEnergy() - internalDifference.potentialEnergy() +
                                    intraCoulombScaling) +
                    equilibriumTerm + biasNew - biasOld);
     }
@@ -1135,7 +1137,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   const double biasNew = serialBiasFactor(inactiveSerialLambdaHistogram(reaction), reaction.currentLambda);
 
   const double acceptanceProbability =
-      std::exp(factorialTerm + biasNew - biasOld) * std::exp(-system.beta * energyDifference.potentialEnergy());
+      MC_Moves::boundedExp(factorialTerm + biasNew - biasOld - system.beta * energyDifference.potentialEnergy());
 
   // the trial configuration has been constructed; counted before the Metropolis test
   system.mc_moves_statistics.addConstructed(move);
@@ -1422,7 +1424,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     const double idealGasGhost = idealGasRosenbluthWeightProduct(system, demoteStoichiometry);
     // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
     acceptanceProbability =
-        std::exp(growData->logRosenbluthWeight - std::log(idealGasGrow) - retraceData->logRosenbluthWeight +
+        MC_Moves::boundedExp(growData->logRosenbluthWeight - std::log(idealGasGrow) - retraceData->logRosenbluthWeight +
                  std::log(idealGasGhost) + equilibriumTerm + biasNew - biasOld -
                  system.beta * (rescaleDifference->potentialEnergy() + tailDifference.potentialEnergy() +
                                 fourierDifference.potentialEnergy()));
@@ -1434,7 +1436,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
     const double ghostIntraCoulombScaling = intraCoulombScalingFromAtomGroups(system, grownAtoms) -
                                             intraCoulombScalingFromAtomGroups(system, ghostOldAtoms);
     acceptanceProbability =
-        std::exp(equilibriumTerm + biasNew - biasOld -
+        MC_Moves::boundedExp(equilibriumTerm + biasNew - biasOld -
                  system.beta * (energyDifference.potentialEnergy() - ghostInternalDifference.potentialEnergy() +
                                 ghostIntraCoulombScaling));
   }
@@ -1605,7 +1607,7 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   }
 
   const double acceptanceProbability =
-      std::exp(-system.beta * scalingDifference->potentialEnergy() + biasNew - biasOld);
+      MC_Moves::boundedExp(-system.beta * scalingDifference->potentialEnergy() + biasNew - biasOld);
 
   // the trial configuration has been constructed; counted before the Metropolis test
   system.mc_moves_statistics.addConstructed(move);

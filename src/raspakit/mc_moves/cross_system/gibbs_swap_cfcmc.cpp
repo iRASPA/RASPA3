@@ -482,7 +482,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     // The intra-molecular terms are bookkeeping only (conformations are neither created nor destroyed here).
     const double physicalAcceptance =
-        preFactor * std::exp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy() -
+        preFactor * MC_Moves::boundedExp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy() -
                                               intraFractionalDifferenceA.potentialEnergy() -
                                               intraFractionalDifferenceB.potentialEnergy()));
     if (!tmmcTrial.transferIsInBounds())
@@ -496,7 +496,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     tmmcTrial.recordTransfer(physicalAcceptance);
 
     // apply acceptance/rejection rule
-    if (MC_Moves::acceptedWithBias(random.uniform(), tmmcBias, physicalAcceptance * std::exp(biasTerm)))
+    // (the bias is added to the exponent: the product with an exponential of its own can overflow)
+    if (MC_Moves::acceptedWithBias(random.uniform(), tmmcBias,
+                                   MC_Moves::biasedAcceptance(physicalAcceptance, 0.0, biasTerm).sampling))
     {
       componentA.mc_moves_statistics.addAccepted(move, 0);
 
@@ -748,7 +750,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // apply acceptance/rejection rule (the intra-molecular terms are bookkeeping only, see above)
     if (random.uniform() <
         preFactor *
-            std::exp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy() -
+            MC_Moves::boundedExp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy() -
                                       intraEnergyDifferenceA.potentialEnergy() -
                                       intraEnergyDifferenceB.potentialEnergy() + intraCoulombScaling) +
                      biasTerm))
@@ -862,7 +864,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     double biasTerm = lambdaA.biasFactor[newBin] - lambdaA.biasFactor[oldBin];
 
     // apply acceptance/rejection rule
-    if (random.uniform() < std::exp(-systemA.beta * energyDifference.potentialEnergy() + biasTerm))
+    if (random.uniform() < MC_Moves::boundedExp(-systemA.beta * energyDifference.potentialEnergy() + biasTerm))
     {
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
 

@@ -79,7 +79,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveMultiTri
       std::log(system.beta * fugacity * system.simulationBox.volume / static_cast<double>(oldN + 1));
   // 'logProposalCorrection' is zero for the CPU grower; a device grower that proposes with its own (single
   // precision) potential adds the ratio of the target and proposal Boltzmann factors of the selected trial here.
-  const double Pacc = std::exp(logPreFactor + growData->logMeanWeight - std::log(idealGasRosenbluthWeight) +
+  const double Pacc = MC_Moves::boundedExp(logPreFactor + growData->logMeanWeight - std::log(idealGasRosenbluthWeight) +
                                growData->logProposalCorrection);
 
   if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
@@ -154,7 +154,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveMultiTria
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
   const double logPreFactor =
       std::log(static_cast<double>(oldN) / (system.beta * fugacity * system.simulationBox.volume));
-  const double Pacc = std::exp(logPreFactor + std::log(idealGasRosenbluthWeight) - retraceData.logMeanWeight +
+  const double Pacc = MC_Moves::boundedExp(logPreFactor + std::log(idealGasRosenbluthWeight) - retraceData.logMeanWeight +
                                retraceData.logProposalCorrection);
 
   if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)

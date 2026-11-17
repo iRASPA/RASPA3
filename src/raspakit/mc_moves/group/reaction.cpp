@@ -4,6 +4,8 @@ module mc_moves_reaction;
 
 import std;
 
+import mc_moves_acceptance;
+
 import atom;
 import randomnumbers;
 import system;
@@ -118,7 +120,7 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
   const double idealGasRemove = ReactionCommon::idealGasRosenbluthWeightProduct(system, removeStoichiometry);
   // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
   const double acceptanceProbability =
-      std::exp(logCorrectionFactorEwald + growData->logRosenbluthWeight - std::log(idealGasInsert) -
+      MC_Moves::boundedExp(logCorrectionFactorEwald + growData->logRosenbluthWeight - std::log(idealGasInsert) -
                system.beta * tailEnergyDifference.potentialEnergy() - retraceData->logRosenbluthWeight +
                std::log(idealGasRemove) + equilibriumTerm);
 

@@ -4,6 +4,8 @@ module mc_moves_crankshaft;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -153,7 +155,7 @@ std::optional<RunningEnergy> MC_Moves::crankshaftMove(RandomNumber &random, Syst
   component.mc_moves_statistics.addConstructed(move, channel);
 
   // Apply acceptance/rejection rule based on Metropolis criterion
-  if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
+  if (random.uniform() < MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy()))
   {
     component.mc_moves_statistics.addAccepted(move, channel);
 

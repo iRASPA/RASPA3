@@ -137,7 +137,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // Calculate the acceptance probability Pacc, with the Rosenbluth weight entering through its exact
   // logarithm: the raw weight of a long chain underflows to zero, which would silently drive the
   // acceptance to zero regardless of the actual weight ratio.
-  double Pacc = std::exp(logCorrectionFactorEwald + std::log(preFactor) + growData->logRosenbluthWeight -
+  double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + std::log(preFactor) + growData->logRosenbluthWeight -
                          std::log(idealGasRosenbluthWeight));
 
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];

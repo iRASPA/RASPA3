@@ -4,6 +4,8 @@ module mc_moves_translation;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import molecule;
 import atom;
@@ -162,7 +164,7 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   component.mc_moves_statistics.addConstructed(move, selectedDirection);
 
   // Apply acceptance/rejection rule based on Metropolis criterion
-  if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
+  if (random.uniform() < MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy()))
   {
     // Update acceptance statistics
     component.mc_moves_statistics.addAccepted(move, selectedDirection);
