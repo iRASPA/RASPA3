@@ -477,6 +477,8 @@ export struct System
     const double3 widths = simulationBox.perpendicularWidths();
     return 2.0 * radius <= std::min({widths.x, widths.y, widths.z});
   }
+  /// The largest maximum pair or group distance among the components with a pair or group move (zero without).
+  [[nodiscard]] double largestPairOrGroupDistance() const noexcept;
   /// Throws when a maximum pair or group distance of a component with such a move does not fit the box.
   void checkPairAndGroupDistances() const;
 

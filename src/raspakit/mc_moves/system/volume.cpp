@@ -125,6 +125,10 @@ bool MC_Moves::volumeTrialBoxFitsCutOffs(const System& system, const SimulationB
   {
     return false;
   }
+  // The pair and group moves need their partner sphere inside the minimum image (see System::pairSphereFitsBox) and
+  // are not performed in a smaller box: a trial box below that width is refused like one below a cut-off (it was
+  // accepted, after which every pair or group swap of the run returned without a trial).
+  if (system.largestPairOrGroupDistance() > halfSmallestWidth) return false;
   return true;
 }
 

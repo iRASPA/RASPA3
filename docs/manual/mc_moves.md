@@ -1034,8 +1034,9 @@ oppositely charged species.
 \f$R_\text{max}\f$ may not exceed half the smallest perpendicular width of the
 box: a wider sphere overlaps its own periodic images, and the insertion would
 then propose partners the deletion counts once. The input is refused
-otherwise, and in a box that shrinks below \f$2R_\text{max}\f$ (a volume move)
-the pair moves are not performed. A partner component belongs to one pair:
+otherwise, and the volume moves reject a trial box narrower than
+\f$2R_\text{max}\f$ (see [volume change](#volume-change)), so the box of a run
+with pair moves keeps that width. A partner component belongs to one pair:
 two salts that share an ion (NaCl and KCl) each take a component of their own
 for it, the same molecule defined twice.
 
@@ -1360,7 +1361,8 @@ the group definition `"GroupComponents"` (a list of component ids, repetitions
 allowed) and `"MaximumGroupDistance"` \f$R_\text{max}\f$
 
 As for the pair swap, \f$R_\text{max}\f$ may not exceed half the smallest
-perpendicular width of the box.
+perpendicular width of the box, and the volume moves reject a trial box
+narrower than \f$2R_\text{max}\f$.
 
 The generalization of the pair swap to a *group* of molecules: one molecule of
 the selected (central) component \f$0\f$ plus the satellite molecules listed in
@@ -1696,6 +1698,21 @@ slots. The integer loading is a different count (the observable); omitting the
 scaled fractional COMs from the Jacobian while still translating them breaks
 detailed balance.
 
+A trial box is rejected before its energy is computed when half its smallest
+perpendicular width is below a fixed cut-off (`"CutOffVDW"`,
+`"CutOffCoulomb"`; an automatic cut-off follows the box), or below the
+`"MaximumPairDistance"` or `"MaximumGroupDistance"` of a component with a pair
+or group swap move: those moves need their partner sphere inside the minimum
+image and are not performed in a smaller box. The volume is therefore sampled
+above that width only. The same holds for the anisotropic and the Gibbs volume
+change.
+
+The volume moves are refused at input for a system with a framework (it is
+not scaled) and for a system with an external field on a grid
+(`"UseExternalFieldGrid"`, or a field read from a grid file): the grid is laid
+out on the starting box and is not rebuilt for a new one. An analytic external
+field is allowed; the reported pressure then carries no virial of the field.
+
 Useful for: \f$NpT\f$ simulations of bulk fluids (densities, equations of state)
 and for equilibrating mobile-fluid densities around a fixed framework. Expensive:
 requires a full energy recalculation.
@@ -1715,7 +1732,8 @@ Changes the three box lengths independently at fixed box angles (the box
 shape can change while a diagonal pressure tensor is imposed). Molecules are
 translated rigidly with their center-of-mass fractional position kept fixed,
 so intramolecular energies are unchanged.
-Framework coordinates remain fixed.
+Framework coordinates remain fixed. The trial-box and input restrictions of
+the [volume change](#volume-change) apply.
 
 The move samples the constant-stress enthalpy of Parrinello and Rahman,
 
@@ -1936,7 +1954,10 @@ Acceptance rule:
 \f]
 
 Here \f$N_A\f$ and \f$N_B\f$ are the numbers of scaled centres of mass in each
-box, including reserved fractional slots.
+box, including reserved fractional slots. A trial in which either box becomes
+narrower than twice a fixed cut-off or twice a maximum pair or group distance
+is rejected, and the move is refused at input with a framework or with an
+external field on a grid (see [volume change](#volume-change)).
 The ordered adjacent system pair is supplied by the dispatcher; the proposal
 itself is symmetric under exchanging its two members.
 

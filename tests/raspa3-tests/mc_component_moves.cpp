@@ -10,6 +10,7 @@ import mc_moves;
 import mc_moves_swap_cfcmc_cbmc;
 import mc_moves_group_swap;
 import mc_moves_tethered_proton_hop;
+import mc_moves_volume;
 import mc_moves_move_types;
 import mc_moves_pair_deletion_cbmc;
 import mc_moves_pair_insertion_cbmc;
@@ -972,4 +973,22 @@ TEST(MC_COMPONENT_MOVES, move_probabilities_repr_lists_every_move_type)
   }
   const std::string text = probabilities.repr();
   EXPECT_EQ(static_cast<std::size_t>(std::ranges::count(text, '\n')), std::to_underlying(Move::Types::Count));
+}
+
+// A trial box of a volume move in which the pair sphere no longer fits the minimum image is refused, like a box
+// below a cut-off (it was accepted, and the pair moves then returned without a trial for the rest of the run).
+TEST(MC_COMPONENT_MOVES, a_volume_trial_box_smaller_than_the_pair_sphere_is_refused)
+{
+  System system = makePairDeletionSystem(false);
+  // cut-offs that fit the small box, so that the pair sphere alone decides
+  system.forceField.cutOffMoleculeVDW = 1.0;
+  system.forceField.cutOffFrameworkVDW = 1.0;
+  system.forceField.cutOffCoulomb = 1.0;
+  const SimulationBox smallBox = system.simulationBox.scaled(0.25);
+  EXPECT_DOUBLE_EQ(system.largestPairOrGroupDistance(), 1.5);
+  EXPECT_FALSE(MC_Moves::volumeTrialBoxFitsCutOffs(system, smallBox));
+
+  // the same box holds a sphere of radius 1.0
+  for (Component& component : system.components) component.maximumPairDistance = 1.0;
+  EXPECT_TRUE(MC_Moves::volumeTrialBoxFitsCutOffs(system, smallBox));
 }

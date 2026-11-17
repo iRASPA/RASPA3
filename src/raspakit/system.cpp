@@ -895,6 +895,32 @@ void System::precomputeTotalRigidEnergy() noexcept
                                             simulationBox, spanOfRigidFrameworkAtoms());
 }
 
+double System::largestPairOrGroupDistance() const noexcept
+{
+  const auto has = [](const Component& component, std::initializer_list<Move::Types> moves)
+  {
+    return std::ranges::any_of(
+        moves, [&](Move::Types move) { return component.mc_moves_probabilities.getProbability(move) > 0.0; });
+  };
+  double largest = 0.0;
+  for (const Component& component : components)
+  {
+    if (component.maximumPairDistance.has_value() &&
+        has(component, {Move::Types::PairSwap, Move::Types::PairSwapCBMC, Move::Types::PairSwapCFCMC,
+                        Move::Types::PairSwapCBCFCMC}))
+    {
+      largest = std::max(largest, component.maximumPairDistance.value());
+    }
+    if (component.maximumGroupDistance.has_value() &&
+        has(component, {Move::Types::GroupSwap, Move::Types::GroupSwapCBMC, Move::Types::GroupSwapCFCMC,
+                        Move::Types::GroupSwapCBCFCMC}))
+    {
+      largest = std::max(largest, component.maximumGroupDistance.value());
+    }
+  }
+  return largest;
+}
+
 void System::checkPairAndGroupDistances() const
 {
   const auto has = [](const Component& component, std::initializer_list<Move::Types> moves)

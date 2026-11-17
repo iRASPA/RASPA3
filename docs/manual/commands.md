@@ -2474,6 +2474,16 @@ Ewald + intramolecular), so flexible molecules are handled correctly. This is
 independent of the molecular-pressure gradient path, which omits intramolecular
 forces for the atomic-to-molecular virial correction.
 
+The function is the average of the force sum over the average number of pairs,
+\f$g_{AB}(r) = \langle \beta V \sum \ldots / 8\pi \rangle / \langle P_{AB} \rangle\f$:
+a sample without a pair of the two types adds to neither, and where the number
+of molecules or the volume fluctuates a sample counts by its pairs. Under a
+biased walk (CFCMC) every sample carries the weight of its configuration. The
+gradient routines evaluate no external-field and no polarization forces, so
+`"ComputeRDF"` is refused with an external field or with polarization; use the
+conventional RDF there. A restart file with a force-based RDF written by an
+older version cannot be continued.
+
 -   `"SampleRDFEvery" : integer`\
     Sample the RDF every `int` cycles. Default: `10`.
 
@@ -2491,7 +2501,9 @@ forces for the atomic-to-molecular virial correction.
 `"ComputeConventionalRDF" : boolean`
 
 Whether to compute the conventional (histogram-based) radial distribution
-function. Output is written to the directory `conventional_rdf`.
+function. Output is written to the directory `conventional_rdf`. Under a
+biased walk (CFCMC) every sample carries the weight of its configuration; a
+configuration without integer molecules is no sample.
 
 -   `"SampleConventionalRDFEvery" : integer`\
     Sample the RDF every `int` cycles. Default: `10`.
@@ -2600,7 +2612,9 @@ molecules; do not combine it with insertion/deletion moves.
 `"ComputeDensityGrid" : boolean`
 
 Whether to compute three-dimensional density grids. Output is written to the
-directory `density_grids`.
+directory `density_grids`. Under a biased walk (CFCMC) every sample carries the
+weight of its configuration, so the number density integrates to the
+reweighted loading.
 
 -   `"SampleDensityGridEvery" : integer`\
     Sample the density grids every `int` cycles. Default: `10`.
