@@ -6111,6 +6111,20 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
+  // The force-based RDF takes the forces of the gradient routines, which evaluate no external-field and no
+  // polarization forces: with either, the Monte Carlo chain samples another potential than the estimator uses.
+  for (std::size_t systemId = 0; systemId < systems.size(); ++systemId)
+  {
+    if (systems[systemId].propertyRadialDistributionFunction.has_value() &&
+        (systems[systemId].hasExternalField || systems[systemId].forceField.computePolarization))
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: 'ComputeRDF' (the force-based RDF) is not available with an external field or with "
+          "polarization (system {}): their forces are not evaluated; use 'ComputeConventionalRDF'\n",
+          systemId));
+    }
+  }
+
   // The molecular-dynamics integrator evaluates the pair, Ewald and intramolecular forces only: a system with an
   // external field or with polarization would be integrated without those forces (and without their energies in the
   // running energies), so the Monte Carlo simulation types are the ones that support them.

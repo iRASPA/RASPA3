@@ -31,11 +31,12 @@ export struct PropertyRadialDistributionFunction
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
         histogram(numberOfBlocks, numberOfPseudoAtoms * numberOfPseudoAtoms, numberOfBins),
-        pairCount(numberOfPseudoAtoms * numberOfPseudoAtoms)
+        pairCount(numberOfPseudoAtoms * numberOfPseudoAtoms),
+        pairCountPerBlock(numberOfBlocks, std::vector<double>(numberOfPseudoAtoms * numberOfPseudoAtoms))
   {
   }
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{3};
 
   /// Channel index of an ordered pseudo-atom pair.
   std::size_t channel(std::size_t atomTypeA, std::size_t atomTypeB) const
@@ -43,25 +44,14 @@ export struct PropertyRadialDistributionFunction
     return atomTypeB + atomTypeA * numberOfPseudoAtoms;
   }
 
+  /// g(r) of one block and of all blocks: the accumulated force sums over the accumulated number of pairs.
   std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex, std::size_t atomTypeA,
-                                                   std::size_t atomTypeB) const
-  {
-    return histogram.averaged(blockIndex, channel(atomTypeA, atomTypeB));
-  }
-  std::vector<double> averagedProbabilityHistogram(std::size_t atomTypeA, std::size_t atomTypeB) const
-  {
-    return histogram.averaged(channel(atomTypeA, atomTypeB));
-  }
-  /// g(r) and its error. Each bin holds, per sample, the force integral of the pairs closer than r (Borgis et al.)
-  /// with its absolute normalisation, integrated from g(0) = 0: no assumption on g at the end of the range.
-  std::pair<std::vector<double>, std::vector<double>> result(std::size_t atomTypeA, std::size_t atomTypeB) const
-  {
-    // a type past the last would alias the next row of channels, or read past the histogram
-    if (atomTypeA >= numberOfPseudoAtoms || atomTypeB >= numberOfPseudoAtoms)
-      throw std::out_of_range(std::format("PropertyRadialDistributionFunction: pseudo-atom types ({}, {}) out of range ({})",
-                                          atomTypeA, atomTypeB, numberOfPseudoAtoms));
-    return histogram.average(channel(atomTypeA, atomTypeB));
-  }
+                                                   std::size_t atomTypeB) const;
+  std::vector<double> averagedProbabilityHistogram(std::size_t atomTypeA, std::size_t atomTypeB) const;
+  /// g(r) and its error: g = <beta V sum / 8 pi> / <P>, the force integral of the pairs closer than r (Borgis et
+  /// al.) over the number of pairs, each averaged over the samples. Integrated from g(0) = 0: no assumption on g at
+  /// the end of the range.
+  std::pair<std::vector<double>, std::vector<double>> result(std::size_t atomTypeA, std::size_t atomTypeB) const;
 
   std::size_t numberOfPseudoAtoms{};
   std::size_t numberOfBins{};
@@ -71,6 +61,8 @@ export struct PropertyRadialDistributionFunction
   std::size_t writeEvery{};
   BlockHistogram<double> histogram;
   std::vector<std::size_t> pairCount;
+  /// The number of ordered pairs sampled per block and channel: the denominator of g(r).
+  std::vector<std::vector<double>> pairCountPerBlock;
 
   /// 'frameworkGradients' and 'moleculeGradients' are the gradients of the bodies the sites move with (the atom
   /// itself, or its rigid molecule, fragment or group); a framework site whose 'frameworkMobile' entry is zero does

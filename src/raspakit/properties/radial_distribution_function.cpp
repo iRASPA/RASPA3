@@ -96,15 +96,65 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox& simulationB
     }
   }
 
+  // The force sums and the pair counts are accumulated apart and divided in 'result': g = <beta V sum / 8 pi> / <P>.
+  // A sample without pairs of a channel then adds nothing to either (dividing each sample by its own pair count and
+  // counting every sample scaled the channel by the fraction of samples that had such a pair, and weighted a sample
+  // with few pairs like one with many where the number of molecules or the volume fluctuates).
+  const double prefactor = beta * simulationBox.volume / (8.0 * std::numbers::pi);
   for (std::size_t c = 0; c != numberOfChannels; ++c)
   {
     pairCount[c] += pairs[c];
     if (pairs[c] == 0uz) continue;
-    const double normalization = beta * simulationBox.volume / (8.0 * std::numbers::pi * static_cast<double>(pairs[c]));
-    for (std::size_t i = 0; i != numberOfBins; ++i)
-      histogram(block, c, i) += normalization * sums[c * numberOfBins + i];
+    pairCountPerBlock[block][c] += static_cast<double>(pairs[c]);
+    for (std::size_t i = 0; i != numberOfBins; ++i) histogram(block, c, i) += prefactor * sums[c * numberOfBins + i];
   }
   histogram.addCount(block, 1.0);
+}
+
+std::vector<double> PropertyRadialDistributionFunction::averagedProbabilityHistogram(std::size_t blockIndex,
+                                                                                     std::size_t atomTypeA,
+                                                                                     std::size_t atomTypeB) const
+{
+  const std::size_t c = channel(atomTypeA, atomTypeB);
+  std::vector<double> values(numberOfBins);
+  const double pairs = pairCountPerBlock[blockIndex][c];
+  if (pairs > 0.0)
+  {
+    for (std::size_t i = 0; i != numberOfBins; ++i) values[i] = histogram.bookKeeping[blockIndex][c][i] / pairs;
+  }
+  return values;
+}
+
+std::vector<double> PropertyRadialDistributionFunction::averagedProbabilityHistogram(std::size_t atomTypeA,
+                                                                                     std::size_t atomTypeB) const
+{
+  const std::size_t c = channel(atomTypeA, atomTypeB);
+  std::vector<double> values(numberOfBins);
+  double pairs = 0.0;
+  for (std::size_t block = 0; block != pairCountPerBlock.size(); ++block)
+  {
+    pairs += pairCountPerBlock[block][c];
+    for (std::size_t i = 0; i != numberOfBins; ++i) values[i] += histogram.bookKeeping[block][c][i];
+  }
+  for (double& value : values) value = pairs > 0.0 ? value / pairs : 0.0;
+  return values;
+}
+
+std::pair<std::vector<double>, std::vector<double>> PropertyRadialDistributionFunction::result(
+    std::size_t atomTypeA, std::size_t atomTypeB) const
+{
+  // a type past the last would alias the next row of channels, or read past the histogram
+  if (atomTypeA >= numberOfPseudoAtoms || atomTypeB >= numberOfPseudoAtoms)
+    throw std::out_of_range(std::format("PropertyRadialDistributionFunction: pseudo-atom types ({}, {}) out of range ({})",
+                                        atomTypeA, atomTypeB, numberOfPseudoAtoms));
+  const std::vector<double> mean = averagedProbabilityHistogram(atomTypeA, atomTypeB);
+  std::vector<std::vector<double>> blockAverages;
+  for (std::size_t block = 0; block != pairCountPerBlock.size(); ++block)
+  {
+    if (pairCountPerBlock[block][channel(atomTypeA, atomTypeB)] > 0.0)
+      blockAverages.push_back(averagedProbabilityHistogram(block, atomTypeA, atomTypeB));
+  }
+  return {mean, blockErrorEstimate(blockAverages, mean)};
 }
 
 void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceField, std::size_t systemId,
@@ -159,6 +209,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << rdf.writeEvery;
   archive << rdf.histogram;
   archive << rdf.pairCount;
+  archive << rdf.pairCountPerBlock;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -179,6 +230,15 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyRadi
                     location.line(), location.file_name()));
   }
 
+  // up to version 2 every sample was divided by its own pair count before it was accumulated: those sums cannot be
+  // continued with the pair counts kept apart
+  if (versionNumber < 3)
+  {
+    throw std::runtime_error(
+        "PropertyRadialDistributionFunction: the restart file holds a force-based RDF of an older version, which "
+        "cannot be continued (its samples were normalised one by one); restart without 'ComputeRDF' or start anew\n");
+  }
+
   archive >> rdf.numberOfPseudoAtoms;
   archive >> rdf.numberOfBins;
   archive >> rdf.range;
@@ -187,6 +247,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyRadi
   archive >> rdf.writeEvery;
   archive >> rdf.histogram;
   archive >> rdf.pairCount;
+  archive >> rdf.pairCountPerBlock;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

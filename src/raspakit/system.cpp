@@ -1837,6 +1837,15 @@ void System::sampleForceBasedRDFWithFullGradients(std::size_t currentCycle, std:
 {
   if (!forceBasedRDFSampleDue(currentCycle)) return;
 
+  // The estimator needs the forces of the potential the Markov chain samples. The gradient routines evaluate no
+  // external-field and no polarization forces, so the RDF would be that of another potential.
+  if (hasExternalField || forceField.computePolarization)
+  {
+    throw std::runtime_error(
+        "The force-based RDF ('ComputeRDF') is not available with an external field or with polarization: their "
+        "forces are not evaluated. Use the conventional RDF ('ComputeConventionalRDF').\n");
+  }
+
   // Only the gradients are needed here. precomputeTotalGradients() also overwrites 'runningEnergies' with the
   // gradient-based energies, which do not contain the external-field and polarization terms. In Monte Carlo the
   // running energies are maintained incrementally by the moves, so preserve them: otherwise every RDF sample

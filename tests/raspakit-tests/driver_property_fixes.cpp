@@ -151,6 +151,57 @@ TEST(driver_property_fixes, force_based_rdf_has_the_absolute_normalisation)
   }
 }
 
+// The force sums and the pair counts are averaged apart: a sample without a pair of the channel adds to neither, and
+// a sample with more pairs counts for more (every sample was divided by its own pair count and counted, so a channel
+// was scaled by the fraction of the samples that had a pair of it).
+TEST(driver_property_fixes, force_based_rdf_is_the_ratio_of_the_averaged_force_sum_and_pair_count)
+{
+  const SimulationBox box(20.0, 20.0, 20.0);
+  const double beta = 1.0 / (Units::KB * 300.0);
+  const std::vector<Atom> noFramework{};
+  const std::vector<double3> noFrameworkGradients{};
+  const std::vector<std::uint8_t> noFrameworkMobile{};
+  // the gradient on the second atom of a pair at distance 2 along x that gives g = 0.37 beyond r = 2
+  const double gx = -0.37 * 8.0 * std::numbers::pi / (beta * box.volume);
+  auto atomAt = [](double x, double y, std::uint32_t moleculeId)
+  {
+    Atom atom;
+    atom.position = double3(x, y, 5.0);
+    atom.moleculeId = moleculeId;
+    return atom;
+  };
+
+  PropertyRadialDistributionFunction rdf(1, 1, 40, 10.0, 1, 1);
+  // a sample with one molecule: no pair
+  const std::vector<Atom> one{atomAt(5.0, 5.0, 0)};
+  rdf.sample(box, beta, noFramework, noFrameworkGradients, noFrameworkMobile, one, std::vector<double3>(1), 0, 0);
+  rdf.sample(box, beta, noFramework, noFrameworkGradients, noFrameworkMobile, one, std::vector<double3>(1), 1, 0);
+  // a sample with one pair
+  const std::vector<Atom> two{atomAt(5.0, 5.0, 0), atomAt(7.0, 5.0, 1)};
+  rdf.sample(box, beta, noFramework, noFrameworkGradients, noFrameworkMobile, two,
+             std::vector<double3>{double3(0.0, 0.0, 0.0), double3(4.0 * gx, 0.0, 0.0)}, 2, 0);
+
+  const auto [average, error] = rdf.result(0, 0);
+  for (std::size_t bin = 0; bin != average.size(); ++bin)
+  {
+    const double r = (static_cast<double>(bin) + 0.5) * 0.25;
+    EXPECT_NEAR(average[bin], r > 2.0 ? 0.37 : 0.0, 1e-10) << "r = " << r;
+  }
+}
+
+// The force-based RDF needs the forces of the sampled potential: with an external field the gradients lack its
+// forces, and the Monte Carlo sample is refused.
+TEST(driver_property_fixes, force_based_rdf_of_a_monte_carlo_system_with_an_external_field_is_refused)
+{
+  const ForceField forceField = makeZeroForceField();
+  const std::vector<std::vector<double3>> positions = {
+      {double3(5.0, 5.0, 5.0), double3(6.5, 5.0, 5.0), double3(5.0, 8.0, 5.0), double3(6.5, 8.0, 5.0)}};
+  System system(forceField, SimulationBox(20.0, 20.0, 20.0), true, 300.0, 1e4, 1.0, {}, {makeDimer(forceField, false)},
+                positions, {0}, 5);
+  system.setPropertyRDF(PropertyRadialDistributionFunction(1, 1, 40, 10.0, 1, 1));
+  EXPECT_THROW(system.sampleForceBasedRDFWithFullGradients(0, 0), std::runtime_error);
+}
+
 // The sites of a rigid molecule move with the molecule: equal and opposite (constraint-like) site forces of a rigid
 // molecule carry no RDF signal.
 TEST(driver_property_fixes, force_based_rdf_takes_the_body_force_of_a_rigid_molecule)
