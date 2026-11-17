@@ -769,6 +769,24 @@ TEST(MC_COMPONENT_MOVES, smart_rotation_proposal_ratio_is_the_gaussian_ratio_for
   EXPECT_NEAR(MC_Moves::logRotationProposalRatio(step, driftOld, driftNew, sigma), gaussian, 1e-12);
 }
 
+// A drawn angle just above the threshold of the identity rotation: the principal term carries the ratio (the weight
+// theta^2 is the same in both directions and cancels). It was left out of both sums between 1e-14 and 1e-12, and the
+// ratio was that of the aliases at +-2 pi alone.
+TEST(MC_COMPONENT_MOVES, smart_rotation_proposal_ratio_is_continuous_at_a_vanishing_angle)
+{
+  const double3 driftOld(0.03, -0.02, 0.01);
+  const double3 driftNew(-0.02, 0.04, 0.0);
+  const double sigma = 0.1;
+  const double identity = MC_Moves::logRotationProposalRatio(double3(0.0, 0.0, 0.0), driftOld, driftNew, sigma);
+  EXPECT_NEAR(identity, (driftOld.length_squared() - driftNew.length_squared()) / (2.0 * sigma * sigma), 1e-12);
+  for (const double angle : {2.0e-14, 1.0e-13, 5.0e-13, 2.0e-12, 1.0e-10})
+  {
+    EXPECT_NEAR(MC_Moves::logRotationProposalRatio(double3(angle, 0.0, 0.0), driftOld, driftNew, sigma), identity,
+                1e-6)
+        << "angle " << angle;
+  }
+}
+
 // A step and its reverse: the ratio of the reverse step is the inverse of the ratio of the step, for any step size.
 TEST(MC_COMPONENT_MOVES, smart_rotation_proposal_ratio_of_the_reverse_step_is_the_inverse)
 {

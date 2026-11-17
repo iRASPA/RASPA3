@@ -128,7 +128,10 @@ class RigidTiltSampler
   {
     for (const ChiralCenter& center : step_.rigidTilt.chiralCenters)
     {
-      if (CBMC::chiralSignedVolume(center.ids, chain_) * CBMC::chiralSignedVolume(center.ids, component_.atoms) < 0.0)
+      // strictly the declared side, as the other parity tests of the growth: a centre exactly in its plane has
+      // no parity (the reference geometry of a declared centre is never planar, see the component reader)
+      if (!(CBMC::chiralSignedVolume(center.ids, chain_) * CBMC::chiralSignedVolume(center.ids, component_.atoms) >
+            0.0))
         return false;
     }
     return true;

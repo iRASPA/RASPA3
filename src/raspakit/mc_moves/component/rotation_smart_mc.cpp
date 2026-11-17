@@ -116,7 +116,10 @@ double MC_Moves::logRotationProposalRatio(double3 angularDisplacement, double3 d
     for (int j = -4; j <= 4; ++j)
     {
       const double theta = angle + twoPi * (centre + static_cast<double>(j));
-      if (std::abs(theta) < 1.0e-12) continue;  // a vanishing weight theta^2
+      // A vanishing weight theta^2, at the threshold of the identity above. With a wider one here (1e-12) the
+      // principal term of a drawn angle between the two was left out of both sums, and the ratio was that of the
+      // aliases at +-2 pi alone.
+      if (std::abs(theta) < 1.0e-14) continue;
       const double term = logTerm(theta, drift, sign);
       sum = first ? term : logAdd(sum, term);
       first = false;
