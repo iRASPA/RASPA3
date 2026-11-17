@@ -768,7 +768,7 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
   if (propertyConventionalRadialDistributionFunction.has_value())
   {
     propertyConventionalRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(),
-                                                           currentCycle, currentBlock);
+                                                           currentCycle, currentBlock, w);
   }
 
   // Force-based RDF is not sampled here. Monte Carlo calls sampleForceBasedRDFWithFullGradients()
@@ -778,19 +778,19 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
   if (propertyMoleculeProperties.has_value())
   {
     propertyMoleculeProperties->sample(components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(), currentCycle,
-                                       currentBlock);
+                                       currentBlock, w);
   }
 
   if (propertyMoleculeShape.has_value())
   {
     propertyMoleculeShape->sample(components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(), currentCycle,
-                                 currentBlock);
+                                 currentBlock, w);
   }
 
   if (propertyMoleculeBackbone.has_value())
   {
     propertyMoleculeBackbone->sample(components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(), currentCycle,
-                                    currentBlock);
+                                    currentBlock, w);
   }
 
   if (averageEnergyHistogram.has_value())
@@ -826,7 +826,7 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
 
   if (propertyDensityGrid.has_value())
   {
-    propertyDensityGrid->sample(framework, simulationBox, spanOfMoleculeAtoms(), currentCycle);
+    propertyDensityGrid->sample(framework, simulationBox, spanOfMoleculeAtoms(), currentCycle, w);
   }
 
   std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
@@ -1830,7 +1830,8 @@ void System::sampleForceBasedRDFFromCurrentGradients(std::size_t currentCycle, s
   }
 
   propertyRadialDistributionFunction->sample(simulationBox, beta, frameworkAtoms, frameworkGradients, frameworkMobile,
-                                             moleculeAtoms, moleculeGradients, currentCycle, currentBlock);
+                                             moleculeAtoms, moleculeGradients, currentCycle, currentBlock,
+                                             weight());
 }
 
 void System::sampleForceBasedRDFWithFullGradients(std::size_t currentCycle, std::size_t currentBlock)

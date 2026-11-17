@@ -14,6 +14,10 @@ import running_energy;
 import energy_status;
 import energy_status_inter;
 import property_lambda_probability_histogram;
+import property_conventional_rdf;
+import property_density_grid;
+import int3;
+import framework;
 
 // Regression tests of the property-sampling fixes: the lambda histograms count a sample with the weight of the
 // other fractional molecules, and the tail correction between two components is booked like their pair energies.
@@ -82,4 +86,66 @@ TEST(PROPERTY_SAMPLING, the_tail_correction_between_two_components_is_booked_lik
   // identical species: the tail energies go as the products of the counts, 7 x 7 : 11 x 11 : 2 x 7 x 11
   EXPECT_NEAR((firstSecond + secondFirst) / firstFirst, 2.0 * 7.0 * 11.0 / (7.0 * 7.0), 1.0e-10);
   EXPECT_NEAR(secondSecond / firstFirst, 121.0 / 49.0, 1.0e-10);
+}
+
+// The structural samplers take the weight of the configuration, as the thermodynamic averages do: under a biased
+// walk a configuration counts with its weight (they counted every configuration once, so their results were those
+// of the biased walk and disagreed with the reweighted loadings).
+TEST(PROPERTY_SAMPLING, the_conventional_rdf_counts_a_configuration_with_its_weight)
+{
+  const SimulationBox box(20.0, 20.0, 20.0);
+  auto pairAt = [](double distance)
+  {
+    std::vector<Atom> atoms(2);
+    atoms[0].position = double3(5.0, 5.0, 5.0);
+    atoms[1].position = double3(5.0 + distance, 5.0, 5.0);
+    atoms[1].moleculeId = 1;
+    return atoms;
+  };
+  std::vector<Atom> near = pairAt(2.1);
+  std::vector<Atom> far = pairAt(4.1);
+  std::vector<Atom> noFramework{};
+
+  PropertyConventionalRadialDistributionFunction rdf(1, 1, 40, 10.0, 1, std::nullopt);
+  rdf.sample(box, noFramework, near, 0, 0, 3.0);
+  rdf.sample(box, noFramework, far, 1, 0, 1.0);
+
+  // the pair at 2.1 counts three times the pair at 4.1: 3/4 and 1/4 of the weighted pairs, over the shell volume
+  const auto results = rdf.result();
+  const std::vector<double>& g = std::get<1>(results[0][0]);
+  const double deltaR = 0.25;
+  auto expected = [&](std::size_t bin, double fraction)
+  {
+    const double shell = 4.0 * std::numbers::pi * deltaR * deltaR * deltaR * (static_cast<double>(bin) + 0.5) *
+                         (static_cast<double>(bin) + 0.5);
+    return fraction * box.volume / shell;
+  };
+  EXPECT_NEAR(g[8], expected(8, 0.75), 1e-9 * expected(8, 0.75));
+  EXPECT_NEAR(g[16], expected(16, 0.25), 1e-9 * expected(16, 0.25));
+
+  // a configuration with a fractional molecule only is no sample
+  std::vector<Atom> fractionalOnly(1);
+  fractionalOnly[0].isFractional = true;
+  const double volumeSamples = rdf.volumeSampleCount;
+  rdf.sample(box, noFramework, fractionalOnly, 2, 0, 1.0);
+  EXPECT_DOUBLE_EQ(rdf.volumeSampleCount, volumeSamples);
+}
+
+TEST(PROPERTY_SAMPLING, the_density_grid_counts_a_configuration_with_its_weight)
+{
+  const SimulationBox box(20.0, 20.0, 20.0);
+  PropertyDensityGrid grid(0, 1, int3(4, 4, 4), 1, 1, {}, PropertyDensityGrid::Normalization::NumberDensity,
+                           PropertyDensityGrid::Binning::Standard);
+  std::vector<Atom> one(1);
+  one[0].position = double3(1.0, 1.0, 1.0);
+  std::vector<Atom> three(3);
+  for (Atom& atom : three) atom.position = double3(11.0, 11.0, 11.0);
+
+  grid.sample(std::nullopt, box, one, 0, 3.0);
+  grid.sample(std::nullopt, box, three, 1, 1.0);
+
+  // the weighted number of atoms over the weight: (3 * 1 + 1 * 3) / 4
+  const double atoms = std::accumulate(grid.grid_cell.begin(), grid.grid_cell.end(), 0.0);
+  EXPECT_DOUBLE_EQ(atoms / grid.weightSum, 1.5);
+  EXPECT_DOUBLE_EQ(grid.volumeSum / grid.weightSum, box.volume);
 }

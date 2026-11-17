@@ -130,7 +130,7 @@ export struct PropertyMoleculeBackbone
 
   void sample(const std::vector<Component> &components,
               const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtoms,
-              std::size_t currentCycle, std::size_t block);
+              std::size_t currentCycle, std::size_t block, double weight = 1.0);
 
   // Normalized per-molecule averages of one block, or combined over all blocks.
   Averages blockAverages(std::size_t block, std::size_t component) const;

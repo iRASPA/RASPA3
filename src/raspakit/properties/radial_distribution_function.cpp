@@ -18,7 +18,7 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox& simulationB
                                                 std::span<const std::uint8_t> frameworkMobile,
                                                 std::span<const Atom> moleculeAtoms,
                                                 std::span<const double3> moleculeGradients, std::size_t currentCycle,
-                                                std::size_t block)
+                                                std::size_t block, double weight)
 {
   if (currentCycle % sampleEvery != 0uz) return;
 
@@ -100,15 +100,15 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox& simulationB
   // A sample without pairs of a channel then adds nothing to either (dividing each sample by its own pair count and
   // counting every sample scaled the channel by the fraction of samples that had such a pair, and weighted a sample
   // with few pairs like one with many where the number of molecules or the volume fluctuates).
-  const double prefactor = beta * simulationBox.volume / (8.0 * std::numbers::pi);
+  const double prefactor = weight * beta * simulationBox.volume / (8.0 * std::numbers::pi);
   for (std::size_t c = 0; c != numberOfChannels; ++c)
   {
     pairCount[c] += pairs[c];
     if (pairs[c] == 0uz) continue;
-    pairCountPerBlock[block][c] += static_cast<double>(pairs[c]);
+    pairCountPerBlock[block][c] += weight * static_cast<double>(pairs[c]);
     for (std::size_t i = 0; i != numberOfBins; ++i) histogram(block, c, i) += prefactor * sums[c * numberOfBins + i];
   }
-  histogram.addCount(block, 1.0);
+  histogram.addCount(block, weight);
 }
 
 std::vector<double> PropertyRadialDistributionFunction::averagedProbabilityHistogram(std::size_t blockIndex,

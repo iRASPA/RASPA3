@@ -320,7 +320,8 @@ double PropertyMoleculeShape::computeInverseHydrodynamicRadius(std::span<const A
 
 void PropertyMoleculeShape::sample(const std::vector<Component> &components,
                                   const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-                                  std::span<const Atom> moleculeAtoms, std::size_t currentCycle, std::size_t block)
+                                  std::span<const Atom> moleculeAtoms, std::size_t currentCycle, std::size_t block,
+                                  double weight)
 {
   if (moleculeAtoms.empty()) return;
 
@@ -340,7 +341,6 @@ void PropertyMoleculeShape::sample(const std::vector<Component> &components,
     const double deltaShapeAnisotropy = deltaShapeAnisotropyPerComponent[c];
     const double deltaProlateness = deltaProlatenessPerComponent[c];
     const std::vector<double> &weights = weightsPerComponent[c];
-    Moments &moments = sums[block][c];
 
     for (std::size_t m = 0; m < numberOfMolecules; ++m)
     {
@@ -350,6 +350,8 @@ void PropertyMoleculeShape::sample(const std::vector<Component> &components,
       // A fractional molecule is no member of the ensemble (the CFCMC moves keep it among the integer molecules).
       if (molecule.front().isFractional) continue;
 
+      // the moments of this molecule, added with the weight of the configuration
+      Moments moments{};
       Descriptors d = computeDescriptors(molecule, weights);
       double rg = std::sqrt(d.radiusOfGyrationSquared);
 
@@ -361,8 +363,10 @@ void PropertyMoleculeShape::sample(const std::vector<Component> &components,
       for (std::size_t u = 0; u < units.size(); ++u)
       {
         if (units[u].size() < 2) continue;
-        accumulateShapeMoments(unitSums[block][c][u], computeDescriptors(molecule, units[u], unitWeightsPerComponent[c][u]));
-        unitCounts[block][c][u] += 1.0;
+        Moments unitMoments{};
+        accumulateShapeMoments(unitMoments, computeDescriptors(molecule, units[u], unitWeightsPerComponent[c][u]));
+        for (std::size_t i = 0; i != NumberOfMoments; ++i) unitSums[block][c][u][i] += weight * unitMoments[i];
+        unitCounts[block][c][u] += weight;
       }
 
       if (endToEndAtomsPerComponent[c].has_value())
@@ -373,18 +377,19 @@ void PropertyMoleculeShape::sample(const std::vector<Component> &components,
       }
 
       std::size_t binRg = static_cast<std::size_t>(rg / deltaRadiusOfGyrationPerComponent[c]);
-      if (binRg < numberOfRadiusOfGyrationBinsPerComponent[c]) radiusOfGyrationHistogram[block][c][binRg] += 1.0;
+      if (binRg < numberOfRadiusOfGyrationBinsPerComponent[c]) radiusOfGyrationHistogram[block][c][binRg] += weight;
 
       // The upper endpoint (a rod: κ² = 1, S = 2) lands on bin == numberOfBins and belongs in the last bin.
       std::size_t binKappa = static_cast<std::size_t>(d.shapeAnisotropy / deltaShapeAnisotropy);
       if (binKappa == numberOfBins) binKappa = numberOfBins - 1;
-      if (binKappa < numberOfBins) shapeAnisotropyHistogram[block][c][binKappa] += 1.0;
+      if (binKappa < numberOfBins) shapeAnisotropyHistogram[block][c][binKappa] += weight;
 
       std::size_t binS = static_cast<std::size_t>((d.prolateness - prolatenessLowerLimit) / deltaProlateness);
       if (binS == numberOfBins) binS = numberOfBins - 1;
-      if (binS < numberOfBins) prolatenessHistogram[block][c][binS] += 1.0;
+      if (binS < numberOfBins) prolatenessHistogram[block][c][binS] += weight;
 
-      numberOfCounts[block][c] += 1.0;
+      for (std::size_t i = 0; i != NumberOfMoments; ++i) sums[block][c][i] += weight * moments[i];
+      numberOfCounts[block][c] += weight;
     }
 
     totalNumberOfCounts[c] += 1.0;

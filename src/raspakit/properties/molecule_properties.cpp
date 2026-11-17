@@ -160,7 +160,7 @@ PropertyMoleculeProperties::PropertyMoleculeProperties(std::size_t numberOfBlock
 void PropertyMoleculeProperties::sample(const std::vector<Component> &components,
                                         const std::vector<std::size_t> &numberOfMoleculesPerComponent,
                                         std::span<const Atom> moleculeAtoms, std::size_t currentCycle,
-                                        std::size_t block)
+                                        std::size_t block, double weight)
 {
   if (moleculeAtoms.empty()) return;
 
@@ -200,7 +200,7 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
         std::size_t bin = static_cast<std::size_t>(r / deltaBond);
         if (bin < bins)
         {
-          bondHistogram[block][c][i][bin] += 1.0;
+          bondHistogram[block][c][i][bin] += weight;
         }
       }
 
@@ -215,7 +215,7 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
         std::size_t bin = static_cast<std::size_t>(theta / deltaBend);
         if (bin < bins)
         {
-          bendHistogram[block][c][i][bin] += 1.0;
+          bendHistogram[block][c][i][bin] += weight;
         }
       }
 
@@ -246,7 +246,7 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
         std::size_t bin = static_cast<std::size_t>((phi + 0.5 * torsionRange) / deltaTorsion);
         if (bin < bins)
         {
-          torsionHistogram[block][c][i][bin] += 1.0;
+          torsionHistogram[block][c][i][bin] += weight;
         }
       }
 
@@ -259,13 +259,13 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
         std::size_t bin = static_cast<std::size_t>(r / deltaEndToEndPerComponent[c]);
         if (bin < numberOfEndToEndBinsPerComponent[c])
         {
-          endToEndHistogram[block][c][0][bin] += 1.0;
+          endToEndHistogram[block][c][0][bin] += weight;
         }
-        endToEndSum[block][c] += r;
-        endToEndSquaredSum[block][c] += r * r;
+        endToEndSum[block][c] += weight * r;
+        endToEndSquaredSum[block][c] += weight * r * r;
       }
 
-      numberOfCounts[block][c] += 1.0;
+      numberOfCounts[block][c] += weight;
     }
 
     totalNumberOfCounts[c] += 1.0;

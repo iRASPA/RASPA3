@@ -274,7 +274,8 @@ PropertyMoleculeBackbone::Moments PropertyMoleculeBackbone::computeMoments(std::
 
 void PropertyMoleculeBackbone::sample(const std::vector<Component> &components,
                                      const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-                                     std::span<const Atom> moleculeAtoms, std::size_t currentCycle, std::size_t block)
+                                     std::span<const Atom> moleculeAtoms, std::size_t currentCycle, std::size_t block,
+                                     double weight)
 {
   if (moleculeAtoms.empty()) return;
 
@@ -292,6 +293,7 @@ void PropertyMoleculeBackbone::sample(const std::vector<Component> &components,
 
     const std::vector<std::size_t> &backbone = backbonePerComponent[c];
     numberOfAtomsPerComponent[c] = numberOfAtoms;
+    std::vector<double> internalDistances, bondCorrelation, pairDistances;
 
     for (std::size_t m = 0; m < numberOfMolecules; ++m)
     {
@@ -301,14 +303,24 @@ void PropertyMoleculeBackbone::sample(const std::vector<Component> &components,
       // A fractional molecule is no member of the ensemble (the CFCMC moves keep it among the integer molecules).
       if (molecule.front().isFractional) continue;
 
-      accumulateInternalDistances(molecule, backbone, internalDistanceSquaredSum[block][c]);
-      accumulateBondCorrelation(molecule, backbone, bondCorrelationSum[block][c]);
-      accumulatePairDistances(molecule, pairDistanceBinWidth, pairDistanceHistogram[block][c]);
+      // the sums of this molecule, added with the weight of the configuration
+      internalDistances.assign(internalDistanceSquaredSum[block][c].size(), 0.0);
+      bondCorrelation.assign(bondCorrelationSum[block][c].size(), 0.0);
+      pairDistances.assign(pairDistanceHistogram[block][c].size(), 0.0);
+      accumulateInternalDistances(molecule, backbone, internalDistances);
+      accumulateBondCorrelation(molecule, backbone, bondCorrelation);
+      accumulatePairDistances(molecule, pairDistanceBinWidth, pairDistances);
+      for (std::size_t i = 0; i != internalDistances.size(); ++i)
+        internalDistanceSquaredSum[block][c][i] += weight * internalDistances[i];
+      for (std::size_t i = 0; i != bondCorrelation.size(); ++i)
+        bondCorrelationSum[block][c][i] += weight * bondCorrelation[i];
+      for (std::size_t i = 0; i != pairDistances.size(); ++i)
+        pairDistanceHistogram[block][c][i] += weight * pairDistances[i];
 
       Moments moments = computeMoments(molecule, backbone);
-      for (std::size_t i = 0; i < NumberOfMoments; ++i) sums[block][c][i] += moments[i];
+      for (std::size_t i = 0; i < NumberOfMoments; ++i) sums[block][c][i] += weight * moments[i];
 
-      numberOfCounts[block][c] += 1.0;
+      numberOfCounts[block][c] += weight;
     }
 
     totalNumberOfCounts[c] += 1.0;

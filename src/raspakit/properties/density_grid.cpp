@@ -80,7 +80,8 @@ inline AxisStencil equitableAxis(double f, std::size_t n)
 }
 
 inline void depositEquitable(std::mdspan<double, std::dextents<std::size_t, 5>> grid,
-                             std::size_t comp, std::size_t channel, double3 f, const double3 gridSize)
+                             std::size_t comp, std::size_t channel, double3 f, const double3 gridSize,
+                             double weight)
 {
   const std::size_t Nx = static_cast<std::size_t>(gridSize.x);
   const std::size_t Ny = static_cast<std::size_t>(gridSize.y);
@@ -90,14 +91,14 @@ inline void depositEquitable(std::mdspan<double, std::dextents<std::size_t, 5>> 
   const AxisStencil B = equitableAxis(f.y, Ny);
   const AxisStencil C = equitableAxis(f.z, Nz);
 
-  grid[comp, channel, A.left,  B.left,  C.left]  += A.wLeft  * B.wLeft  * C.wLeft;
-  grid[comp, channel, A.right, B.left,  C.left]  += A.wRight * B.wLeft  * C.wLeft;
-  grid[comp, channel, A.left,  B.right, C.left]  += A.wLeft  * B.wRight * C.wLeft;
-  grid[comp, channel, A.left,  B.left,  C.right] += A.wLeft  * B.wLeft  * C.wRight;
-  grid[comp, channel, A.right, B.right, C.left]  += A.wRight * B.wRight * C.wLeft;
-  grid[comp, channel, A.right, B.left,  C.right] += A.wRight * B.wLeft  * C.wRight;
-  grid[comp, channel, A.left,  B.right, C.right] += A.wLeft  * B.wRight * C.wRight;
-  grid[comp, channel, A.right, B.right, C.right] += A.wRight * B.wRight * C.wRight;
+  grid[comp, channel, A.left,  B.left,  C.left]  += weight * A.wLeft  * B.wLeft  * C.wLeft;
+  grid[comp, channel, A.right, B.left,  C.left]  += weight * A.wRight * B.wLeft  * C.wLeft;
+  grid[comp, channel, A.left,  B.right, C.left]  += weight * A.wLeft  * B.wRight * C.wLeft;
+  grid[comp, channel, A.left,  B.left,  C.right] += weight * A.wLeft  * B.wLeft  * C.wRight;
+  grid[comp, channel, A.right, B.right, C.left]  += weight * A.wRight * B.wRight * C.wLeft;
+  grid[comp, channel, A.right, B.left,  C.right] += weight * A.wRight * B.wLeft  * C.wRight;
+  grid[comp, channel, A.left,  B.right, C.right] += weight * A.wLeft  * B.wRight * C.wRight;
+  grid[comp, channel, A.right, B.right, C.right] += weight * A.wRight * B.wRight * C.wRight;
 }
 }
 
@@ -116,7 +117,7 @@ inline std::size_t gridIndex(double fraction, double size, std::size_t numberOfP
 }  // namespace
 
 void PropertyDensityGrid::sample(const std::optional<Framework> &framework, const SimulationBox &simulationBox,
-                                 std::span<const Atom> moleculeAtoms, std::size_t currentCycle)
+                                 std::span<const Atom> moleculeAtoms, std::size_t currentCycle, double weight)
 {
   if (currentCycle % sampleEvery != 0uz) return;
 
@@ -152,11 +153,11 @@ void PropertyDensityGrid::sample(const std::optional<Framework> &framework, cons
     if (binningMode == Binning::Standard)
     {
       data_cell[comp, channel, gridIndex(s.x, gridSize.x, numberOfGridPoints.x),
-                gridIndex(s.y, gridSize.y, numberOfGridPoints.y), gridIndex(s.z, gridSize.z, numberOfGridPoints.z)]++;
+                gridIndex(s.y, gridSize.y, numberOfGridPoints.y), gridIndex(s.z, gridSize.z, numberOfGridPoints.z)] += weight;
     }
     else
     {
-      depositEquitable(data_cell, comp, channel, s, gridSize);
+      depositEquitable(data_cell, comp, channel, s, gridSize, weight);
     }
 
     if (framework.has_value())
@@ -170,17 +171,20 @@ void PropertyDensityGrid::sample(const std::optional<Framework> &framework, cons
       {
         data_unitcell[comp, channel, gridIndex(t.x, gridSize.x, numberOfGridPoints.x),
                       gridIndex(t.y, gridSize.y, numberOfGridPoints.y),
-                      gridIndex(t.z, gridSize.z, numberOfGridPoints.z)]++;
+                      gridIndex(t.z, gridSize.z, numberOfGridPoints.z)] += weight;
       }
       else
       {
-        depositEquitable(data_unitcell, comp, channel, t, gridSize);
+        depositEquitable(data_unitcell, comp, channel, t, gridSize, weight);
       }
     }
   }
 
+  // the grids, the volume and the number of samples carry the weight of the configuration (a biased walk visits
+  // the loadings with other frequencies than the ensemble: the integrated density was that of the biased walk)
   numberOfSamples++;
-  volumeSum += simulationBox.volume;
+  weightSum += weight;
+  volumeSum += weight * simulationBox.volume;
 }
 
 void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] const SimulationBox &simulationBox,
@@ -258,8 +262,8 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
       {
         // the average volume of the samples: the current volume differs from it in a variable-cell run
         const double averageVolume =
-            volumeSum > 0.0 ? volumeSum / static_cast<double>(numberOfSamples) : cell.determinant();
-        normalization = (gridSize.x * gridSize.y * gridSize.z) / (averageVolume * static_cast<double>(numberOfSamples));
+            volumeSum > 0.0 ? volumeSum / weightSum : cell.determinant();
+        normalization = (gridSize.x * gridSize.y * gridSize.z) / (averageVolume * weightSum);
         break;
       }
     }
@@ -335,9 +339,9 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
           // every unit cell of the box folds onto the grid: the average unit-cell volume times the number of cells
           // is the average volume of the box
           const double averageVolume =
-              volumeSum > 0.0 ? volumeSum / static_cast<double>(numberOfSamples) : simulationBox.volume;
+              volumeSum > 0.0 ? volumeSum / weightSum : simulationBox.volume;
           normalization =
-              (gridSize.x * gridSize.y * gridSize.z) / (averageVolume * static_cast<double>(numberOfSamples));
+              (gridSize.x * gridSize.y * gridSize.z) / (averageVolume * weightSum);
           break;
         }
       }
@@ -372,6 +376,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << temp.binningMode;
   archive << temp.numberOfSamples;
   archive << temp.volumeSum;
+  archive << temp.weightSum;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -411,6 +416,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyDens
   archive >> temp.binningMode;
   archive >> temp.numberOfSamples;
   if (versionNumber >= 2) archive >> temp.volumeSum;
+  // (before version 3 every sample had the weight one)
+  temp.weightSum = static_cast<double>(temp.numberOfSamples);
+  if (versionNumber >= 3) archive >> temp.weightSum;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

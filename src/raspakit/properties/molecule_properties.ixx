@@ -92,7 +92,7 @@ export struct PropertyMoleculeProperties
 
   void sample(const std::vector<Component> &components,
               const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtoms,
-              std::size_t currentCycle, std::size_t block);
+              std::size_t currentCycle, std::size_t block, double weight = 1.0);
 
   // Returns {binCenters, averageProbabilityDensity, confidenceIntervalError} for
   // one potential instance of one component; the number of bins is that of the histogram.

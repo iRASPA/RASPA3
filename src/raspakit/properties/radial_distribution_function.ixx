@@ -61,7 +61,8 @@ export struct PropertyRadialDistributionFunction
   std::size_t writeEvery{};
   BlockHistogram<double> histogram;
   std::vector<std::size_t> pairCount;
-  /// The number of ordered pairs sampled per block and channel: the denominator of g(r).
+  /// The ordered pairs sampled per block and channel, each with the weight of its configuration: the denominator
+  /// of g(r).
   std::vector<std::vector<double>> pairCountPerBlock;
 
   /// 'frameworkGradients' and 'moleculeGradients' are the gradients of the bodies the sites move with (the atom
@@ -70,7 +71,7 @@ export struct PropertyRadialDistributionFunction
   void sample(const SimulationBox &simulationBox, double beta, std::span<const Atom> frameworkAtoms,
               std::span<const double3> frameworkGradients, std::span<const std::uint8_t> frameworkMobile,
               std::span<const Atom> moleculeAtoms, std::span<const double3> moleculeGradients,
-              std::size_t currentCycle, std::size_t block);
+              std::size_t currentCycle, std::size_t block, double weight = 1.0);
   void writeOutput(const ForceField &forceField, std::size_t systemId, double volume,
                    std::vector<std::size_t> &numberOfPseudoAtomsType, std::size_t currentCycle);
 

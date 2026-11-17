@@ -14,17 +14,20 @@ import averages;
 void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox &simulationBox,
                                                             std::span<Atom> frameworkAtoms,
                                                             std::span<Atom> moleculeAtoms, std::size_t currentCycle,
-                                                            std::size_t block)
+                                                            std::size_t block, double weight)
 {
   double3 dr, posA, posB, f;
   double rr, r;
 
   if (currentCycle % sampleEvery != 0uz) return;
 
-  if (moleculeAtoms.empty()) return;
+  // a configuration without integer molecules is no sample (a fractional molecule is no member of the ensemble)
+  if (std::ranges::none_of(moleculeAtoms, [](const Atom &atom) { return !atom.isFractional; })) return;
 
-  volumeCumulative += simulationBox.volume;
-  ++volumeSampleCount;
+  // the counts, the pairs and the volume carry the weight of the configuration (one, unless a biased walk is
+  // reweighted)
+  volumeCumulative += weight * simulationBox.volume;
+  volumeSampleCount += weight;
 
 
   for (std::span<Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
@@ -40,6 +43,8 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
 
       pairCount[channel(typeA, typeB)]++;
       pairCount[channel(typeB, typeA)]++;
+      pairWeight[channel(typeA, typeB)] += weight;
+      pairWeight[channel(typeB, typeA)] += weight;
 
       dr = posA - posB;
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -49,8 +54,8 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
       std::size_t bin = static_cast<std::size_t>(r / deltaR);
       if (bin < numberOfBins)
       {
-        histogram(block, channel(typeA, typeB), bin) += 1.0;
-        histogram(block, channel(typeB, typeA), bin) += 1.0;
+        histogram(block, channel(typeA, typeB), bin) += weight;
+        histogram(block, channel(typeB, typeA), bin) += weight;
       }
     }
   }
@@ -77,6 +82,8 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
 
         pairCount[channel(typeA, typeB)]++;
         pairCount[channel(typeB, typeA)]++;
+        pairWeight[channel(typeA, typeB)] += weight;
+        pairWeight[channel(typeB, typeA)] += weight;
 
         dr = posA - posB;
         dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -86,14 +93,14 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
         std::size_t bin = static_cast<std::size_t>(r / deltaR);
         if (bin < numberOfBins)
         {
-          histogram(block, channel(typeA, typeB), bin) += 1.0;
-          histogram(block, channel(typeB, typeA), bin) += 1.0;
+          histogram(block, channel(typeA, typeB), bin) += weight;
+          histogram(block, channel(typeB, typeA), bin) += weight;
         }
       }
     }
   }
 
-  histogram.addCount(block, 2.0);
+  histogram.addCount(block, 2.0 * weight);
 }
 
 std::vector<std::vector<std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>>>
@@ -112,8 +119,8 @@ PropertyConventionalRadialDistributionFunction::result() const
         
         // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
         // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
-        double avg_n_pairs = static_cast<double>(pairCount[channel(atomTypeA, atomTypeB)] +
-                                                 pairCount[channel(atomTypeB, atomTypeA)]) /
+        double avg_n_pairs = (pairWeight[channel(atomTypeA, atomTypeB)] +
+                                                 pairWeight[channel(atomTypeB, atomTypeA)]) /
                              histogram.totalNumberOfCounts;
         double normalization = (volumeCumulative / volumeSampleCount) / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
         
@@ -163,8 +170,8 @@ void PropertyConventionalRadialDistributionFunction::writeOutput(
 
         // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
         // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
-        double avg_n_pairs = static_cast<double>(pairCount[channel(atomTypeA, atomTypeB)] +
-                                                 pairCount[channel(atomTypeB, atomTypeA)]) /
+        double avg_n_pairs = (pairWeight[channel(atomTypeA, atomTypeB)] +
+                                                 pairWeight[channel(atomTypeB, atomTypeA)]) /
                              histogram.totalNumberOfCounts;
         // the average volume of the samples: the current volume differs from it under NPT
         const double averageVolume = volumeSampleCount > 0.0 ? volumeCumulative / volumeSampleCount : volume;
@@ -197,6 +204,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
   archive << rdf.pairCount;
   archive << rdf.volumeCumulative;
   archive << rdf.volumeSampleCount;
+  archive << rdf.pairWeight;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -227,6 +235,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyConv
   archive >> rdf.pairCount;
   archive >> rdf.volumeCumulative;
   archive >> rdf.volumeSampleCount;
+  // (before version 2 every sample had the weight one)
+  rdf.pairWeight.assign(rdf.pairCount.begin(), rdf.pairCount.end());
+  if (versionNumber >= 2) archive >> rdf.pairWeight;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

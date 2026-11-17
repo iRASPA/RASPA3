@@ -36,11 +36,12 @@ export struct PropertyConventionalRadialDistributionFunction
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
         histogram(numberOfBlocks, numberOfPseudoAtoms * numberOfPseudoAtoms, numberOfBins),
-        pairCount(numberOfPseudoAtoms * numberOfPseudoAtoms)
+        pairCount(numberOfPseudoAtoms * numberOfPseudoAtoms),
+        pairWeight(numberOfPseudoAtoms * numberOfPseudoAtoms)
   {
   }
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   /// Channel index of an ordered pseudo-atom pair.
   std::size_t channel(std::size_t atomTypeA, std::size_t atomTypeB) const
@@ -73,11 +74,13 @@ export struct PropertyConventionalRadialDistributionFunction
   std::optional<std::size_t> writeEvery;
   BlockHistogram<double> histogram;
   std::vector<std::size_t> pairCount;
+  /// The ordered pairs sampled per channel, each with the weight of its configuration: the denominator of g(r).
+  std::vector<double> pairWeight;
   double volumeCumulative{};
   double volumeSampleCount{};
 
   void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms,
-              std::size_t currentCycle, std::size_t block);
+              std::size_t currentCycle, std::size_t block, double weight = 1.0);
 
   void writeOutput(const ForceField &forceField, std::size_t systemId, double volume,
                    std::vector<std::size_t> &numberOfPseudoAtomsType, std::size_t currentCycle);
