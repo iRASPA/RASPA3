@@ -13,13 +13,15 @@ import bend_potential;
 import chiral_center;
 import cbmc_grow_step;
 import cbmc_growth_plan;
+import cbmc_rigid_tilt;
+import randomnumbers;
 
 namespace
 {
 // A rigid fragment {1, 2, 3} hinged on atom 1, which is a declared chiral centre with the previous bead 0, the
 // fragment atom 2 and a side group 4. The bend 0-1-2 is the junction bend (spin invariant); 4-1-2 couples the
 // fragment to the side group off the spin axis (spin variant).
-Component makeRigidFragmentAtChiralCentre()
+Component makeRigidFragmentAtChiralCentre(BendType junctionBendType = BendType::Harmonic)
 {
   const ForceField forceField({{"C", false, 12.0, 0.0, 0.0, 6, false}}, {{50.0, 3.5}},
                               ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
@@ -32,7 +34,9 @@ Component makeRigidFragmentAtChiralCentre()
   Potentials::IntraMolecularPotentials potentials;
   potentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {96500.0, 1.54}),
                       BondPotential({1, 4}, BondType::Harmonic, {96500.0, 1.54})};
-  potentials.bends = {BendPotential({0, 1, 2}, BendType::Harmonic, {62500.0, 109.5}),
+  potentials.bends = {BendPotential({0, 1, 2}, junctionBendType,
+                                    junctionBendType == BendType::Harmonic ? std::vector<double>{62500.0, 109.5}
+                                                                           : std::vector<double>{109.5}),
                       BendPotential({4, 1, 2}, BendType::Harmonic, {62500.0, 109.5})};
   ChiralCenter centre;
   centre.ids = {1, 0, 2, 4};
@@ -103,4 +107,41 @@ TEST(CBMC_PLAN_FIXES, a_rigid_body_with_two_placed_atoms_is_refused)
   const Component component = makeRigidFragmentAtChiralCentre();
   EXPECT_THROW((void)planFrom(component, {0, 1, 3, 4}), std::runtime_error);
   EXPECT_NO_THROW((void)planFrom(component, {0, 1, 2, 3, 4}));
+}
+
+// A FIXED or RIGID junction bend of a rigid body is a constraint without an energy: the relaxation of the tilt only
+// rolls the body about its inner bond, so the angle previous-current-inner stays on the cone it was drawn on (the
+// relaxation rotated about any axis and accepted every move, which left the constrained angle uniform on the sphere).
+TEST(CBMC_PLAN_FIXES, the_rigid_tilt_keeps_a_fixed_junction_bend_at_its_angle)
+{
+  for (const BendType type : {BendType::Fixed, BendType::Rigid})
+  {
+    const Component component = makeRigidFragmentAtChiralCentre(type);
+    const std::vector<CBMC::GrowStep> plan = planFrom(component, {0, 1, 4});
+    ASSERT_FALSE(plan.empty());
+    const CBMC::GrowStep& step = plan.front();
+    ASSERT_TRUE(step.rigidBody);
+    ASSERT_TRUE(step.rigidTilt.junctionBend.has_value());
+    const std::size_t inner = step.rigidTilt.innerBead;
+    const auto innerSlot = std::ranges::find(step.nextBeads, inner);
+    ASSERT_NE(innerSlot, step.nextBeads.end());
+
+    RandomNumber random(11);
+    std::vector<Atom> chain(component.atoms.begin(), component.atoms.end());
+    std::size_t numberOfTilts = 0;
+    for (std::size_t sample = 0; sample != 50; ++sample)
+    {
+      const std::optional<std::vector<Atom>> tilt =
+          CBMC::generateRigidTilt(random, 10, 1.0 / (0.8314464919 * 300.0), component, chain, step);
+      if (!tilt.has_value()) continue;
+      ++numberOfTilts;
+      const double3 toPrevious = (chain[0].position - chain[1].position).normalized();
+      const double3 toInner =
+          ((*tilt)[static_cast<std::size_t>(innerSlot - step.nextBeads.begin())].position - chain[1].position)
+              .normalized();
+      const double angle = std::acos(std::clamp(double3::dot(toPrevious, toInner), -1.0, 1.0)) * 180.0 / std::numbers::pi;
+      EXPECT_NEAR(angle, 109.5, 1.0e-6);
+    }
+    EXPECT_GT(numberOfTilts, 0uz);
+  }
 }

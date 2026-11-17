@@ -32,7 +32,8 @@ namespace Constants = CBMC::Constants;
 //   selectRoll()          -- the roll about the cone direction is Rosenbluth-selected on a grid of
 //                            the step's bend energies (the other junction bends);
 //   relax()               -- a rigid-rotation Metropolis Monte-Carlo on the step's bends, adaptive
-//                            step size from the anchor bead's CBMC statistics.
+//                            step size from the anchor bead's CBMC statistics; about the inner bond only
+//                            when the junction bend is a FIXED or RIGID constraint.
 class RigidTiltSampler
 {
  public:
@@ -49,7 +50,10 @@ class RigidTiltSampler
         anchorReference_(component.atoms[step.currentBead].position),
         anchorPosition_(chainAtoms[step.currentBead].position),
         rotationStats_(component.cbmcMoveStatistics[step.currentBead].rigidTiltRotationChange),
-        saved_(step.nextBeads.size())
+        saved_(step.nextBeads.size()),
+        holonomicJunction_(step.rigidTilt.junctionBend.has_value() &&
+                           (step.rigidTilt.junctionBend->type == BendType::Fixed ||
+                            step.rigidTilt.junctionBend->type == BendType::Rigid))
   {
   }
 
@@ -191,7 +195,13 @@ class RigidTiltSampler
     rotationStats_.constructed += 1.0;
     rotationStats_.totalConstructed += 1.0;
 
-    const double3 axis = random_.randomVectorOnUnitSphere();
+    // A FIXED or RIGID junction bend has no energy to hold it (its energy is zero by construction): the body then
+    // only rolls about its inner bond, which leaves the angle previous-current-inner where 'alignToJunctionBend'
+    // put it. A rotation about a free axis took the body off that cone at no cost, so the constrained angle came
+    // out uniform on the sphere. The rotation about the previous-current axis is the spin, selected afterwards.
+    const double3 axis = holonomicJunction_
+                             ? (chain_[step_.rigidTilt.innerBead].position - anchorPosition_).normalized()
+                             : random_.randomVectorOnUnitSphere();
     const double angle = (2.0 * random_.uniform() - 1.0) * rotationStats_.maxChange;
     for (std::size_t k = 0; k != nextBeads_.size(); ++k)
     {
@@ -229,6 +239,8 @@ class RigidTiltSampler
 
   MoveStatistics<double> &rotationStats_;
   std::vector<double3> saved_;
+  /// The junction bend is a constraint (FIXED or RIGID): the relaxation keeps its angle.
+  const bool holonomicJunction_;
 };
 }  // namespace
 
