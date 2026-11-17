@@ -2066,15 +2066,25 @@ L255-L259 (1992). <https://doi.org/10.1088/0953-8984/4/16/001>
 Keyword: `"GibbsSwapCFCMCProbability"` (component move)
 
 Serial CFCMC version of the Gibbs swap: each box has a reserved fractional
-slot, but exactly one box has `containsTheFractionalMolecule=true`. Only that
+slot per component, but for each component exactly one box holds its
+fractional molecule (`containsTheFractionalMolecule(component)`). Only that
 slot is active and coupled at \f$\lambda\f$; the partner box's slot is parked
 inactive and contributes neither interactions nor \f$dU/d\lambda\f$.
+
+In a mixture every component with this move has its own fractional molecule,
+its own \f$\lambda\f$ and its own flag: a move of one component leaves the
+fractional molecules of the other components where they are, so the two boxes
+can hold the fractional molecules of different components. The position of a
+parked slot is never used (the fractional molecule that becomes active in a
+box is drawn anew there or is an integer molecule of that box), and the
+volume moves count a parked slot with no volume factor, per component. A
+parked slot is kept at the periodic image inside its box.
 
 Steps (box \f$A\f$ is the box currently holding the fractional molecule; each
 box keeps its own bias function \f$\eta_A(\lambda)\f$, \f$\eta_B(\lambda)\f$):
 
-- use the dispatcher-supplied adjacent pair and component, identify the
-  uniquely flagged active box as \f$A\f$ and the inactive box as \f$B\f$, and
+- use the dispatcher-supplied adjacent pair and component, identify the box
+  flagged for that component as \f$A\f$ and the other box as \f$B\f$, and
   reject an inconsistent flag state,
 - select one of three sub-moves at random: with 25% probability a **swap**
   sub-move, with 25% probability a **transfer** sub-move, and with 50%
@@ -2091,7 +2101,7 @@ box keeps its own bias function \f$\eta_A(\lambda)\f$, \f$\eta_B(\lambda)\f$):
 - **\f$\lambda\f$-change** sub-move: draw a new \f$\lambda\f$ bin and rescale the fractional
   molecule inside box \f$A\f$,
 - accept or reject with the corresponding rule below. Only on acceptance are
-  the active-box flags and the two lambda-bin owners swapped; the inactive slot
+  the flags of the component and its two lambda-bin owners swapped; the inactive slot
   remains interaction-free.
 
 Acceptance rules (integer-molecule counts \f$N_A\f$, \f$N_B\f$; box volumes \f$V_A\f$,
@@ -2137,7 +2147,7 @@ Steps (box \f$A\f$ is the box currently holding the fractional molecule; each
 box keeps its own bias function \f$\eta_A(\lambda)\f$, \f$\eta_B(\lambda)\f$):
 
 - use the dispatcher-supplied pair and component, require \f$A\f$ to be the
-  uniquely flagged active box and \f$B\f$ to be inactive,
+  box flagged for that component and \f$B\f$ to be inactive for it,
 - select one of three sub-moves at random: with 25% probability a **swap**
   sub-move, with 25% probability a **transfer** sub-move, and with 50%
   probability a **\f$\lambda\f$-change** sub-move,

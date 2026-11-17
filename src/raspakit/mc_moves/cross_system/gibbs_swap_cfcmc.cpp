@@ -471,10 +471,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     componentA.mc_moves_statistics.addConstructed(move, 0);
 
     // The intra-molecular terms are bookkeeping only (conformations are neither created nor destroyed here).
-    const double physicalAcceptance =
-        preFactor * MC_Moves::boundedExp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy() -
-                                              intraFractionalDifferenceA.potentialEnergy() -
-                                              intraFractionalDifferenceB.potentialEnergy()));
+    // The logarithm of the physical acceptance is kept: the lambda bias compensates it, and each of the two can be
+    // far beyond the range of an exponential while their sum is of order one. An exponential clamped first lost
+    // the part beyond the clamp (a transfer never accepted in one direction, too rarely in the other).
+    const double logPhysicalAcceptance =
+        std::log(preFactor) -
+        systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy() -
+                        intraFractionalDifferenceA.potentialEnergy() - intraFractionalDifferenceB.potentialEnergy());
+    const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(logPhysicalAcceptance, biasTerm);
+    const double physicalAcceptance = acceptance.physical;
     if (!tmmcTrial.transferIsInBounds())
     {
       tmmcTrial.recordTransfer(physicalAcceptance);
@@ -487,8 +492,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     // apply acceptance/rejection rule
     // (the bias is added to the exponent: the product with an exponential of its own can overflow)
-    if (MC_Moves::acceptedWithBias(random.uniform(), tmmcBias,
-                                   MC_Moves::biasedAcceptance(physicalAcceptance, 0.0, biasTerm).sampling))
+    if (MC_Moves::acceptedWithBias(random.uniform(), tmmcBias, acceptance.sampling))
     {
       componentA.mc_moves_statistics.addAccepted(move, 0);
 
@@ -728,12 +732,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         systemB.intraCoulombScalingEnergy(arrivingB) - systemA.intraCoulombScalingEnergy(oldFractionalMoleculeA);
 
     // apply acceptance/rejection rule (the intra-molecular terms are bookkeeping only, see above)
+    // (the volume factor in the exponent with the rest: outside it, it met an exponential already clamped)
     if (random.uniform() <
-        preFactor *
-            MC_Moves::boundedExp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy() -
-                                      intraEnergyDifferenceA.potentialEnergy() -
-                                      intraEnergyDifferenceB.potentialEnergy() + intraCoulombScaling) +
-                     biasTerm))
+        MC_Moves::boundedExp(std::log(preFactor) -
+                             systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy() -
+                                             intraEnergyDifferenceA.potentialEnergy() -
+                                             intraEnergyDifferenceB.potentialEnergy() + intraCoulombScaling) +
+                             biasTerm))
     {
       componentA.mc_moves_statistics.addAccepted(move, 1);
 

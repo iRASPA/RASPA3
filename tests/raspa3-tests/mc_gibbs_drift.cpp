@@ -1541,6 +1541,95 @@ TEST(MC_GIBBS_DRIFT, cbmc_insert_and_delete_boundary)
   expectNoEnergyDrift(systems[1]);
 }
 
+// The interchange of the serial Gibbs CFCMC swaps under a lambda bias that compensates the physical term: each of
+// the two can be far beyond the range of an exponential while their sum decides. The physical acceptance was
+// exponentiated (and clamped to exp(+-700)) first and the bias applied to the result: below exp(-700) it was zero
+// whatever the bias (a transfer never accepted), above exp(700) the part beyond the clamp was lost. At 1 K the
+// energy of an interchange is hundreds of kT either way; with the bias of the receiving box far above it every
+// constructed interchange is accepted.
+namespace
+{
+void runGibbsSwapInterchangeUnderCompensatingBias(Move::Types gibbsSwapMove)
+{
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("CH4"));
+  MCMoveProbabilities probabilities{};
+  probabilities.setProbability(gibbsSwapMove, 1.0);
+  auto makeBox = [&](std::size_t numberOfMolecules)
+  {
+    Component methane(forceField, "methane", 190.564, 4599200, 0.01142,
+                      {Atom({0, 0, 0}, 0.0, 1.0, 0, type, 0, false, false)}, {}, {}, 5, 21, probabilities,
+                      std::nullopt, false);
+    return System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 1.0, 1e4, 1.0, {}, {methane}, {},
+                  {numberOfMolecules}, 5);
+  };
+  std::vector<System> systems{makeBox(60), makeBox(60)};
+  setupSerialGibbsCFCMC(systems);
+
+  auto interchangeCounts = [&]()
+  {
+    double3 constructed{}, accepted{};
+    for (const System &s : systems)
+    {
+      const MoveStatistics<double3> &statistics =
+          std::get<MoveStatistics<double3>>(s.components[0].mc_moves_statistics[gibbsSwapMove]);
+      constructed += statistics.totalConstructed;
+      accepted += statistics.totalAccepted;
+    }
+    return std::pair<double, double>(constructed.x, accepted.x);
+  };
+
+  RandomNumber random(42);
+  std::size_t fractionalMoleculeSystem{0};
+  std::size_t interchanges = 0;
+  std::size_t beyondTheClamp = 0;
+  for (std::size_t attempt = 0; attempt < 4000; ++attempt)
+  {
+    const std::size_t a = systems[0].containsTheFractionalMolecule(0) ? 0 : 1;
+    const std::size_t b = 1 - a;
+    // the bias of the receiving box far above that of the box that holds the fractional molecule
+    std::ranges::fill(systems[a].components[0].lambdaGC.biasFactor, 0.0);
+    std::ranges::fill(systems[b].components[0].lambdaGC.biasFactor, 1.0e12);
+
+    const std::pair<double, double> before = interchangeCounts();
+    const auto delta =
+        (gibbsSwapMove == Move::Types::GibbsSwapCFCMC)
+            ? MC_Moves::GibbsSwapMove_CFCMC(random, systems[a], systems[b], 0, fractionalMoleculeSystem)
+            : MC_Moves::GibbsSwapMove_CBCFCMC(random, systems[a], systems[b], 0, fractionalMoleculeSystem);
+    const std::pair<double, double> after = interchangeCounts();
+    if (delta.has_value())
+    {
+      systems[a].runningEnergies += delta->first;
+      systems[b].runningEnergies += delta->second;
+    }
+    if (after.first == before.first) continue;
+
+    ++interchanges;
+    ASSERT_EQ(after.second, before.second + 1.0) << "a constructed interchange was rejected at attempt " << attempt;
+    ASSERT_TRUE(delta.has_value());
+    // an interchange uphill by more than 700 kT: its physical acceptance alone is below exp(-700)
+    if (systems[a].beta * (delta->first.potentialEnergy() + delta->second.potentialEnergy()) > 750.0)
+    {
+      ++beyondTheClamp;
+    }
+  }
+  EXPECT_GT(interchanges, 0uz);
+  EXPECT_GT(beyondTheClamp, 0uz);
+  expectNoEnergyDrift(systems[0]);
+  expectNoEnergyDrift(systems[1]);
+}
+}  // namespace
+
+TEST(MC_GIBBS_DRIFT, gibbs_cfcmc_interchange_adds_the_lambda_bias_to_the_exponent)
+{
+  runGibbsSwapInterchangeUnderCompensatingBias(Move::Types::GibbsSwapCFCMC);
+}
+
+TEST(MC_GIBBS_DRIFT, gibbs_cbcfcmc_interchange_adds_the_lambda_bias_to_the_exponent)
+{
+  runGibbsSwapInterchangeUnderCompensatingBias(Move::Types::GibbsSwapCBCFCMC);
+}
+
 // The non-CBMC Gibbs CFCMC sub-moves place a molecule at a random position (the fractional shuffle into the other
 // box) or raise the scaling of a molecule in place (promotion of the fractional molecule to an integer one, lambda
 // change). Like the single-box SwapCFCMC move, they must refuse a trial state inside a blocking pocket: the pocket is

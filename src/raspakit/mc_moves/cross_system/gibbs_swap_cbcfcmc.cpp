@@ -389,10 +389,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero). The grow and
     // retrace of an integer molecule (A and B) and of the fractional molecule at the same lambda (B and A) pair up,
     // so the ideal-gas reference weights cancel; their energies are in the weights and must not be counted again.
-    const double physicalAcceptance =
-        MC_Moves::boundedExp(std::log(preFactor) + growDataA->logRosenbluthWeight - retraceDataA.logRosenbluthWeight +
-                 growDataB->logRosenbluthWeight - retraceDataB.logRosenbluthWeight -
-                 systemA.beta * (unbiasedDifferenceA.potentialEnergy() + unbiasedDifferenceB.potentialEnergy()));
+    // The logarithm of the physical acceptance is kept: the lambda bias compensates it, and each of the two can be
+    // far beyond the range of an exponential while their sum is of order one. An exponential clamped first lost
+    // the part beyond the clamp (a transfer never accepted in one direction, too rarely in the other).
+    const double logPhysicalAcceptance =
+        std::log(preFactor) + growDataA->logRosenbluthWeight - retraceDataA.logRosenbluthWeight +
+        growDataB->logRosenbluthWeight - retraceDataB.logRosenbluthWeight -
+        systemA.beta * (unbiasedDifferenceA.potentialEnergy() + unbiasedDifferenceB.potentialEnergy());
+    const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(logPhysicalAcceptance, biasTerm);
+    const double physicalAcceptance = acceptance.physical;
     if (!tmmcTrial.transferIsInBounds())
     {
       tmmcTrial.recordTransfer(physicalAcceptance);
@@ -404,8 +409,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     tmmcTrial.recordTransfer(physicalAcceptance);
 
     // (the bias is added to the exponent: the product with an exponential of its own can overflow)
-    if (MC_Moves::acceptedWithBias(random.uniform(), tmmcBias,
-                                   MC_Moves::biasedAcceptance(physicalAcceptance, 0.0, biasTerm).sampling))
+    if (MC_Moves::acceptedWithBias(random.uniform(), tmmcBias, acceptance.sampling))
     {
       componentA.mc_moves_statistics.addAccepted(move, 0);
 
