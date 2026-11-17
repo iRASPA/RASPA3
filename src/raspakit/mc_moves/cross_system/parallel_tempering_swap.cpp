@@ -34,6 +34,7 @@ import interactions_cross_link;
 import interactions_external_field;
 import mc_moves_move_types;
 import mc_moves_cputime;
+import mc_moves_volume;
 import integrators_compute;
 import integrators_update;
 import thermobarostat;
@@ -584,7 +585,8 @@ std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& sys
   //
   //     log R = (β_B − β_A)(U_B − U_A)
   //           + Σ_i (N_B,i − N_A,i) log(a_A,i / a_B,i)
-  //           + (β_B P_B − β_A P_A)(V_B − V_A)          [variable-cell / no-framework only]
+  //           + (β_B P_B − β_A P_A)(V_B − V_A)          [variable-cell / no-framework only; with the
+  //                                                      anisotropic volume move the constant-stress work]
   //           + Σ_q [B_A(λ_q(X_B)) − B_A(λ_q(X_A)) + B_B(λ_q(X_A)) − B_B(λ_q(X_B))]
   //           + B^{TM}_A(X_B) − B^{TM}_A(X_A) + B^{TM}_B(X_A) − B^{TM}_B(X_B)
   double logR = (systemB.beta - systemA.beta) *
@@ -629,10 +631,22 @@ std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& sys
 
   // Volume travels with the configuration only when there is no framework. The PV term
   // belongs to an isobaric ensemble; a fixed-framework μVT box keeps its cell.
+  // A replica with the anisotropic volume move samples the constant-stress enthalpy of that move,
+  // p V + V_0 sum_a (p_aa - p) (L_a / L_a^0 - 1) with p the mean of its pressure tensor and its own reference cell
+  // ('MC_Moves::anisotropicPressureWork'): the deviatoric part is a function of the box as well and changes when
+  // the boxes are exchanged. With p (V_B - V_A) alone the exchange broke the balance under a non-hydrostatic
+  // tensor, also on a pure temperature ladder at one tensor (the works of the two replicas then differ by the
+  // factor beta). For a hydrostatic tensor the work is p (V_new - V_old).
   if (!systemA.framework.has_value())
   {
-    logR += (systemB.beta * systemB.pressure - systemA.beta * systemA.pressure) *
-            (systemB.simulationBox.volume - systemA.simulationBox.volume);
+    auto pressureWork = [](const System& system, const SimulationBox& oldBox, const SimulationBox& newBox)
+    {
+      return system.mc_moves_probabilities.getProbability(Move::Types::AnisotropicVolumeChange) > 0.0
+                 ? MC_Moves::anisotropicPressureWork(system, oldBox, newBox)
+                 : system.pressure * (newBox.volume - oldBox.volume);
+    };
+    logR -= systemA.beta * pressureWork(systemA, systemA.simulationBox, systemB.simulationBox) +
+            systemB.beta * pressureWork(systemB, systemB.simulationBox, systemA.simulationBox);
   }
 
   for (std::size_t componentId = 0; componentId < systemA.components.size(); ++componentId)

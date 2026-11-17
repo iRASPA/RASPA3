@@ -2126,6 +2126,62 @@ TEST(MC_GIBBS_DRIFT, parallel_tempering_cfcmc_uses_integer_count_and_cross_bias)
   EXPECT_NEAR(*logR, energyTerm + activityTerm + biasTerm + volumeTerm, 1.0e-10);
 }
 
+// A replica with the anisotropic volume move samples the constant-stress enthalpy
+// p V + V_0 sum_a (p_aa - p) (L_a / L_a^0 - 1): the exchange of two boxes changes the deviatoric part as well. With
+// p (V_B - V_A) alone the exchange broke the balance under a non-hydrostatic pressure tensor, also between two
+// temperatures at one tensor.
+TEST(MC_GIBBS_DRIFT, parallel_tempering_exchange_carries_the_deviatoric_work_of_the_anisotropic_volume_move)
+{
+  System systemA = makeRigidCFCMCSystem(3, 300.0, 1e7);
+  System systemB = makeRigidCFCMCSystem(3, 350.0, 1e7);
+  ASSERT_FALSE(systemA.framework.has_value());
+  for (System* system : {&systemA, &systemB})
+  {
+    system->mc_moves_probabilities.setProbability(Move::Types::AnisotropicVolumeChange, 1.0);
+    system->pressureTensorDiagonal = double3(1.6 * system->pressure, 1.0 * system->pressure, 0.4 * system->pressure);
+  }
+  // the box of B strained away from the (shared) reference cell, at nearly the same volume
+  const SimulationBox reference = systemB.referenceSimulationBox;
+  const SimulationBox strained(1.10 * reference.lengthA, 0.95 * reference.lengthB, 0.97 * reference.lengthC);
+  const std::optional<RunningEnergy> energyB = MC_Moves::applyTrialVolume(systemB, strained);
+  ASSERT_TRUE(energyB.has_value());
+  systemB.runningEnergies = energyB.value();
+  systemB.trialEik = systemB.storedEik;
+
+  auto enthalpyPressureTerm = [](const System& system, const SimulationBox& box)
+  {
+    const double3& p = system.pressureTensorDiagonal;
+    const double mean = (p.x + p.y + p.z) / 3.0;
+    const SimulationBox& h0 = system.referenceSimulationBox;
+    return mean * box.volume + h0.volume * ((p.x - mean) * (box.lengthA / h0.lengthA - 1.0) +
+                                            (p.y - mean) * (box.lengthB / h0.lengthB - 1.0) +
+                                            (p.z - mean) * (box.lengthC / h0.lengthC - 1.0));
+  };
+  const SimulationBox boxA = systemA.simulationBox;
+  const SimulationBox boxB = systemB.simulationBox;
+  const double energyTerm = (systemB.beta - systemA.beta) *
+                            (systemB.runningEnergies.potentialEnergy() - systemA.runningEnergies.potentialEnergy());
+  const double stressTerm = -systemA.beta * (enthalpyPressureTerm(systemA, boxB) - enthalpyPressureTerm(systemA, boxA)) -
+                            systemB.beta * (enthalpyPressureTerm(systemB, boxA) - enthalpyPressureTerm(systemB, boxB));
+  const double hydrostaticOnly = (systemB.beta * systemB.pressure - systemA.beta * systemA.pressure) *
+                                 (boxB.volume - boxA.volume);
+  // the deviatoric part is what the test is about
+  ASSERT_GT(std::abs(stressTerm - hydrostaticOnly), 1.0e-3);
+
+  const std::optional<double> logR = MC_Moves::ParallelTemperingLogAcceptance(systemA, systemB);
+  ASSERT_TRUE(logR.has_value());
+  EXPECT_NEAR(*logR, energyTerm + stressTerm, 1.0e-9 * std::max(1.0, std::abs(energyTerm + stressTerm)));
+
+  // without the anisotropic move a replica samples p V with its scalar pressure
+  for (System* system : {&systemA, &systemB})
+  {
+    system->mc_moves_probabilities.setProbability(Move::Types::AnisotropicVolumeChange, 0.0);
+  }
+  const std::optional<double> isotropic = MC_Moves::ParallelTemperingLogAcceptance(systemA, systemB);
+  ASSERT_TRUE(isotropic.has_value());
+  EXPECT_NEAR(*isotropic, energyTerm + hydrostaticOnly, 1.0e-9 * std::max(1.0, std::abs(energyTerm + hydrostaticOnly)));
+}
+
 TEST(MC_GIBBS_DRIFT, parallel_tempering_cfcmc_swaps_lambda_and_preserves_bias)
 {
   System systemA = makeRigidCFCMCSystem(2, 300.0, 1e4);
