@@ -339,6 +339,14 @@ void MonteCarloTransitionMatrix::performCycle()
       [](const System& system) { return system.numberOfMolecules(); });
   totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
 
+  // a step picks a component and draws its move from the table of that component, the moves of the system
+  // included: without a component there is nothing to pick (the input reader refuses it as well)
+  if (systems.front().components.empty())
+  {
+    throw std::runtime_error(
+        "a Monte Carlo simulation needs at least one component: the moves, those of the system included, are "
+        "drawn through the components\n");
+  }
   // a step addresses the component of the two paired systems by one index: they must hold the same components
   if (std::ranges::any_of(
           systems, [&](const System& system) { return system.components.size() != systems.front().components.size(); }))
@@ -414,7 +422,7 @@ void MonteCarloTransitionMatrix::performCycle()
               PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
               selectedSystem.lambdaWangLandauIsActive(selectedComponent));
         }
-        if (selectedSystem.usesGibbsConventionalCFCMC())
+        if (selectedSystem.components[selectedComponent].usesGibbsConventionalCFCMC())
         {
           selectedSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
               PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
@@ -429,7 +437,7 @@ void MonteCarloTransitionMatrix::performCycle()
                 PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
                 selectedSecondSystem.lambdaWangLandauIsActive(selectedComponent));
           }
-          if (selectedSecondSystem.usesGibbsConventionalCFCMC())
+          if (selectedSecondSystem.components[selectedComponent].usesGibbsConventionalCFCMC())
           {
             selectedSecondSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
                 PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
@@ -457,7 +465,7 @@ void MonteCarloTransitionMatrix::performCycle()
 
     selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
         selectedSystem.gcFractionalMoleculeIsActive(selectedComponent));
-    if (selectedSystem.usesGibbsConventionalCFCMC())
+    if (selectedSystem.components[selectedComponent].usesGibbsConventionalCFCMC())
     {
       selectedSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
     }
@@ -467,7 +475,7 @@ void MonteCarloTransitionMatrix::performCycle()
     {
       selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
           selectedSecondSystem.gcFractionalMoleculeIsActive(selectedComponent));
-      if (selectedSecondSystem.usesGibbsConventionalCFCMC())
+      if (selectedSecondSystem.components[selectedComponent].usesGibbsConventionalCFCMC())
       {
         selectedSecondSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
       }
@@ -623,7 +631,7 @@ void MonteCarloTransitionMatrix::equilibrate()
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
                                              system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
-      if (system.usesGibbsConventionalCFCMC())
+      if (component.usesGibbsConventionalCFCMC())
       {
         component.lambdaGibbs.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
                                                   true);
@@ -690,7 +698,7 @@ void MonteCarloTransitionMatrix::equilibrate()
                 PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
                 system.containsTheFractionalMolecule);
           }
-          if (system.usesGibbsConventionalCFCMC())
+          if (component.usesGibbsConventionalCFCMC())
           {
             component.lambdaGibbs.WangLandauIteration(
                 PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, true);
@@ -754,7 +762,7 @@ void MonteCarloTransitionMatrix::production()
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
                                              system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
-      if (system.usesGibbsConventionalCFCMC())
+      if (component.usesGibbsConventionalCFCMC())
       {
         component.lambdaGibbs.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize, true);
         component.lambdaGibbs.clear();

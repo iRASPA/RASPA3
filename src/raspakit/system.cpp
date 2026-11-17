@@ -430,8 +430,18 @@ void System::determineSwappableComponents()
 
 void System::rescaleMoveProbabilities()
 {
+  // The moves of the system (volume, hybrid MC, parallel tempering, reactions) are drawn through the tables of the
+  // components: a step picks a component that has moves and then a move from its table. They are joined into the
+  // tables of the components that have moves of their own. Joined into every table, a component without moves
+  // (fixed extra-framework ions) became one "with moves": it was picked as often as a mobile one and then made a
+  // system move every time, which multiplied the frequency of the system moves. Only when no component has a move
+  // of its own do the system moves go into every table, so that they are drawn at all.
+  const auto hasMoves = [](const Component& component)
+  { return std::ranges::any_of(component.mc_moves_probabilities.probabilities, [](double p) { return p > 0.0; }); };
+  const bool anyComponentMoves = std::ranges::any_of(components, hasMoves);
   for (Component& component : components)
   {
+    if (anyComponentMoves && !hasMoves(component)) continue;
     component.mc_moves_probabilities.join(mc_moves_probabilities);
   }
 }
@@ -692,7 +702,7 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
     component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda,
                                        gcFractionalMoleculeIsActive(componentId), w);
 
-    if (usesGibbsConventionalCFCMC())
+    if (component.usesGibbsConventionalCFCMC())
     {
       const double gibbsLambda = component.lambdaGibbs.lambdaValue();
       const double gibbsDudlambda = currentDUdlambda(gibbsLambda, component.lambdaGibbs.dUdlambdaGroupId);

@@ -593,7 +593,7 @@ std::vector<std::pair<std::string, const PropertyLambdaProbabilityHistogram*>> s
 {
   const Component& component = system.components[componentId];
   std::vector<std::pair<std::string, const PropertyLambdaProbabilityHistogram*>> histograms;
-  if (system.usesGibbsConventionalCFCMC()) histograms.push_back({"GibbsCFCMC", &component.lambdaGibbs});
+  if (component.usesGibbsConventionalCFCMC()) histograms.push_back({"GibbsCFCMC", &component.lambdaGibbs});
   if (system.componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCFCMC))
     histograms.push_back({"PairSwapCFCMC", &component.lambdaPairSwap});
   if (system.componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCBCFCMC))

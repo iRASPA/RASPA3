@@ -1142,7 +1142,9 @@ export struct System
       w *= (gcFractionalMoleculeIsActive(componentId) && usesGCLambda(componentId) && !tmmcOwnsGCLambda(componentId)
                 ? component.lambdaGC.weight()
                 : 1.0) *
-           component.lambdaGibbs.weight();
+           // (of a component that has the conventional Gibbs CFCMC move only: the histogram of another holds no
+           // molecule)
+           (component.usesGibbsConventionalCFCMC() ? component.lambdaGibbs.weight() : 1.0);
 
       if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCFCMC))
       {

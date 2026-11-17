@@ -89,7 +89,9 @@ export struct MonteCarlo
   std::size_t numberOfSteps;                    ///< Total number of steps performed.
 
   std::size_t printEvery;               ///< Frequency of printing status reports.
-  std::size_t writeRestartEvery;        ///< Frequency of writing restart files.
+  /// Frequency of writing restart files. Not part of the binary restart: a driver read back from one has this
+  /// value, where it was left unset (and a zero is a division by zero in the cycle loop).
+  std::size_t writeRestartEvery{5000};
   std::size_t writeBinaryRestartEvery;  ///< Frequency of writing binary restart files.
   std::size_t rescaleWangLandauEvery;   ///< Frequency of rescaling Wang-Landau factors.
   std::size_t optimizeMCMovesEvery;     ///< Frequency of optimizing MC moves.

@@ -3561,6 +3561,13 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
     {
       selectedSystem.mc_moves_statistics.addAllCounts(moveType);
     }
+    // the Gibbs volume move is a move of both boxes (it counts its trials in both): so are its call count and
+    // its time
+    if (moveType == Move::Types::GibbsVolume && &selectedSecondSystem != &selectedSystem)
+    {
+      selectedSecondSystem.mc_moves_cputime[moveType][Move::Timing::Total] += (t2 - t1);
+      selectedSecondSystem.mc_moves_statistics.addAllCounts(moveType);
+    }
   }
   settleCellLists(moveType, selectedSystem, selectedSecondSystem);
   return moveType;

@@ -440,7 +440,7 @@ void Minimization::performCycle()
               PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
               selectedSecondSystem.lambdaWangLandauIsActive(selectedComponent));
 
-        if (selectedSystem.usesGibbsConventionalCFCMC())
+        if (selectedSystem.components[selectedComponent].usesGibbsConventionalCFCMC())
         {
           selectedSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
               PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
@@ -465,7 +465,7 @@ void Minimization::performCycle()
 
     selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
         selectedSystem.gcFractionalMoleculeIsActive(selectedComponent));
-    if (selectedSystem.usesGibbsConventionalCFCMC())
+    if (selectedSystem.components[selectedComponent].usesGibbsConventionalCFCMC())
     {
       selectedSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
     }
@@ -475,7 +475,7 @@ void Minimization::performCycle()
     {
       selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
           selectedSecondSystem.gcFractionalMoleculeIsActive(selectedComponent));
-      if (selectedSecondSystem.usesGibbsConventionalCFCMC())
+      if (selectedSecondSystem.components[selectedComponent].usesGibbsConventionalCFCMC())
       {
         selectedSecondSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
       }
@@ -576,7 +576,7 @@ void Minimization::equilibrate()
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
                                              system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
-      if (system.usesGibbsConventionalCFCMC())
+      if (component.usesGibbsConventionalCFCMC())
       {
         component.lambdaGibbs.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
                                                   true);
@@ -626,7 +626,7 @@ void Minimization::equilibrate()
           component.lambdaGC.WangLandauIteration(
               PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
               system.containsTheFractionalMolecule);
-          if (system.usesGibbsConventionalCFCMC())
+          if (component.usesGibbsConventionalCFCMC())
           {
             component.lambdaGibbs.WangLandauIteration(
                 PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, true);

@@ -9,6 +9,8 @@ import system;
 import simulationbox;
 import mc_moves_move_types;
 import mc_moves_probabilities;
+import randomnumbers;
+import property_lambda_probability_histogram;
 
 // The mole fractions of the swappable components are normalized when the system is built. Given fractions are
 // scaled to sum to one; with none given (all zero) the swappable components share the gas phase equally, and
@@ -171,4 +173,58 @@ TEST(SYSTEM_MOLE_FRACTIONS, the_target_of_an_identity_change_is_swappable_too)
   EXPECT_DOUBLE_EQ(system.components[1].molFraction, 0.5);
   EXPECT_DOUBLE_EQ(system.components[2].molFraction, 1.0);
   EXPECT_EQ(system.swappableComponents, (std::vector<std::size_t>{0, 1}));
+}
+
+// The moves of the system are drawn through the tables of the components. Joined into the table of a component
+// without moves of its own (fixed extra-framework ions), they made it a component "with moves": it was picked as
+// often as a mobile one and then made a system move every time. They go into the tables of the components that
+// have moves; into every table only when no component has one.
+TEST(SYSTEM_MOLE_FRACTIONS, system_moves_are_joined_into_the_components_that_have_moves)
+{
+  const ForceField forceField = makeForceField();
+  MCMoveProbabilities systemMoves;
+  systemMoves.setProbability(Move::Types::VolumeChange, 0.1);
+  const auto immobile = [&](std::string name)
+  {
+    return Component(forceField, std::move(name), 190.564, 4599200, 0.01142,
+                     {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21, MCMoveProbabilities{},
+                     std::nullopt, false);
+  };
+  const auto volumeProbability = [](const Component& component)
+  { return component.mc_moves_probabilities.getProbability(Move::Types::VolumeChange); };
+
+  System mixed(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {},
+               {makeComponent(forceField, "mobile", false, 1.0), immobile("ions")}, {}, {2, 2}, 5, systemMoves);
+  EXPECT_DOUBLE_EQ(volumeProbability(mixed.components[0]), 0.1);
+  EXPECT_DOUBLE_EQ(volumeProbability(mixed.components[1]), 0.0);
+  RandomNumber random(5);
+  for (std::size_t i = 0; i != 200; ++i) EXPECT_EQ(mixed.randomComponent(random), 0uz);
+
+  // no component has a move of its own: the system moves are still drawn
+  System fixed(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {},
+               {immobile("ions"), immobile("more ions")}, {}, {2, 2}, 5, systemMoves);
+  EXPECT_DOUBLE_EQ(volumeProbability(fixed.components[0]), 0.1);
+  EXPECT_DOUBLE_EQ(volumeProbability(fixed.components[1]), 0.1);
+}
+
+// The Gibbs lambda histogram of a component holds a molecule only when the component has the conventional Gibbs
+// CFCMC move. Its bias entered the weight of a configuration for every component with a fractional molecule of any
+// kind, and the Wang-Landau sampling ran on it whenever some component of the system had the move.
+TEST(SYSTEM_MOLE_FRACTIONS, the_gibbs_lambda_bias_of_a_component_without_the_move_is_not_a_weight)
+{
+  const ForceField forceField = makeForceField();
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  probabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
+  Component component(forceField, "methane", 190.564, 4599200, 0.01142,
+                      {Atom({0, 0, 0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21, probabilities, std::nullopt,
+                      false);
+  ASSERT_FALSE(component.usesGibbsConventionalCFCMC());
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {component}, {}, {4}, 5);
+  ASSERT_TRUE(system.components[0].hasFractionalMolecule);
+
+  const double weight = system.weight();
+  std::ranges::fill(system.components[0].lambdaGibbs.biasFactor, -800.0);
+  EXPECT_DOUBLE_EQ(system.weight(), weight);
+  EXPECT_TRUE(std::isfinite(system.weight()));
 }

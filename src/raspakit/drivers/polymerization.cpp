@@ -812,6 +812,13 @@ void Polymerization::topologyChanged(std::size_t systemId)
   table.rebuild(system.forceField, system.components, system.numberOfMoleculesPerComponent,
                 system.spanOfMoleculeAtoms());
 
+  // The reactions retype atoms (type and charge): the counts of the system per pseudo-atom, which normalize the
+  // radial distribution functions and are printed in the reports, the effective counts of the tail corrections and
+  // the net charge follow. A type that first appeared in a reaction kept a count of zero, and its radial
+  // distribution functions were 0/0.
+  system.computeNumberOfPseudoAtoms();
+  system.computeTailCorrectionCounts();
+
   // the engine: per-type sums, list rebuild (the device types follow); the driver: tail-correction counts
   md.engines[systemId].topologyChanged(system);
   if (systemId < md.tailCorrectionCounts.size())

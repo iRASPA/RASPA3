@@ -507,6 +507,17 @@ export struct Component
   }
 
   MCMoveProbabilities mc_moves_probabilities;  ///< Move probabilities for Monte Carlo simulations.
+
+  /// Whether this component has a conventional Gibbs CFCMC move, and with it a fractional molecule on the Gibbs
+  /// lambda 'lambdaGibbs'. The lambda bookkeeping of that histogram (Wang-Landau, occupancy, sampling, the factor
+  /// in the weight of a configuration) is of such a component only: run for every component of a system in which
+  /// some component has the move, it lowered the bias of bin 0 of a histogram no molecule is on, step after
+  /// step, and the weight exp(-bias) of that bin entered every weighted average.
+  [[nodiscard]] bool usesGibbsConventionalCFCMC() const
+  {
+    return mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMC) > 0.0 ||
+           mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCBCFCMC) > 0.0;
+  }
   MCMoveStatistics mc_moves_statistics;
   MCMoveCpuTime mc_moves_cputime;  ///< CPU time statistics for Monte Carlo moves.
 
