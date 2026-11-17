@@ -550,15 +550,13 @@ void System::initializeGibbsConventionalFractionalMolecules(bool complementaryBo
     // The two fractional molecules of a conventional Gibbs transfer share one lambda: lambda_A + lambda_B = 1, in
     // grid points bin_A + bin_B = points - 1. The first box starts at the middle grid point, the other box at the
     // complementary one (they coincide at 1/2 for an odd number of points only); the atoms carry the lambda of the
-    // grid point, not a 1/2 that may lie between two points.
-    double lambda = 0.5;
-    if (lambdaGibbs.numberOfSamplePoints > 1)
-    {
-      const std::size_t lastBin = lambdaGibbs.numberOfSamplePoints - 1;
-      const std::size_t bin = complementaryBox ? lastBin - lastBin / 2 : lastBin / 2;
-      lambdaGibbs.setCurrentBin(bin);
-      lambda = lambdaGibbs.lambdaValue();
-    }
+    // grid point, not a 1/2 that may lie between two points. A grid of a single point has the lambda of that point
+    // (zero: every step of the move is then a crossing that transfers a whole molecule, and both fractional
+    // molecules stay switched off); at 1/2 the two molecules were half a molecule each, which the first step of
+    // the move, reading its lambdas from the grid, switched off without counting it.
+    const std::size_t lastBin = std::max(lambdaGibbs.numberOfSamplePoints, 1uz) - 1;
+    lambdaGibbs.setCurrentBin(complementaryBox ? lastBin - lastBin / 2 : lastBin / 2);
+    const double lambda = lambdaGibbs.lambdaValue();
     for (Atom& atom : fractionalMolecule)
     {
       atom.setScalingToFractional(lambda, groupId);

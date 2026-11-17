@@ -328,6 +328,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   const double biasOldB = lambdaB.biasFactor[oldBinB];
 
   const int numberOfBins = static_cast<int>(lambdaA.numberOfSamplePoints);
+  // The two boxes must be a complementary pair. A third box paired with one of them (the drivers pair neighbours in
+  // the list of systems) breaks the sum rule, and a box then crosses a boundary of the grid while its partner does
+  // not: a molecule would be created or destroyed. The input reader and the drivers refuse such a setup; a pair
+  // that is not complementary is left alone here.
+  if (lambdaB.numberOfSamplePoints != lambdaA.numberOfSamplePoints ||
+      oldBinA + oldBinB + 1uz != lambdaA.numberOfSamplePoints)
+  {
+    return std::nullopt;
+  }
   const double maxChange = componentA.mc_moves_statistics.getMaxChange(move, 2);
   // the step in grid points (at most one period of the grid, so a box crosses at most one boundary)
   const int deltaBins =

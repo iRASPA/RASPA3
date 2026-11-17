@@ -97,7 +97,7 @@ std::optional<RunningEnergy> Interactions::computeInterMolecularEnergyWithOverla
 
 RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField& forceField, const SimulationBox& box,
                                                         const MCCellList& cellList,
-                                                        std::span<const Atom> moleculeAtoms) noexcept
+                                                        std::span<const Atom> moleculeAtoms, bool* overlap) noexcept
 {
   RunningEnergy energySum{};
 
@@ -107,10 +107,10 @@ RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField& forceF
   // systems), the same pairs and pair terms as the scalar enumeration below
   if (cellList.enabled && cellList.valid && cellList.numberOfAtoms == moleculeAtoms.size())
   {
-    return computeCellListInterMolecularEnergy(forceField, box, cellList, moleculeAtoms);
+    return computeCellListInterMolecularEnergy(forceField, box, cellList, moleculeAtoms, overlap);
   }
   // no usable list: the pair sum over a structure-of-arrays copy of the atoms
-  return computeAllPairsInterMolecularEnergy(forceField, box, moleculeAtoms);
+  return computeAllPairsInterMolecularEnergy(forceField, box, moleculeAtoms, overlap);
 }
 
 // Brick-CFCMC-style aggregated accounting: build effective (fractionally-weighted) pseudo-atom-type counts
@@ -1013,7 +1013,8 @@ void Interactions::computeInterMolecularElectrostaticPotential(const ForceField&
 
 RunningEnergy Interactions::computeInterMolecularElectricField(const ForceField& forceField, const SimulationBox& box,
                                                                std::span<double3> electricFieldMolecules,
-                                                               std::span<const Atom> moleculeAtoms) noexcept
+                                                               std::span<const Atom> moleculeAtoms,
+                                                               bool* overlap) noexcept
 {
   double3 dr, posA, posB, f;
   double rr;
@@ -1021,6 +1022,7 @@ RunningEnergy Interactions::computeInterMolecularElectricField(const ForceField&
   RunningEnergy energySum{};
 
   bool useCharge = forceField.useCharge;
+  const double overlapCriteria = forceField.energyOverlapCriteria;
   const double cutOffMoleculeVDWSquared = forceField.cutOffMoleculeVDW * forceField.cutOffMoleculeVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
@@ -1063,6 +1065,7 @@ RunningEnergy Interactions::computeInterMolecularElectricField(const ForceField&
           Potentials::PairDerivatives<0> energyFactor =
               Potentials::potentialVDW<0>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
+          if (overlap != nullptr && energyFactor.energy > overlapCriteria) *overlap = true;
           energySum.moleculeMoleculeVDW += energyFactor.energy;
           energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
         }

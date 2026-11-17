@@ -93,12 +93,16 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
     const ForceField& forceField, const SimulationBox& simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms) noexcept
+    std::span<const Atom> moleculeAtoms, bool* overlap) noexcept
 {
   RunningEnergy energySum{};
 
   if (!framework.has_value()) return energySum;
   if (moleculeAtoms.empty()) return energySum;
+
+  // 'overlap' is set by the test the moves of a single molecule apply: a pair (or the grid value of an atom) above
+  // the overlap criterion. The sums themselves grow with the system and say nothing about a single pair.
+  const double overlapCriteria = forceField.energyOverlapCriteria;
 
   // a grid holds the framework as it was built: a framework with mobile atoms is evaluated by pairs, as the
   // gradient does
@@ -112,6 +116,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
     {
       prefetchGridCell(forceField, interpolationGrids, moleculeAtoms, index + gridPrefetchDistance);
       const auto [energyVDW, energyCoulomb] = gridEnergies(forceField, interpolationGrids, moleculeAtom);
+      if (overlap != nullptr && energyVDW > overlapCriteria) *overlap = true;
       energySum.frameworkMoleculeVDW += energyVDW;
       energySum.frameworkMoleculeCharge += energyCoulomb;
     }
@@ -121,6 +126,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
           forceField, simulationBox, moleculeAtom, frameworkAtoms,
           [&](std::size_t, const Atom& frameworkAtom, const Potentials::PairDerivatives<0>& factors, const double3&)
           {
+            if (overlap != nullptr && factors.energy > overlapCriteria) *overlap = true;
             energySum.frameworkMoleculeVDW += factors.energy;
             energySum.addDudlambdaVDW(moleculeAtom.groupId, frameworkAtom.groupId, moleculeAtom.scalingVDW,
                                       frameworkAtom.scalingVDW, factors.dUdlambda);
@@ -915,7 +921,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceFie
                                                                   const SimulationBox& simulationBox,
                                                                   std::span<double3> electricFieldMolecules,
                                                                   std::span<const Atom> frameworkAtoms,
-                                                                  std::span<const Atom> moleculeAtoms) noexcept
+                                                                  std::span<const Atom> moleculeAtoms,
+                                                                  bool* overlap) noexcept
 {
   double3 dr, posA, posB, f;
   double rr;
@@ -923,6 +930,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceFie
   RunningEnergy energySum{};
 
   bool useCharge = forceField.useCharge;
+  const double overlapCriteria = forceField.energyOverlapCriteria;
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
@@ -957,6 +965,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceFie
         Potentials::PairDerivatives<0> energyFactor =
             Potentials::potentialVDW<0>(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
+        if (overlap != nullptr && energyFactor.energy > overlapCriteria) *overlap = true;
         energySum.frameworkMoleculeVDW += energyFactor.energy;
         energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
       }

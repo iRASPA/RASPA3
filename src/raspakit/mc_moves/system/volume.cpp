@@ -53,7 +53,7 @@ MC_Moves::SavedVolumeState MC_Moves::saveVolumeState(const System& system)
   return saved;
 }
 
-RunningEnergy MC_Moves::applyTrialVolume(System& system, const SimulationBox& newBox)
+std::optional<RunningEnergy> MC_Moves::applyTrialVolume(System& system, const SimulationBox& newBox)
 {
   // Scale molecules by their centre of mass: only the centre-of-mass fractional position is kept fixed while
   // each molecule is translated rigidly. This preserves the internal geometry of both rigid and flexible
@@ -72,7 +72,10 @@ RunningEnergy MC_Moves::applyTrialVolume(System& system, const SimulationBox& ne
   // only computes it when it is absent, so it is rebuilt here for the trial box.
   if (!system.spanOfRigidFrameworkAtoms().empty()) system.precomputeTotalRigidEnergy();
 
-  return system.computeTotalEnergies();
+  bool overlap = false;
+  const RunningEnergy trialEnergy = system.computeTotalEnergies(&overlap);
+  if (overlap) return std::nullopt;
+  return trialEnergy;
 }
 
 void MC_Moves::restoreVolumeState(System& system, const SavedVolumeState& saved)
@@ -104,16 +107,6 @@ void MC_Moves::restoreVolumeState(System& system, const SavedVolumeState& saved)
   // positions; it must not survive the restore (the box comparison in 'isCurrent' would catch a changed box,
   // but a restored cut-off or an identical box would not).
   system.invalidateCellList();
-}
-
-bool MC_Moves::volumeTrialOverlaps(const System& system, const RunningEnergy& trialEnergy)
-{
-  // The rigid translation of the molecules keeps their internal geometry, so only the pairs with the other
-  // molecules, with the framework (which does not move with the box) and with the external field can overlap.
-  const double overlapCriteria = system.forceField.energyOverlapCriteria;
-  return trialEnergy.moleculeMoleculeVDW + trialEnergy.moleculeMoleculeCharge > overlapCriteria ||
-         trialEnergy.frameworkMoleculeVDW + trialEnergy.frameworkMoleculeCharge > overlapCriteria ||
-         trialEnergy.externalFieldVDW + trialEnergy.externalFieldCharge > overlapCriteria;
 }
 
 bool MC_Moves::volumeTrialBoxFitsCutOffs(const System& system, const SimulationBox& newBox)
@@ -163,14 +156,15 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber& random, System& 
   // The trial box is applied to the live system and its exact total energy computed; every non-accepting exit
   // restores the saved state.
   const SavedVolumeState saved = saveVolumeState(system);
-  RunningEnergy newTotalEnergy =
+  const std::optional<RunningEnergy> trialEnergy =
       timed(system, move, Move::Timing::NonEwald, [&] { return applyTrialVolume(system, newBox); });
 
-  if (volumeTrialOverlaps(system, newTotalEnergy))
+  if (!trialEnergy.has_value())
   {
     restoreVolumeState(system, saved);
     return std::nullopt;
   }
+  RunningEnergy newTotalEnergy = trialEnergy.value();
 
   // Update constructed move counts
   system.mc_moves_statistics.addConstructed(move);
@@ -233,14 +227,15 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
   if (!volumeTrialBoxFitsCutOffs(system, newBox)) return std::nullopt;
 
   const SavedVolumeState saved = saveVolumeState(system);
-  RunningEnergy newTotalEnergy =
+  const std::optional<RunningEnergy> trialEnergy =
       timed(system, move, Move::Timing::NonEwald, [&] { return applyTrialVolume(system, newBox); });
 
-  if (volumeTrialOverlaps(system, newTotalEnergy))
+  if (!trialEnergy.has_value())
   {
     restoreVolumeState(system, saved);
     return std::nullopt;
   }
+  RunningEnergy newTotalEnergy = trialEnergy.value();
 
   system.mc_moves_statistics.addConstructed(move);
 

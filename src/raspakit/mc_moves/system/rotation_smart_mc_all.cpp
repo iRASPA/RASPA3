@@ -185,7 +185,8 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMoveAll(RandomNumber &rand
   system.initializeGroupData();
   system.precomputeTotalGradients();
   const std::vector<double3> torqueNew = torques();
-  const RunningEnergy newEnergy = system.computeTotalEnergies();
+  bool overlap = false;
+  const RunningEnergy newEnergy = system.computeTotalEnergies(&overlap);
   time_end = std::chrono::steady_clock::now();
   system.mc_moves_cputime[move][Move::Timing::Integration] += (time_end - time_begin);
 
@@ -200,9 +201,9 @@ std::optional<RunningEnergy> MC_Moves::rotationSmartMCMoveAll(RandomNumber &rand
 
   const RunningEnergy energyDifference = newEnergy - oldEnergy;
 
-  // a configuration a CBMC move could not retrace (a pair, framework or external-field energy above the overlap
-  // criterion: outside a confining wall, on an atom) is refused as the volume move refuses it
-  if (!MC_Moves::volumeTrialOverlaps(system, newEnergy) &&
+  // a configuration a CBMC move could not retrace (a pair above the overlap criterion, an atom outside a
+  // confining wall) is refused as the volume move refuses it; the test is on the pairs, not on the totals
+  if (!overlap &&
       random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + logBias))
   {
     system.mc_moves_statistics.addAccepted(move);

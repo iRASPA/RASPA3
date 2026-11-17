@@ -993,7 +993,7 @@ void System::precomputeTotalGradients() noexcept
       spanOfFrameworkDynamics(), spanOfFrameworkGroupData());
 }
 
-RunningEnergy System::computeTotalEnergies() noexcept
+RunningEnergy System::computeTotalEnergies(bool* overlap) noexcept
 {
   if (fixedFrameworkStoredEik.empty())
   {
@@ -1044,7 +1044,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
     std::fill(moleculeElectricField.begin(), moleculeElectricField.end(), double3(0.0, 0.0, 0.0));
 
     RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeElectricField(
-        forceField, simulationBox, moleculeElectricField, frameworkAtomPositions, moleculeAtomPositions);
+        forceField, simulationBox, moleculeElectricField, frameworkAtomPositions, moleculeAtomPositions, overlap);
 
     // When molecule-molecule polarization is requested, the inter-molecular electric field has to be added
     // to the stored field so that the polarization energy is consistent with the incremental Monte-Carlo moves
@@ -1053,13 +1053,13 @@ RunningEnergy System::computeTotalEnergies() noexcept
     RunningEnergy intermolecularEnergy;
     if (forceField.omitInterPolarization)
     {
-      intermolecularEnergy =
-          Interactions::computeInterMolecularEnergy(forceField, simulationBox, pairCellList, moleculeAtomPositions);
+      intermolecularEnergy = Interactions::computeInterMolecularEnergy(forceField, simulationBox, pairCellList,
+                                                                       moleculeAtomPositions, overlap);
     }
     else
     {
       intermolecularEnergy = Interactions::computeInterMolecularElectricField(
-          forceField, simulationBox, moleculeElectricField, moleculeAtomPositions);
+          forceField, simulationBox, moleculeElectricField, moleculeAtomPositions, overlap);
     }
 
     RunningEnergy tailEnergy = computeTailCorrectionEnergies();
@@ -1073,7 +1073,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
     RunningEnergy externalFieldEnergy;
     Interactions::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox, moleculeAtomPositions,
-                                             externalFieldEnergy, externalFieldInterpolationGrid);
+                                             externalFieldEnergy, externalFieldInterpolationGrid, overlap);
 
     return frameworkMoleculeEnergy + intermolecularEnergy + tailEnergy + ewaldEnergy + polarizationEnergy +
            runningIntraEnergy + externalFieldEnergy;
@@ -1081,9 +1081,10 @@ RunningEnergy System::computeTotalEnergies() noexcept
   else
   {
     RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeEnergy(
-        forceField, simulationBox, interpolationGrids, framework, frameworkAtomPositions, moleculeAtomPositions);
-    RunningEnergy intermolecularEnergy =
-        Interactions::computeInterMolecularEnergy(forceField, simulationBox, pairCellList, moleculeAtomPositions);
+        forceField, simulationBox, interpolationGrids, framework, frameworkAtomPositions, moleculeAtomPositions,
+        overlap);
+    RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularEnergy(
+        forceField, simulationBox, pairCellList, moleculeAtomPositions, overlap);
 
     RunningEnergy tailEnergy = computeTailCorrectionEnergies();
 
@@ -1093,7 +1094,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
     RunningEnergy externalFieldEnergy;
     Interactions::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox, moleculeAtomPositions,
-                                             externalFieldEnergy, externalFieldInterpolationGrid);
+                                             externalFieldEnergy, externalFieldInterpolationGrid, overlap);
 
     return frameworkMoleculeEnergy + intermolecularEnergy + tailEnergy + ewaldEnergy + runningIntraEnergy +
            externalFieldEnergy;

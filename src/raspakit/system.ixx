@@ -489,7 +489,11 @@ export struct System
   /// Framework-molecule and molecule-molecule VDW tail corrections (energy and dU/dlambda) of the current
   /// configuration, evaluated from aggregated per-type counts (O(N)). The gradient routines do not include them.
   RunningEnergy computeTailCorrectionEnergies() const noexcept;
-  RunningEnergy computeTotalEnergies() noexcept;
+  /// The total energy of the configuration. With 'overlap' the pairs are tested as the moves of a single molecule
+  /// test them (a molecule-molecule or framework-molecule van der Waals pair above the overlap criterion, an atom
+  /// outside the confining geometry of an external field) and '*overlap' is set when one is found; the energy
+  /// returned is then not a total (the kernels stop at the pair). '*overlap' is never cleared.
+  RunningEnergy computeTotalEnergies(bool* overlap = nullptr) noexcept;
   RunningEnergy computePolarizationEnergy() noexcept;
   RunningEnergy computeTotalGradients() noexcept;
   void computeTotalElectrostaticPotential() noexcept;
@@ -1419,6 +1423,19 @@ export struct System
    * afterwards.
    */
   void exchangeConfiguration(System& other);
+
+  /**
+   * \brief Swaps the ensemble averages of two systems.
+   *
+   * For an exchange that moves the thermodynamic state between two systems and leaves the configurations where
+   * they are (the lambda exchange of the parallel thermodynamic integration): the averages are those of a state,
+   * so they move with it. Swapped are the block averages (energies, loadings, enthalpies, partial molar
+   * properties, temperatures, pressure, box), the elastic-constant fluctuations, the radial distribution
+   * functions, the density grid, the histograms and the molecule properties. The time series and correlation
+   * functions (mean-squared displacement, autocorrelations, evolutions, movies) describe the trajectory of the
+   * configuration and stay, as do the lambda histograms, which are binned by lambda already.
+   */
+  void swapEnsembleAverages(System& other) noexcept;
 
   /**
    * \brief Exchanges what names and accompanies the atoms at two storage indices, leaving the atoms themselves

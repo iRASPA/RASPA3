@@ -17,6 +17,7 @@ import mc_moves_probabilities;
 import mc_moves_statistics;
 import move_statistics;
 import mc_moves_volume;
+import interactions_neighbourhood;
 import randomnumbers;
 import int3;
 import ewald_structure_factor;
@@ -584,28 +585,72 @@ TEST(MC_NPT_DRIFT, volume_jacobian_counts_scaled_fractional_molecules)
   EXPECT_NEAR(sumV / static_cast<double>(samples), expected, 0.2 * expected);
 }
 
-// The volume moves refuse a trial outright when a pair term of its total energy marks an overlap. The molecules
-// translate rigidly, so besides the pairs between molecules a compression can push a molecule into the framework
-// (which does not move with the box) or out of the confining geometry of an external field, whose total carries
-// the sentinel 10 x criterion for such a position; those terms must count as overlaps as well.
-TEST(MC_NPT_DRIFT, volume_trial_overlap_test_covers_every_pair_family)
+// The volume moves (and the other moves of the whole system) refuse a trial outright when it holds an overlap: a
+// pair above the overlap criterion, which a move of a single molecule can neither enter nor leave. The test was
+// on the totals of the pair families, which grow with the system: a dense or ionic system passed the criterion
+// without a single overlapping pair, and every such move was then refused. The test is on the pairs.
+TEST(MC_NPT_DRIFT, the_overlap_of_a_trial_is_a_pair_and_not_a_total)
 {
-  System system = makeDiluteCO2System();
+  const ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("CH4"));
+  Component methane = Component(forceField, "methane", 190.564, 4599200, 0.01142,
+                                {Atom({0, 0, 0}, 0.0, 1.0, 0, type, 0, false, false)}, {}, {}, 5, 21, {}, std::nullopt,
+                                false);
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {64}, 5);
+
+  // a compressed lattice: every nearest pair is mildly repulsive, far below the criterion
+  auto place = [&](double spacing)
+  {
+    std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+    ASSERT_EQ(atoms.size(), 64uz);
+    for (std::size_t i = 0; i != 64uz; ++i)
+    {
+      const double3 position(5.0 + spacing * static_cast<double>(i % 4), 5.0 + spacing * static_cast<double>((i / 4) % 4),
+                             5.0 + spacing * static_cast<double>(i / 16));
+      atoms[i].position = position;
+      system.moleculeData[i].centerOfMassPosition = position;
+    }
+  };
+  place(3.1);
+
+  // A low criterion, so that a modest lattice shows the difference between a pair and a total: a quarter of the
+  // total, which the 144 nearest pairs of the lattice share (each of them is far below it).
+  const double total = system.computeTotalEnergies().moleculeMoleculeVDW;
+  ASSERT_GT(total, 0.0) << "the lattice is not dense enough for the test";
+  system.forceField.energyOverlapCriteria = 0.25 * total;
   const double criterion = system.forceField.energyOverlapCriteria;
 
-  RunningEnergy energy{};
-  EXPECT_FALSE(MC_Moves::volumeTrialOverlaps(system, energy));
+  bool overlap = false;
+  const RunningEnergy dense = system.computeTotalEnergies(&overlap);
+  EXPECT_GT(dense.moleculeMoleculeVDW, criterion);
+  EXPECT_FALSE(overlap);
+  // the sum over all pairs without a cell list agrees
+  bool allPairsOverlap = false;
+  const RunningEnergy allPairs = Interactions::computeAllPairsInterMolecularEnergy(
+      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), &allPairsOverlap);
+  EXPECT_FALSE(allPairsOverlap);
+  EXPECT_NEAR(allPairs.moleculeMoleculeVDW, dense.moleculeMoleculeVDW, 1e-8 * std::abs(dense.moleculeMoleculeVDW));
+  // the trial of a volume move in the same box is this configuration: it is evaluated, not refused
+  const std::optional<RunningEnergy> trial = MC_Moves::applyTrialVolume(system, system.simulationBox);
+  ASSERT_TRUE(trial.has_value());
+  EXPECT_NEAR(trial->moleculeMoleculeVDW, dense.moleculeMoleculeVDW, 1e-8 * std::abs(dense.moleculeMoleculeVDW));
 
-  energy.moleculeMoleculeVDW = 2.0 * criterion;
-  EXPECT_TRUE(MC_Moves::volumeTrialOverlaps(system, energy));
-  energy.moleculeMoleculeVDW = 0.0;
+  // one pair on top of each other: an overlap, by either sum
+  system.spanOfMoleculeAtoms()[1].position = system.spanOfMoleculeAtoms()[0].position + double3(1.5, 0.0, 0.0);
+  system.moleculeData[1].centerOfMassPosition = system.spanOfMoleculeAtoms()[1].position;
+  overlap = false;
+  static_cast<void>(system.computeTotalEnergies(&overlap));
+  EXPECT_TRUE(overlap);
+  allPairsOverlap = false;
+  static_cast<void>(Interactions::computeAllPairsInterMolecularEnergy(system.forceField, system.simulationBox,
+                                                                      system.spanOfMoleculeAtoms(), &allPairsOverlap));
+  EXPECT_TRUE(allPairsOverlap);
+  EXPECT_FALSE(MC_Moves::applyTrialVolume(system, system.simulationBox).has_value());
 
-  energy.frameworkMoleculeVDW = 2.0 * criterion;
-  EXPECT_TRUE(MC_Moves::volumeTrialOverlaps(system, energy));
-  energy.frameworkMoleculeVDW = 0.0;
-
-  energy.externalFieldVDW = 10.0 * criterion;
-  EXPECT_TRUE(MC_Moves::volumeTrialOverlaps(system, energy));
+  // without the flag the total is what it was: no pair is dropped from it
+  place(3.1);
+  EXPECT_NEAR(system.computeTotalEnergies().moleculeMoleculeVDW, dense.moleculeMoleculeVDW,
+              1e-10 * std::abs(dense.moleculeMoleculeVDW));
 }
 
 // With user-fixed cut-offs the box must keep every cut-off within half of its smallest perpendicular width, or

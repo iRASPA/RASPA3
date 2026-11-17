@@ -134,6 +134,14 @@ ParallelTemperingMolecularDynamics::ParallelTemperingMolecularDynamics(InputRead
   {
     throw std::runtime_error(std::format("[ParallelTemperingMolecularDynamics]: {}\n", reason.value()));
   }
+  // the swap is the canonical one: a replica without a thermostat keeps its energy between the swaps and is at no
+  // temperature of the ladder (the input reader refuses it as well)
+  if (templateSystem.molecularDynamicsEnsemble != MolecularDynamicsEnsemble::NVT)
+  {
+    throw std::runtime_error(
+        "[ParallelTemperingMolecularDynamics]: the ensemble must be NVT: the acceptance rule of the swap and the "
+        "rescaling of the momenta are those of replicas held at their temperatures by a thermostat\n");
+  }
 
   systems.reserve(numberOfReplicas);
   for (std::size_t replicaId = 0; replicaId + 1 < numberOfReplicas; ++replicaId)

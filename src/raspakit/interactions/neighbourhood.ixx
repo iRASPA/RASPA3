@@ -208,7 +208,8 @@ struct Neighbourhood
 [[nodiscard]] RunningEnergy computeCellListInterMolecularEnergy(const ForceField& forceField,
                                                                 const SimulationBox& simulationBox,
                                                                 const MCCellList& cellList,
-                                                                std::span<const Atom> moleculeAtoms) noexcept;
+                                                                std::span<const Atom> moleculeAtoms,
+                                                                bool* overlap = nullptr) noexcept;
 
 /**
  * \brief The total intermolecular energy of 'moleculeAtoms' without a cell list (a box too small for one, or the
@@ -222,5 +223,6 @@ struct Neighbourhood
  */
 [[nodiscard]] RunningEnergy computeAllPairsInterMolecularEnergy(const ForceField& forceField,
                                                                 const SimulationBox& simulationBox,
-                                                                std::span<const Atom> moleculeAtoms) noexcept;
+                                                                std::span<const Atom> moleculeAtoms,
+                                                                bool* overlap = nullptr) noexcept;
 }  // namespace Interactions

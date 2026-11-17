@@ -331,10 +331,12 @@ reported separately at the end of the simulation.
     (Sugita & Okamoto, Chem. Phys. Lett. 314, 141-151, 1999). Exactly one
     system is declared in the input, with a temperature ladder given by the
     system key `"ExternalTemperatures"` (a sorted list of at least two
-    temperatures) and an `"Ensemble"` of `"NVE"` or `"NVT"` (the swap
+    temperatures) and an `"Ensemble"` of `"NVT"` (the swap
     exchanges configurations and momenta only; the cell and the number of
     molecules of every replica are fixed, so the barostat and
-    particle-exchange ensembles are rejected). The system is replicated
+    particle-exchange ensembles are rejected, and `"NVE"` is rejected
+    because the acceptance rule of the swap is that of replicas held at
+    their temperatures by a thermostat). The system is replicated
     internally into one replica per temperature, and every replica is
     integrated in its own thread with its own random-number stream and its
     own Nosé–Hoover chain at its own temperature.
@@ -714,6 +716,13 @@ reported separately at the end of the simulation.
     the threads besides the start and end of each stage. Because the exchanges
     permute the λ values over the replicas, every λ-bin is occupied by exactly
     one replica at all times and the whole curve is sampled every cycle.
+    The ensemble averages (energies, pressure, loadings, radial distribution
+    functions, histograms) belong to a λ, not to a replica: they move with the
+    λ at an accepted exchange, so the averages a replica reports at the end,
+    and the sampled property files with the index of a λ-bin, are those of
+    that λ-bin. A production cycle has a fixed number of Monte Carlo steps,
+    set at the start of production from the mean number of molecules of the
+    replicas.
 
     At the end the per-bin ⟨∂U/∂λ⟩ book-keeping of all replicas is stitched
     together and integrated from λ=0 to λ=1 with three quadrature rules, each

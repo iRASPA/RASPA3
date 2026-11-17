@@ -222,13 +222,14 @@ std::optional<RunningEnergy> hybridMCMoveWithEngine(RandomNumber& random, System
   const double finalKinetic = trajectoryEnergy.translationalKineticEnergy + trajectoryEnergy.rotationalKineticEnergy;
   // the exact energy of the new configuration (this also refreshes the stored Ewald structure factors)
   const std::chrono::steady_clock::time_point time_energy = std::chrono::steady_clock::now();
-  RunningEnergy finalEnergy = system.computeTotalEnergies();
+  bool overlap = false;
+  RunningEnergy finalEnergy = system.computeTotalEnergies(&overlap);
   system.mc_moves_cputime[move][Move::Timing::Energy] += (std::chrono::steady_clock::now() - time_energy);
   const double deltaH = (finalEnergy.potentialEnergy() + finalKinetic) - (oldEnergy.potentialEnergy() + initialKinetic);
 
-  // a configuration a CBMC move could not retrace (a pair, framework or external-field energy above the overlap
-  // criterion: outside a confining wall, on an atom) is refused as the volume move refuses it
-  if (!MC_Moves::volumeTrialOverlaps(system, finalEnergy) && random.uniform() < std::exp(-system.beta * deltaH))
+  // a configuration a CBMC move could not retrace (a pair above the overlap criterion, an atom outside a
+  // confining wall) is refused as the volume move refuses it; the test is on the pairs, not on the totals
+  if (!overlap && random.uniform() < std::exp(-system.beta * deltaH))
   {
     system.mc_moves_statistics.addAccepted(move);
     // the adaptive HMC step size is a property of the move, not of the system (the MD drivers read 'timeStep')
@@ -468,7 +469,8 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   // the exact energy of the new configuration (this also refreshes the stored Ewald structure factors and the
   // electric field)
   time_begin = std::chrono::steady_clock::now();
-  RunningEnergy newEnergy = system.computeTotalEnergies();
+  bool overlap = false;
+  RunningEnergy newEnergy = system.computeTotalEnergies(&overlap);
   system.mc_moves_cputime[move][Move::Timing::Energy] += (std::chrono::steady_clock::now() - time_begin);
 
   // the Metropolis rule on the exact Hamiltonian H = U + K: a trajectory that lowers H is always accepted (the
@@ -478,7 +480,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   const double deltaH = (newEnergy.potentialEnergy() + finalKinetic) - (oldEnergy.potentialEnergy() + initialKinetic);
 
   // accept or reject based on energy difference
-  if (!MC_Moves::volumeTrialOverlaps(system, newEnergy) && random.uniform() < std::exp(-system.beta * deltaH))
+  if (!overlap && random.uniform() < std::exp(-system.beta * deltaH))
   {
     system.mc_moves_statistics.addAccepted(move);
 

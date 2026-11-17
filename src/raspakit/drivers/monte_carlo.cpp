@@ -163,6 +163,14 @@ void MonteCarlo::setup()
 
     if (system.usesGibbsConventionalCFCMC())
     {
+      // one shared lambda pairs two boxes only (see the input reader): among three a box would cross a boundary
+      // of the lambda grid without its partner, and a molecule would be created or destroyed
+      if (systems.size() != 2uz)
+      {
+        throw std::runtime_error(std::format(
+            "Monte Carlo: the conventional Gibbs CFCMC moves need exactly two systems, {} were given\n",
+            systems.size()));
+      }
       // the second box holds the complementary lambda (lambda_A + lambda_B = 1)
       system.initializeGibbsConventionalFractionalMolecules(system_id != 0uz);
       system.precomputeTotalRigidEnergy();

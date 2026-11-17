@@ -5526,6 +5526,32 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
+  // The conventional Gibbs CFCMC moves keep one fractional molecule in each box, on one shared lambda:
+  // lambda_A + lambda_B = 1, in grid points bin_A + bin_B = points - 1, so that both cross a boundary of the grid in
+  // the same step (one box gains the molecule the other loses). Among three boxes the middle one would be the
+  // partner of two: the sum rule cannot hold for both pairs after a single step, and one box then crosses while its
+  // partner does not, which creates or destroys a molecule.
+  for (std::size_t i = 0uz; i < systems.size(); ++i)
+  {
+    for (const Component& component : systems[i].components)
+    {
+      for (const auto& [move, keyword] :
+           {std::pair{Move::Types::GibbsConventionalCFCMC, "GibbsConventionalCFCMCProbability"},
+            std::pair{Move::Types::GibbsConventionalCBCFCMC, "GibbsConventionalCBCFCMCProbability"}})
+      {
+        if (!(component.mc_moves_probabilities.getProbability(move) > 0.0)) continue;
+        if (systems.size() != 2uz)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: '{}' (system {}, component '{}') needs exactly two systems, {} were declared; the "
+              "two fractional molecules of the move share one lambda, which pairs two boxes only. Use "
+              "'GibbsSwapCBMCProbability' or 'GibbsSwapCFCMCProbability' among three or more boxes.\n",
+              keyword, i, component.name, systems.size()));
+        }
+      }
+    }
+  }
+
   for (std::size_t i = 0uz; i < systems.size(); ++i)
   {
     for (std::size_t reactionId = 0uz; const Reaction& reaction : systems[i].reactions.list)
@@ -6053,8 +6079,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   }
 
   // Replica-exchange molecular dynamics: a single declared system is replicated by the driver into one
-  // replica per temperature (each integrated in its own thread); only the fixed-cell, fixed-N ensembles
-  // are supported (the swap exchanges configurations and momenta, the cell and molecule counts stay)
+  // replica per temperature (each integrated in its own thread); the cell and the molecule counts stay (the swap
+  // exchanges configurations and momenta), and every replica is held at its temperature by its own thermostat.
+  // Without one ('NVE') a replica keeps the energy it started with between the swaps: the canonical acceptance
+  // rule and the rescaling of the momenta by sqrt(T_new / T_old) then exchange between trajectories that are at
+  // no temperature of the ladder, and the replicas sample neither the microcanonical nor the canonical ensemble.
   if (simulationType == SimulationType::ParallelTemperingMolecularDynamics)
   {
     if (systems.size() != 1)
@@ -6071,12 +6100,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       "the system a key 'ExternalTemperatures' with a sorted list of at least two temperatures\n"));
     }
     const MolecularDynamicsEnsemble ensemble = systems.front().molecularDynamicsEnsemble;
-    if (ensemble != MolecularDynamicsEnsemble::NVE && ensemble != MolecularDynamicsEnsemble::NVT)
+    if (ensemble != MolecularDynamicsEnsemble::NVT)
     {
       throw std::runtime_error(
-          std::format("[Input reader]: 'ParallelTemperingMolecularDynamics' supports the 'Ensemble' values 'NVE' "
-                      "and 'NVT' only (the configuration swap keeps the cell and the number of molecules of every "
-                      "replica), '{}' was given\n",
+          std::format("[Input reader]: 'ParallelTemperingMolecularDynamics' needs the 'Ensemble' value 'NVT' (the "
+                      "configuration swap keeps the cell and the number of molecules of every replica, and its "
+                      "acceptance rule is that of replicas held at their temperatures by a thermostat), '{}' was "
+                      "given\n",
                       molecularDynamicsEnsembleName(ensemble)));
     }
   }

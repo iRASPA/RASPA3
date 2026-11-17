@@ -72,14 +72,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   }
 
   const SavedVolumeState savedA = saveVolumeState(systemA);
-  RunningEnergy newTotalEnergyA =
+  const std::optional<RunningEnergy> trialEnergyA =
       timed(systemA, move, Move::Timing::NonEwald, [&] { return applyTrialVolume(systemA, newBoxA); });
 
-  if (volumeTrialOverlaps(systemA, newTotalEnergyA))
+  if (!trialEnergyA.has_value())
   {
     restoreVolumeState(systemA, savedA);
     return std::nullopt;
   }
+  RunningEnergy newTotalEnergyA = trialEnergyA.value();
 
   systemA.mc_moves_statistics.addConstructed(move);
 
@@ -88,15 +89,16 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   const double numberOfMoleculesB = numberOfScaledMolecules(systemB);
 
   const SavedVolumeState savedB = saveVolumeState(systemB);
-  RunningEnergy newTotalEnergyB =
+  const std::optional<RunningEnergy> trialEnergyB =
       timed(systemB, move, Move::Timing::NonEwald, [&] { return applyTrialVolume(systemB, newBoxB); });
 
-  if (volumeTrialOverlaps(systemB, newTotalEnergyB))
+  if (!trialEnergyB.has_value())
   {
     restoreVolumeState(systemA, savedA);
     restoreVolumeState(systemB, savedB);
     return std::nullopt;
   }
+  RunningEnergy newTotalEnergyB = trialEnergyB.value();
 
   systemB.mc_moves_statistics.addConstructed(move);
 

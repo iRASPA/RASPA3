@@ -1117,7 +1117,12 @@ TEST(MC_GIBBS_DRIFT, methane_gibbs_conventional_cfcbmc)
   }
 }
 
-TEST(MC_GIBBS_DRIFT, conventional_mixed_insert_and_lambda_boundary)
+// The two fractional molecules of the conventional Gibbs CFCMC move share one lambda: bin_A + bin_B = points - 1,
+// so that both boxes cross a boundary of the grid in the same step and one gains the molecule the other loses.
+// A pair off that rule (a third box paired with one of the two) had one box cross while the other only changed
+// its lambda: a molecule was created or destroyed. Such a pair is left alone; a complementary pair conserves the
+// number of molecules through every crossing.
+TEST(MC_GIBBS_DRIFT, conventional_conserves_the_number_of_molecules)
 {
   const ForceField forceField = makeZeoliteAlkaneForceField();
   Component methane = Component::makeMethane(forceField, 0);
@@ -1129,30 +1134,49 @@ TEST(MC_GIBBS_DRIFT, conventional_mixed_insert_and_lambda_boundary)
       System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {12}, 5),
       System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {12}, 5)};
   setupSerialGibbsCFCMC(systems);
+  const std::size_t lastBin = systems[0].components[0].lambdaGibbs.numberOfSamplePoints - 1;
+  ASSERT_EQ(lastBin, 20uz);
 
+  const std::size_t total =
+      systems[0].numberOfIntegerMoleculesPerComponent[0] + systems[1].numberOfIntegerMoleculesPerComponent[0];
+
+  // off the sum rule: 19 + 10 is not 20
   setGibbsLambda(systems[0], 0, 19);
   setGibbsLambda(systems[1], 0, 10);
-  favorAllBinsExceptCurrent(systems[0].components[0]);
-  favorAllBinsExceptCurrent(systems[1].components[0]);
-
-  const std::size_t integersA = systems[0].numberOfIntegerMoleculesPerComponent[0];
-  const std::size_t integersB = systems[1].numberOfIntegerMoleculesPerComponent[0];
-  const RunningEnergy beforeA = systems[0].computeTotalEnergies();
-  const RunningEnergy beforeB = systems[1].computeTotalEnergies();
-
   RandomNumber random(42);
-  const auto delta =
-      MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(random, systems[0], systems[1], 0, false);
-  ASSERT_TRUE(delta.has_value());
-  systems[0].runningEnergies += delta->first;
-  systems[1].runningEnergies += delta->second;
+  for (std::size_t i = 0; i != 200; ++i)
+  {
+    EXPECT_FALSE(
+        MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(random, systems[0], systems[1], 0, false).has_value());
+  }
+  EXPECT_EQ(systems[0].components[0].lambdaGibbs.currentBin, 19uz);
+  EXPECT_EQ(systems[1].components[0].lambdaGibbs.currentBin, 10uz);
+  EXPECT_EQ(systems[0].numberOfIntegerMoleculesPerComponent[0] + systems[1].numberOfIntegerMoleculesPerComponent[0],
+            total);
 
-  EXPECT_EQ(systems[0].numberOfIntegerMoleculesPerComponent[0], integersA + 1);
-  EXPECT_EQ(systems[1].numberOfIntegerMoleculesPerComponent[0], integersB);
-  EXPECT_NEAR(delta->first.potentialEnergy(),
-              (systems[0].computeTotalEnergies() - beforeA).potentialEnergy(), 1e-6);
-  EXPECT_NEAR(delta->second.potentialEnergy(),
-              (systems[1].computeTotalEnergies() - beforeB).potentialEnergy(), 1e-6);
+  // on it: the crossings transfer a molecule, and the rule holds after every step
+  setGibbsLambda(systems[0], 0, 19);
+  setGibbsLambda(systems[1], 0, 1);
+  systems[0].components[0].mc_moves_statistics.setMaxChange(Move::Types::GibbsConventionalCFCMC,
+                                                           double3(0.5, 0.5, 0.5));
+  std::size_t transfers = 0;
+  for (std::size_t i = 0; i != 2000; ++i)
+  {
+    const std::size_t before = systems[0].numberOfIntegerMoleculesPerComponent[0];
+    const auto delta =
+        MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(random, systems[0], systems[1], 0, false);
+    if (delta.has_value())
+    {
+      systems[0].runningEnergies += delta->first;
+      systems[1].runningEnergies += delta->second;
+    }
+    if (systems[0].numberOfIntegerMoleculesPerComponent[0] != before) ++transfers;
+    ASSERT_EQ(systems[0].numberOfIntegerMoleculesPerComponent[0] + systems[1].numberOfIntegerMoleculesPerComponent[0],
+              total);
+    ASSERT_EQ(systems[0].components[0].lambdaGibbs.currentBin + systems[1].components[0].lambdaGibbs.currentBin,
+              lastBin);
+  }
+  EXPECT_GT(transfers, 0uz);
   expectNoEnergyDrift(systems[0]);
   expectNoEnergyDrift(systems[1]);
 }
@@ -1181,11 +1205,8 @@ TEST(MC_GIBBS_DRIFT, conventional_counts_its_trials_on_the_channel_of_their_kind
     bool towardsA;  // a boundary crossing moves a molecule towards A (channel 0) or towards B (channel 1)
     bool crossings;
   };
-  const std::vector<Scenario> scenarios{{10, 10, false, false},
-                                        {19, 10, true, true},
-                                        {1, 10, false, true},
-                                        {10, 1, true, true},
-                                        {10, 19, false, true}};
+  // complementary pairs (bin_A + bin_B = 20): the two boxes cross a boundary of the grid in the same step
+  const std::vector<Scenario> scenarios{{10, 10, false, false}, {19, 1, true, true}, {1, 19, false, true}};
   const std::size_t numberOfTrials = 200;
   for (const Scenario &scenario : scenarios)
   {
@@ -1215,7 +1236,7 @@ TEST(MC_GIBBS_DRIFT, conventional_counts_its_trials_on_the_channel_of_their_kind
   }
 }
 
-TEST(MC_GIBBS_DRIFT, cbmc_mixed_lambda_and_delete_boundary)
+TEST(MC_GIBBS_DRIFT, cbmc_insert_and_delete_boundary)
 {
   const ForceField forceField = makeZeoliteAlkaneForceField();
   Component methane = Component::makeMethane(forceField, 0);
@@ -1229,29 +1250,39 @@ TEST(MC_GIBBS_DRIFT, cbmc_mixed_lambda_and_delete_boundary)
       System(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {12}, 5)};
   setupSerialGibbsCFCMC(systems);
 
-  setGibbsLambda(systems[0], 0, 10);
+  // a complementary pair near the boundary: a step of three grid points or more inserts into the first box and
+  // deletes from the second
+  setGibbsLambda(systems[0], 0, 18);
   setGibbsLambda(systems[1], 0, 2);
-  favorAllBinsExceptCurrent(systems[0].components[0]);
-  favorAllBinsExceptCurrent(systems[1].components[0]);
+  systems[0].components[0].mc_moves_statistics.setMaxChange(Move::Types::GibbsConventionalCBCFCMC,
+                                                           double3(0.5, 0.5, 0.5));
 
   const std::size_t integersA = systems[0].numberOfIntegerMoleculesPerComponent[0];
   const std::size_t integersB = systems[1].numberOfIntegerMoleculesPerComponent[0];
-  const RunningEnergy beforeA = systems[0].computeTotalEnergies();
-  const RunningEnergy beforeB = systems[1].computeTotalEnergies();
 
   RandomNumber random(42);
-  const auto delta =
-      MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(random, systems[0], systems[1], 0, true);
-  ASSERT_TRUE(delta.has_value());
-  systems[0].runningEnergies += delta->first;
-  systems[1].runningEnergies += delta->second;
-
-  EXPECT_EQ(systems[0].numberOfIntegerMoleculesPerComponent[0], integersA);
-  EXPECT_EQ(systems[1].numberOfIntegerMoleculesPerComponent[0], integersB - 1);
-  EXPECT_NEAR(delta->first.potentialEnergy(),
-              (systems[0].computeTotalEnergies() - beforeA).potentialEnergy(), 1e-6);
-  EXPECT_NEAR(delta->second.potentialEnergy(),
-              (systems[1].computeTotalEnergies() - beforeB).potentialEnergy(), 1e-6);
+  bool transferred = false;
+  for (std::size_t attempt = 0; attempt != 2000 && !transferred; ++attempt)
+  {
+    const RunningEnergy beforeA = systems[0].computeTotalEnergies();
+    const RunningEnergy beforeB = systems[1].computeTotalEnergies();
+    favorAllBinsExceptCurrent(systems[0].components[0]);
+    favorAllBinsExceptCurrent(systems[1].components[0]);
+    const auto delta =
+        MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(random, systems[0], systems[1], 0, true);
+    if (!delta.has_value()) continue;
+    systems[0].runningEnergies += delta->first;
+    systems[1].runningEnergies += delta->second;
+    EXPECT_NEAR(delta->first.potentialEnergy(), (systems[0].computeTotalEnergies() - beforeA).potentialEnergy(),
+                1e-6);
+    EXPECT_NEAR(delta->second.potentialEnergy(), (systems[1].computeTotalEnergies() - beforeB).potentialEnergy(),
+                1e-6);
+    transferred = systems[0].numberOfIntegerMoleculesPerComponent[0] != integersA;
+  }
+  ASSERT_TRUE(transferred);
+  // one box gained the molecule the other lost
+  EXPECT_EQ(systems[0].numberOfIntegerMoleculesPerComponent[0] + systems[1].numberOfIntegerMoleculesPerComponent[0],
+            integersA + integersB);
   expectNoEnergyDrift(systems[0]);
   expectNoEnergyDrift(systems[1]);
 }
@@ -1428,7 +1459,7 @@ TEST(MC_GIBBS_DRIFT, parallel_tempering_swaps_complete_configuration_only)
   expectNoEnergyDrift(systemB);
 }
 
-TEST(MC_GIBBS_DRIFT, charged_ewald_mixed_boundary_chains_and_rolls_back)
+TEST(MC_GIBBS_DRIFT, charged_ewald_boundary_chains_and_rolls_back)
 {
   const ForceField forceField = makeZeoliteAlkaneForceField();
   Component co2 = Component::makeCO2(forceField, 0, true);
@@ -1441,7 +1472,7 @@ TEST(MC_GIBBS_DRIFT, charged_ewald_mixed_boundary_chains_and_rolls_back)
       System(forceField, box, false, 300.0, 1e4, 1.0, {}, {co2}, {}, {8}, 5)};
   setupSerialGibbsCFCMC(systems);
   setGibbsLambda(systems[0], 0, 19);
-  setGibbsLambda(systems[1], 0, 10);
+  setGibbsLambda(systems[1], 0, 1);
   favorAllBinsExceptCurrent(systems[0].components[0]);
   favorAllBinsExceptCurrent(systems[1].components[0]);
 
@@ -1466,7 +1497,7 @@ TEST(MC_GIBBS_DRIFT, charged_ewald_mixed_boundary_chains_and_rolls_back)
   expectNoEnergyDrift(systems[1]);
 
   setGibbsLambda(systems[0], 0, 19);
-  setGibbsLambda(systems[1], 0, 10);
+  setGibbsLambda(systems[1], 0, 1);
   rejectAllBinsExceptCurrent(systems[0].components[0]);
   rejectAllBinsExceptCurrent(systems[1].components[0]);
   const auto storedA = systems[0].storedEik;

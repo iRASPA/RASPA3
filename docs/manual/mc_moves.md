@@ -2170,6 +2170,11 @@ J. Chem. Theory Comput. **10**, 942-952 (2014).
 
 Keyword: `"GibbsConventionalCFCMCProbability"` (component move)
 
+The move needs exactly two systems (also for `"GibbsConventionalCBCFCMCProbability"`):
+the two fractional molecules share one coupling parameter, \f$\lambda_A + \lambda_B = 1\f$,
+which pairs two boxes only. Use `"GibbsSwapCBMCProbability"` or
+`"GibbsSwapCFCMCProbability"` among three or more boxes.
+
 Parallel CFCMC version of the Gibbs ensemble in the spirit of Shi and Maginn:
 *each box* carries its own fractional molecule of the component, with coupling
 parameters \f$\lambda_A\f$ and \f$\lambda_B\f$ and bias functions \f$\eta_A\f$, \f$\eta_B\f$. A single

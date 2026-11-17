@@ -73,15 +73,16 @@ SavedVolumeState saveVolumeState(const System& system);
  * carries -- inter-molecular, tail, Ewald, intra-molecular, cross-links, polymer links, external field and
  * polarization -- and the stored Ewald structure factors and electric field describe the trial configuration
  * afterwards. A rejected move restores all of that with 'restoreVolumeState'.
+ *
+ * Nothing is returned for a trial with an overlap, which the move refuses outright: a pair of the trial above
+ * 'ForceField::energyOverlapCriteria' (molecule-molecule or framework-molecule) or an atom outside the confining
+ * geometry of an external field, the configurations a move of a single molecule can neither enter nor leave. The
+ * test is on the pairs; the totals of a pair family grow with the system and pass the criterion in a dense or
+ * ionic system without any overlap. The state is the trial state either way and is restored by the caller.
  */
-RunningEnergy applyTrialVolume(System& system, const SimulationBox& newBox);
+std::optional<RunningEnergy> applyTrialVolume(System& system, const SimulationBox& newBox);
 
 void restoreVolumeState(System& system, const SavedVolumeState& saved);
-
-/// Whether a trial total energy marks an overlap (the move is then refused outright): a pair family of the
-/// trial above 'ForceField::energyOverlapCriteria', molecule-molecule, framework-molecule or external field
-/// (the external-field total carries the sentinel 10 x criterion for a position outside the confining geometry).
-bool volumeTrialOverlaps(const System& system, const RunningEnergy& trialEnergy);
 
 /// Whether every user-fixed cut-off still fits the minimum-image convention of the trial box (at most half of
 /// its smallest perpendicular width); the automatic cut-offs follow the box. A trial box that does not fit is

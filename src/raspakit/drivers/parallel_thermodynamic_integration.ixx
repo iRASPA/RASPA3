@@ -12,6 +12,7 @@ import property_lambda_probability_histogram;
 import running_energy;
 import archive;
 import json;
+import simulation_schedule;
 
 /**
  * \brief Parallel thermodynamic-integration driver with lambda-exchange.
@@ -52,7 +53,7 @@ export struct ParallelThermodynamicIntegration
    */
   ParallelThermodynamicIntegration(InputReader& reader);
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
 
   RandomNumber random;  ///< Random number generator (seeding + lambda-exchange acceptance).
 
@@ -83,6 +84,9 @@ export struct ParallelThermodynamicIntegration
   std::size_t tiComponentId{0};       ///< The component whose lambda is pinned.
 
   std::vector<std::size_t> stepsPerReplica;  ///< Production MC steps performed per replica.
+  /// Fixed number of steps of a production cycle, one length for every replica: the lambda of a replica changes
+  /// at the exchanges, so the length belongs to neither a replica nor a lambda.
+  ProductionCycleLength productionCycleLength{};
 
   std::ofstream stream;             ///< The combined output stream (stitched results, exchange statistics).
   std::string outputJsonFileName;   ///< Filename for the combined output JSON file.

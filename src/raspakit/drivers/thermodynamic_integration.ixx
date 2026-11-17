@@ -9,6 +9,7 @@ import averages;
 import system;
 import input_reader;
 import json;
+import simulation_schedule;
 
 /**
  * \brief Fixed-lambda thermodynamic-integration driver.
@@ -53,6 +54,8 @@ export struct ThermodynamicIntegration
   std::size_t printEvery;               ///< Frequency of printing status reports.
   std::size_t writeRestartEvery{5000};  ///< Frequency of writing restart files.
   std::size_t optimizeMCMovesEvery;     ///< Frequency of optimizing MC moves.
+
+  ProductionCycleLength productionCycleLength{};  ///< Fixed number of steps of a production cycle.
 
   std::size_t currentCycle{0};                                      ///< Current cycle number.
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.

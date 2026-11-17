@@ -19,6 +19,7 @@ import system;
 import monte_carlo;
 import simulationbox;
 import running_energy;
+import property_loading;
 import mc_moves_statistics;
 import mc_moves_move_types;
 import mc_moves_probabilities;
@@ -437,4 +438,37 @@ TEST(MC_THERMODYNAMIC_INTEGRATION_DRIFT, DISABLED_gibbs_binary_propane_butane_sw
 
   std::vector<System> systems{systemVapor, systemLiquid};
   runGibbsMonteCarlo(systems);
+}
+
+// The lambda exchange of the parallel thermodynamic integration moves the lambdas between two replicas and leaves
+// the configurations where they are. The ensemble averages are those of a lambda: left with the replica they were
+// averages over its walk through the lambdas. They are swapped with the lambda.
+TEST(MC_THERMODYNAMIC_INTEGRATION_DRIFT, the_ensemble_averages_follow_the_lambda_of_an_exchange)
+{
+  const ForceField forceField = makeZeoliteAlkaneForceField();
+  const Component methane = Component::makeMethane(forceField, 0);
+  const SimulationBox box(30.0, 30.0, 30.0);
+  System systemA(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {5}, 5);
+  System systemB(forceField, box, false, 300.0, 1e4, 1.0, {}, {methane}, {}, {9}, 5);
+
+  for (System* system : {&systemA, &systemB})
+  {
+    for (std::size_t block = 0; block != 5; ++block)
+    {
+      system->averageLoadings.addSample(
+          block, LoadingData(system->components.size(), system->numberOfIntegerMoleculesPerComponent,
+                             system->simulationBox),
+          1.0);
+    }
+  }
+  ASSERT_NEAR(systemA.averageLoadings.averageLoadingNumberOfMolecules(0).first, 5.0, 1e-12);
+  ASSERT_NEAR(systemB.averageLoadings.averageLoadingNumberOfMolecules(0).first, 9.0, 1e-12);
+
+  systemA.swapEnsembleAverages(systemB);
+
+  EXPECT_NEAR(systemA.averageLoadings.averageLoadingNumberOfMolecules(0).first, 9.0, 1e-12);
+  EXPECT_NEAR(systemB.averageLoadings.averageLoadingNumberOfMolecules(0).first, 5.0, 1e-12);
+  // the configurations stayed
+  EXPECT_EQ(systemA.numberOfIntegerMoleculesPerComponent[0], 5uz);
+  EXPECT_EQ(systemB.numberOfIntegerMoleculesPerComponent[0], 9uz);
 }

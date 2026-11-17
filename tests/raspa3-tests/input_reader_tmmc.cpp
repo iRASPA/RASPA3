@@ -1386,6 +1386,86 @@ TEST(INPUT_READER, gibbs_moves_need_a_second_box_at_the_same_temperature)
   EXPECT_EQ(read(gibbsInput(2, 300.0), "gibbs_pair"), 2uz);
 }
 
+// The conventional Gibbs CFCMC moves keep a fractional molecule in each box on one shared lambda, which pairs two
+// boxes only: among three, a box crossed a boundary of the lambda grid while its partner did not, and a molecule
+// was created or destroyed.
+TEST(INPUT_READER, conventional_gibbs_cfcmc_needs_exactly_two_boxes)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  auto gibbsInput = [](std::size_t numberOfSystems, std::size_t numberOfLambdaBins, std::string_view keyword)
+  {
+    nlohmann::json input = readNVTExample();
+    input["SimulationType"] = "MonteCarlo";
+    input["NumberOfLambdaBins"] = numberOfLambdaBins;
+    input["Systems"][0].erase("Ensemble");
+    std::vector<std::size_t> created;
+    for (std::size_t i = 0; i != numberOfSystems; ++i)
+    {
+      input["Systems"][i] = input["Systems"][0];
+      created.push_back(10);
+    }
+    input["Components"][0]["CreateNumberOfMolecules"] = created;
+    input["Components"][0][std::string(keyword)] = 1.0;
+    return input;
+  };
+  auto refusal = [&](nlohmann::json input, std::string_view suffix) -> std::string
+  {
+    TemporaryInput temporary(std::move(input), suffix, workspace.path());
+    ScopedCurrentPath currentPath(workspace.path());
+    try
+    {
+      InputReader reader(temporary.path().filename().string());
+    }
+    catch (const std::runtime_error& error)
+    {
+      return error.what();
+    }
+    return {};
+  };
+  for (std::string_view keyword : {"GibbsConventionalCFCMCProbability", "GibbsConventionalCBCFCMCProbability"})
+  {
+    SCOPED_TRACE(std::string(keyword));
+    EXPECT_NE(refusal(gibbsInput(3, 21, keyword), "gibbs_conventional_three").find("needs exactly two systems"),
+              std::string::npos);
+    EXPECT_EQ(refusal(gibbsInput(2, 1, keyword), "gibbs_conventional_one_bin"), std::string{});
+    EXPECT_EQ(refusal(gibbsInput(2, 21, keyword), "gibbs_conventional_pair"), std::string{});
+  }
+}
+
+// The swap of replica-exchange molecular dynamics is the canonical one: a replica without a thermostat keeps the
+// energy it started with between the swaps and is at no temperature of the ladder.
+TEST(INPUT_READER, replica_exchange_molecular_dynamics_needs_a_thermostat)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+  for (std::string_view ensemble : {"NVE", "NVT"})
+  {
+    SCOPED_TRACE(std::string(ensemble));
+    nlohmann::json input = readNVTExample();
+    input["SimulationType"] = "ParallelTemperingMolecularDynamics";
+    input["Systems"][0]["Ensemble"] = std::string(ensemble);
+    input["Systems"][0]["ExternalTemperatures"] = {300.0, 330.0};
+    TemporaryInput temporary(std::move(input), "remd_" + std::string(ensemble), workspace.path());
+    std::string message;
+    try
+    {
+      InputReader reader(temporary.path().filename().string());
+    }
+    catch (const std::runtime_error& error)
+    {
+      message = error.what();
+    }
+    if (ensemble == "NVE")
+    {
+      EXPECT_NE(message.find("needs the 'Ensemble' value 'NVT'"), std::string::npos) << message;
+    }
+    else
+    {
+      EXPECT_EQ(message, std::string{});
+    }
+  }
+}
+
 // The Monte Carlo moves are drawn per component, with the system moves merged into the component tables: a system
 // without components ran zero steps per cycle, so its volume moves never happened. It is refused instead.
 TEST(INPUT_READER, system_moves_without_components_are_refused)

@@ -234,8 +234,14 @@ void ParallelThermodynamicIntegration::performReplicaCycle(std::size_t replicaId
   // the fractional molecule between systems are not enabled in this driver
   std::size_t fractionalMoleculeSystem = 0uz;
 
+  // A production cycle has a fixed number of steps: a length that follows the live molecule count of the replica
+  // biases the cycle-sampled averages when a bath exchanges molecules, and the lambda exchanges at the cycle
+  // boundaries then no longer leave the joint distribution of the replicas invariant (see
+  // 'ProductionCycleLength'). The length is fixed before the worker threads of the production stage start.
   const std::size_t numberOfStepsPerCycle =
-      std::max(system.numberOfMolecules(), 20uz) * system.numerOfAdsorbateComponents();
+      (stage == SimulationStage::Production && productionCycleLength.fixed)
+          ? productionCycleLength.stepsPerCycle
+          : ProductionCycleLength::adaptive(system.numberOfMolecules(), system.numerOfAdsorbateComponents());
 
   for (std::size_t j = 0uz; j != numberOfStepsPerCycle; ++j)
   {
@@ -286,6 +292,10 @@ void ParallelThermodynamicIntegration::performLambdaExchangeSweep(SimulationStag
     {
       ++exchangeAccepted;
       ++exchangeAcceptedPerPair[bin];
+      // The exchange moved the lambdas between the two replicas and left the configurations where they were. The
+      // ensemble averages are those of a lambda, not of the walk of a replica through the lambdas: they go with
+      // the lambda, so that the averages a replica reports are the averages of the lambda-bin it holds.
+      systems[replicaAtBin[bin]].swapEnsembleAverages(systems[replicaAtBin[bin + 1]]);
     }
   }
   ++exchangeSweeps;
@@ -351,8 +361,25 @@ void ParallelThermodynamicIntegration::runStage(SimulationStage stage, std::size
         system.pairSwapLambdaClearBookkeeping();
       }
       std::fill(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
+
+      // the number of steps of a production cycle is fixed here, from the mean molecule count of the replicas
+      const std::size_t totalNumberOfMolecules =
+          std::transform_reduce(systems.begin(), systems.end(), 0uz, std::plus<>{},
+                                [](const System& system) { return system.numberOfMolecules(); });
+      productionCycleLength.clear();
+      productionCycleLength.fix((totalNumberOfMolecules + systems.size() / 2uz) / systems.size(),
+                                systems.front().numerOfAdsorbateComponents());
     }
     sweepsThisStage = 0uz;
+  }
+  // a production resumed from a restart file that predates the fixed length fixes it from the counts it resumes with
+  if (stage == SimulationStage::Production && !productionCycleLength.fixed)
+  {
+    const std::size_t totalNumberOfMolecules =
+        std::transform_reduce(systems.begin(), systems.end(), 0uz, std::plus<>{},
+                              [](const System& system) { return system.numberOfMolecules(); });
+    productionCycleLength.fix((totalNumberOfMolecules + systems.size() / 2uz) / systems.size(),
+                              systems.front().numerOfAdsorbateComponents());
   }
 
   {
@@ -456,8 +483,10 @@ void ParallelThermodynamicIntegration::runStage(SimulationStage stage, std::size
                   system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
                 }
 
-                // each replica writes its own property files (named by the replica id)
-                system.writeSampledPropertiesMC(replicaId, cycle);
+                // the sampled properties are those of a lambda (they follow it through the exchanges, see
+                // 'performLambdaExchangeSweep'): the files are named by the lambda-bin the replica holds, which
+                // one replica holds at a time
+                system.writeSampledPropertiesMC(system.components[tiComponentId].fixedLambdaBin.value(), cycle);
               }
 
               // the step sizes are tuned while the system equilibrates only: an adaptive kernel during production
@@ -724,11 +753,16 @@ void ParallelThermodynamicIntegration::writeReplicaFinalReports(std::vector<Runn
     std::print(replicaStream, "========================================================================================================================\n");
     std::print(replicaStream, "\n");
 
-    std::string status_line =
-        std::format("Final state after {} cycles (ended at lambda-bin {})\n", numberOfProductionCycles,
-                    system.components[tiComponentId].fixedLambdaBin.value());
+    const std::size_t finalLambdaBin = system.components[tiComponentId].fixedLambdaBin.value();
+    std::string status_line = std::format("Final state after {} cycles (ended at lambda-bin {})\n",
+                                          numberOfProductionCycles, finalLambdaBin);
     std::print(replicaStream, "{}", system.writeProductionStatusReportMC(status_line));
-    system.writeSampledPropertiesMC(replicaId, numberOfProductionCycles);
+    system.writeSampledPropertiesMC(finalLambdaBin, numberOfProductionCycles);
+    std::print(replicaStream,
+               "The averages below (energies, pressure, loadings) and the sampled property files with index {} are "
+               "those of lambda-bin {}:\nthey follow the lambda through the exchanges, not the configuration of "
+               "this replica.\n\n",
+               finalLambdaBin, finalLambdaBin);
 
     const RunningEnergy drift = system.runningEnergies - recomputed[replicaId];
     replicaStream << system.runningEnergies.printMCDiff(recomputed[replicaId]);
@@ -1103,6 +1137,12 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
     archive << jsons;
   }
 
+  // version 2: the fixed number of steps of a production cycle
+  archive << pti.productionCycleLength.moleculeCountSum;
+  archive << pti.productionCycleLength.numberOfSamples;
+  archive << pti.productionCycleLength.stepsPerCycle;
+  archive << pti.productionCycleLength.fixed;
+
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
   return archive;
@@ -1162,6 +1202,16 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTher
     archive >> jsons;
     pti.replicaJsons.clear();
     for (const std::string& replicaJson : jsons) pti.replicaJsons.push_back(nlohmann::json::parse(replicaJson));
+  }
+
+  // older restart files did not store it: a resumed production fixes its cycle length at its first cycle
+  pti.productionCycleLength.clear();
+  if (versionNumber >= 2)
+  {
+    archive >> pti.productionCycleLength.moleculeCountSum;
+    archive >> pti.productionCycleLength.numberOfSamples;
+    archive >> pti.productionCycleLength.stepsPerCycle;
+    archive >> pti.productionCycleLength.fixed;
   }
 
   std::uint64_t magicNumber;

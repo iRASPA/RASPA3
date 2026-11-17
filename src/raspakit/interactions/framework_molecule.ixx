@@ -38,7 +38,7 @@ RunningEnergy computeFrameworkMoleculeEnergy(
     const ForceField& forceField, const SimulationBox& simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms) noexcept;
+    std::span<const Atom> moleculeAtoms, bool* overlap = nullptr) noexcept;
 
 /**
  * \brief Computes the tail correction energy between the framework and molecule atoms.
@@ -257,7 +257,8 @@ void computeFrameworkMoleculeElectrostaticPotential(const ForceField &forceField
 RunningEnergy computeFrameworkMoleculeElectricField(const ForceField &forceField, const SimulationBox &simulationBox,
                                                     std::span<double3> electricField,
                                                     std::span<const Atom> frameworkAtoms,
-                                                    std::span<const Atom> moleculeAtoms) noexcept;
+                                                    std::span<const Atom> moleculeAtoms,
+                                                    bool* overlap = nullptr) noexcept;
 
 std::tuple<double, double3, double3x3> calculateHessianAtPositionVDW(const ForceField &forceField,
                                                                      const SimulationBox &simulationBox, double3 posA,

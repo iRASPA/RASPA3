@@ -1216,27 +1216,42 @@ RunningEnergy chunkedAtomSum(std::size_t numberOfAtoms, PerAtom&& perAtom) noexc
 RunningEnergy Interactions::computeCellListInterMolecularEnergy(const ForceField& forceField,
                                                                 const SimulationBox& simulationBox,
                                                                 const MCCellList& cellList,
-                                                                std::span<const Atom> moleculeAtoms) noexcept
+                                                                std::span<const Atom> moleculeAtoms,
+                                                                bool* overlap) noexcept
 {
   const double cutOffVDW = forceField.cutOffMoleculeVDW;
   const double cutOffCoulomb = forceField.cutOffCoulomb;
-  return chunkedAtomSum(moleculeAtoms.size(),
-                        [&](std::size_t first, std::size_t last, RunningEnergy& sum)
-                        {
-                          for (std::size_t i = first; i < last; ++i)
-                          {
-                            // no overlap check: the kernel then always returns an energy
-                            sum += *cellListAtomEnergy<true>(forceField, simulationBox, cellList, moleculeAtoms[i],
-                                                             cutOffVDW, cutOffCoulomb, 1.0, false, std::nullopt,
-                                                             Neighbourhood::Background::Molecules,
-                                                             static_cast<std::uint32_t>(i));
-                          }
-                        });
+  // With 'overlap' the kernel tests every pair against the overlap criterion, as the moves of a single molecule do,
+  // and returns nothing for an atom with such a pair: the sum is then not a total, and the flag says so.
+  const bool checkOverlap = overlap != nullptr;
+  std::atomic<bool> overlapFound{false};
+  const RunningEnergy total = chunkedAtomSum(
+      moleculeAtoms.size(),
+      [&](std::size_t first, std::size_t last, RunningEnergy& sum)
+      {
+        for (std::size_t i = first; i < last; ++i)
+        {
+          const std::optional<RunningEnergy> atomEnergy = cellListAtomEnergy<true>(
+              forceField, simulationBox, cellList, moleculeAtoms[i], cutOffVDW, cutOffCoulomb, 1.0, checkOverlap,
+              std::nullopt, Neighbourhood::Background::Molecules, static_cast<std::uint32_t>(i));
+          if (atomEnergy.has_value())
+          {
+            sum += *atomEnergy;
+          }
+          else
+          {
+            overlapFound.store(true, std::memory_order_relaxed);
+          }
+        }
+      });
+  if (overlap != nullptr && overlapFound.load()) *overlap = true;
+  return total;
 }
 
 RunningEnergy Interactions::computeAllPairsInterMolecularEnergy(const ForceField& forceField,
                                                                 const SimulationBox& simulationBox,
-                                                                std::span<const Atom> moleculeAtoms) noexcept
+                                                                std::span<const Atom> moleculeAtoms,
+                                                                bool* overlap) noexcept
 {
   const bool useCharge = forceField.useCharge;
   const double cutOffVDW = forceField.cutOffMoleculeVDW;
@@ -1255,6 +1270,9 @@ RunningEnergy Interactions::computeAllPairsInterMolecularEnergy(const ForceField
   const RecordArrays records{neighbourhood.type.data(), neighbourhood.charge.data(), neighbourhood.scalingVDW.data(),
                              neighbourhood.scalingCoulomb.data(), neighbourhood.groupId.data()};
   const bool fastKernel = fastKernelApplies(forceField, neighbourhood.fullyCoupled, moleculeAtoms);
+  // the pair test against the overlap criterion, as in the sum over the cell list
+  const bool checkOverlap = overlap != nullptr;
+  std::atomic<bool> overlapFound{false};
 
   const bool rectangular = simulationBox.type == SimulationBox::Type::Rectangular;
   const double3x3& cell = simulationBox.cell;
@@ -1319,9 +1337,19 @@ RunningEnergy Interactions::computeAllPairsInterMolecularEnergy(const ForceField
         m += (rr <= cutOffSquared);
       }
 
-      sum += *evaluateKeptRecords(forceField, records, atom, m, cutOffVDW, cutOffCoulomb, 1.0, false, fastKernel,
-                                  false, scratch);
+      const std::optional<RunningEnergy> atomEnergy = evaluateKeptRecords(
+          forceField, records, atom, m, cutOffVDW, cutOffCoulomb, 1.0, checkOverlap, fastKernel, false, scratch);
+      if (atomEnergy.has_value())
+      {
+        sum += *atomEnergy;
+      }
+      else
+      {
+        overlapFound.store(true, std::memory_order_relaxed);
+      }
     }
   };
-  return chunkedAtomSum(numberOfAtoms, perAtom);
+  const RunningEnergy total = chunkedAtomSum(numberOfAtoms, perAtom);
+  if (overlap != nullptr && overlapFound.load()) *overlap = true;
+  return total;
 }

@@ -182,7 +182,8 @@ void Interactions::computeExternalFieldEnergy(
     bool hasExternalField, [[maybe_unused]] const ForceField& forceField,
     [[maybe_unused]] const SimulationBox& simulationBox, [[maybe_unused]] std::span<const Atom> moleculeAtoms,
     [[maybe_unused]] RunningEnergy& energyStatus,
-    [[maybe_unused]] const std::optional<InterpolationEnergyGrid>& externalFieldInterpolationGrid) noexcept
+    [[maybe_unused]] const std::optional<InterpolationEnergyGrid>& externalFieldInterpolationGrid,
+    bool* overlap) noexcept
 {
   if (hasExternalField)
   {
@@ -190,6 +191,8 @@ void Interactions::computeExternalFieldEnergy(
     {
       const ExternalFieldValue value =
           externalFieldValue(forceField, simulationBox, externalFieldInterpolationGrid, atom);
+      // an atom outside a confining geometry, which a move of a single molecule refuses as a trial position
+      if (overlap != nullptr && !value.inside) *overlap = true;
 
       energyStatus.externalFieldVDW += value.energy;
       energyStatus.addDudlambdaVDW(atom.groupId, 0, 1.0, 1.0, value.dUdlambda);

@@ -61,7 +61,8 @@ RunningEnergy computeInterMolecularEnergyScalar(const ForceField& forceField, co
  * the all-pairs sum.
  */
 RunningEnergy computeInterMolecularEnergy(const ForceField& forceField, const SimulationBox& simulationBox,
-                                          const MCCellList& cellList, std::span<const Atom> moleculeAtoms) noexcept;
+                                          const MCCellList& cellList, std::span<const Atom> moleculeAtoms,
+                                          bool* overlap = nullptr) noexcept;
 
 /**
  * \brief Computes the tail correction for inter-molecular van der Waals energy.
@@ -306,7 +307,8 @@ void computeInterMolecularElectrostaticPotential(const ForceField& forceField, c
  */
 RunningEnergy computeInterMolecularElectricField(const ForceField& forceField, const SimulationBox& box,
                                                  std::span<double3> electricFieldMolecules,
-                                                 std::span<const Atom> moleculeAtoms) noexcept;
+                                                 std::span<const Atom> moleculeAtoms,
+                                                 bool* overlap = nullptr) noexcept;
 
 /**
  * \brief Computes the difference in inter-molecular electric field due to atom changes.

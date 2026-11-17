@@ -26,6 +26,7 @@ import mc_moves;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import json;
+import simulation_schedule;
 
 ThermodynamicIntegration::ThermodynamicIntegration(InputReader& reader) noexcept
     : random(reader.randomSeed),
@@ -135,7 +136,15 @@ void ThermodynamicIntegration::performCycle()
         "the systems of a Monte Carlo simulation must have the same components: a step pairs two systems and "
         "addresses the component of both by one index\n");
   }
-  numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
+  numberOfStepsPerCycle = ProductionCycleLength::adaptive(totalNumberOfMolecules, totalNumberOfComponents);
+  if (simulationStage == SimulationStage::Production)
+  {
+    // A production cycle has a fixed number of steps: with a bath that exchanges molecules (a grand-canonical
+    // solvent or co-adsorbate) a length that follows the live molecule count samples the states of high N less
+    // often per step, and the cycle-sampled <dU/dlambda> is biased (see 'ProductionCycleLength').
+    if (!productionCycleLength.fixed) productionCycleLength.fix(totalNumberOfMolecules, totalNumberOfComponents);
+    numberOfStepsPerCycle = productionCycleLength.stepsPerCycle;
+  }
 
   for (std::size_t j = 0uz; j != numberOfStepsPerCycle; j++)
   {
@@ -252,6 +261,7 @@ void ThermodynamicIntegration::equilibrate()
   std::chrono::steady_clock::time_point t1, t2;
 
   simulationStage = SimulationStage::Equilibration;
+  productionCycleLength.clear();
 
   for (System& system : systems)
   {
@@ -263,6 +273,14 @@ void ThermodynamicIntegration::equilibrate()
     t1 = std::chrono::steady_clock::now();
 
     performCycle();
+
+    // the molecule count of the second half of the equilibration sets the length of a production cycle
+    if (currentCycle >= numberOfEquilibrationCycles / 2uz)
+    {
+      productionCycleLength.sample(std::transform_reduce(
+          systems.begin(), systems.end(), 0uz, std::plus<>{},
+          [](const System& system) { return system.numberOfMolecules(); }));
+    }
 
     if (currentCycle % printEvery == 0uz)
     {
@@ -328,6 +346,12 @@ void ThermodynamicIntegration::production()
     // pinned pair- and group-swap lambda histograms
     system.pairSwapLambdaClearBookkeeping();
   }
+
+  // the number of steps of a production cycle is fixed here (see 'ProductionCycleLength')
+  productionCycleLength.fix(
+      std::transform_reduce(systems.begin(), systems.end(), 0uz, std::plus<>{},
+                            [](const System& system) { return system.numberOfMolecules(); }),
+      systems.front().numerOfAdsorbateComponents());
 
   numberOfSteps = 0uz;
   for (currentCycle = 0uz; currentCycle != numberOfProductionCycles; ++currentCycle)

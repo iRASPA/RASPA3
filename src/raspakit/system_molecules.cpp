@@ -516,6 +516,29 @@ void swapMobileTail(std::vector<T>& dataA, std::size_t fixedSizeA, std::vector<T
 }
 }  // namespace
 
+void System::swapEnsembleAverages(System& other) noexcept
+{
+  using std::swap;
+  swap(averageEnergies, other.averageEnergies);
+  swap(averageLoadings, other.averageLoadings);
+  swap(averageEnthalpiesOfAdsorption, other.averageEnthalpiesOfAdsorption);
+  swap(averagePartialMolarProperties, other.averagePartialMolarProperties);
+  swap(averageTemperature, other.averageTemperature);
+  swap(averageTranslationalTemperature, other.averageTranslationalTemperature);
+  swap(averageRotationalTemperature, other.averageRotationalTemperature);
+  swap(averagePressure, other.averagePressure);
+  swap(averageSimulationBox, other.averageSimulationBox);
+  swap(propertyElasticConstantsFluctuation, other.propertyElasticConstantsFluctuation);
+  swap(propertyConventionalRadialDistributionFunction, other.propertyConventionalRadialDistributionFunction);
+  swap(propertyRadialDistributionFunction, other.propertyRadialDistributionFunction);
+  swap(propertyDensityGrid, other.propertyDensityGrid);
+  swap(averageEnergyHistogram, other.averageEnergyHistogram);
+  swap(averageNumberOfMoleculesHistogram, other.averageNumberOfMoleculesHistogram);
+  swap(propertyMoleculeProperties, other.propertyMoleculeProperties);
+  swap(propertyMoleculeShape, other.propertyMoleculeShape);
+  swap(propertyMoleculeBackbone, other.propertyMoleculeBackbone);
+}
+
 void System::exchangeConfiguration(System& other)
 {
   checkPolymerLayoutIsFixed("the configurations of two systems were exchanged");
