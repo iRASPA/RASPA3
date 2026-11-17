@@ -4,6 +4,8 @@ module dctst_free_energy;
 
 import std;
 
+import mc_moves_acceptance;
+
 import stringutils;
 import hardware_info;
 import system;
@@ -1596,7 +1598,7 @@ std::optional<RunningEnergy> DynamicallyCorrectedTSTFreeEnergy::biasedTranslatio
   const RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() +
                                          interMolecule.value() + ewaldFourierEnergy + polarizationDifference;
 
-  if (rng.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() - biasDifference))
+  if (rng.uniform() < MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy() - biasDifference))
   {
     ++statistics.translationAccepted;
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
@@ -1740,7 +1742,7 @@ std::optional<RunningEnergy> DynamicallyCorrectedTSTFreeEnergy::biasedReinsertio
       -system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()) +
       growData->logRosenbluthWeight - retraceData.logRosenbluthWeight - biasDifference;
 
-  if (rng.uniform() < std::exp(logAcceptance))
+  if (rng.uniform() < MC_Moves::boundedExp(logAcceptance))
   {
     ++statistics.reinsertionAccepted;
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);

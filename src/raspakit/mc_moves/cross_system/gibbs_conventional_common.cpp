@@ -4,6 +4,8 @@ module mc_moves_gibbs_conventional_common;
 
 import std;
 
+import mc_moves_acceptance;
+
 import double3;
 import randomnumbers;
 import running_energy;
@@ -700,7 +702,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       firstStepFactor(systemA, moveKindA, energyFirstStepA.value(), deletionA) +
       firstStepFactor(systemB, moveKindB, energyFirstStepB.value(), deletionB) +
       boundaryA.logAcceptanceFactor + boundaryB.logAcceptanceFactor;
-  const double physicalAcceptance = std::exp(std::min(0.0, logPhysicalAcceptance));
+  const double physicalAcceptance = MC_Moves::boundedExp(std::min(0.0, logPhysicalAcceptance));
   const double logLambdaBias = (biasNewA - biasOldA) + (biasNewB - biasOldB);
   if (!tmmcTrial.transitionsAreInBounds(deltaA, deltaB))
   {
@@ -714,7 +716,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
   // the total in log space, exponentiated only once it is capped at 0 (no overflow, no inf * 0); a zero TMMC bias
   // (out of the window) rejects
   if (!(tmmcBias > 0.0) ||
-      !(random.uniform() < std::exp(std::min(0.0, logPhysicalAcceptance + logLambdaBias + std::log(tmmcBias)))))
+      !(random.uniform() < MC_Moves::boundedExp(std::min(0.0, logPhysicalAcceptance + logLambdaBias + std::log(tmmcBias)))))
   {
     restoreFractionals();
     return std::nullopt;

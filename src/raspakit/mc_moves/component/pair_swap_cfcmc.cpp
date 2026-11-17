@@ -1069,7 +1069,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
 
     // the exponent held to the range of a double: a step out of a high-energy state overflowed to infinity
     if (random.uniform() <
-        std::exp(std::min(700.0, -system.beta * energyDifference.potentialEnergy() + biasTerm)))
+        MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy() + biasTerm))
     {
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
       componentA.mc_moves_statistics.addAccepted(move, 2);

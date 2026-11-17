@@ -4,6 +4,8 @@ module system;
 
 import std;
 
+import mc_moves_acceptance;
+
 import randomnumbers;
 import simd_quatd;
 import double3;
@@ -868,7 +870,7 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
       if (!isValid(candidate)) continue;
 
       const double logAcceptance = candidate->logRosenbluthWeight - current->logRosenbluthWeight;
-      if (logAcceptance >= 0.0 || random.uniform() < std::exp(logAcceptance))
+      if (logAcceptance >= 0.0 || random.uniform() < MC_Moves::boundedExp(logAcceptance))
       {
         current = std::move(candidate);
       }
@@ -1184,8 +1186,8 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
     const double compensationDifference =
         ewaldIntraCoulombCompensationEnergy(selectedComponent, growData->atoms) -
         ewaldIntraCoulombCompensationEnergy(selectedComponent, scratchAtoms);
-    if (random.uniform() < std::exp(growData->logRosenbluthWeight - retraceData.logRosenbluthWeight +
-                                    beta * compensationDifference))
+    if (random.uniform() < MC_Moves::boundedExp(growData->logRosenbluthWeight - retraceData.logRosenbluthWeight +
+                                                beta * compensationDifference))
     {
       std::copy(growData->atoms.begin(), growData->atoms.end(), scratchAtoms.begin());
       scratchMolecule = growData->molecule;

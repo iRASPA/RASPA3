@@ -4,6 +4,8 @@ module mc_moves_identity_switch;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -324,9 +326,9 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
 
   // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
   const double acceptanceProbability =
-      std::exp(std::min(700.0, logCorrectionFactor + exchangeB.grown->logRosenbluthWeight +
-                                   exchangeA.grown->logRosenbluthWeight - exchangeA.retraced.logRosenbluthWeight -
-                                   exchangeB.retraced.logRosenbluthWeight));
+      MC_Moves::boundedExp(logCorrectionFactor + exchangeB.grown->logRosenbluthWeight +
+                           exchangeA.grown->logRosenbluthWeight - exchangeA.retraced.logRosenbluthWeight -
+                           exchangeB.retraced.logRosenbluthWeight);
 
   if (random.uniform() < acceptanceProbability)
   {

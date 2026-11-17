@@ -4,6 +4,8 @@ module dctst;
 
 import std;
 
+import mc_moves_acceptance;
+
 import stringutils;
 import hardware_info;
 import system;
@@ -1794,7 +1796,7 @@ std::optional<RunningEnergy> DynamicallyCorrectedTST::translationInPlaneMove(std
   const RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() +
                                          interMolecule.value() + ewaldFourierEnergy + polarizationDifference;
 
-  if (rng.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
+  if (rng.uniform() < MC_Moves::boundedExp(-system.beta * energyDifference.potentialEnergy()))
   {
     ++statistics.translationAccepted;
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
@@ -1908,7 +1910,7 @@ std::optional<RunningEnergy> DynamicallyCorrectedTST::reinsertionInPlaneMove(std
       -system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()) +
       growData->logRosenbluthWeight - retraceData.logRosenbluthWeight;
 
-  if (rng.uniform() < std::exp(logAcceptance))
+  if (rng.uniform() < MC_Moves::boundedExp(logAcceptance))
   {
     ++statistics.reinsertionAccepted;
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
@@ -2111,7 +2113,7 @@ void DynamicallyCorrectedTST::createConstrainedConfiguration(std::size_t replica
       if (!isValid(candidate)) continue;
 
       const double logAcceptance = candidate->logRosenbluthWeight - current->logRosenbluthWeight;
-      if (logAcceptance >= 0.0 || rng.uniform() < std::exp(logAcceptance))
+      if (logAcceptance >= 0.0 || rng.uniform() < MC_Moves::boundedExp(logAcceptance))
       {
         current = std::move(candidate);
       }

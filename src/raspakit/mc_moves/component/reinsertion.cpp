@@ -4,6 +4,8 @@ module mc_moves_reinsertion;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -156,7 +158,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 
   // Apply Metropolis acceptance criterion.
   // the exponent held to the range of a double: a regrowth out of a high-energy state overflowed to infinity
-  if (random.uniform() < std::exp(std::min(700.0, logAcceptance)))
+  if (random.uniform() < MC_Moves::boundedExp(logAcceptance))
   {
     // Move is accepted; update statistics and state.
     component.mc_moves_statistics.addAccepted(move);

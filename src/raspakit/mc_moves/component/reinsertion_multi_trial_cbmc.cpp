@@ -4,6 +4,8 @@ module mc_moves_reinsertion_multi_trial_cbmc;
 
 import std;
 
+import mc_moves_acceptance;
+
 import component;
 import atom;
 import molecule;
@@ -74,7 +76,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMoveMultiTrialCBMC(RandomNumbe
   const double logAcceptance = growData->logMeanWeight - retraceData.logMeanWeight +
                                growData->logProposalCorrection + retraceData.logProposalCorrection;
   // the exponent held to the range of a double: a regrowth out of a high-energy state overflowed to infinity
-  if (random.uniform() < std::exp(std::min(700.0, logAcceptance)))
+  if (random.uniform() < MC_Moves::boundedExp(logAcceptance))
   {
     component.mc_moves_statistics.addAccepted(move);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
