@@ -93,16 +93,16 @@ export struct UnitCell
     {
       case Type::Rectangular:
       {
-        double3 s;
-        s.x = dr.x - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.x * inverseCell.ax +
-                                                                                      ((dr.x >= 0.0) ? 0.5 : -0.5))) *
-                         cell.ax;
-        s.y = dr.y - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.y * inverseCell.by +
-                                                                                      ((dr.y >= 0.0) ? 0.5 : -0.5))) *
-                         cell.by;
-        s.z = dr.z - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.z * inverseCell.cz +
-                                                                                      ((dr.z >= 0.0) ? 0.5 : -0.5))) *
-                         cell.cz;
+        // whole cell vectors are taken off (see 'shortestImage'): a cell is rectangular to a tolerance, and what
+        // it has off its diagonal within it is still part of its vectors
+        const double3 whole(
+            static_cast<double>(
+                static_cast<std::make_signed_t<std::size_t>>(dr.x * inverseCell.ax + ((dr.x >= 0.0) ? 0.5 : -0.5))),
+            static_cast<double>(
+                static_cast<std::make_signed_t<std::size_t>>(dr.y * inverseCell.by + ((dr.y >= 0.0) ? 0.5 : -0.5))),
+            static_cast<double>(
+                static_cast<std::make_signed_t<std::size_t>>(dr.z * inverseCell.cz + ((dr.z >= 0.0) ? 0.5 : -0.5))));
+        const double3 s = dr - cell * whole;
         return s;
       }
       default:

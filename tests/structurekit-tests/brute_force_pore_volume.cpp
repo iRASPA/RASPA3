@@ -91,3 +91,29 @@ TEST(brute_force_pore_volume, the_image_list_reaches_every_image_in_contact)
     EXPECT_EQ(present, wanted) << entry.name;
   }
 }
+
+// One slab of void to the cell, and a wall across it with pinholes the voxel centres step over. Either side of the
+// wall is the same piece of the void, the slab and its own image, so a line through a pinhole joins the piece to
+// itself the other way round the cell: that is what makes it run in the third direction. A pair of one piece was
+// never tried, and the void stayed a slab.
+TEST(brute_force_pore_volume, a_neck_between_a_piece_and_its_own_image_is_proved)
+{
+  // spheres of 2.7 on a square of 4 in the plane x = 6: the hole between four of them has 4 / sqrt(2) - 2.7 = 0.128
+  // of room, at (6, 2, 2) and its repeats, between the voxel centres (which are at the half Angstroms)
+  std::vector<double3> positions;
+  std::vector<double> radii;
+  for (int j = 0; j < 3; ++j)
+    for (int k = 0; k < 3; ++k)
+    {
+      positions.push_back(double3(6.0, 4.0 * j, 4.0 * k));
+      radii.push_back(2.7);
+    }
+  BruteForceStructure structure = BruteForceStructure::create("wall", UnitCell(12.0, 12.0, 12.0), positions, radii);
+  ASSERT_GT(structure.clearance(double3(6.0, 2.0, 2.0)), 0.1);
+
+  BruteForceVoxels voxels = BruteForceVoxels::build(structure, 1.0);
+
+  ASSERT_EQ(voxels.regions.size(), 1uz);
+  EXPECT_GT(voxels.necksProved, 0uz);
+  EXPECT_EQ(voxels.regions.front().dimensionality, 3uz);
+}

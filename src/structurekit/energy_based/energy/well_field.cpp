@@ -915,6 +915,7 @@ WellField WellFieldCPU::compute(const PairInteractions &interactions, const Crys
   field.thermalEnergy = thermalEnergy;
   field.cutOff = neighbourhood.cutOff;
   field.ceiling = ceiling;
+  field.blockedEnergyPerAngstrom = blockedEnergyPerAngstrom;
   field.chargesIncluded = neighbourhood.useCharges;
   field.chargesIgnored = probe.isCharged() && !neighbourhood.useCharges;
   if (neighbourhood.useCharges)

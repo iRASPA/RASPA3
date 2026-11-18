@@ -634,7 +634,12 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
               const double3 steps(static_cast<double>(nx), static_cast<double>(ny), static_cast<double>(nz));
               const double3 displacement = nearest.second + compact * steps;
 
-              if (double3::dot(displacement, displacement) > pocketLinkDistance * pocketLinkDistance) continue;
+              // (not asked of a pocket and its own repeats, which are the thirteen steps of the compact cell and
+              // no more: the distance is the longest edge of the cell, and in a cell of edges alike every repeat
+              // along a face or a body diagonal was past it, so that a straight channel along [110] or [111] with
+              // one pocket to the cell had no way of its own and was left to the scattered points)
+              if (a != b && double3::dot(displacement, displacement) > pocketLinkDistance * pocketLinkDistance)
+                continue;
 
               const double3 cells = inGivenCells * steps;
               const int3 delta(nearest.first.x + static_cast<std::int32_t>(std::lround(cells.x)),
@@ -801,7 +806,7 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
 
             const double3 steps(static_cast<double>(nx), static_cast<double>(ny), static_cast<double>(nz));
             const double3 displacement = compact * steps;
-            if (double3::dot(displacement, displacement) > pocketLinkDistance * pocketLinkDistance) continue;
+            // (every one of its own repeats, as above)
 
             const double3 cells = inGivenCells * steps;
             const int3 delta(static_cast<std::int32_t>(std::lround(cells.x)),

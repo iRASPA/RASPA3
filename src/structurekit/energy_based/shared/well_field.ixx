@@ -122,6 +122,9 @@ export struct WellField
   std::string probeName;
   double cutOff{0.0};
   double ceiling{0.0};
+  // The slope of the energy inside a blocking sphere, per Ångström of depth: part of what the field was built
+  // with, which the refinement of the surface has to climb the same ramp by.
+  double blockedEnergyPerAngstrom{0.0};
   double seconds{0.0};
 
   WellField();

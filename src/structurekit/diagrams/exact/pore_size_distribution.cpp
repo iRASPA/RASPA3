@@ -445,6 +445,9 @@ std::vector<Sample> sweepGrid(const Sample& origin, const std::vector<Sample>& r
     }
     grid.push_back(row);
   }
+  // Past the last row, which stands half a step short of the largest diameter: the floor is a point of the sweep
+  // there as anywhere, and left out no interval started at or above it and the primary curve came out empty.
+  if (!probePlaced) grid.push_back(probeSample);
   return grid;
 }
 
@@ -558,7 +561,9 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<PoreAcce
   // zero floor it starts losing volume as soon as the wall corrugation does.
   Sample origin;
   origin.diameter = 0.0;
-  origin.whole.cumulative = 1.0;
+  // (of a void that is there: a cell that is solid throughout has no cumulative to be one, and a one set against
+  // the nought of its first row was a spike of the whole weight at no diameter)
+  origin.whole.cumulative = (curve.voidVolume > 0.0) ? 1.0 : 0.0;
   origin.whole.distribution = 0.0;
   origin.reachable.cumulative = (curve.probeAccessibleVolume > 0.0) ? 1.0 : 0.0;
   origin.reachable.distribution = 0.0;
@@ -616,7 +621,9 @@ PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibili
 
   Sample origin;
   origin.diameter = 0.0;
-  origin.whole.cumulative = 1.0;
+  // (of a void that is there: a cell that is solid throughout has no cumulative to be one, and a one set against
+  // the nought of its first row was a spike of the whole weight at no diameter)
+  origin.whole.cumulative = (curve.voidVolume > 0.0) ? 1.0 : 0.0;
   origin.whole.distribution = 0.0;
   origin.reachable.cumulative = (curve.probeAccessibleVolume > 0.0) ? 1.0 : 0.0;
   origin.reachable.distribution = 0.0;

@@ -284,6 +284,11 @@ MolecularEnergyGrid MolecularEnergyGridCPU::compute(const PairInteractions &inte
                                      double ratio3 = ratio * ratio * ratio;
                                      double dispersion = epsilon4 * ratio3 * (ratio3 - 1.0) - shiftForSite[iatom];
                                      overlapping = dispersion >= ceiling;
+                                     // (and the orientation is excluded, as said above: held at the ceiling for
+                                     // this pair alone, the attraction of every other pair was still added and
+                                     // left an orientation inside a wall below the ceiling, by thousands of
+                                     // kelvin where the other end of the molecule sat at a strong site)
+                                     if (overlapping) excluded = true;
                                      total += std::min(dispersion, ceiling);
                                    }
                                  }
@@ -487,6 +492,7 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
                 double ratio3 = ratio * ratio * ratio;
                 double dispersion = epsilon4 * ratio3 * (ratio3 - 1.0) - shift;
                 overlapping = dispersion >= ceiling;
+                if (overlapping) excluded = true;  // as in the grid above
                 contribution += std::min(dispersion, ceiling);
               }
             }

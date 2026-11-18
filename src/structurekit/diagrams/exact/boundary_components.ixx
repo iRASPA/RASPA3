@@ -80,6 +80,10 @@ bool eachCapCoveringAtom(const PoreAccessibility& accessibility, std::size_t ato
   const double radius = accessibility.atomRadii[atomIndex];
   const double3 centre = accessibility.atomPositions[atomIndex];
 
+  // A site without a radius (a massless charge site, at a probe of no size) is a point: it has no surface and no
+  // volume, and the law of cosines below divides by its radius.
+  if (!(radius > 0.0)) return false;
+
   const std::vector<NeighbourImage> neighbours =
       accessibility.neighbourAtomImages(centre, radius + accessibility.maximumAtomRadius);
 

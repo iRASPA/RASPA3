@@ -148,6 +148,10 @@ void refineThrough(std::vector<double3> &corners, std::vector<double> &energies,
   parameters.thermalEnergy = field.thermalEnergy;
   parameters.extraReach = wellRefinementReach;
   parameters.ceiling = field.ceiling;
+  // (left at nought the inside of a blocking sphere was at no energy at all during the refinement: below any
+  // positive isovalue, so that vertices slid into the blocked pockets, and written over the energy of every
+  // vertex against one)
+  parameters.blockedEnergyPerAngstrom = field.blockedEnergyPerAngstrom;
   parameters.potential = potential;
   parameters.coulombFactor = coulombFactor;
 

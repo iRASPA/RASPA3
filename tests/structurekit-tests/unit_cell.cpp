@@ -331,3 +331,27 @@ TEST(unit_cell, a_zero_cutoff_still_takes_one_cell)
   EXPECT_EQ(replicas.y, 1);
   EXPECT_EQ(replicas.z, 1);
 }
+
+// A cell counts as lying along the axes to a tolerance, and what it has off its diagonal within that tolerance is
+// still part of its vectors. The quick way took the diagonal parts off alone: a cell vector then came back as its
+// own off-diagonal part, and a displacement of several cells was out by as many times that, more than the exact
+// geometry that compares images holds its points to.
+TEST(unit_cell, a_cell_within_tolerance_of_the_axes_takes_off_whole_cell_vectors)
+{
+  const double beta = (90.0004 / 180.0) * std::numbers::pi;
+  const UnitCell cell(20.0, 20.0, 100.0, 0.5 * std::numbers::pi, beta, 0.5 * std::numbers::pi);
+  ASSERT_EQ(cell.type, UnitCell::Type::Rectangular);
+  const double3 c = cell.cell[2];
+  ASSERT_GT(std::abs(c.x), 1.0e-4);  // the cell does lean, by less than the tolerance
+
+  EXPECT_LT(cell.shortestImage(c, nullptr).length(), 1.0e-12);
+  EXPECT_LT(cell.applyPeriodicBoundaryConditions(c).length(), 1.0e-12);
+
+  const double3 inside(3.0, -4.0, 7.0);
+  for (const int count : {-5, -1, 1, 5})
+  {
+    const double3 moved = inside + static_cast<double>(count) * c;
+    EXPECT_LT((cell.shortestImage(moved, nullptr) - inside).length(), 1.0e-11) << count << " cells";
+    EXPECT_LT((cell.applyPeriodicBoundaryConditions(moved) - inside).length(), 1.0e-11) << count << " cells";
+  }
+}

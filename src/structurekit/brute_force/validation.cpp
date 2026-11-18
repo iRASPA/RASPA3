@@ -98,6 +98,9 @@ void BruteForceValidation::run(const PairInteractions &interactions, const Cryst
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
+  // of this run alone (a second run added its checks to those of the first)
+  this->checks.clear();
+
   const double volume = framework.unitCell.volume;
   const std::size_t panels = std::max<std::size_t>(1, settings.subdivisions);
 

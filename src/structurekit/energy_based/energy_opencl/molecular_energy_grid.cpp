@@ -821,6 +821,8 @@ __kernel void MolecularEnergyField(__global const float4 *position,
                   float ratio3 = ratio * ratio * ratio;
                   float dispersion = epsilon4 * ratio3 * (ratio3 - 1.0f) - shiftForSite[iatom];
                   overlapping = dispersion >= ceiling;
+                  // and the orientation is excluded with it (see the CPU route)
+                  if(overlapping) excluded = 1;
                   total += min(dispersion, ceiling);
                 }
               }
@@ -977,6 +979,7 @@ static float contributionOfAtom(__global const float4 *position,
               float ratio3 = ratio * ratio * ratio;
               float dispersion = epsilon4 * ratio3 * (ratio3 - 1.0f) - shift;
               overlapping = dispersion >= ceiling;
+              if(overlapping) *excluded = 1;
               contribution += min(dispersion, ceiling);
             }
           }

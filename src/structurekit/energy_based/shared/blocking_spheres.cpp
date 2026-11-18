@@ -41,6 +41,11 @@ void EnergyBlockingSpheres::run(const EnergyBackend &backend, const PairInteract
   this->temperature = temperature;
   this->thresholdInKT = thresholdInKT;
 
+  // of this run alone: run a second time, the cavities and their counts were added to those of the first
+  this->cavities.clear();
+  this->numberOfBlockedCavities = 0;
+  this->numberOfLeakyCavities = 0;
+
   const std::size_t numberOfVoxels = this->grid.numberOfVoxels();
   if (numberOfVoxels == 0) return;
 

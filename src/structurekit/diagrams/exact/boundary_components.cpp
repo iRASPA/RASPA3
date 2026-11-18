@@ -222,6 +222,12 @@ std::optional<double3> firstCrossingToward(const std::vector<SphereCircle>& circ
     double amplitude = std::hypot(a, b);
     if (amplitude < circle.cosineHalfAngle) continue;  // this sinusoid never reaches that height
 
+    // Standing on this circle and heading into its cap, the crossing is where the path starts. The roots below
+    // are taken from past the start, which is right for a circle the path is leaving and passed this one over:
+    // the first crossing found was then where the path came out of the cap on its far side, on the edge of
+    // whatever patch lies there.
+    if (std::abs(a - circle.cosineHalfAngle) <= 1.0e-12 && b > 0.0) return direction;
+
     double phase = std::atan2(b, a);
     double half = std::acos(std::clamp(circle.cosineHalfAngle / amplitude, -1.0, 1.0));
     for (double root : {phase - half, phase + half, phase - half + 2.0 * std::numbers::pi,
@@ -431,6 +437,19 @@ std::int32_t BoundaryComponents::patchOfCirclePoint(std::size_t atomIndex, const
     if (residual < 1.0e-6) onCircle.emplace_back(residual, c);
   }
   std::sort(onCircle.begin(), onCircle.end());
+
+  // A circle that holds the point on an exposed arc says which patch it is, and every circle through the point
+  // is asked that before any is asked for a neighbouring arc. At a corner of two circles the nearer one may hold
+  // the point on its buried arc: its neighbouring arcs were then tried, the far one included, which can bound
+  // another patch on the other side of the sphere, without the second circle, which holds the point on the
+  // exposed arc itself, being looked at.
+  for (const auto& [residual, c] : onCircle)
+  {
+    const SphereCircle& circle = boundary.circles[c];
+    if (circle.arcPatch.empty()) continue;
+    const std::size_t arc = arcHolding(circle, circle.angleOf(unitDirection));
+    if (circle.arcPatch[arc] >= 0) return circle.arcPatch[arc];
+  }
 
   for (const auto& [residual, c] : onCircle)
   {

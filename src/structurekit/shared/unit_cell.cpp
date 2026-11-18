@@ -187,7 +187,12 @@ double3 UnitCell::shortestImage(const double3 &dr, int3 *translation) const
       *translation = int3(static_cast<std::int32_t>(whole.x), static_cast<std::int32_t>(whole.y),
                           static_cast<std::int32_t>(whole.z));
     }
-    return double3(dr.x - whole.x * this->cell.ax, dr.y - whole.y * this->cell.by, dr.z - whole.z * this->cell.cz);
+    // The cell vectors themselves are taken off, not their diagonal parts alone. A cell counts as lying along
+    // the axes to a tolerance (a hundred-thousandth of a length), and what it has off its diagonal within that
+    // tolerance is still part of its vectors: left out, the image was no lattice translate of the displacement
+    // (a cell vector came back as its own off-diagonal part instead of nothing), by more than the geometry
+    // that compares images holds its points to.
+    return dr - this->cell * whole;
   }
 
   // A cell of no volume repeats nothing, and a displacement in it has no other image.

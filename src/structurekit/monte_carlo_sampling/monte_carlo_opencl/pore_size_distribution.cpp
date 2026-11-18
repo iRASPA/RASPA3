@@ -313,7 +313,8 @@ void MC_OpenCL_PoreSizeDistribution::run(const SampledStructure &structure,
   std::print(myfile, "# value at d=0 is related to the void-fraction\n");
 
   // The bins are of radius and the curve is against the diameter, so a bin is twice as wide as `delta_r` here.
-  double normalization = 1.0 / static_cast<double>(number_of_iterations);
+  // (no iterations is an empty histogram, not one divided by nought)
+  double normalization = 1.0 / static_cast<double>(std::max<std::size_t>(1, number_of_iterations));
   double width = 2.0 * delta_r;
   for(std::size_t index = 0; index < numberOfBins; ++index)
   {

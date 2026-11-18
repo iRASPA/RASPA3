@@ -1000,3 +1000,25 @@ TEST(boundary_components, a_corner_of_a_buried_arc_is_read_from_the_nearer_side)
   // the middle of an exposed arc
   EXPECT_EQ(components.patchOfCirclePoint(0, circle.direction(3.0)), 1);
 }
+
+
+// A site without a radius (a massless charge site at a probe of no size) is a point: no surface, and nothing for
+// the law of cosines to divide by. The ball beside it is the one surface there is.
+TEST(boundary_components, a_site_without_a_radius_has_no_surface)
+{
+  UnitCell box(30.0, 30.0, 30.0);
+  const std::vector<double3> positions{double3(8.0, 8.0, 8.0), double3(10.0, 8.0, 8.0), double3(20.0, 20.0, 20.0)};
+  std::vector<double3> fractionalPositions;
+  for (const double3& position : positions) fractionalPositions.push_back(box.inverseCell * position);
+  // the second is on the surface of the first, the third out in the open
+  PoreAccessibility geometry = PoreAccessibility::create(box, fractionalPositions, {2.0, 0.0, 0.0}, 0.0);
+
+  BoundaryComponents components = boundaryComponents(geometry);
+
+  EXPECT_EQ(components.numberOfComponents, 1uz);
+  EXPECT_EQ(components.numberOfPatches, 1uz);
+  EXPECT_EQ(components.atoms[0].numberOfPatches, 1uz);
+  EXPECT_EQ(components.atoms[1].numberOfPatches, 0uz);
+  EXPECT_EQ(components.atoms[2].numberOfPatches, 0uz);
+  EXPECT_EQ(components.looseEdges, 0uz);
+}

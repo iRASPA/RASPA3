@@ -224,7 +224,11 @@ BruteForceVoxels BruteForceVoxels::build(const BruteForceStructure &structure, d
                {
                  for (std::size_t voxel = begin; voxel < end; ++voxel)
                  {
-                   self.clearance[voxel] = static_cast<float>(structure.clearance(self.centre(structure, voxel)));
+                   // (held to what a float holds: a structure without atoms has the largest double for a
+                   // clearance, which no float is)
+                   self.clearance[voxel] = static_cast<float>(
+                       std::min(structure.clearance(self.centre(structure, voxel)),
+                                static_cast<double>(std::numeric_limits<float>::max())));
                  }
                });
 
@@ -313,7 +317,51 @@ BruteForceVoxels BruteForceVoxels::build(const BruteForceStructure &structure, d
     // reach offer a great many pairs and none of them will do, so the search is not allowed to spend the
     // run on a wall it has already failed to get through.
     const std::size_t mostTriesPerPair = 512;
+    const std::size_t mostTriesPerVoxel = 32;
+    const std::size_t mostTriesPerCycle = 65536;
     std::map<std::pair<std::size_t, std::size_t>, std::size_t> tried;
+
+    // Two voxels of one piece whose line goes round the cell: the translation the piece would be found to repeat
+    // under if the line is passable, when that is one its translations so far do not span. With one cage to a cell
+    // the two sides of a window the flood stepped over are the same piece, the cage and its own image, and a pair
+    // of one piece was never tried: the cage stayed a pocket, and a channel whose side windows were stepped over
+    // stayed one-dimensional.
+    std::map<std::tuple<std::size_t, std::int32_t, std::int32_t, std::int32_t>, std::size_t> triedCycles;
+    struct SpanOfPiece
+    {
+      std::size_t numberOfCycles{std::numeric_limits<std::size_t>::max()};
+      std::vector<int3> basis;
+    };
+    std::unordered_map<std::size_t, SpanOfPiece> spans;
+    auto closesNewCycle = [&](std::size_t a, std::size_t b, const int3 &crossing) -> std::optional<int3>
+    {
+      auto [rootA, toRootA] = pieces.find(a);
+      auto [rootB, toRootB] = pieces.find(b);
+      if (rootA != rootB) return std::nullopt;
+      const int3 between(toRootA.x + crossing.x - toRootB.x, toRootA.y + crossing.y - toRootB.y,
+                         toRootA.z + crossing.z - toRootB.z);
+      if (between.x == 0 && between.y == 0 && between.z == 0) return std::nullopt;
+      // (the translations of a piece are many, one for every join that went round the cell: at most three of
+      // them that are independent are kept, and found again when the piece has gained one)
+      SpanOfPiece &span = spans[rootA];
+      const std::vector<int3> &cycles = pieces.cycles[rootA];
+      if (span.numberOfCycles != cycles.size())
+      {
+        span.basis.clear();
+        for (const int3 &vector : cycles)
+        {
+          if (span.basis.size() == 3) break;
+          span.basis.push_back(vector);
+          if (latticeRank(span.basis) != span.basis.size()) span.basis.pop_back();
+        }
+        span.numberOfCycles = cycles.size();
+      }
+      if (span.basis.size() == 3) return std::nullopt;
+      std::vector<int3> extended = span.basis;
+      extended.push_back(between);
+      if (latticeRank(extended) == span.basis.size()) return std::nullopt;
+      return between;
+    };
 
     struct Candidate
     {
@@ -367,7 +415,6 @@ BruteForceVoxels BruteForceVoxels::build(const BruteForceStructure &structure, d
 
             std::size_t there = wrapped(i0 + di, j0 + dj, k0 + dk);
             if (self.clearance[there] < static_cast<float>(threshold)) continue;
-            if (pieces.find(there).first == rootHere) continue;
 
             // Which way round the cell the walk went, which is the translation the join carries.
             auto crossed = [](std::int32_t start, std::int32_t step, std::int32_t count)
@@ -377,6 +424,10 @@ BruteForceVoxels BruteForceVoxels::build(const BruteForceStructure &structure, d
             };
             int3 crossing(crossed(i0, di, self.counts.x), crossed(j0, dj, self.counts.y),
                           crossed(k0, dk, self.counts.z));
+
+            // A pair of one piece is of no use, unless the line between them goes round the cell a way the piece
+            // is not yet known to: see 'closesNewCycle'.
+            if (pieces.find(there).first == rootHere && !closesNewCycle(here, there, crossing).has_value()) continue;
 
             double3 to = cell * (self.fractionalCentre(there) +
                                  double3(static_cast<double>(crossing.x), static_cast<double>(crossing.y),
@@ -391,15 +442,31 @@ BruteForceVoxels BruteForceVoxels::build(const BruteForceStructure &structure, d
 
       std::ranges::sort(candidates, {}, &Candidate::distanceSquared);
 
+      std::size_t triesFromHere = 0;
       for (const Candidate &candidate : candidates)
       {
         std::size_t rootThere = pieces.find(candidate.voxel).first;
         rootHere = pieces.find(here).first;
-        if (rootThere == rootHere) continue;
+        std::optional<int3> cycle{};
+        if (rootThere == rootHere)
+        {
+          cycle = closesNewCycle(here, candidate.voxel, candidate.crossing);
+          if (!cycle.has_value()) continue;
+        }
 
         std::pair<std::size_t, std::size_t> pair{std::min(rootHere, rootThere), std::max(rootHere, rootThere)};
-        std::size_t &spent = tried[pair];
-        if (spent >= mostTriesPerPair) continue;
+        // (a piece against its own image has its tries counted by the way round the cell that is tried)
+        // A piece against its own image has its tries counted by the way round the cell that is tried, and by the
+        // voxel they start from: the wall between a cage and its image is all of the cage's wall, and the tries
+        // one pair of pieces is allowed were spent on the first voxel against it, wherever the window was.
+        if (cycle.has_value())
+        {
+          if (triesFromHere >= mostTriesPerVoxel) continue;
+          ++triesFromHere;
+        }
+        std::size_t &spent =
+            cycle.has_value() ? triedCycles[{rootHere, cycle->x, cycle->y, cycle->z}] : tried[pair];
+        if (spent >= (cycle.has_value() ? mostTriesPerCycle : mostTriesPerPair)) continue;
         ++spent;
         ++self.necksTried;
 

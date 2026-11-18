@@ -71,7 +71,9 @@ void settleSplit(ExactVoidSplit& split, std::string reason)
   // Within the slack above, which is round-off rather than disagreement.
   if (split.reliable)
   {
-    split.inaccessibleVolume = std::clamp(split.inaccessibleVolume, 0.0, split.voidVolume);
+    // (the upper bound held at nought: a cell that is solid throughout has a void of nought less a rounding
+    // error, and a clamp between nought and less than nought has no answer)
+    split.inaccessibleVolume = std::clamp(split.inaccessibleVolume, 0.0, std::max(0.0, split.voidVolume));
     split.accessibleVolume = split.voidVolume - split.inaccessibleVolume;
   }
 }

@@ -495,6 +495,7 @@ WellField WellFieldOpenCL::compute(const PairInteractions &interactions, const C
   field.thermalEnergy = thermalEnergy;
   field.cutOff = pack.cutOff;
   field.ceiling = ceiling;
+  field.blockedEnergyPerAngstrom = blockedEnergyPerAngstrom;
   field.chargesIncluded = pack.chargesIncluded;
   field.chargesIgnored = pack.chargesIgnored;
   field.ewaldAlpha = pack.ewaldAlpha;
