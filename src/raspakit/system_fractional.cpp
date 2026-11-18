@@ -692,6 +692,10 @@ void System::initializeGibbsSwapFractionalMoleculeGroupIds() noexcept
       atom.groupId = groupId;
     }
   }
+  // The tail-correction counts per dU/dlambda group follow the group ids. Left as they were, the inactive box kept
+  // the counts of the group its placeholder was created in, and its total energy started with a tail dU/dlambda of
+  // a fractional molecule it does not hold (until the first accepted transfer recounted them).
+  computeTailCorrectionCounts();
 }
 
 bool System::hasReactionFractionalMolecules() const noexcept
@@ -800,6 +804,8 @@ void System::reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogra
 
   for (Reaction& reaction : reactions.list)
   {
+    // (a reaction of the ReactionCBMC move has no fractional molecules and no lambda coordinate)
+    if (!reaction.isSerialRxCFC() && !reaction.isParallelRxCFC()) continue;
     if (phase == PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample)
     {
       syncReactionLambdaBin(reaction);
@@ -825,6 +831,8 @@ void System::reactionLambdaSampleOccupancy() noexcept
   const bool hasFractionals = hasReactionFractionalMolecules();
   for (Reaction& reaction : reactions.list)
   {
+    // (a reaction of the ReactionCBMC move has no fractional molecules and no lambda coordinate)
+    if (!reaction.isSerialRxCFC() && !reaction.isParallelRxCFC()) continue;
     if (reaction.isSerialRxCFC())
     {
       // sample both sides so that each histogram's occupancy measures the fraction of samples for
@@ -1406,6 +1414,8 @@ void System::reactionLambdaSampleProductionHistograms(std::size_t blockIndex, do
 
   for (Reaction& reaction : reactions.list)
   {
+    // (a reaction of the ReactionCBMC move has no fractional molecules and no lambda coordinate)
+    if (!reaction.isSerialRxCFC() && !reaction.isParallelRxCFC()) continue;
     PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
     syncReactionLambdaBin(reaction);
     const double dudlambda = reactionDUdlambda(reaction);

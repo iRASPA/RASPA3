@@ -1188,6 +1188,8 @@ export struct System
     {
       for (const Reaction& reaction : reactions.list)
       {
+        // (a reaction of the ReactionCBMC move among them has no fractional molecules and no lambda)
+        if (!reaction.isSerialRxCFC() && !reaction.isParallelRxCFC()) continue;
         w *= activeReactionLambdaHistogram(reaction).weight();
       }
     }

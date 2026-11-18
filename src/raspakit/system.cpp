@@ -347,6 +347,15 @@ void System::rebuildForFramework(const Framework& newFramework, const Simulation
   CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
       eik_x, eik_y, eik_z, eik_xy, forceField, simulationBox, double3(0.0, 0.0, 0.0), 1.0);
 
+  // What was derived from the old framework goes with it: the states of its rigid groups, the cell lists (caches,
+  // rebuilt on the next query), the interpolation grids (those of the old cell; without them the framework is
+  // evaluated atom by atom) and the centre-of-mass constraint of the new degrees of freedom.
+  initializeFrameworkGroupData();
+  invalidateCellList();
+  invalidateFrameworkCellList();
+  std::ranges::fill(interpolationGrids, std::nullopt);
+  updateCenterOfMassConstraint();
+
   precomputeTotalRigidEnergy();
 }
 

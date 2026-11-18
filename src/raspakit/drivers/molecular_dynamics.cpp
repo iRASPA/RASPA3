@@ -1237,7 +1237,6 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
 void MolecularDynamics::production(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
   std::chrono::steady_clock::time_point t1, t2;
-  double minBias{0.0};
 
   if (simulationStage == SimulationStage::Production) goto continueProductionStage;
   simulationStage = SimulationStage::Production;
@@ -1290,23 +1289,11 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     ++system_id;
   };
 
-  minBias = std::numeric_limits<double>::max();
-  for (System& system : systems)
-  {
-    for (Component& component : system.components)
-    {
-      double currentMinBias =
-          *std::min_element(component.lambdaGC.biasFactor.cbegin(), component.lambdaGC.biasFactor.cend());
-      minBias = currentMinBias < minBias ? currentMinBias : minBias;
-    }
-  }
-  for (System& system : systems)
-  {
-    for (Component& component : system.components)
-    {
-      component.lambdaGC.normalize(minBias);
-    }
-  }
+  // every lambda bias to a minimum of zero, histogram by histogram, as in MonteCarlo::production (see
+  // System::normalizeLambdaBiasFactors). One minimum over all systems and components was taken off the GC
+  // histograms alone: a histogram that lies above the deepest one kept a positive offset, and the weight
+  // exp(-bias) of its samples was smaller by that factor, down to zero for a large one.
+  System::normalizeLambdaBiasFactors(systems);
 
   numberOfSteps = 0uz;
   for (currentCycle = 0uz; currentCycle < numberOfProductionCycles; ++currentCycle, ++absoluteCurrentCycle)

@@ -2418,3 +2418,33 @@ TEST(MC_GIBBS_DRIFT, gibbs_conventional_cfcmc_on_a_single_lambda_point_transfers
   EXPECT_GT(accepted, 100uz);
   for (System& system : systems) expectNoEnergyDrift(system);
 }
+
+// The tail-correction counts per dU/dlambda group follow the group ids of the atoms. The setup switches the
+// placeholder of the inactive box off (group id zero): the counts were left as they were when the placeholder was
+// created with the group of its lambda, so that box started with the counts of a fractional molecule it does not
+// hold.
+TEST(MC_GIBBS_DRIFT, the_inactive_box_of_a_serial_gibbs_swap_starts_without_tail_counts_of_the_fractional_group)
+{
+  const ForceField forceField = makeAlkaneForceField();
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::GibbsSwapCFCMC, 1.0);
+  Component propane = makeAlkaneFromExample(forceField, 0, "propane", probabilities, true);
+  SimulationBox box = SimulationBox(40.0, 40.0, 40.0);
+  std::vector<System> systems{
+      System(forceField, box, false, 500.0, 1e4, 1.0, {}, {propane}, {}, {20}, 5, MCMoveProbabilities()),
+      System(forceField, box, false, 500.0, 1e4, 1.0, {}, {propane}, {}, {20}, 5, MCMoveProbabilities())};
+  setupSerialGibbsCFCMC(systems);
+
+  auto groupCount = [](const System &system)
+  {
+    double count = 0.0;
+    for (const std::vector<double> &group : system.fractionalPseudoAtomCountsPerGroup)
+      count += std::accumulate(group.begin(), group.end(), 0.0);
+    return count;
+  };
+  ASSERT_TRUE(systems[0].containsTheFractionalMolecule(0));
+  ASSERT_FALSE(systems[1].containsTheFractionalMolecule(0));
+  // the three atoms of the active fractional molecule, and none in the box of the placeholder
+  EXPECT_DOUBLE_EQ(groupCount(systems[0]), 3.0);
+  EXPECT_DOUBLE_EQ(groupCount(systems[1]), 0.0);
+}

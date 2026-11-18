@@ -5453,24 +5453,51 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   }
 
   // The time-correlation properties (MSD, VACF, end-to-end ACF) follow each molecule of a continuous trajectory by
-  // its index within its component (a replica-exchange swap carries them along with the configuration). An identity
-  // change moves a molecule from one component to another, so the per-component indices (and the end-to-end buffers
-  // sized by the initial counts) no longer match.
+  // its index within its component (a replica-exchange swap carries them along with the configuration). A move
+  // that changes the molecules of a component breaks that: an identity change or a reaction moves a molecule
+  // from one component to another, an insertion or deletion renumbers the molecules, and a CFCMC swap exchanges
+  // the fractional molecule with an integer one. The samplers notice only a change of the total number of
+  // molecules: at the same total (A <-> B, an insertion and a deletion between two samples, a fractional
+  // molecule made whole) they went on with the indices and the per-component counts of the start.
   for (std::size_t i = 0uz; i < systems.size(); ++i)
   {
     const bool timeCorrelation = systems[i].propertyMSD.has_value() || systems[i].propertyVACF.has_value() ||
                                  systems[i].propertyEndToEndACF.has_value();
     if (!timeCorrelation) continue;
+    static constexpr std::array componentMoves{
+        Move::Types::IdentityChangeCBMC,      Move::Types::IdentitySwitchCBMC,
+        Move::Types::GibbsIdentityChangeCBMC, Move::Types::Swap,
+        Move::Types::SwapCBMC,                Move::Types::SwapMultiTrialCBMC,
+        Move::Types::SwapCFCMC,               Move::Types::SwapCBCFCMC,
+        Move::Types::GibbsSwapCBMC,           Move::Types::GibbsSwapMultiTrialCBMC,
+        Move::Types::GibbsSwapCFCMC,          Move::Types::GibbsSwapCBCFCMC,
+        Move::Types::GibbsConventionalCFCMC,  Move::Types::GibbsConventionalCBCFCMC,
+        Move::Types::PairSwap,                Move::Types::PairSwapCBMC,
+        Move::Types::PairSwapCFCMC,           Move::Types::PairSwapCBCFCMC,
+        Move::Types::GroupSwap,               Move::Types::GroupSwapCBMC,
+        Move::Types::GroupSwapCFCMC,          Move::Types::GroupSwapCBCFCMC};
     for (const Component& component : systems[i].components)
     {
-      if (component.mc_moves_probabilities.getProbability(Move::Types::IdentityChangeCBMC) > 0.0 ||
-          component.mc_moves_probabilities.getProbability(Move::Types::GibbsIdentityChangeCBMC) > 0.0)
+      if (std::ranges::any_of(componentMoves, [&](Move::Types move)
+                              { return component.mc_moves_probabilities.getProbability(move) > 0.0; }))
       {
         throw std::runtime_error(std::format(
-            "[Input reader]: system {}: MSD, VACF and end-to-end ACF are not supported with identity-change moves "
-            "(component '{}'): they track molecules by their index within a component\n",
+            "[Input reader]: system {}: MSD, VACF and end-to-end ACF are not supported with insertion, deletion, "
+            "swap or identity-change moves (component '{}'): they track molecules by their index within a "
+            "component\n",
             i, component.name));
       }
+    }
+    static constexpr std::array reactionMoves{Move::Types::ReactionCBMC, Move::Types::ReactionConventionalCFCMC,
+                                              Move::Types::ReactionConventionalCBCFCMC, Move::Types::ReactionCFCMC,
+                                              Move::Types::ReactionCBCFCMC};
+    if (std::ranges::any_of(reactionMoves, [&](Move::Types move)
+                            { return systems[i].mc_moves_probabilities.getProbability(move) > 0.0; }))
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: system {}: MSD, VACF and end-to-end ACF are not supported with reaction moves: they "
+          "track molecules by their index within a component\n",
+          i));
     }
   }
 

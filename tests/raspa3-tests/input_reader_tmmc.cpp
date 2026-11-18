@@ -469,6 +469,8 @@ TEST(INPUT_READER_MD, accepts_grand_canonical_molecular_dynamics_ensembles)
     nlohmann::json input = readNVTExample();
     input["Systems"][0]["Ensemble"] = test.name;
     input["Systems"][0]["ExternalPressure"] = 1.0e5;
+    // (the example samples the MSD, which follows the molecules by index: not with an insertion move)
+    input["Systems"][0].erase("ComputeMSD");
     if (test.ensemble == MolecularDynamicsEnsemble::MuPTPR)
       input["Systems"][0]["CellType"] = "RegularUpperTriangle";
     input["Components"][0]["SwapProbability"] = 1.0;
@@ -1249,6 +1251,8 @@ nlohmann::json chemicalPotentialMixtureInput()
   nlohmann::json input = readNVTExample();
   input["SimulationType"] = "MonteCarlo";
   input["Systems"][0].erase("Ensemble");
+  // (the example samples the MSD, which follows the molecules by index: not with an insertion move)
+  input["Systems"][0].erase("ComputeMSD");
   input["Systems"][0]["ExternalTemperature"] = 250.0;
   input["Components"][0]["SwapProbability"] = 1.0;
   input["Components"][0]["CreateNumberOfMolecules"] = 0;
@@ -1398,6 +1402,8 @@ TEST(INPUT_READER, conventional_gibbs_cfcmc_needs_exactly_two_boxes)
     input["SimulationType"] = "MonteCarlo";
     input["NumberOfLambdaBins"] = numberOfLambdaBins;
     input["Systems"][0].erase("Ensemble");
+    // (the example samples the MSD, which follows the molecules by index: not with an insertion move)
+    input["Systems"][0].erase("ComputeMSD");
     std::vector<std::size_t> created;
     for (std::size_t i = 0; i != numberOfSystems; ++i)
     {
@@ -1715,4 +1721,32 @@ TEST(INPUT_READER, rejects_an_interval_of_zero_cycles)
                std::runtime_error);
   // zero switches the binary restart off
   EXPECT_NO_THROW(read([](nlohmann::json& input) { input["WriteBinaryRestartEvery"] = 0; }, "interval_restart"));
+}
+
+// The MSD, VACF and end-to-end ACF follow the molecules by their index within a component. An insertion, a CFCMC
+// swap or a reaction changes the molecules of a component, also at the same total number of molecules, which the
+// samplers do not notice: such a combination is refused when the input is read.
+TEST(INPUT_READER, time_correlation_properties_refuse_the_moves_that_change_the_molecules_of_a_component)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  for (const char* keyword : {"SwapProbability", "CFCMC_CBMC_SwapProbability"})
+  {
+    SCOPED_TRACE(keyword);
+    nlohmann::json input = readNVTExample();
+    input["SimulationType"] = "MonteCarlo";
+    input["Systems"][0].erase("Ensemble");
+    ASSERT_TRUE(input["Systems"][0].contains("ComputeMSD"));
+    input["Components"][0][keyword] = 1.0;
+    TemporaryInput temporary(std::move(input), "msd_with_swap", workspace.path());
+    ScopedCurrentPath currentPath(workspace.path());
+    try
+    {
+      InputReader reader(temporary.path().filename().string());
+      ADD_FAILURE() << "accepted";
+    }
+    catch (const std::runtime_error& error)
+    {
+      EXPECT_NE(std::string(error.what()).find("track molecules by their index"), std::string::npos) << error.what();
+    }
+  }
 }
