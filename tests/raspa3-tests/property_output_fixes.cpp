@@ -296,3 +296,42 @@ TEST(PROPERTY_OUTPUT_FIXES, block_of_a_sample_follows_from_the_sample_alone)
   EXPECT_LT(shortBlocks[1], shortBlocks[2]);
   EXPECT_LE(shortBlocks[2], 4uz);
 }
+
+// Without an insertion weight (every insertion overlapped) there is no fugacity estimate: the excess term left
+// at zero made it the ideal-gas pressure. And the total chemical potential needs both of its terms.
+TEST(PROPERTY_OUTPUT_FIXES, widom_statistics_without_an_insertion_weight_have_no_fugacity)
+{
+  const double beta = 1.0 / (Units::KB * 300.0);
+  PropertyWidom overlapping(2);
+  overlapping.addWidomSample(0, 0.0, 10, 1000.0, 1.0);
+  overlapping.addWidomSample(1, 0.0, 10, 1000.0, 1.0);
+  EXPECT_DOUBLE_EQ(overlapping.averagedFugacity(beta), 0.0);
+  EXPECT_DOUBLE_EQ(overlapping.averagedChemicalPotential(beta).total, 0.0);
+
+  PropertyWidom empty(2);
+  empty.addWidomSample(0, 2.0, 0, 1000.0, 1.0);
+  empty.addWidomSample(1, 3.0, 0, 1000.0, 1.0);
+  EXPECT_NE(empty.averagedChemicalPotential(beta).excess, 0.0);
+  EXPECT_DOUBLE_EQ(empty.averagedChemicalPotential(beta).total, 0.0);
+}
+
+// The mole fraction of the only component is one, whatever its number of molecules does over the blocks.
+TEST(PROPERTY_OUTPUT_FIXES, the_mole_fraction_of_a_single_component_has_no_error)
+{
+  const SimulationBox box(20.0, 20.0, 20.0);
+  PropertyLoading loading(3, 1);
+  loading.addSample(0, LoadingData(1, {3}, box), 1.0);
+  loading.addSample(1, LoadingData(1, {5}, box), 1.0);
+  loading.addSample(2, LoadingData(1, {4}, box), 1.0);
+  const std::pair<double, double> moleFraction = loading.averageMoleFraction(0);
+  EXPECT_DOUBLE_EQ(moleFraction.first, 1.0);
+  EXPECT_NEAR(moleFraction.second, 0.0, 1e-12);
+
+  // two components: the error of the ratio over the blocks
+  PropertyLoading mixture(3, 2);
+  mixture.addSample(0, LoadingData(2, {2, 6}, box), 1.0);
+  mixture.addSample(1, LoadingData(2, {4, 4}, box), 1.0);
+  mixture.addSample(2, LoadingData(2, {3, 5}, box), 1.0);
+  EXPECT_NEAR(mixture.averageMoleFraction(0).first, 9.0 / 24.0, 1e-12);
+  EXPECT_GT(mixture.averageMoleFraction(0).second, 0.0);
+}

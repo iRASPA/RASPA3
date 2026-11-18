@@ -9,6 +9,7 @@ import int3;
 import stringutils;
 import units;
 import component;
+import json;
 
 std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> components,
                                                      std::optional<double> frameworkMass,
@@ -134,9 +135,11 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
                      Units::unitOfDensityString);
           if (loadingAverage.first.totalNumberOfMolecules > 0.0)
           {
-            std::print(stream, "    Mol-fraction average {: .6e} +/- {: .6e} [-]\n",
-                       loadingAverage.first.numberOfMolecules[i] / loadingAverage.first.totalNumberOfMolecules,
-                       loadingAverage.second.numberOfMolecules[i] / loadingAverage.first.totalNumberOfMolecules);
+            // (the error of the ratio over the blocks: the error of N_i over the mean of N gave a single
+            // component, whose mole fraction is one, an error)
+            const std::pair<double, double> moleFraction = averageMoleFraction(i);
+            std::print(stream, "    Mol-fraction average {: .6e} +/- {: .6e} [-]\n", moleFraction.first,
+                       moleFraction.second);
           }
           break;
         case Units::System::ReducedUnits:
@@ -146,9 +149,11 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
                      loadingAverage.second.numberDensities[i], Units::unitOfDensityString);
           if (loadingAverage.first.totalNumberOfMolecules > 0.0)
           {
-            std::print(stream, "    Mol-fraction average {: .6e} +/- {: .6e} [-]\n",
-                       loadingAverage.first.numberOfMolecules[i] / loadingAverage.first.totalNumberOfMolecules,
-                       loadingAverage.second.numberOfMolecules[i] / loadingAverage.first.totalNumberOfMolecules);
+            // (the error of the ratio over the blocks: the error of N_i over the mean of N gave a single
+            // component, whose mole fraction is one, an error)
+            const std::pair<double, double> moleFraction = averageMoleFraction(i);
+            std::print(stream, "    Mol-fraction average {: .6e} +/- {: .6e} [-]\n", moleFraction.first,
+                       moleFraction.second);
           }
           break;
       }
@@ -158,6 +163,78 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
   std::print(stream, "\n");
 
   return stream.str();
+}
+
+std::pair<double, double> PropertyLoading::averageMoleFraction(std::size_t comp) const
+{
+  return statistics(
+      [comp](const LoadingData &data)
+      { return data.totalNumberOfMolecules > 0.0 ? data.numberOfMolecules[comp] / data.totalNumberOfMolecules : 0.0; });
+}
+
+// The loadings (with a framework) or the densities (without one) of the text statistics, per component.
+nlohmann::json PropertyLoading::jsonAveragesStatistics(const std::vector<Component> &components,
+                                                       std::optional<double> frameworkMass,
+                                                       std::optional<int3> numberOfUnitCells) const
+{
+  nlohmann::json status;
+  const std::pair<LoadingData, LoadingData> loadingAverage = average();
+  const bool reduced = Units::unitSystem == Units::System::ReducedUnits;
+
+  for (std::size_t i = 0; i < components.size(); ++i)
+  {
+    nlohmann::json component;
+    std::vector<double> blocks(numberOfBlocks);
+    for (std::size_t j = 0; j < numberOfBlocks; ++j) blocks[j] = averaged(j).numberOfMolecules[i];
+    const double mean = loadingAverage.first.numberOfMolecules[i];
+    const double error = loadingAverage.second.numberOfMolecules[i];
+
+    component["block"] = blocks;
+    component["mean"]["[molecules/cell]"] = mean;
+    component["confidence"]["[molecules/cell]"] = error;
+
+    if (frameworkMass.has_value())
+    {
+      const double excess = components[i].amountOfExcessMolecules;
+      component["excess"]["mean"]["[molecules/cell]"] = mean - excess;
+      component["excess"]["confidence"]["[molecules/cell]"] = error;
+      if (!reduced)
+      {
+        const int3 cells = numberOfUnitCells.value_or(int3{1, 1, 1});
+        const double toMoleculesPerUnitCell = 1.0 / static_cast<double>(cells.x * cells.y * cells.z);
+        const double toMolePerKg = 1000.0 / frameworkMass.value();
+        const double toMgPerG = 1000.0 * components[i].totalMass / frameworkMass.value();
+        const std::array<std::pair<const char *, double>, 3> units{
+            std::pair{"[molecules/uc]", toMoleculesPerUnitCell}, std::pair{"[mol/kg-framework]", toMolePerKg},
+            std::pair{"[mg/g-framework]", toMgPerG}};
+        for (const auto &[unit, factor] : units)
+        {
+          component["mean"][unit] = factor * mean;
+          component["confidence"][unit] = factor * error;
+          component["excess"]["mean"][unit] = factor * (mean - excess);
+          component["excess"]["confidence"][unit] = factor * error;
+        }
+      }
+    }
+    else
+    {
+      const double densityConversionFactor =
+          reduced ? 1.0 : components[i].totalMass / (1000.0 * Units::Angstrom * Units::Angstrom * Units::Angstrom *
+                                                    Units::AvogadroConstant);
+      const std::string densityUnit = std::format("[{}]", Units::unitOfDensityString);
+      component["density"]["mean"][densityUnit] = densityConversionFactor * loadingAverage.first.numberDensities[i];
+      component["density"]["confidence"][densityUnit] =
+          densityConversionFactor * loadingAverage.second.numberDensities[i];
+      if (loadingAverage.first.totalNumberOfMolecules > 0.0)
+      {
+        const std::pair<double, double> moleFraction = averageMoleFraction(i);
+        component["moleFraction"]["mean"] = moleFraction.first;
+        component["moleFraction"]["confidence"] = moleFraction.second;
+      }
+    }
+    status[components[i].name] = component;
+  }
+  return status;
 }
 
 std::pair<double, double> PropertyLoading::averageLoadingNumberOfMolecules(std::size_t comp) const

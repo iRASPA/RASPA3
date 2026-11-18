@@ -7,6 +7,7 @@ import std;
 import archive;
 import int3;
 import averages;
+import json;
 import component;
 export import property_block_average;
 import simulationbox;
@@ -190,9 +191,16 @@ export struct PropertyLoading : BlockAverage<LoadingData>
 
   std::pair<double, double> averageLoadingNumberOfMolecules(std::size_t comp) const;
 
+  /// The mole fraction of a component in the fluid, <N_i> / <N>, with the error of that ratio over the blocks.
+  std::pair<double, double> averageMoleFraction(std::size_t comp) const;
+
   std::string writeAveragesStatistics(std::vector<Component> components, 
                                       std::optional<double> frameworkMass, 
                                       std::optional<int3> numberOfUnitCells) const;
+
+  /// JSON counterpart of the text writer above (same quantities and units).
+  nlohmann::json jsonAveragesStatistics(const std::vector<Component> &components, std::optional<double> frameworkMass,
+                                        std::optional<int3> numberOfUnitCells) const;
 
   /**
    * \brief Returns a string representation of the PropertyLoading.

@@ -1012,6 +1012,9 @@ void ParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>& rec
     replicaJsons[replicaId]["properties"]["averageEnergies"] =
         system.averageEnergies.jsonAveragesStatistics(system.hasExternalField, system.framework, system.components);
     replicaJsons[replicaId]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
+    replicaJsons[replicaId]["properties"]["averageLoadings"] = system.averageLoadings.jsonAveragesStatistics(
+        system.components, system.frameworkMass(),
+        system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; }));
 
     std::ofstream json(replicaJsonFileNames[replicaId]);
     json << replicaJsons[replicaId].dump(4);

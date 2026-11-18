@@ -212,7 +212,9 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
         double cos_theta = double3::dot(dr_ab, dr_cb) / (dr_ab.length() * dr_cb.length());
         cos_theta = std::clamp(cos_theta, -1.0, 1.0);
         double theta = std::acos(cos_theta) * (180.0 / std::numbers::pi);
-        std::size_t bin = static_cast<std::size_t>(theta / deltaBend);
+        // (an angle of exactly 180 degrees, as of a linear molecule, is in the last bin: it was past the end
+        // and dropped)
+        std::size_t bin = std::min(static_cast<std::size_t>(theta / deltaBend), bins - 1uz);
         if (bin < bins)
         {
           bendHistogram[block][c][i][bin] += weight;
@@ -243,7 +245,8 @@ void PropertyMoleculeProperties::sample(const std::vector<Component> &components
         double sign = -double3::dot(Dcb, double3::cross(double3::cross(Dab, Dcb), double3::cross(Dcb, Ddc)));
         double phi = std::copysign(std::acos(cos_phi), sign) * (180.0 / std::numbers::pi);
 
-        std::size_t bin = static_cast<std::size_t>((phi + 0.5 * torsionRange) / deltaTorsion);
+        // (as is a torsion of exactly +180 degrees)
+        std::size_t bin = std::min(static_cast<std::size_t>((phi + 0.5 * torsionRange) / deltaTorsion), bins - 1uz);
         if (bin < bins)
         {
           torsionHistogram[block][c][i][bin] += weight;

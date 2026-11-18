@@ -129,9 +129,14 @@ PropertyConventionalRadialDistributionFunction::result() const
         std::vector<double> error_y(numberOfBins);
         for (std::size_t bin = 0; bin != numberOfBins; ++bin)
         {
-          x[bin] = (static_cast<double>(bin) + 0.5) * deltaR,
-          y[bin] = average[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5)),
-          error_y[bin] = error[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5));
+          // the volume of the shell of the bin, (4 pi / 3) ((b + 1)^3 - b^3) dr^3 = 4 pi (b^2 + b + 1/3) dr^3. The
+          // mid-point value 4 pi (b + 1/2)^2 dr^3 is smaller by dr^3 pi / 3: g(r) was too large by a third in
+          // the first bin and by 3.7% in the second.
+          const double b = static_cast<double>(bin);
+          const double shell = b * b + b + 1.0 / 3.0;
+          x[bin] = (b + 0.5) * deltaR;
+          y[bin] = average[bin] * normalization / shell;
+          error_y[bin] = error[bin] * normalization / shell;
         }
 
         results[atomTypeA][atomTypeB] = {x, y, error_y};

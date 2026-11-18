@@ -955,9 +955,12 @@ void HyperParallelTempering::writeIsothermSnapshot() const
           const int3 numberOfUnitCells = system.framework->numberOfUnitCells;
           toMoleculesPerUnitCell =
               1.0 / static_cast<double>(numberOfUnitCells.x * numberOfUnitCells.y * numberOfUnitCells.z);
-          const double frameworkMass = system.frameworkMass().value();
-          toMolePerKg = 1000.0 / frameworkMass;
-          toMgPerG = 1000.0 * component.totalMass / frameworkMass;
+          // (a framework without mass has no loading per kg, see System::frameworkMass)
+          if (const std::optional<double> frameworkMass = system.frameworkMass(); frameworkMass.has_value())
+          {
+            toMolePerKg = 1000.0 / frameworkMass.value();
+            toMgPerG = 1000.0 * component.totalMass / frameworkMass.value();
+          }
         }
 
         std::print(isotherm,
@@ -1053,6 +1056,9 @@ void HyperParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>
     replicaJsons[replicaId]["properties"]["averageEnergies"] =
         system.averageEnergies.jsonAveragesStatistics(system.hasExternalField, system.framework, system.components);
     replicaJsons[replicaId]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
+    replicaJsons[replicaId]["properties"]["averageLoadings"] = system.averageLoadings.jsonAveragesStatistics(
+        system.components, system.frameworkMass(),
+        system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; }));
 
     std::ofstream json(replicaJsonFileNames[replicaId]);
     json << replicaJsons[replicaId].dump(4);

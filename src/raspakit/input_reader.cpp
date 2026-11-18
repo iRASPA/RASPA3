@@ -2733,6 +2733,18 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      // The mean intramolecular energy of the molecule in the ideal gas [K]: the reference the enthalpy of
+      // adsorption (and the isosteric heat of the reweighting drivers) of a flexible molecule is measured from.
+      // The component carried it and every such output subtracted it, but no key set it.
+      if (item.contains("IdealGasEnergy") && item["IdealGasEnergy"].is_number())
+      {
+        const double ideal_gas_energy = item["IdealGasEnergy"].get<double>() * Units::KelvinToEnergy;
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].idealGasEnergy = ideal_gas_energy;
+        }
+      }
+
       if (item.contains("CrossSection") && item["CrossSection"].is_number())
       {
         const double cross_section = item["CrossSection"].get<double>();
@@ -3223,6 +3235,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].idealGasRosenbluthWeight = ideal_gas_rosenbluth_weight[i];
+        }
+      }
+
+      // (per system: the ideal-gas energy depends on the temperature)
+      if (item.contains("IdealGasEnergy") && item["IdealGasEnergy"].is_array())
+      {
+        const std::vector<double> ideal_gas_energies =
+            parseList<double>(jsonNumberOfSystems, "IdealGasEnergy", item["IdealGasEnergy"]);
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].idealGasEnergy = ideal_gas_energies[i] * Units::KelvinToEnergy;
         }
       }
 
@@ -6879,6 +6902,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "StartingBead",
     "FugacityCoefficient",
     "IdealGasRosenbluthWeight",
+    "IdealGasEnergy",
     "CrossSection",
     "LiquidVolume",
     "SaturationPressure",

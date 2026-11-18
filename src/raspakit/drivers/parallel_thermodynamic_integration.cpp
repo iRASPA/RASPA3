@@ -816,6 +816,9 @@ void ParallelThermodynamicIntegration::writeReplicaFinalReports(std::vector<Runn
     replicaJsons[replicaId]["properties"]["averageEnergies"] =
         system.averageEnergies.jsonAveragesStatistics(system.hasExternalField, system.framework, system.components);
     replicaJsons[replicaId]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
+    replicaJsons[replicaId]["properties"]["averageLoadings"] = system.averageLoadings.jsonAveragesStatistics(
+        system.components, system.frameworkMass(),
+        system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; }));
 
     // the replica's own per-bin dU/dlambda book-keeping (samples over the bins it visited)
     const PropertyLambdaProbabilityHistogram& histogram = system.components[tiComponentId].fixedLambdaHistogram();

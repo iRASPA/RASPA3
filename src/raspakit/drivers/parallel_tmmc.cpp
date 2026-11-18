@@ -310,27 +310,38 @@ std::vector<double> tmmcReconstructLogPi(const std::vector<double3>& collectionM
     }
   }
 
-  // gauge ln Pi = 0 at the lowest macrostate that was visited or has an increment out of it
-  // (a counted test-insertion mean at the first macrostate supplies its own gauge even when the
-  // collection-matrix chain is disconnected there), then run the recursion upward until the first
-  // increment that nothing supports: above that, nothing ties the gauge, and those states stay
-  // at the 'log of zero' sentinel
-  std::size_t seed = numberOfMacrostates;
-  if (firstVisited < nChain) seed = std::min(seed, firstVisited / nLambda);
-  for (std::size_t n = 0; n < increment.size(); ++n)
+  // ln Pi is one estimate only over a run of supported increments: nothing ties the gauge across an increment
+  // that nothing supports. The recursion runs over the longest such run (the first of the longest ones), as
+  // TransitionMatrix::supportedMoleculeRange does, gauged to zero at its lowest macrostate; the states outside
+  // it stay at the 'log of zero' sentinel. It started at the lowest visited macrostate and stopped at the first
+  // unsupported increment: a lowest state that was visited without a transition back into it (one visit in the
+  // collection matrix of a block, or a visit of (N, k > 0) without (N, 0) on an (N, lambda) chain) then left
+  // the whole chain above it at the sentinel, and the isotherm collapsed onto that state.
+  std::size_t runStart = numberOfMacrostates;
+  std::size_t runLength = 0uz;
+  for (std::size_t n = 0; n < increment.size();)
   {
-    if (increment[n] > logZeroThreshold)
+    if (increment[n] <= logZeroThreshold)
     {
-      seed = std::min(seed, n);
-      break;
+      ++n;
+      continue;
     }
+    std::size_t end = n;
+    while (end < increment.size() && increment[end] > logZeroThreshold) ++end;
+    if (end - n > runLength)
+    {
+      runStart = n;
+      runLength = end - n;
+    }
+    n = end;
   }
-  if (seed >= numberOfMacrostates) return logPi;
+  // without a supported increment the lowest visited macrostate is all there is
+  if (runLength == 0uz && firstVisited < nChain) runStart = firstVisited / nLambda;
+  if (runStart >= numberOfMacrostates) return logPi;
 
-  logPi[seed] = 0.0;
-  for (std::size_t n = seed; n + 1uz < numberOfMacrostates; ++n)
+  logPi[runStart] = 0.0;
+  for (std::size_t n = runStart; n < runStart + runLength; ++n)
   {
-    if (increment[n] <= logZeroThreshold) break;
     logPi[n + 1uz] = logPi[n] + increment[n];
   }
   return logPi;
@@ -1672,9 +1683,12 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
   {
     const int3 numberOfUnitCells = front.framework->numberOfUnitCells;
     toMoleculesPerUnitCell = 1.0 / static_cast<double>(numberOfUnitCells.x * numberOfUnitCells.y * numberOfUnitCells.z);
-    const double frameworkMass = front.frameworkMass().value();
-    toMolePerKg = 1000.0 / frameworkMass;
-    toMgPerG = 1000.0 * frontComponent.totalMass / frameworkMass;
+    // (a framework without mass has no loading per kg, see System::frameworkMass)
+    if (const std::optional<double> frameworkMass = front.frameworkMass(); frameworkMass.has_value())
+    {
+      toMolePerKg = 1000.0 / frameworkMass.value();
+      toMgPerG = 1000.0 * frontComponent.totalMass / frameworkMass.value();
+    }
   }
 
   // the fluid the walkers ran with: every component at its mole fraction, so that the reweighted fugacity of the
@@ -2232,7 +2246,10 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
         const double cells =
             static_cast<double>(numberOfUnitCells.x * numberOfUnitCells.y * numberOfUnitCells.z);
         const double unitCellVolume = front.simulationBox.volume / cells;
-        const double unitCellMass = front.framework->unitCellMass;
+        // (the mass the loadings per kg are counted against: the framework with its cations of a fixed number, see
+        // System::frameworkMass. The bare unit cell left the cations out, and the gravimetric area of a
+        // cation-exchanged zeolite was too large by their share of the mass.)
+        const double unitCellMass = front.frameworkMass().value_or(front.framework->unitCellMass * cells) / cells;
         const TMMCIsotherm& storedIsotherm = reweightedIsotherms.back();
 
         auto pointsFromBranch = [&](const std::vector<TMMCIsothermPoint>& branch) -> std::vector<SimulatedIsothermPoint>
@@ -2800,6 +2817,9 @@ void ParallelTMMC::writeWalkerFinalReports(std::vector<RunningEnergy>& recompute
     walkerJsons[walkerId]["properties"]["averageEnergies"] =
         system.averageEnergies.jsonAveragesStatistics(system.hasExternalField, system.framework, system.components);
     walkerJsons[walkerId]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
+    walkerJsons[walkerId]["properties"]["averageLoadings"] = system.averageLoadings.jsonAveragesStatistics(
+        system.components, system.frameworkMass(),
+        system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; }));
 
     std::ofstream json(walkerJsonFileNames[walkerId]);
     json << walkerJsons[walkerId].dump(4);

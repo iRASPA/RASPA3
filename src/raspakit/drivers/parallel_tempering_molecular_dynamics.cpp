@@ -631,19 +631,6 @@ void ParallelTemperingMolecularDynamics::runStage(SimulationStage stage, std::si
               {
                 estimation.setCurrentSample(cycle);
 
-                // energy/pressure averages for the per-replica final report (sampled before the
-                // step, as in the plain MD driver)
-                if (cycle % 10uz == 0uz || cycle % printEvery == 0uz)
-                {
-                  std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
-                  std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
-                  system.currentEnergyStatus = molecularPressure.first;
-                  system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-                  std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
-
-                  system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
-                  system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
-                }
               }
 
               if (molecularDynamicsStage)
@@ -676,6 +663,20 @@ void ParallelTemperingMolecularDynamics::runStage(SimulationStage stage, std::si
 
               if (stage == SimulationStage::Production)
               {
+                // energy/pressure averages for the per-replica final report: of the configuration after the
+                // step, the one 'sampleProperties' pairs them with (as in the plain MD driver)
+                if (cycle % 10uz == 0uz || cycle % printEvery == 0uz)
+                {
+                  std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
+                  std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
+                  system.currentEnergyStatus = molecularPressure.first;
+                  system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+                  std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
+
+                  system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
+                  system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+                }
+
                 // (the pressure is sampled in the cycles its tensor was computed for)
                 system.sampleProperties(replicaId, estimation.currentBin, cycle, false,
                                         cycle % 10uz == 0uz || cycle % printEvery == 0uz);
@@ -996,6 +997,9 @@ void ParallelTemperingMolecularDynamics::writeReplicaFinalReports(std::vector<Ru
     replicaJsons[replicaId]["properties"]["averageEnergies"] =
         system.averageEnergies.jsonAveragesStatistics(system.hasExternalField, system.framework, system.components);
     replicaJsons[replicaId]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
+    replicaJsons[replicaId]["properties"]["averageLoadings"] = system.averageLoadings.jsonAveragesStatistics(
+        system.components, system.frameworkMass(),
+        system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; }));
 
     std::ofstream json(replicaJsonFileNames[replicaId]);
     json << replicaJsons[replicaId].dump(4);

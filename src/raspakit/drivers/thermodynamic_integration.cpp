@@ -551,6 +551,9 @@ void ThermodynamicIntegration::output()
     outputJsons[system_id]["properties"]["averageEnergies"] =
         system.averageEnergies.jsonAveragesStatistics(system.hasExternalField, system.framework, system.components);
     outputJsons[system_id]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
+    outputJsons[system_id]["properties"]["averageLoadings"] = system.averageLoadings.jsonAveragesStatistics(
+        system.components, system.frameworkMass(),
+        system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; }));
     outputJsons[system_id]["properties"]["thermodynamicIntegration"] = jsonThermodynamicIntegrationPoint(system);
 
     for (const Component& component : system.components)

@@ -207,7 +207,10 @@ export struct PropertyWidom
     // left at zero rather than the infinity of log(0)
     const double excess = terms.excess > 0.0 ? -(1.0 / beta) * std::log(terms.excess) : 0.0;
     const double idealGas = terms.idealGas > 0.0 ? (1.0 / beta) * std::log(terms.idealGas) : 0.0;
-    return WidomData(excess + idealGas, excess, idealGas);
+    // (the total needs both: with one of them missing it was the other one alone, the excess chemical potential
+    // reported as the total one of an empty box)
+    const bool estimated = terms.excess > 0.0 && terms.idealGas > 0.0;
+    return WidomData(estimated ? excess + idealGas : 0.0, excess, idealGas);
   }
 
   WidomData averagedChemicalPotential(double beta) const
@@ -233,6 +236,9 @@ export struct PropertyWidom
     // no molecules, no fugacity: the ideal-gas chemical potential of an empty box is minus infinity (with the
     // ideal-gas term left at zero, the excess term alone made an empty box report a fugacity of 1 / (beta W))
     if (!(terms.idealGas > 0.0)) return 0.0;
+    // no insertion weight (every insertion overlapped), no estimate: the excess term left at zero made it the
+    // ideal-gas pressure <N / V> / beta
+    if (!(terms.excess > 0.0)) return 0.0;
     return std::exp(beta * chemicalPotentialTransform(terms, beta).total) / beta;
   }
 

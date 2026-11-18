@@ -114,7 +114,9 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
 
   std::pair<std::vector<double>, std::vector<double>> freeEnergy = averageLandauFreeEnergyHistogram(beta);
   std::pair<double, double> excessChemicalPotential = averageExcessChemicalPotential(beta);
-  double excessChemicalPotentialBias = (biasFactor[lastBin] - biasFactor[0]) / beta;
+  // (without samples at both ends of the lambda path there is no estimate, and no bias to add to it: the bias
+  // difference alone was reported as the excess chemical potential)
+  double excessChemicalPotentialBias = sampledAtBothEnds() ? (biasFactor[lastBin] - biasFactor[0]) / beta : 0.0;
   std::pair<double, double> totalChemicalPotential = averageTotalChemicalPotential(beta, excessChemicalPotentialBias);
 
   std::pair<double, double> measuredFugacity = averageFugacity(beta, excessChemicalPotentialBias);
@@ -151,7 +153,10 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
       std::print(stream, "    Excess chemical potential: (ln(P(lambda=1))-ln(P(lambda=0)))/Beta\n");
       for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
-        double blockAverage = averagedExcessChemicalPotential(blockIndex, beta);
+        // (a block without samples at both ends has no estimate: zero, not the bias difference)
+        double blockAverage = blockSampledAtBothEnds(blockIndex)
+                                  ? averagedExcessChemicalPotential(blockIndex, beta)
+                                  : -excessChemicalPotentialBias;
         std::print(stream, "        Block[ {:2d}] {}\n", blockIndex,
                    conv * (blockAverage + excessChemicalPotentialBias));
       }
@@ -208,7 +213,10 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
       std::print(stream, "    Excess chemical potential: (ln(P(lambda=1))-ln(P(lambda=0)))\n");
       for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
-        double blockAverage = averagedExcessChemicalPotential(blockIndex, beta);
+        // (a block without samples at both ends has no estimate: zero, not the bias difference)
+        double blockAverage = blockSampledAtBothEnds(blockIndex)
+                                  ? averagedExcessChemicalPotential(blockIndex, beta)
+                                  : -excessChemicalPotentialBias;
         std::print(stream, "        Block[ {:2d}] {}\n", blockIndex,
                    beta * (blockAverage + excessChemicalPotentialBias));
       }
@@ -404,7 +412,9 @@ nlohmann::json PropertyLambdaProbabilityHistogram::jsonAveragesStatistics(
 
   std::pair<std::vector<double>, std::vector<double>> freeEnergy = averageLandauFreeEnergyHistogram(beta);
   std::pair<double, double> excessChemicalPotential = averageExcessChemicalPotential(beta);
-  double excessChemicalPotentialBias = (biasFactor[lastBin] - biasFactor[0]) / beta;
+  // (without samples at both ends of the lambda path there is no estimate, and no bias to add to it: the bias
+  // difference alone was reported as the excess chemical potential)
+  double excessChemicalPotentialBias = sampledAtBothEnds() ? (biasFactor[lastBin] - biasFactor[0]) / beta : 0.0;
   std::pair<double, double> totalChemicalPotential = averageTotalChemicalPotential(beta, excessChemicalPotentialBias);
 
   std::pair<double, double> measuredFugacity = averageFugacity(beta, excessChemicalPotentialBias);
@@ -422,7 +432,9 @@ nlohmann::json PropertyLambdaProbabilityHistogram::jsonAveragesStatistics(
   for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
   {
     excessChemicalPotentialBlocks[blockIndex] =
-        Units::EnergyToKelvin * (averagedExcessChemicalPotential(blockIndex, beta) + excessChemicalPotentialBias);
+        blockSampledAtBothEnds(blockIndex)
+            ? Units::EnergyToKelvin * (averagedExcessChemicalPotential(blockIndex, beta) + excessChemicalPotentialBias)
+            : 0.0;
   }
 
   status["excessChemicalPotential"]["blocks"]["[K]"] = excessChemicalPotentialBlocks;

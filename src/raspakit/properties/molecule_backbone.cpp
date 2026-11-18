@@ -314,6 +314,10 @@ void PropertyMoleculeBackbone::sample(const std::vector<Component> &components,
         internalDistanceSquaredSum[block][c][i] += weight * internalDistances[i];
       for (std::size_t i = 0; i != bondCorrelation.size(); ++i)
         bondCorrelationSum[block][c][i] += weight * bondCorrelation[i];
+      // (the histogram of the molecule grows with the largest distance found: the stored one follows it, or the
+      // bins past its end were written outside it)
+      if (pairDistances.size() > pairDistanceHistogram[block][c].size())
+        pairDistanceHistogram[block][c].resize(pairDistances.size(), 0.0);
       for (std::size_t i = 0; i != pairDistances.size(); ++i)
         pairDistanceHistogram[block][c][i] += weight * pairDistances[i];
 

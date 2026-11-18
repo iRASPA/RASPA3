@@ -3017,6 +3017,16 @@ not improved by it.
     potential follows directly from the fugacity). For equimolar mixtures this is
     essential.
 
+-   `"IdealGasEnergy" : floating-point-number`\
+    The mean intramolecular energy of a single molecule in the ideal gas at the
+    temperature of the system [K], from a run of one molecule in an empty box.
+    The enthalpy of adsorption (and the isosteric heat of the reweighting
+    drivers) is measured from this reference: it is subtracted from the
+    reported value. A rigid molecule or a single atom has none and needs no
+    key; for a flexible molecule without the key the outputs carry a note that
+    the ideal-gas energy still has to be subtracted. A list gives one value per
+    system.
+
 -   `"CrossSection" : floating-point-number`\
     Probe cross-section σ for BET surface-area conversion [Å²]. Required when
     `"ComputeBET"` is true (nitrogen is usually 16.2 Å²).

@@ -35,9 +35,15 @@ struct AxisStencil
 inline AxisStencil equitableAxis(double f, std::size_t n)
 {
   f -= std::floor(f);
+  // (the fractional part of a coordinate just below zero rounds to exactly one: that is the origin)
+  if (!(f < 1.0)) f = 0.0;
 
-  const double g = static_cast<double>(n) * f;
-  const long idx = static_cast<long>(std::ceil(g));
+  // The voxel that holds the point, counted from one: floor(g) + 1. It was ceil(g), which is the same number except
+  // for a point on a voxel boundary (g an integer, as at the special positions 1/4, 1/2, 3/4 of a grid whose size is
+  // a multiple of four): there it is one less, and the two halves of the point went to the voxels one to the left of
+  // the two that share the boundary; at g = 1 one half went to the last voxel, across the whole box.
+  const double g = std::min(static_cast<double>(n) * f, std::nextafter(static_cast<double>(n), 0.0));
+  const long idx = static_cast<long>(std::floor(g)) + 1L;
   const double part = g - std::floor(g);
 
   AxisStencil out{};

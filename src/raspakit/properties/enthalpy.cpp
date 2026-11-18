@@ -12,6 +12,14 @@ import averages;
 import json;
 import averages;
 
+// A flexible molecule of more than one atom has an intramolecular energy in the ideal gas, which the enthalpy of
+// adsorption is measured from; a rigid molecule or a single atom has none (the note that it still had to be
+// subtracted was printed for every component, argon and rigid CO2 included).
+static bool lacksIdealGasEnergy(const Component& component)
+{
+  return !component.rigid && component.atoms.size() > 1uz && !component.idealGasEnergy.has_value();
+}
+
 // The total enthalpy of adsorption per block, in internal energy units: the components' enthalpies (ideal-gas
 // term subtracted) weighted by the adsorbed-phase mole fractions of the block. A block with a singular
 // particle-number covariance has no enthalpy and no total.
@@ -21,6 +29,8 @@ std::vector<std::optional<double>> PropertyEnthalpy::blockTotalEnthalpies(
   std::vector<std::optional<double>> totals(numberOfBlocks);
   for (std::size_t i = 0; i < numberOfBlocks; ++i)
   {
+    // (a block that is not filled takes no part in the statistics of the components, nor in the total)
+    if (!filled(i)) continue;
     const EnthalpyOfAdsorptionData average = averaged(i);
     if (!average.defined) continue;
     const std::vector<double> fractions = blockAdsorbedMoleFractions(i);
@@ -93,7 +103,7 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
                    Units::EnergyToKJPerMol * (enthalpy.first.values[k] - idealGasTerm),
                    Units::EnergyToKJPerMol * enthalpy.second.values[k]);
       }
-      if (!components[index].idealGasEnergy)
+      if (lacksIdealGasEnergy(components[index]))
       {
         std::print(stream, "    Note: need to subtract the ideal-gas energy.\n");
       }
@@ -131,7 +141,7 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
       for (std::size_t k = 0; k < swappableComponents.size(); k++)
       {
         std::size_t index = swappableComponents[k];
-        if (!components[index].idealGasEnergy)
+        if (lacksIdealGasEnergy(components[index]))
         {
           std::print(stream, "    Note: Recompute value of the total enthalpy of adsorption by hand.\n");
           std::print(stream, "          Need to subtract the ideal-gas energy of component {}.\n", index);
@@ -186,7 +196,7 @@ nlohmann::json PropertyEnthalpy::jsonAveragesStatistics(std::vector<std::size_t>
         status[components[index].name]["confidence"] = nullptr;
       }
 
-      if (!components[index].idealGasEnergy)
+      if (lacksIdealGasEnergy(components[index]))
       {
         status[components[index].name]["warning"] =
             "Note: Recompute value of the total enthalpy of adsorption by hand. Need to subtract the ideal-gas "

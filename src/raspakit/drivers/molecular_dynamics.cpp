@@ -1315,6 +1315,44 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
 
     estimation.setCurrentSample(currentCycle);
 
+    for (System& system : systems)
+    {
+      if (currentCycle % 3uz == 0uz) attemptParticleExchange(random, system);
+      system.runningEnergies = molecularDynamicsStep(system);
+      ++numberOfSteps;
+
+      system.accountConservedEnergy();
+
+      // Stress-fluctuation elastic constants are a production-phase average (the block estimator uses
+      // 'estimation.currentBin', which is only advanced during production).
+      if (system.propertyElasticConstantsFluctuation && currentCycle % system.elasticConstantsSampleEvery == 0)
+      {
+        System samplingSystem = system;
+        const auto molecularPressure = samplingSystem.computeMolecularPressure();
+        system.currentEnergyStatus = molecularPressure.first;
+        // The Born term is the affine stiffness of the atoms (with the bonded terms of flexible molecules in it), so
+        // the stress it is paired with is the atomic one, as is the kinetic stress: the molecular centre-of-mass
+        // virial leaves the intramolecular stress out, and its fluctuations then cannot cancel the stiff bonded
+        // modes of the Born term. (The gradients of the step just taken are those at the current positions.)
+        const double3x3 atomicStress =
+            computeBarostatVirial(system, molecularPressure.second, BarostatCoupling::Atomic) /
+            system.simulationBox.volume;
+        const double3x3 kineticPressure =
+            computeMolecularKineticVirial(system, BarostatCoupling::Atomic) / system.simulationBox.volume;
+        const double effectiveKineticEntities =
+            static_cast<double>(system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint) /
+            3.0;
+        const ElasticFluctuationTerms terms(stressVoigt(atomicStress), stressVoigt(kineticPressure),
+                                            computeGreenLagrangeBornTensor(system), system.beta,
+                                            system.simulationBox.volume, effectiveKineticEntities);
+        system.propertyElasticConstantsFluctuation->addSample(estimation.currentBin, terms, 1.0);
+      }
+    }
+
+    // The energies and the pressure tensor of the configuration that is sampled below: computed after the step. They
+    // were computed before the particle exchange and the step of this cycle, and the excess pressure of that
+    // configuration was then averaged with the ideal-gas pressure N / (beta V) and the weight of the one after
+    // them, which a varying number of molecules, volume or weight does not survive.
     for ([[maybe_unused]] System& system : systems)
     {
       // add the sample energy to the averages
@@ -1341,41 +1379,6 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
         std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
         system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
-      }
-    }
-
-    for (System& system : systems)
-    {
-      if (currentCycle % 3uz == 0uz) attemptParticleExchange(random, system);
-      system.runningEnergies = molecularDynamicsStep(system);
-      ++numberOfSteps;
-
-      system.accountConservedEnergy();
-
-      // Stress-fluctuation elastic constants are a production-phase average (the block estimator uses
-      // 'estimation.currentBin', which is only advanced during production).
-      if (system.propertyElasticConstantsFluctuation && currentCycle % system.elasticConstantsSampleEvery == 0)
-      {
-        System samplingSystem = system;
-        const auto molecularPressure = samplingSystem.computeMolecularPressure();
-        system.currentEnergyStatus = molecularPressure.first;
-        system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-        // The Born term is the affine stiffness of the atoms (with the bonded terms of flexible molecules in it), so
-        // the stress it is paired with is the atomic one, as is the kinetic stress: the molecular centre-of-mass
-        // virial leaves the intramolecular stress out, and its fluctuations then cannot cancel the stiff bonded
-        // modes of the Born term. (The gradients of the step just taken are those at the current positions.)
-        const double3x3 atomicStress =
-            computeBarostatVirial(system, molecularPressure.second, BarostatCoupling::Atomic) /
-            system.simulationBox.volume;
-        const double3x3 kineticPressure =
-            computeMolecularKineticVirial(system, BarostatCoupling::Atomic) / system.simulationBox.volume;
-        const double effectiveKineticEntities =
-            static_cast<double>(system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint) /
-            3.0;
-        const ElasticFluctuationTerms terms(stressVoigt(atomicStress), stressVoigt(kineticPressure),
-                                            computeGreenLagrangeBornTensor(system), system.beta,
-                                            system.simulationBox.volume, effectiveKineticEntities);
-        system.propertyElasticConstantsFluctuation->addSample(estimation.currentBin, terms, 1.0);
       }
     }
 
@@ -1625,6 +1628,9 @@ void MolecularDynamics::output()
     outputJsons[system_id]["properties"]["averageEnergies"] =
         system.averageEnergies.jsonAveragesStatistics(system.hasExternalField, system.framework, system.components);
     outputJsons[system_id]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
+    outputJsons[system_id]["properties"]["averageLoadings"] = system.averageLoadings.jsonAveragesStatistics(
+        system.components, system.frameworkMass(),
+        system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; }));
     outputJsons[system_id]["properties"]["averageEnthalpy"] =
         system.averageEnthalpiesOfAdsorption.jsonAveragesStatistics(system.swappableComponents, system.components);
     outputJsons[system_id]["properties"]["averagePartialMolarProperties"] =

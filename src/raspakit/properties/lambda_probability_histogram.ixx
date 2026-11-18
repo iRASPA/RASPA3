@@ -288,6 +288,13 @@ export struct PropertyLambdaProbabilityHistogram
     return bookKeepingLambda[blockIndex].front() > 0.0 && bookKeepingLambda[blockIndex].back() > 0.0;
   }
 
+  /// Whether the run as a whole has samples at both ends of the lambda path.
+  bool sampledAtBothEnds() const
+  {
+    const std::vector<double> bins = summedLambdaBins();
+    return !bins.empty() && bins.front() > 0.0 && bins.back() > 0.0;
+  }
+
   std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram() const
   {
     std::vector<double> average = averagedProbabilityHistogram();
@@ -396,18 +403,28 @@ export struct PropertyLambdaProbabilityHistogram
     return std::make_pair(average, confidenceIntervalError);
   }
 
+  /// The fugacity of a total chemical potential. Without molecules (no density) there is none: the ideal-gas
+  /// chemical potential of an empty box is minus infinity, and with that term left at zero the excess term alone
+  /// made an empty box report a fugacity of exp(beta mu_ex) / beta (as PropertyWidom::fugacityTransform did).
+  static double fugacityOfChemicalPotential(double fluidDensity, double totalChemicalPotential, double beta)
+  {
+    return fluidDensity > 0.0 ? std::exp(beta * totalChemicalPotential) / beta : 0.0;
+  }
+
   std::pair<double, double> averageFugacity(double beta, double bias) const
   {
-    double average =
-        std::exp(beta * (averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta) + bias)) /
-        beta;
+    double average = fugacityOfChemicalPotential(
+        density.averaged(),
+        averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta) + bias, beta);
 
     std::vector<double> blockAverages;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
       if (blockSampledAtBothEnds(blockIndex))
-        blockAverages.push_back(std::exp(beta * (averagedExcessChemicalPotential(blockIndex, beta) +
-                                                 averagedIdealGasChemicalPotential(blockIndex, beta) + bias)) /
-                                beta);
+        blockAverages.push_back(fugacityOfChemicalPotential(
+            density.averaged(blockIndex),
+            averagedExcessChemicalPotential(blockIndex, beta) + averagedIdealGasChemicalPotential(blockIndex, beta) +
+                bias,
+            beta));
 
     double confidenceIntervalError = blockErrorEstimate<double>(blockAverages, average);
 
@@ -494,6 +511,16 @@ export struct PropertyLambdaProbabilityHistogram
     return sum;
   }
 
+  /// The blocks whose integral over lambda is an estimate: those with a dU/dlambda sample in every bin. A bin
+  /// without one enters the integral as zero, so a block that visited part of the lambda path gave part of the
+  /// integral (the blocks were taken when any bin was visited, or, for the total chemical potential and the
+  /// fugacity, when the density was sampled).
+  bool blockSampledAtEveryLambda(std::size_t blockIndex) const
+  {
+    return std::ranges::all_of(bookKeepingDUdlambda[blockIndex],
+                               [](const std::pair<double, double> &sample) { return sample.second > 0.0; });
+  }
+
   double averagedExcessChemicalPotentialDUdlambda(std::size_t blockIndex) const
   {
     return simpsonIntegral(averagedDUdlambda(blockIndex));
@@ -507,7 +534,8 @@ export struct PropertyLambdaProbabilityHistogram
 
     std::vector<double> blockAverages;
     for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-      if (blockSampled(blockIndex)) blockAverages.push_back(averagedExcessChemicalPotentialDUdlambda(blockIndex));
+      if (blockSampledAtEveryLambda(blockIndex))
+        blockAverages.push_back(averagedExcessChemicalPotentialDUdlambda(blockIndex));
 
     double confidenceIntervalError = blockErrorEstimate<double>(blockAverages, average);
 
@@ -520,25 +548,32 @@ export struct PropertyLambdaProbabilityHistogram
   {
     double average = averagedExcessChemicalPotentialDUdlambda() + averagedIdealGasChemicalPotential(beta);
 
-    double confidenceIntervalError = blockErrorEstimate(
-        density.bookKeeping, average, [&](std::size_t i)
-        { return averagedExcessChemicalPotentialDUdlambda(i) + averagedIdealGasChemicalPotential(i, beta); });
+    std::vector<double> blockAverages;
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+      if (blockSampledAtEveryLambda(blockIndex))
+        blockAverages.push_back(averagedExcessChemicalPotentialDUdlambda(blockIndex) +
+                                averagedIdealGasChemicalPotential(blockIndex, beta));
+
+    double confidenceIntervalError = blockErrorEstimate<double>(blockAverages, average);
 
     return std::make_pair(average, confidenceIntervalError);
   }
 
   std::pair<double, double> averageFugacityDUdlambda(double beta) const
   {
-    double average =
-        std::exp(beta * (averagedExcessChemicalPotentialDUdlambda() + averagedIdealGasChemicalPotential(beta))) / beta;
+    double average = fugacityOfChemicalPotential(
+        density.averaged(), averagedExcessChemicalPotentialDUdlambda() + averagedIdealGasChemicalPotential(beta),
+        beta);
 
-    double confidenceIntervalError =
-        blockErrorEstimate(density.bookKeeping, average, [&](std::size_t i)
-                           {
-                             return std::exp(beta * (averagedExcessChemicalPotentialDUdlambda(i) +
-                                                     averagedIdealGasChemicalPotential(i, beta))) /
-                                    beta;
-                           });
+    std::vector<double> blockAverages;
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+      if (blockSampledAtEveryLambda(blockIndex))
+        blockAverages.push_back(fugacityOfChemicalPotential(
+            density.averaged(blockIndex),
+            averagedExcessChemicalPotentialDUdlambda(blockIndex) + averagedIdealGasChemicalPotential(blockIndex, beta),
+            beta));
+
+    double confidenceIntervalError = blockErrorEstimate<double>(blockAverages, average);
 
     return std::make_pair(average, confidenceIntervalError);
   }

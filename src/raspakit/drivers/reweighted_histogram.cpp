@@ -1404,9 +1404,12 @@ void ReweightedHistogram::writeIsothermSnapshot() const
           const int3 numberOfUnitCells = system.framework->numberOfUnitCells;
           toMoleculesPerUnitCell =
               1.0 / static_cast<double>(numberOfUnitCells.x * numberOfUnitCells.y * numberOfUnitCells.z);
-          const double frameworkMass = system.frameworkMass().value();
-          toMolePerKg = 1000.0 / frameworkMass;
-          toMgPerG = 1000.0 * component.totalMass / frameworkMass;
+          // (a framework without mass has no loading per kg, see System::frameworkMass)
+          if (const std::optional<double> frameworkMass = system.frameworkMass(); frameworkMass.has_value())
+          {
+            toMolePerKg = 1000.0 / frameworkMass.value();
+            toMgPerG = 1000.0 * component.totalMass / frameworkMass.value();
+          }
         }
 
         std::print(isotherm,
@@ -1924,9 +1927,12 @@ void ReweightedHistogram::performReweightingAnalysis()
     const int3 numberOfUnitCells = front.framework->numberOfUnitCells;
     toMoleculesPerUnitCell =
         1.0 / static_cast<double>(numberOfUnitCells.x * numberOfUnitCells.y * numberOfUnitCells.z);
-    const double frameworkMass = front.frameworkMass().value();
-    toMolePerKg = 1000.0 / frameworkMass;
-    toMgPerG = 1000.0 * frontComponent.totalMass / frameworkMass;
+    // (a framework without mass has no loading per kg, see System::frameworkMass)
+    if (const std::optional<double> frameworkMass = front.frameworkMass(); frameworkMass.has_value())
+    {
+      toMolePerKg = 1000.0 / frameworkMass.value();
+      toMgPerG = 1000.0 * frontComponent.totalMass / frameworkMass.value();
+    }
   }
 
   // free energies per state point, with the self-consistency check: the reweighted loading at
@@ -2124,7 +2130,10 @@ void ReweightedHistogram::performReweightingAnalysis()
       const double cells =
           static_cast<double>(numberOfUnitCells.x * numberOfUnitCells.y * numberOfUnitCells.z);
       const double unitCellVolume = front.simulationBox.volume / cells;
-      const double unitCellMass = front.framework->unitCellMass;
+      // (the mass the loadings per kg are counted against: the framework with its cations of a fixed number, see
+      // System::frameworkMass. The bare unit cell left the cations out, and the gravimetric area of a
+      // cation-exchanged zeolite was too large by their share of the mass.)
+      const double unitCellMass = front.frameworkMass().value_or(front.framework->unitCellMass * cells) / cells;
       outputJson["output"]["reweighting"]["bet"] = nlohmann::json::array();
       for (const ReweightedIsotherm& isotherm : reweightedIsotherms)
       {
@@ -2796,6 +2805,9 @@ void ReweightedHistogram::writeReplicaFinalReports(std::vector<RunningEnergy>& r
     replicaJsons[replicaId]["properties"]["averageEnergies"] =
         system.averageEnergies.jsonAveragesStatistics(system.hasExternalField, system.framework, system.components);
     replicaJsons[replicaId]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
+    replicaJsons[replicaId]["properties"]["averageLoadings"] = system.averageLoadings.jsonAveragesStatistics(
+        system.components, system.frameworkMass(),
+        system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; }));
 
     std::ofstream json(replicaJsonFileNames[replicaId]);
     json << replicaJsons[replicaId].dump(4);

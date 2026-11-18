@@ -50,16 +50,45 @@ TEST(TMMC_LOGPI_RECONSTRUCTION, without_an_anchor_the_chain_is_the_detailed_bala
 
 TEST(TMMC_LOGPI_RECONSTRUCTION, without_an_anchor_an_unsupported_link_truncates_the_chain)
 {
-  // no accepted deletion out of N = 2: the link 1 -> 2 has no reverse rate
-  const std::vector<double3> matrix = {row(0.0, 4.0), row(1.0, 3.0), row(0.0, 2.0), row(3.0, 1.0), row(4.0, 0.0)};
+  // no accepted deletion out of N = 3: the link 2 -> 3 has no reverse rate, and nothing ties the gauge across it
+  const std::vector<double3> matrix = {row(0.0, 4.0), row(1.0, 3.0), row(2.0, 2.0), row(0.0, 1.0), row(4.0, 0.0)};
   const std::vector<double> logPi =
       tmmcReconstructLogPi(matrix, 5, 1, noIncrements(5), noFlags(5), 0, logZero, logZeroThreshold);
 
   EXPECT_TRUE(sampled(logPi[0]));
   EXPECT_TRUE(sampled(logPi[1]));
-  EXPECT_FALSE(sampled(logPi[2]));
+  EXPECT_TRUE(sampled(logPi[2]));
   EXPECT_FALSE(sampled(logPi[3]));
   EXPECT_FALSE(sampled(logPi[4]));
+}
+
+// The chain is the longest run of supported links, wherever it starts. The recursion started at the lowest
+// visited macrostate and stopped at the first unsupported link: a lowest state that was visited without a
+// transition back into it left every macrostate above it without an estimate.
+TEST(TMMC_LOGPI_RECONSTRUCTION, an_unsupported_link_at_the_lowest_visited_state_does_not_discard_the_chain_above)
+{
+  // N = 1 was visited, and left upward, but no deletion out of N = 2 was accepted: the link 1 -> 2 is unsupported
+  const std::vector<double3> matrix = {double3(0.0, 0.0, 0.0), row(0.0, 3.0), row(0.0, 2.5),
+                                       row(2.0, 2.0),          row(3.0, 1.0), row(4.0, 0.0)};
+  const std::vector<double> logPi =
+      tmmcReconstructLogPi(matrix, 6, 1, noIncrements(6), noFlags(6), 0, logZero, logZeroThreshold);
+
+  ASSERT_EQ(logPi.size(), 6uz);
+  EXPECT_FALSE(sampled(logPi[0]));
+  EXPECT_FALSE(sampled(logPi[1]));
+  EXPECT_DOUBLE_EQ(logPi[2], 0.0);
+  for (std::size_t i = 2; i + 1 < 6; ++i)
+  {
+    EXPECT_NEAR(logPi[i + 1] - logPi[i], linkIncrement(matrix, i), 1e-12) << "link " << i;
+  }
+
+  // without any supported link the lowest visited macrostate is all there is
+  const std::vector<double3> single = {double3(0.0, 0.0, 0.0), row(0.0, 0.0), double3(0.0, 0.0, 0.0)};
+  const std::vector<double> logPiSingle =
+      tmmcReconstructLogPi(single, 3, 1, noIncrements(3), noFlags(3), 0, logZero, logZeroThreshold);
+  EXPECT_FALSE(sampled(logPiSingle[0]));
+  EXPECT_DOUBLE_EQ(logPiSingle[1], 0.0);
+  EXPECT_FALSE(sampled(logPiSingle[2]));
 }
 
 TEST(TMMC_LOGPI_RECONSTRUCTION, the_anchor_bridges_an_unsupported_low_N_link_and_keeps_the_chain_above_it)

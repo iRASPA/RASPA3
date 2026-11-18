@@ -42,6 +42,9 @@ std::optional<double> System::frameworkMass() const
       mass += components[i].totalMass * static_cast<double>(numberOfIntegerMoleculesPerComponent[i]);
     }
   }
+  // a framework without mass (massless pseudo-atoms, as of a wall model or in reduced units) has no loading per kg:
+  // every such unit divided by zero, and the infinity was refused by the JSON writer
+  if (!(mass > 0.0)) return std::nullopt;
   return mass;
 }
 

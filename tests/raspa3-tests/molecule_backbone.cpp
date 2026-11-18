@@ -354,3 +354,32 @@ TEST(MOLECULE_BACKBONE, sampling_through_component)
   EXPECT_GT(errorLSkewed, 0.0);
   EXPECT_LT(meanLSkewed, 1.5);
 }
+
+// The pair-distance histogram of a molecule grows with its largest distance. The stored histogram has to grow
+// with it: a chain stretched beyond the initial range was added bin by bin past the end of the stored one.
+TEST(MOLECULE_BACKBONE, a_chain_stretched_beyond_the_initial_range_grows_the_stored_pair_histogram)
+{
+  ForceField forceField = makeZeroForceField();
+  std::vector<Component> components{};
+  components.push_back(makeComponent(forceField, "stretched-backbone", kLinearChainJson));
+  components[0].moleculeBackboneSettings = MoleculeBackboneSettings{.sampleEvery = 1,
+                                                                    .writeEvery = 1,
+                                                                    .numberOfWaveVectors = 5,
+                                                                    .waveVectorLowerLimit = 0.1,
+                                                                    .waveVectorUpperLimit = 10.0};
+  PropertyMoleculeBackbone property(2, components);
+  const std::size_t initialBins = property.pairDistanceHistogram[0][0].size();
+
+  // far beyond 1.5 times the contour length plus 10 Angstrom
+  std::vector<Atom> stretched(6);
+  for (std::size_t i = 0; i < 6; ++i) stretched[i].position = double3(100.0 * static_cast<double>(i), 0.0, 0.0);
+  property.sample(components, {1}, std::span<const Atom>(stretched), 0, 0);
+
+  const std::vector<double> &histogram = property.pairDistanceHistogram[0][0];
+  const std::size_t lastBin = static_cast<std::size_t>(500.0 * (1.0 / property.pairDistanceBinWidth));
+  ASSERT_GT(lastBin, initialBins);
+  ASSERT_GT(histogram.size(), lastBin);
+  EXPECT_DOUBLE_EQ(histogram[lastBin], 1.0);
+  // all fifteen pairs are in it
+  EXPECT_DOUBLE_EQ(std::accumulate(histogram.begin(), histogram.end(), 0.0), 15.0);
+}

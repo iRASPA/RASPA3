@@ -116,8 +116,10 @@ TEST(PROPERTY_SAMPLING, the_conventional_rdf_counts_a_configuration_with_its_wei
   const double deltaR = 0.25;
   auto expected = [&](std::size_t bin, double fraction)
   {
-    const double shell = 4.0 * std::numbers::pi * deltaR * deltaR * deltaR * (static_cast<double>(bin) + 0.5) *
-                         (static_cast<double>(bin) + 0.5);
+    // the volume of the shell between bin dr and (bin + 1) dr (not that of the mid-point radius times dr)
+    const double inner = static_cast<double>(bin) * deltaR;
+    const double outer = inner + deltaR;
+    const double shell = (4.0 / 3.0) * std::numbers::pi * (outer * outer * outer - inner * inner * inner);
     return fraction * box.volume / shell;
   };
   EXPECT_NEAR(g[8], expected(8, 0.75), 1e-9 * expected(8, 0.75));
@@ -148,4 +150,75 @@ TEST(PROPERTY_SAMPLING, the_density_grid_counts_a_configuration_with_its_weight)
   const double atoms = std::accumulate(grid.grid_cell.begin(), grid.grid_cell.end(), 0.0);
   EXPECT_DOUBLE_EQ(atoms / grid.weightSum, 1.5);
   EXPECT_DOUBLE_EQ(grid.volumeSum / grid.weightSum, box.volume);
+}
+
+// A point on the boundary of two voxels belongs half to each of them. The equitable binning took the voxel of
+// the point as ceil(g), which for a point on a boundary is the voxel below it: the two halves went to the voxels
+// one to the left, and at the first boundary one half went to the last voxel, across the box.
+TEST(PROPERTY_SAMPLING, the_equitable_density_grid_splits_a_point_on_a_voxel_boundary_over_its_two_voxels)
+{
+  const SimulationBox box(20.0, 20.0, 20.0);
+  auto depositAt = [&](double x)
+  {
+    PropertyDensityGrid grid(0, 1, int3(4, 4, 4), 1, 1, {}, PropertyDensityGrid::Normalization::NumberDensity,
+                             PropertyDensityGrid::Binning::Equitable);
+    std::vector<Atom> atom(1);
+    // (the centre of the first voxel along y and z: all of the weight in that voxel)
+    atom[0].position = double3(x, 2.5, 2.5);
+    grid.sample(std::nullopt, box, atom, 0, 1.0);
+    // the weight per voxel along x
+    std::array<double, 4> alongX{};
+    for (std::size_t i = 0; i < 4; ++i)
+      for (std::size_t j = 0; j < 16; ++j) alongX[i] += grid.grid_cell[16 * i + j];
+    EXPECT_NEAR(grid.grid_cell[0] + grid.grid_cell[16] + grid.grid_cell[32] + grid.grid_cell[48], 1.0, 1e-12);
+    return alongX;
+  };
+
+  // the boundary of the voxels 1 and 2 (the special position 1/2)
+  std::array<double, 4> weights = depositAt(10.0);
+  EXPECT_NEAR(weights[1], 0.5, 1e-12);
+  EXPECT_NEAR(weights[2], 0.5, 1e-12);
+  // the boundary of the voxels 0 and 1
+  weights = depositAt(5.0);
+  EXPECT_NEAR(weights[0], 0.5, 1e-12);
+  EXPECT_NEAR(weights[1], 0.5, 1e-12);
+  EXPECT_NEAR(weights[3], 0.0, 1e-12);
+  // the origin is the boundary of the last voxel and the first
+  weights = depositAt(0.0);
+  EXPECT_NEAR(weights[3], 0.5, 1e-12);
+  EXPECT_NEAR(weights[0], 0.5, 1e-12);
+  // and the binning is continuous across a boundary
+  weights = depositAt(10.0 + 1e-9);
+  EXPECT_NEAR(weights[1], 0.5, 1e-6);
+  EXPECT_NEAR(weights[2], 0.5, 1e-6);
+}
+
+// An empty box has no fugacity: the ideal-gas chemical potential is minus infinity. With that term left at zero,
+// the excess chemical potential alone was turned into a fugacity.
+TEST(PROPERTY_SAMPLING, the_lambda_histogram_reports_no_fugacity_for_an_empty_box)
+{
+  const double beta = 1.0 / 300.0;
+  PropertyLambdaProbabilityHistogram histogram(2, 5);
+  for (std::size_t block = 0; block < 2; ++block)
+  {
+    for (std::size_t bin = 0; bin < 5; ++bin)
+    {
+      histogram.bookKeepingLambda[block][bin] = 100.0 * static_cast<double>(bin + 1);
+      histogram.bookKeepingDUdlambda[block][bin] = {-50.0, 1.0};
+    }
+  }
+  // (no density sample: no integer molecule was ever in the box)
+  EXPECT_DOUBLE_EQ(histogram.averageFugacity(beta, 0.0).first, 0.0);
+  EXPECT_DOUBLE_EQ(histogram.averageFugacityDUdlambda(beta).first, 0.0);
+
+  // with molecules it is exp(beta mu) / beta
+  histogram.density.addSample(0, 0.01, 1.0);
+  histogram.density.addSample(1, 0.01, 1.0);
+  EXPECT_GT(histogram.averageFugacity(beta, 0.0).first, 0.0);
+  EXPECT_GT(histogram.averageFugacityDUdlambda(beta).first, 0.0);
+
+  // a block that did not visit every lambda has no integral over lambda: it takes no part in the error
+  histogram.bookKeepingDUdlambda[1][2] = {0.0, 0.0};
+  EXPECT_TRUE(histogram.blockSampledAtEveryLambda(0));
+  EXPECT_FALSE(histogram.blockSampledAtEveryLambda(1));
 }
