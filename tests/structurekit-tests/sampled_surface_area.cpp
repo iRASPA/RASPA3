@@ -225,6 +225,24 @@ cl_uint holdersOfTheContext()
   return count;
 }
 
+// The count once it has stopped moving. The runtime holds the context from threads of its own, taking a holder
+// while it finishes a launch and letting it go when it is done, so that read straight after a run the count is as
+// often one up or one down as not on a machine that is busy: the test then failed on what the runtime was doing
+// and not on anything left behind. Read until it has been the same for a while, and for no longer than two seconds.
+cl_uint settledHoldersOfTheContext()
+{
+  cl_uint last = holdersOfTheContext();
+  int same = 0;
+  for (int reading = 0; reading < 400 && same < 20; ++reading)
+  {
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    const cl_uint now = holdersOfTheContext();
+    same = (now == last) ? same + 1 : 0;
+    last = now;
+  }
+  return last;
+}
+
 SampledStructure twoSpheres()
 {
   return structureOf(UnitCell(30.0, 30.0, 30.0), {double3(15.0, 15.0, 14.0), double3(15.0, 15.0, 16.0)}, 2.0);
@@ -364,23 +382,23 @@ TEST(sampled_surface_area, the_device_routes_leave_nothing_on_the_device)
     Integration_OpenCL_SurfaceArea warmup;
     warmup.run(pair, SampledProbe{}, 16);
   }
-  const cl_uint before = holdersOfTheContext();
+  const cl_uint before = settledHoldersOfTheContext();
 
   {
     Integration_OpenCL_SurfaceArea integration;
-    const cl_uint built = holdersOfTheContext();
+    const cl_uint built = settledHoldersOfTheContext();
     for (int run = 0; run < 4; ++run) integration.run(pair, SampledProbe{}, 16);
-    EXPECT_EQ(holdersOfTheContext(), built) << "four runs of the grid left buffers behind";
+    EXPECT_EQ(settledHoldersOfTheContext(), built) << "four runs of the grid left buffers behind";
   }
-  EXPECT_EQ(holdersOfTheContext(), before) << "the grid route left its program or its kernel behind";
+  EXPECT_EQ(settledHoldersOfTheContext(), before) << "the grid route left its program or its kernel behind";
 
   {
     MC_OpenCL_SurfaceArea sampled;
-    const cl_uint built = holdersOfTheContext();
+    const cl_uint built = settledHoldersOfTheContext();
     for (int run = 0; run < 4; ++run) sampled.run(pair, SampledProbe{}, 3, 100);
-    EXPECT_EQ(holdersOfTheContext(), built) << "four runs of the sampling left buffers behind";
+    EXPECT_EQ(settledHoldersOfTheContext(), built) << "four runs of the sampling left buffers behind";
   }
-  EXPECT_EQ(holdersOfTheContext(), before) << "the sampling route left its program or its kernel behind";
+  EXPECT_EQ(settledHoldersOfTheContext(), before) << "the sampling route left its program or its kernel behind";
 }
 
 // No inner steps, no iterations or no slices: the estimates divided 0 by 0 and reported a not-a-number as the area

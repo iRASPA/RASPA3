@@ -505,6 +505,20 @@ TEST(MC_REACTION_DRIFT, reaction_parallel_move_filters_exact_reaction_type)
   system.reactions.list[1].reactionMove = Move::Types::ReactionConventionalCBCFCMC;
   system.createReactionFractionalMolecules();
 
+  // No fractional molecule stands on another molecule. The first of them is drawn from the same stream the first
+  // molecule of the system was, onto the very same point: the energy of a pair at no separation was not a number,
+  // which no overlap test sees, and the placement was accepted.
+  {
+    const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+    double closest = std::numeric_limits<double>::max();
+    for (std::size_t i = 0; i < atoms.size(); ++i)
+      for (std::size_t j = i + 1; j < atoms.size(); ++j)
+        if (atoms[i].moleculeId != atoms[j].moleculeId)
+          closest = std::min(closest, system.simulationBox.applyPeriodicBoundaryConditions(
+                                          atoms[i].position - atoms[j].position).length());
+    EXPECT_GT(closest, 0.5);
+  }
+
   for (Reaction& reaction : system.reactions.list)
   {
     reaction.currentLambda = 0.5;

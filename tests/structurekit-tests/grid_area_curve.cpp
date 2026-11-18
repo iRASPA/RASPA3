@@ -328,7 +328,8 @@ TEST(grid_area_curve, the_last_half_bin_at_either_end_of_the_range_is_read_from_
   // Outside the range there is still nothing to read.
   EXPECT_DOUBLE_EQ(curve.areaAt(-0.001), 0.0);
   EXPECT_DOUBLE_EQ(curve.areaAt(4.001), 0.0);
-  EXPECT_DOUBLE_EQ(curve.areaAt(std::numeric_limits<double>::quiet_NaN()), 0.0);
+  // (a level that is not a number is not asked about: the library is built with finite mathematics only, under
+  // which a comparison with one is whatever the optimizer makes of it, so what came back depended on the build)
 }
 
 // One bin is one number for the whole of the range, not a number at its middle and nothing either side.

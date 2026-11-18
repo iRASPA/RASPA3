@@ -370,7 +370,9 @@ void expectCellDerivativesMatchFiniteDifference(System system, double gradientTo
   const MinimizationDofLayout layout =
       buildMinimizationDofLayout(system.moleculeData, system.components, frameworkDofs, cellLayout.size());
   const Evaluation reference = evaluate(system, layout);
-  constexpr double delta = 2.0e-5;
+  // (the mixed second difference divides the round-off of four energies by 4 delta^2: at 2e-5 that noise was
+  // 0.6 percent of one element of the polarization Hessian, past the tolerance, in a build that rounds otherwise)
+  constexpr double delta = 5.0e-5;
 
   for (std::size_t cellCoordinate = 0; cellCoordinate < cellLayout.size(); ++cellCoordinate)
   {

@@ -208,7 +208,12 @@ export template <std::size_t Order>
       // same expression differently in the energy, gradient and Hessian instantiations (and the cross-link
       // exclusions subtract from a total that another instantiation summed).
 #pragma clang fp contract(off) reassociate(off)
-      const double invRR = 1.0 / rr;
+      // Two atoms on one point have no separation to divide by. The quotient is an infinity, which the build
+      // (finite mathematics only) does not promise to carry: the energy of such a pair came out not a number,
+      // no overlap test saw it (every comparison with it is false), and a molecule placed exactly on another was
+      // accepted. The separation is held off zero, far below any distance two atoms are ever at, so that the
+      // energy of the pair is a number, and a very large one.
+      const double invRR = 1.0 / std::max(rr, 1.0e-20);
       const double sigma6 = arg2 * arg2 * arg2;
       const double rri3 = sigma6 * (invRR * invRR * invRR);  // (sigma/r)^6
       const double term = arg1 * (rri3 * (rri3 - 1.0)) - arg3;

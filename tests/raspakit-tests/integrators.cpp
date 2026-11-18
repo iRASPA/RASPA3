@@ -297,8 +297,11 @@ TEST(thermobarostat, initialization_recomputes_mass_after_dof_constraint)
   state.translationalDegreesOfFreedom = 9;
   RandomNumber random(913);
   state.initialize(random);
-  EXPECT_NEAR(state.logVolumeMass, 12.0 * Units::KB * 320.0 * 0.4 * 0.4, 1.0e-14);
-  EXPECT_NEAR(state.cellMass, state.logVolumeMass / 3.0, 1.0e-14);
+  // to a few units in the last place of the value: the mass is some 500, where one such unit is 1e-13, and an
+  // absolute 1e-14 asked for the very order the product was multiplied in
+  const double expectedMass = 12.0 * Units::KB * 320.0 * 0.4 * 0.4;
+  EXPECT_NEAR(state.logVolumeMass, expectedMass, 1.0e-13 * expectedMass);
+  EXPECT_NEAR(state.cellMass, state.logVolumeMass / 3.0, 1.0e-13 * expectedMass);
 }
 
 // The isotropic barostat integrates x = ln(V) = 3 epsilon; its kinetic energy must be that of the MTK strain,

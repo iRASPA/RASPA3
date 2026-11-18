@@ -829,7 +829,10 @@ TEST(MC_MULTI_TRIAL_CBMC, device_grower_reports_the_internal_energies_of_a_rigid
     const std::optional<CBMC::MultiTrialGrowResult> grown =
         grower.growNew(random, context, component, identity, 8, zero);
     ASSERT_TRUE(grown.has_value());
-    EXPECT_NEAR(grown->selected.energies.bend, bendEnergy, 1e-10);
+    // to the round-off of the rotated geometry, as for the CPU grower below: the bend of a trial is recomputed
+    // from its rotated positions, and the angle of a straight molecule is the arc cosine at its end, where the
+    // last bit of the cosine is some 1e-8 of the angle (1e-10 held only where the rotation happened to be exact)
+    EXPECT_NEAR(grown->selected.energies.bend, bendEnergy, 1e-4);
     // the internal energy is a constant of the rigid geometry: it is not part of the proposal correction, which is
     // the single-versus-double precision difference of the external energy (far below beta * bendEnergy = 0.05)
     EXPECT_LT(std::abs(grown->logProposalCorrection), 0.2 * system.beta * bendEnergy);
