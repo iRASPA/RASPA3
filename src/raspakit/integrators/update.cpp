@@ -1015,7 +1015,8 @@ RunningEnergy Integrators::updateGradients(
   {
     internal_energies += Interactions::computePolymerLinkGradient(forceField, simulationBox, components,
                                                                   numberOfMoleculesPerComponent, moleculeAtomPositions,
-                                                                  moleculeDynamics, *polymerLinks);
+                                                                  moleculeDynamics, *polymerLinks, nullptr, nullptr,
+                                                                  true);
   }
 
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();

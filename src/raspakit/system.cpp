@@ -59,6 +59,7 @@ import reaction;
 import reactions;
 import cross_links;
 import polymer_links;
+import intra_molecular_exclusions;
 import property_radical_waiting_times;
 import cbmc;
 import interactions_framework_molecule;
@@ -1041,6 +1042,48 @@ void System::precomputeTotalGradients() noexcept
       spanOfFrameworkDynamics(), spanOfFrameworkGroupData());
 }
 
+// The inter-molecular pair sum of a system whose molecules are joined by polymer bonds. The pair sum counts every
+// pair of two molecules, the pairs across a polymer bond (1-2 and 1-3: 'PolymerLinkTable::unlisted') included; the
+// overlay takes them out again ('Interactions::computePolymerLinkEnergy'). Two bonded atoms at the bond length are
+// far above the overlap criterion, though: the sum reported an overlap for every configuration (and stopped short
+// of its total), so a hybrid MC trajectory or a volume change of a polymerized system was always refused. The
+// overlap is a pair above the criterion that the polymer topology does not exclude.
+static RunningEnergy interMolecularEnergyWithPolymerLinks(const ForceField& forceField, const SimulationBox& box,
+                                                          const MCCellList& cellList,
+                                                          std::span<const Atom> moleculeAtoms,
+                                                          const PairListExclusions& excluded, bool* overlap) noexcept
+{
+  if (overlap == nullptr || excluded.empty())
+  {
+    return Interactions::computeInterMolecularEnergy(forceField, box, cellList, moleculeAtoms, overlap);
+  }
+
+  bool pairAboveCriterion = false;
+  RunningEnergy energy =
+      Interactions::computeInterMolecularEnergy(forceField, box, cellList, moleculeAtoms, &pairAboveCriterion);
+  if (!pairAboveCriterion) return energy;
+
+  // the complete sum, and the pairs above the criterion one by one
+  energy = Interactions::computeInterMolecularEnergy(forceField, box, cellList, moleculeAtoms, nullptr);
+  if (forceField.omitInterInteractions) return energy;
+  const double overlapCriteria = forceField.energyOverlapCriteria;
+  bool realOverlap = false;
+  Interactions::forEachMoleculeMoleculePair<0>(
+      forceField, box, cellList, moleculeAtoms,
+      [&](std::size_t indexA, std::size_t indexB, const Atom&, const Atom&,
+          const Potentials::PairDerivatives<0>& factors, const double3&)
+      {
+        if (factors.energy > overlapCriteria &&
+            !excluded.contains(static_cast<std::uint32_t>(indexA), static_cast<std::uint32_t>(indexB)))
+        {
+          realOverlap = true;
+        }
+      },
+      [](std::size_t, std::size_t, const Atom&, const Atom&, const Potentials::PairDerivatives<0>&, const double3&) {});
+  if (realOverlap) *overlap = true;
+  return energy;
+}
+
 RunningEnergy System::computeTotalEnergies(bool* overlap) noexcept
 {
   if (fixedFrameworkStoredEik.empty())
@@ -1082,7 +1125,7 @@ RunningEnergy System::computeTotalEnergies(bool* overlap) noexcept
   {
     runningIntraEnergy += Interactions::computePolymerLinkEnergy(forceField, simulationBox, components,
                                                                  numberOfMoleculesPerComponent, moleculeAtomPositions,
-                                                                 polymerLinks);
+                                                                 polymerLinks, true);
   }
 
   if (forceField.computePolarization)
@@ -1101,8 +1144,8 @@ RunningEnergy System::computeTotalEnergies(bool* overlap) noexcept
     RunningEnergy intermolecularEnergy;
     if (forceField.omitInterPolarization)
     {
-      intermolecularEnergy = Interactions::computeInterMolecularEnergy(forceField, simulationBox, pairCellList,
-                                                                       moleculeAtomPositions, overlap);
+      intermolecularEnergy = interMolecularEnergyWithPolymerLinks(
+          forceField, simulationBox, pairCellList, moleculeAtomPositions, polymerLinks.unlisted, overlap);
     }
     else
     {
@@ -1131,8 +1174,8 @@ RunningEnergy System::computeTotalEnergies(bool* overlap) noexcept
     RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeEnergy(
         forceField, simulationBox, interpolationGrids, framework, frameworkAtomPositions, moleculeAtomPositions,
         overlap);
-    RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularEnergy(
-        forceField, simulationBox, pairCellList, moleculeAtomPositions, overlap);
+    RunningEnergy intermolecularEnergy = interMolecularEnergyWithPolymerLinks(
+        forceField, simulationBox, pairCellList, moleculeAtomPositions, polymerLinks.unlisted, overlap);
 
     RunningEnergy tailEnergy = computeTailCorrectionEnergies();
 
@@ -1453,7 +1496,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   {
     const auto [polymerEnergy, polymerStrain] = Interactions::computePolymerLinkEnergyStrainDerivative(
         forceField, simulationBox, components, numberOfMoleculesPerComponent, moleculeAtoms, pressureDynamics,
-        polymerLinks);
+        polymerLinks, true);
     pressureInfo.first.crossLinkEnergy += EnergyDuDlambda(polymerEnergy.potentialEnergy(), 0.0);
     pressureInfo.second += polymerStrain;
   }
@@ -1542,7 +1585,10 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
       if (moleculeCounts[typeA] == 0.0) continue;
       for (std::size_t typeB = 0; typeB < moleculeCounts.size(); ++typeB)
       {
-        pressureTailCorrection += moleculeCounts[typeA] * (moleculeCounts[typeB] + 2.0 * frameworkCounts[typeB]) *
+        // (under 'omitInterInteractions' the molecules do not interact with each other and have no tail
+        // correction with each other either, as in the energy: Interactions::computeInterMolecularTailEnergy)
+        const double moleculePartners = forceField.omitInterInteractions ? 0.0 : moleculeCounts[typeB];
+        pressureTailCorrection += moleculeCounts[typeA] * (moleculePartners + 2.0 * frameworkCounts[typeB]) *
                                   preFactor * forceField(typeA, typeB).tailCorrectionPressure;
       }
     }

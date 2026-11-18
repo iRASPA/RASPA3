@@ -43,8 +43,9 @@ export struct InterpolationEnergyGrid
 
   /// Multiplies the tabulated energy (and its tabulated derivatives) by 'factor'. The interpolants are linear in
   /// the data, so the grid then interpolates 'factor' times the original energy: the grid of a pair potential whose
-  /// energy parameters were scaled by 'factor' (solute tempering: ForceField::scaleSoluteInteractions).
-  void scaleEnergy(double factor);
+  /// energy parameters were scaled by 'factor' (solute tempering: ForceField::scaleSoluteInteractions). The
+  /// overlap sentinel of the vertices inside a framework atom (the entries above 'overlapCriteria') is kept.
+  void scaleEnergy(double factor, double overlapCriteria);
 
   double interpolate(double3 pos) const;
   std::pair<double, double3> interpolateGradient(double3 pos) const;

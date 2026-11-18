@@ -183,3 +183,25 @@ TEST(ewald_real_space_table, tabulated_gradient_is_the_derivative_of_the_tabulat
     EXPECT_NEAR(numerical, analytic, 1.0e-6 * std::abs(analytic) + 1.0e-6) << "r = " << r;
   }
 }
+
+// A scaled pair is finite at r = 0 in the offset form, so two atoms can coincide (a fractional molecule on the
+// molecule it was copied from). The derivative factors are per r: with 1 / r they were infinite there and the
+// gradient factor * dr, with dr = 0, not a number. They are zero at zero separation, at every order.
+TEST(ewald_real_space_table, scaled_coulomb_derivative_factors_vanish_at_zero_separation)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  forceField.EwaldAlpha = 0.265;
+  for (const double scaling : {0.0, 0.3, 0.9})
+  {
+    const Potentials::PairDerivatives<1> first = Potentials::potentialCoulomb<1>(forceField, scaling, 1.0, 0.0, 1.0, -1.0);
+    const Potentials::PairDerivatives<2> second = Potentials::potentialCoulomb<2>(forceField, scaling, 1.0, 0.0, 1.0, -1.0);
+    const Potentials::PairDerivatives<3> third = Potentials::potentialCoulomb<3>(forceField, scaling, 1.0, 0.0, 1.0, -1.0);
+    EXPECT_EQ(first.firstDerivativeFactor, 0.0) << scaling;
+    EXPECT_EQ(second.firstDerivativeFactor, 0.0) << scaling;
+    EXPECT_EQ(second.secondDerivativeFactor, 0.0) << scaling;
+    EXPECT_EQ(third.thirdDerivativeFactor, 0.0) << scaling;
+    // the energy of the pair is that of the plain evaluation
+    EXPECT_EQ(first.energy, Potentials::potentialCoulomb<0>(forceField, scaling, 1.0, 0.0, 1.0, -1.0).energy) << scaling;
+    EXPECT_LT(std::abs(first.energy), 1.0e9) << scaling;
+  }
+}

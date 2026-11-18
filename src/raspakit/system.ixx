@@ -1232,6 +1232,21 @@ export struct System
             numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[componentId] > 0uz);
   }
 
+  /// Refuses polarization with a framework that has mobile (flexible or rigid-group) atoms. The input reader refuses
+  /// this combination; a system put together in code reaches a driver without that check. The polarization field of
+  /// the framework is taken from the structure factor of its lab-fixed atoms: the charges of mobile framework atoms
+  /// are missing from the Monte Carlo field differences, and the energies drift.
+  void refusePolarizationWithMobileFramework(std::string_view driver) const
+  {
+    if (forceField.computePolarization && framework.has_value() && framework->hasMobileAtoms())
+    {
+      throw std::runtime_error(std::format(
+          "{} with 'ComputePolarization' is not supported with a flexible or mixed framework (its mobile atoms are "
+          "not part of the framework field)\n",
+          driver));
+    }
+  }
+
   void removeRedundantMoves();
   void rescaleMoveProbabilities();
   void determineSwappableComponents();

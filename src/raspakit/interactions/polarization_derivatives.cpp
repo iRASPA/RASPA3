@@ -230,6 +230,8 @@ Interactions::PolarizationDerivatives Interactions::computePolarizationDerivativ
           com += mass * moleculeAtoms[index].position;
           totalMass += mass;
         }
+        // a molecule of massless sites only has no center of mass: its atoms keep a zero offset
+        if (!(totalMass > 0.0)) continue;
         com = com / totalMass;
         for (std::size_t localAtom = 0; localAtom < molecule.numberOfAtoms; ++localAtom)
         {

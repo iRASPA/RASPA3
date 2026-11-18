@@ -56,6 +56,7 @@ void ThermodynamicIntegration::setup()
   {
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
+    system.refusePolarizationWithMobileFramework("Thermodynamic integration");
 
     // every system carries its own fractional molecule, pinned at the fixed lambda
     system.setContainsTheFractionalMolecules(true);

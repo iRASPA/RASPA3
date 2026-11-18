@@ -134,7 +134,7 @@ void System::copyInterpolationGridsFrom(const System& reference)
   {
     if (soluteTypes[type] && interpolationGrids[type].has_value())
     {
-      interpolationGrids[type]->scaleEnergy(factor);
+      interpolationGrids[type]->scaleEnergy(factor, forceField.energyOverlapCriteria);
     }
   }
 }

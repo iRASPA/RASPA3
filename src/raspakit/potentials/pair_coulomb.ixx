@@ -117,7 +117,11 @@ export template <std::size_t Order>
       }
       else
       {
-        double inverseR = 1.0 / r;
+        // The offset form is finite at r = 0 for a scaled pair, so two atoms can sit on top of each other (a
+        // fractional molecule on the molecule it was copied from). The derivative factors are per r: there 1 / r
+        // is an infinity and the gradient factor * dr, with dr = 0, not a number. The gradient of a pair at zero
+        // separation has no direction and is taken as zero.
+        double inverseR = (r > 0.0) ? 1.0 / r : 0.0;
         double firstDerivativeFactor = scaling * prefactor * phiPrime * inverseR;
 
         if constexpr (Order == 1)

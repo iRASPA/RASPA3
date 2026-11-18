@@ -548,6 +548,7 @@ void ReweightedHistogram::setup()
   {
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
+    system.refusePolarizationWithMobileFramework("The reweighted-histogram driver");
   }
 
   std::filesystem::create_directories("output");

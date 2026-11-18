@@ -736,7 +736,7 @@ RunningEnergy SpatialDecompositionForceEngine::computeGradients(System& system, 
     total += Interactions::computePolymerLinkGradient(
         system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
         system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.polymerLinks,
-        withVirial ? &strain : nullptr, withVirial ? &correction : nullptr);
+        withVirial ? &strain : nullptr, withVirial ? &correction : nullptr, false);
     timing.polymer += std::chrono::steady_clock::now() - polymerBegin;
   }
   total = finishStep(system, total, strain, correction);

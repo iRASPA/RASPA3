@@ -30,11 +30,17 @@ import polymer_links;
  */
 export namespace Interactions
 {
+/// 'pairSumsCountUnlisted' (all three): whether the pair sums the overlay is added to count the pairs of
+/// 'PolymerLinkTable::unlisted'. The pair lists of the spatial-decomposition engine leave them out (false: the
+/// overlay supplies their whole value); the pair sums of the host count every pair of two molecules (true: the
+/// overlay supplies the difference, as for a listed pair).
+
 /// Total overlay energy of the current configuration.
 RunningEnergy computePolymerLinkEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
                                        const std::vector<Component> &components,
                                        const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-                                       std::span<const Atom> moleculeAtoms, PolymerLinkTable &table);
+                                       std::span<const Atom> moleculeAtoms, PolymerLinkTable &table,
+                                       bool pairSumsCountUnlisted);
 
 /// Total overlay energy with all gradients added to 'moleculeDynamics'. When 'strain' and 'molecularCorrection'
 /// are given, the strain derivative (sum of gradient (x) separation, inter-molecular convention) and the
@@ -44,8 +50,8 @@ RunningEnergy computePolymerLinkGradient(const ForceField &forceField, const Sim
                                          const std::vector<Component> &components,
                                          const std::vector<std::size_t> &numberOfMoleculesPerComponent,
                                          std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
-                                         PolymerLinkTable &table, double3x3 *strain = nullptr,
-                                         double3x3 *molecularCorrection = nullptr);
+                                         PolymerLinkTable &table, double3x3 *strain, double3x3 *molecularCorrection,
+                                         bool pairSumsCountUnlisted);
 
 /// The energy and the strain derivative for the molecular pressure (System::computeMolecularPressure): only the
 /// gradients of the terms that act between molecules are added to 'pressureDynamics' (the intramolecular
@@ -53,5 +59,5 @@ RunningEnergy computePolymerLinkGradient(const ForceField &forceField, const Sim
 std::pair<RunningEnergy, double3x3> computePolymerLinkEnergyStrainDerivative(
     const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
     const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtoms,
-    std::span<AtomDynamics> pressureDynamics, PolymerLinkTable &table);
+    std::span<AtomDynamics> pressureDynamics, PolymerLinkTable &table, bool pairSumsCountUnlisted);
 }  // namespace Interactions

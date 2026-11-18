@@ -99,6 +99,7 @@ void ParallelThermodynamicIntegration::setup()
   {
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
+    system.refusePolarizationWithMobileFramework("Parallel thermodynamic integration");
 
     // every replica carries its own fractional molecule(s), pinned at its lambda
     system.setContainsTheFractionalMolecules(true);

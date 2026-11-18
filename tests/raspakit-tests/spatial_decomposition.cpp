@@ -4141,6 +4141,52 @@ TEST(spatial_decomposition, engine_polymer_unlisted_pairs_match_the_listed_formu
   }
 }
 
+// The pair sums of the host (the total energy of the system, the gradients of its integrators, its molecular
+// pressure) know no 'unlisted' table: they count every pair of two molecules, the pairs across a polymer bond
+// included, and the overlay added to them is the difference for those pairs as well. With the whole value of an
+// unlisted pair added on top of the host sums, the pairs a polymer bond excludes were counted at full strength: the
+// host total has to be that of the engine, whose pair lists leave them out. And two bonded atoms at the bond length
+// are no overlap: the total energy reported one for every configuration (and stopped short of its sum).
+TEST(spatial_decomposition, host_polymer_energy_does_not_count_the_unlisted_pairs_twice)
+{
+  for (const std::uint64_t currentStep : {1000uz, 60uz})
+  {
+    System system = makePolymerSystem(7, 20, 6, currentStep, 100, 2000.0);
+    ASSERT_FALSE(system.polymerLinks.unlisted.empty());
+    const RunningEnergy host = system.computeTotalEnergies();
+    bool overlap = false;
+    const RunningEnergy hostWithOverlapTest = system.computeTotalEnergies(&overlap);
+    EXPECT_FALSE(overlap) << "step " << currentStep;
+    EXPECT_NEAR(hostWithOverlapTest.potentialEnergy(), host.potentialEnergy(),
+                1e-9 * std::max(std::abs(host.potentialEnergy()), 1.0))
+        << "step " << currentStep;
+
+    SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+    settings.pairDevice = PairDevice::CPU;
+    SpatialDecompositionForceEngine engine(settings);
+    engine.initialize(system);
+    const RunningEnergy engineEnergy = engine.computeGradients(system, true);
+    EXPECT_NEAR(host.potentialEnergy(), engineEnergy.potentialEnergy(),
+                1e-6 * std::max(std::abs(engineEnergy.potentialEnergy()), 1.0))
+        << "host against engine at step " << currentStep;
+
+    // a pair the topology does not exclude, brought on top of each other, is an overlap as before
+    std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+    std::size_t other = 1;
+    while (other < atoms.size() &&
+           (atoms[other].moleculeId == atoms[0].moleculeId ||
+            system.polymerLinks.unlisted.contains(0u, static_cast<std::uint32_t>(other))))
+    {
+      ++other;
+    }
+    ASSERT_LT(other, atoms.size());
+    atoms[other].position = atoms[0].position + double3(0.3, 0.0, 0.0);
+    overlap = false;
+    (void)system.computeTotalEnergies(&overlap);
+    EXPECT_TRUE(overlap) << "step " << currentStep;
+  }
+}
+
 // A broken bond ('BreakBonds' of a reaction rule): the bond and the bends and torsions of the molecule through it
 // are overridden to zero, the connectivity the overlay follows loses the bond, and the pairs the molecule's
 // exclusions withhold that the new topology no longer excludes receive their interaction. With the ramp complete

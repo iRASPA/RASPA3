@@ -141,7 +141,7 @@ inline void addOuterProduct(double3x3 &tensor, const double3 &arm, const double3
 template <std::size_t Order, typename LinkSink, typename OverrideSink>
 RunningEnergy evaluate(const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> atoms,
                        const PolymerLinkTable &table, LinkSink &&linkGradients, OverrideSink &&overrideGradients,
-                       double3x3 *strain, double3x3 *correction)
+                       double3x3 *strain, double3x3 *correction, bool pairSumsCountUnlisted)
 {
   RunningEnergy energy{};
   if (!table.derivedValid)
@@ -280,12 +280,16 @@ RunningEnergy evaluate(const ForceField &forceField, const SimulationBox &simula
 
   // --- the pair corrections ---------------------------------------------------------------------------------------
   // (the pair has to be at lambda value(wanted) + (1 - lambda) value(counted); the pair lists supply value(counted)
-  // of a listed pair and nothing of an unlisted one)
+  // of a listed pair and nothing of an unlisted one. The pair sums of the host -- the total energy, the gradients of
+  // the integrators and the molecular pressure of the system -- know no 'unlisted' table and count every pair of
+  // two molecules ('pairSumsCountUnlisted'): the overlay is then the difference for those pairs as well. With the
+  // whole value added on top of the host sums the bonded pairs, at the bond length, were counted at full strength.)
   for (const PolymerLinkTable::PairCorrection &pair : table.pairCorrections)
   {
     const double lambda = table.rampFactor(pair.step);
-    if (lambda == 0.0 && pair.listed) continue;
-    const double countedWeight = pair.listed ? -lambda : 1.0 - lambda;
+    const bool supplied = pair.listed || pairSumsCountUnlisted;
+    if (lambda == 0.0 && supplied) continue;
+    const double countedWeight = supplied ? -lambda : 1.0 - lambda;
     const Atom &a = atoms[pair.atoms[0]];
     const Atom &b = atoms[pair.atoms[1]];
     const double3 dr = simulationBox.applyPeriodicBoundaryConditions(a.position - b.position);
@@ -376,12 +380,14 @@ void ensureDerived(const ForceField &forceField, const std::vector<Component> &c
 RunningEnergy Interactions::computePolymerLinkEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
                                                      const std::vector<Component> &components,
                                                      const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-                                                     std::span<const Atom> moleculeAtoms, PolymerLinkTable &table)
+                                                     std::span<const Atom> moleculeAtoms, PolymerLinkTable &table,
+                                                     bool pairSumsCountUnlisted)
 {
   if (table.empty()) return {};
   ensureDerived(forceField, components, numberOfMoleculesPerComponent, moleculeAtoms, table);
   auto noGradient = [](std::uint32_t, const double3 &) {};
-  return evaluate<0>(forceField, simulationBox, moleculeAtoms, table, noGradient, noGradient, nullptr, nullptr);
+  return evaluate<0>(forceField, simulationBox, moleculeAtoms, table, noGradient, noGradient, nullptr, nullptr,
+                     pairSumsCountUnlisted);
 }
 
 RunningEnergy Interactions::computePolymerLinkGradient(const ForceField &forceField, const SimulationBox &simulationBox,
@@ -389,19 +395,20 @@ RunningEnergy Interactions::computePolymerLinkGradient(const ForceField &forceFi
                                                        const std::vector<std::size_t> &numberOfMoleculesPerComponent,
                                                        std::span<const Atom> moleculeAtoms,
                                                        std::span<AtomDynamics> moleculeDynamics, PolymerLinkTable &table,
-                                                       double3x3 *strain, double3x3 *molecularCorrection)
+                                                       double3x3 *strain, double3x3 *molecularCorrection,
+                                                       bool pairSumsCountUnlisted)
 {
   if (table.empty()) return {};
   ensureDerived(forceField, components, numberOfMoleculesPerComponent, moleculeAtoms, table);
   auto addGradient = [&](std::uint32_t atom, const double3 &g) { moleculeDynamics[atom].gradient += g; };
   return evaluate<1>(forceField, simulationBox, moleculeAtoms, table, addGradient, addGradient, strain,
-                     molecularCorrection);
+                     molecularCorrection, pairSumsCountUnlisted);
 }
 
 std::pair<RunningEnergy, double3x3> Interactions::computePolymerLinkEnergyStrainDerivative(
     const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
     const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtoms,
-    std::span<AtomDynamics> pressureDynamics, PolymerLinkTable &table)
+    std::span<AtomDynamics> pressureDynamics, PolymerLinkTable &table, bool pairSumsCountUnlisted)
 {
   if (table.empty()) return {};
   ensureDerived(forceField, components, numberOfMoleculesPerComponent, moleculeAtoms, table);
@@ -409,6 +416,7 @@ std::pair<RunningEnergy, double3x3> Interactions::computePolymerLinkEnergyStrain
   auto addGradient = [&](std::uint32_t atom, const double3 &g) { pressureDynamics[atom].gradient += g; };
   auto noGradient = [](std::uint32_t, const double3 &) {};
   const RunningEnergy energy =
-      evaluate<1>(forceField, simulationBox, moleculeAtoms, table, addGradient, noGradient, &strain, nullptr);
+      evaluate<1>(forceField, simulationBox, moleculeAtoms, table, addGradient, noGradient, &strain, nullptr,
+                  pairSumsCountUnlisted);
   return {energy, strain};
 }

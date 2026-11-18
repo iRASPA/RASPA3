@@ -656,3 +656,47 @@ TEST(solute_tempering, framework_grids_follow_the_replica_hamiltonian)
   EXPECT_NEAR(change.value(), expected, 1e-8 * std::abs(expected) + 1e-8);
   EXPECT_NEAR(changeBack.value(), -expected, 1e-8 * std::abs(expected) + 1e-8);
 }
+
+// A vertex of a framework grid inside a framework atom holds the overlap sentinel (twice the overlap criterion) in
+// place of its energy. The sentinel was scaled with the grid: at sqrt(lambda) below one half it came under the
+// criterion, and the replica no longer refused a solute atom on top of a framework atom.
+TEST(solute_tempering, scaled_framework_grids_keep_the_overlap_of_a_framework_atom)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component co2 = Component::makeCO2(forceField, 0, true);
+  forceField.settings.gridPseudoAtomIndices = {static_cast<std::size_t>(co2.atoms[0].type),
+                                               static_cast<std::size_t>(co2.atoms[1].type)};
+  forceField.settings.numberOfVDWGridPoints = uint3(32, 32, 32);
+  forceField.settings.numberOfCoulombGridPoints = uint3(32, 32, 32);
+  forceField.settings.numberOfGridTestPoints = 10;
+  Framework framework = Framework::makeITQ29(forceField, int3(2, 2, 2));
+
+  System reference = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {co2}, {}, {1}, 5);
+  // the molecule on top of a framework atom
+  const double3 frameworkAtom = reference.spanOfFrameworkAtoms()[0].position;
+  std::span<Atom> atomData = reference.spanOfMoleculeAtoms();
+  atomData[0].position = frameworkAtom + double3(0.0, 0.0, 1.149);
+  atomData[1].position = frameworkAtom;
+  atomData[2].position = frameworkAtom - double3(0.0, 0.0, 1.149);
+  std::ostringstream log;
+  reference.createFrameworkInterpolationGrids(log);
+  reference.rebuildConfigurationDerivedState();
+
+  auto overlaps = [](const System& s)
+  {
+    bool overlap = false;
+    (void)Interactions::computeFrameworkMoleculeEnergy(s.forceField, s.simulationBox, s.interpolationGrids, s.framework,
+                                                       s.spanOfFrameworkAtoms(), s.spanOfMoleculeAtoms(), &overlap);
+    return overlap;
+  };
+  ASSERT_TRUE(overlaps(reference));
+
+  for (const double lambda : {0.5, 0.2, 0.05})  // sqrt(lambda) = 0.71, 0.45, 0.22
+  {
+    System replica = reference;
+    replica.scaleSoluteHamiltonian(0, lambda);
+    replica.copyInterpolationGridsFrom(reference);
+    replica.rebuildConfigurationDerivedState();
+    EXPECT_TRUE(overlaps(replica)) << "lambda " << lambda;
+  }
+}

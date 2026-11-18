@@ -674,6 +674,7 @@ void ParallelTMMC::setup()
   {
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
+    system.refusePolarizationWithMobileFramework("Parallel TMMC");
   }
 
   std::filesystem::create_directories("output");

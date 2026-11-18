@@ -1012,9 +1012,16 @@ double3x3 InterpolationEnergyGrid::cartesianHessian(const double3x3& cellHessian
   return unitCellBox.inverseCell.transpose() * hessian * unitCellBox.inverseCell;
 }
 
-void InterpolationEnergyGrid::scaleEnergy(double factor)
+void InterpolationEnergyGrid::scaleEnergy(double factor, double overlapCriteria)
 {
-  for (double& value : data) value *= factor;
+  // A vertex inside a framework atom holds the overlap sentinel, twice the criterion, in place of its energy (the
+  // tabulated derivatives are held within the criterion): the only entries above the criterion. The sentinel is
+  // a mark and no energy, and stays: scaled with the rest, a factor below one half took it under the criterion
+  // and the grid no longer refused a molecule on top of a framework atom.
+  for (double& value : data)
+  {
+    if (!(value > overlapCriteria)) value *= factor;
+  }
 }
 
 double InterpolationEnergyGrid::interpolate(double3 pos) const
