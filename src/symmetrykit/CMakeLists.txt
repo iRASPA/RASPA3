@@ -1,8 +1,8 @@
 project(symmetrykit)
 
 # Crystal symmetry: space groups and their settings, point groups, Seitz matrices and changes of basis, the
-# primitive-cell and Niggli reduction, band paths, the CIF and POSCAR parsers, and the Voronoi and Apollonius
-# diagrams.
+# primitive-cell and Niggli reduction, band paths, the CIF and POSCAR parsers, the Voronoi and Apollonius
+# diagrams, and the scattering factors and powder diffraction pattern of a crystal.
 #
 # It stands on mathkit for the vector and ring arithmetic and on foundationkit for the parsers' scanner and
 # character sets, and knows nothing of the simulation engine above it. structurekit was given the same shape

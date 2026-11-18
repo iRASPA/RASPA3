@@ -5,6 +5,7 @@ add_executable(unit_tests_symmetrykit
   cif_symmetry.cpp
   generated_spacegroups.cpp
   space_group_database.cpp
+  powder_diffraction.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_symmetrykit)
