@@ -172,7 +172,9 @@ void TransitionMatrix::adjustBias()
 {
   if (!doTMMC || !useBias || !useTMBias) return;
 
-  if ((numberOfSteps % updateTMEvery != 0) || numberOfSteps == 0) return;
+  // (an interval of zero, which a system put together in code can carry, is no periodic rebuild: the remainder by
+  // it is a division by zero)
+  if (updateTMEvery == 0uz || (numberOfSteps % updateTMEvery != 0) || numberOfSteps == 0) return;
 
   recomputeLnPiAndBias();
 };

@@ -300,6 +300,42 @@ TEST(INPUT_READER_TMMC, parallel_tmmc_rejects_macrostate_switches_it_overrides)
   }
 }
 
+// A macrostate key of the wrong type was skipped without a word: "MacroStateUseBias": 1 left the bias of a
+// transition-matrix run off (the key being there kept the driver from switching it on), and a minimum or a
+// number of windows that is not an unsigned integer kept the default.
+TEST(INPUT_READER_TMMC, rejects_macrostate_keys_of_the_wrong_type)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+
+  EXPECT_EQ(refusalOf(readTMMCExample(), "tmmc_types_reference", workspace.path()), "");
+
+  for (const nlohmann::json& value : {nlohmann::json(1), nlohmann::json("true")})
+  {
+    nlohmann::json input = readTMMCExample();
+    input["Systems"][0]["MacroStateUseBias"] = value;
+    const std::string refusal = refusalOf(std::move(input), "tmmc_bias_type", workspace.path());
+    EXPECT_NE(refusal.find("MacroStateUseBias"), std::string::npos) << value.dump() << ": " << refusal;
+  }
+
+  for (const nlohmann::json& value : {nlohmann::json(-1), nlohmann::json(2.5), nlohmann::json("0")})
+  {
+    nlohmann::json input = readTMMCExample();
+    input["Systems"][0]["MacroStateMinimumNumberOfMolecules"] = value;
+    const std::string refusal = refusalOf(std::move(input), "tmmc_minimum_type", workspace.path());
+    EXPECT_NE(refusal.find("MacroStateMinimumNumberOfMolecules"), std::string::npos)
+        << value.dump() << ": " << refusal;
+  }
+
+  for (const nlohmann::json& value : {nlohmann::json(-2), nlohmann::json(2.0), nlohmann::json("2")})
+  {
+    nlohmann::json input = readParallelTMMCExample();
+    input["NumberOfWindows"] = value;
+    const std::string refusal = refusalOf(std::move(input), "ptmmc_windows_type", workspace.path());
+    EXPECT_NE(refusal.find("NumberOfWindows"), std::string::npos) << value.dump() << ": " << refusal;
+  }
+}
+
 // Its walkers are grown into their windows, so what is created may lie below the macrostate range, which
 // for a single transition-matrix run it may not.
 TEST(INPUT_READER_TMMC, parallel_tmmc_may_create_fewer_molecules_than_the_range_starts_at)

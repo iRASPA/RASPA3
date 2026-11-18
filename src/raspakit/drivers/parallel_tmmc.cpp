@@ -504,6 +504,21 @@ void ParallelTMMC::initializeWalkers(System templateSystem)
         "[ParallelTMMC]: the macrostate is the molecule count of a single adsorbate; more than one swappable "
         "component was given\n");
   }
+  // ln Pi(N) is the distribution at one volume: the Widom increments ln(beta f V <W>_N / (N+1)), the densities and
+  // the saturation pressure take the volume of the first walker as that of all. A volume move makes it a sampled
+  // variable that the macrostate does not carry. The input reader refuses the move next to a framework only, so a
+  // bulk box (the vapor-liquid case) passed (ReweightedHistogram refuses the same).
+  for (const auto& [move, name] : {std::pair{Move::Types::VolumeChange, "VolumeMoveProbability"},
+                                   std::pair{Move::Types::AnisotropicVolumeChange, "AnisotropicVolumeMoveProbability"}})
+  {
+    if (templateSystem.mc_moves_probabilities.getProbability(move) > 0.0)
+    {
+      throw std::runtime_error(std::format(
+          "[ParallelTMMC]: '{}' is not supported: the macrostate distribution is that of the grand-canonical "
+          "ensemble at fixed volume\n",
+          name));
+    }
+  }
   // The numbers of the run, for the input reader and the programmatic constructor alike. The walkers insert at
   // the fugacity of the reference pressure: at zero ('ExternalPressure' left out) no insertion is accepted, a
   // deletion divides by it, and the analysis takes its logarithm. The block count sizes the block snapshots.
@@ -2994,6 +3009,15 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTMMC
     archive >> jsons;
     ptmmc.walkerJsons.clear();
     for (const std::string& walkerJson : jsons) ptmmc.walkerJsons.push_back(nlohmann::json::parse(walkerJson));
+  }
+  else
+  {
+    // An older file has no Widom snapshots. One (empty) list per walker all the same: the production stage appends
+    // to the list of its walker and the analysis asks each for its size, and a driver read from a restart file has
+    // not been through 'initializeWalkers', so that both indexed an empty vector. With fewer snapshots than blocks
+    // the analysis keeps the whole-production anchor for every block.
+    ptmmc.blockWidomWeightSums.assign(ptmmc.systems.size(), {});
+    ptmmc.blockWidomInsertions.assign(ptmmc.systems.size(), {});
   }
 
   std::uint64_t magicNumber;

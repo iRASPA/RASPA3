@@ -1408,8 +1408,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   }
 
   // Parallel TMMC: window and bias-update controls
-  if (parsed_data.contains("NumberOfWindows") && parsed_data["NumberOfWindows"].is_number_unsigned())
+  if (parsed_data.contains("NumberOfWindows"))
   {
+    // (a value of another type was skipped, and the run kept the default number of windows)
+    if (!parsed_data["NumberOfWindows"].is_number_unsigned())
+    {
+      throw std::runtime_error("[Input reader]: 'NumberOfWindows' must be a positive unsigned integer\n");
+    }
     tmmcNumberOfWindows = std::max(1uz, parsed_data["NumberOfWindows"].get<std::size_t>());
   }
   if (parsed_data.contains("TMMCUpdateEvery"))
@@ -4226,8 +4231,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      if (value.contains("MacroStateUseBias") && value["MacroStateUseBias"].is_boolean())
+      // (a value of another type was skipped, and the key being there then kept the transition-matrix driver from
+      // switching the bias on: "MacroStateUseBias": 1 ran unbiased without a word)
+      if (value.contains("MacroStateUseBias"))
       {
+        if (!value["MacroStateUseBias"].is_boolean())
+        {
+          throw std::runtime_error("[Input reader]: 'MacroStateUseBias' must be a boolean\n");
+        }
         systems[systemId].tmmc.useBias = value["MacroStateUseBias"].get<bool>();
       }
       // Wang-Landau exploration before production, and a fresh start of the statistics and the bias after
@@ -4244,9 +4255,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         *flag = value[keyword].get<bool>();
       }
 
-      if (value.contains("MacroStateMinimumNumberOfMolecules") &&
-          value["MacroStateMinimumNumberOfMolecules"].is_number_unsigned())
+      if (value.contains("MacroStateMinimumNumberOfMolecules"))
       {
+        // (a negative number, 5.0 or a string was skipped, and the range started at zero)
+        if (!value["MacroStateMinimumNumberOfMolecules"].is_number_unsigned())
+        {
+          throw std::runtime_error(
+              "[Input reader]: 'MacroStateMinimumNumberOfMolecules' must be an unsigned integer\n");
+        }
         systems[systemId].tmmc.minMacrostate = value["MacroStateMinimumNumberOfMolecules"].get<std::size_t>();
       }
 

@@ -246,6 +246,44 @@ TEST(PARALLEL_TMMC_CHECKS, refuses_a_run_it_can_not_sample)
   EXPECT_NE(ladder.find("IdealGasRosenbluthWeight"), std::string::npos) << ladder;
 }
 
+// ln Pi(N), the Widom increments and the coexistence densities are those of one volume: a volume move on a bulk box
+// (which the input reader lets through, refusing it next to a framework only) is refused by the driver.
+TEST(PARALLEL_TMMC_CHECKS, refuses_volume_moves)
+{
+  ParallelTMMCParameters parameters;
+  parameters.numberOfWindows = 2;
+
+  for (const Move::Types move : {Move::Types::VolumeChange, Move::Types::AnisotropicVolumeChange})
+  {
+    System system = makeMethaneBox(0, 1e5);
+    system.mc_moves_probabilities.setProbability(move, 0.1);
+    const std::string refusal = refusalOfParallelTMMC(std::move(system), {300.0}, parameters);
+    EXPECT_NE(refusal.find("fixed volume"), std::string::npos) << refusal;
+  }
+}
+
+// An update interval of zero (a system put together in code) is no periodic rebuild, not a remainder by zero.
+TEST(TMMC_BIAS_GUARDS, an_update_interval_of_zero_never_rebuilds_the_bias)
+{
+  TransitionMatrix matrix;
+  matrix.doTMMC = true;
+  matrix.useBias = true;
+  matrix.useTMBias = true;
+  matrix.minMacrostate = 0;
+  matrix.maxMacrostate = 3;
+  matrix.updateTMEvery = 0;
+  matrix.initialize();
+  for (std::size_t n = 0; n <= 3; ++n)
+  {
+    matrix.cmatrix[n] = double3(n > 0 ? 0.2 : 0.0, 0.5, n < 3 ? 0.6 : 0.0);
+    matrix.updateHistogram(n);
+  }
+  matrix.numberOfSteps = 10;
+  matrix.adjustBias();
+  EXPECT_EQ(matrix.numberOfUpdates, 0uz);
+  for (std::size_t n = 0; n <= 3; ++n) EXPECT_EQ(matrix.bias[n], 0.0) << "state " << n;
+}
+
 // The windows are filled from below. A template that holds more molecules than a window starts at is brought down
 // to it; grown upward only, the lower windows started above their range.
 TEST(PARALLEL_TMMC_CHECKS, every_walker_starts_at_the_bottom_of_its_window)
