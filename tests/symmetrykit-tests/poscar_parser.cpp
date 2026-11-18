@@ -119,6 +119,32 @@ Cartesian
   EXPECT_NEAR(std::get<0>(atoms.front()).x, 0.0, 1e-12);
 }
 
+// VASP reads the first character of the coordinate-mode line alone: "Cart" is Cartesian as "Cartesian" is.
+TEST(POSCARParser, CoordinateModeIsItsFirstCharacter)
+{
+  // (the frame is in fractional coordinates: 2 Angstrom along an axis of 4 is a half, and a direct 2 is 2)
+  for (const auto& [mode, x] : {std::pair{"Cart", 0.5}, std::pair{"cartesian", 0.5}, std::pair{"K", 0.5},
+                                std::pair{"Direct", 2.0}, std::pair{"dir", 2.0}})
+  {
+    const std::string poscar = std::format(R"(coordinate mode
+1.0
+4.0 0.0 0.0
+0.0 4.0 0.0
+0.0 0.0 4.0
+Fe
+1
+{}
+2.0 0.0 0.0
+)",
+                                           mode);
+    SKPOSCARParser parser(poscar);
+    parser.startParsing();
+    const auto atoms = parser.firstTestFrame();
+    ASSERT_EQ(totalAtomCount(atoms), 1U) << mode;
+    EXPECT_NEAR(std::get<0>(atoms.front()).x, x, 1e-12) << mode;
+  }
+}
+
 TEST(POSCARParser, StripsInlineCommentsOnAtomLines)
 {
   SKPOSCARParser parser = SKPOSCARParser::fromFile("testdata/poscar/vasp4_counts.poscar");

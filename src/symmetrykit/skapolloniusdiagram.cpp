@@ -194,13 +194,27 @@ void tangencyRow(const double3& centre, double radius, const double3& referenceC
 // points, one on each of the two branches that make up the curve. Sweeping the clearance therefore
 // traverses the whole curve, and, usefully, the sweep runs out at a finite clearance exactly when the
 // curve is closed: an open trisector reaches every clearance above its minimum.
-std::vector<double3> trisectorPointsAtClearance(const std::array<double3, 3>& centres,
-                                                const std::array<double, 3>& radii, double clearance)
+// The line the centre of a sphere tangent to three sites lies on at one clearance, and the quadratic that places
+// it along that line: a t^2 + b t + c = 0 for the centre base + t direction. Nothing where the two linear
+// conditions do not meet in a line, which is where the three centres are collinear.
+//
+// The base is linear in the clearance and the direction does not depend on it, so the discriminant
+// b^2 - 4 a c is a quadratic polynomial of the clearance: the clearances at which the trisector exists are an
+// interval between its roots (or what lies outside them).
+struct TrisectorLevel
 {
-  // The conditions below are the tangencies squared, so a clearance deeper than any of the three radii would be
-  // answered with the extraneous roots of the squaring.
+  double3 base;
+  double3 direction;
+  double directionLength;
+  double a;
+  double b;
+  double discriminant;
+};
+
+std::optional<TrisectorLevel> trisectorLevel(const std::array<double3, 3>& centres, const std::array<double, 3>& radii,
+                                             double clearance)
+{
   double referenceDistance = radii[0] + clearance;
-  if (referenceDistance < 0.0 || radii[1] + clearance < 0.0 || radii[2] + clearance < 0.0) return {};
 
   std::array<double3, 2> rows;
   std::array<double, 2> constants;
@@ -214,22 +228,38 @@ std::vector<double3> trisectorPointsAtClearance(const std::array<double3, 3>& ce
   double3 direction = double3::cross(rows[0], rows[1]);
   double directionLength = direction.length();
   double scale = std::max(rows[0].length(), rows[1].length());
-  if (scale <= 0.0 || directionLength < 1.0e-12 * scale * scale) return {};
+  if (scale <= 0.0 || directionLength < 1.0e-12 * scale * scale) return std::nullopt;
 
   // Any point on the line where the two planes meet; the third row pins it down along the line.
   double3x3 matrix(double3(rows[0].x, rows[1].x, direction.x), double3(rows[0].y, rows[1].y, direction.y),
                    double3(rows[0].z, rows[1].z, direction.z));
-  if (std::abs(matrix.determinant()) < 1.0e-30) return {};
+  if (std::abs(matrix.determinant()) < 1.0e-30) return std::nullopt;
   double3 base = matrix.inverse() * double3(constants[0], constants[1], 0.0);
 
   double3 offset = base - centres[0];
   double a = double3::dot(direction, direction);
   double b = 2.0 * double3::dot(offset, direction);
   double c = double3::dot(offset, offset) - referenceDistance * referenceDistance;
-  double discriminant = b * b - 4.0 * a * c;
-  if (discriminant < 0.0) return {};
+  return TrisectorLevel{base, direction, directionLength, a, b, b * b - 4.0 * a * c};
+}
 
-  double root = std::sqrt(discriminant);
+std::vector<double3> trisectorPointsAtClearance(const std::array<double3, 3>& centres,
+                                                const std::array<double, 3>& radii, double clearance)
+{
+  // The conditions below are the tangencies squared, so a clearance deeper than any of the three radii would be
+  // answered with the extraneous roots of the squaring.
+  double referenceDistance = radii[0] + clearance;
+  if (referenceDistance < 0.0 || radii[1] + clearance < 0.0 || radii[2] + clearance < 0.0) return {};
+
+  const std::optional<TrisectorLevel> level = trisectorLevel(centres, radii, clearance);
+  if (!level.has_value() || level->discriminant < 0.0) return {};
+  const double3& base = level->base;
+  const double3& direction = level->direction;
+  const double directionLength = level->directionLength;
+  const double a = level->a;
+  const double b = level->b;
+
+  double root = std::sqrt(level->discriminant);
   std::vector<double3> points;
   points.push_back(base + ((-b + root) / (2.0 * a)) * direction);
 
@@ -238,6 +268,46 @@ std::vector<double3> trisectorPointsAtClearance(const std::array<double3, 3>& ce
   // them how near the two have to be to count as one would depend on how large the structure is.
   if ((root / a) * directionLength > 1.0e-9) points.push_back(base + ((-b - root) / (2.0 * a)) * direction);
   return points;
+}
+
+// The trisector of three sites whose centres lie on one line: a circle about that line, of one clearance the
+// whole way round. With x the place along the line and rho the distance from it, the tangencies are
+// (x - t_i)^2 + rho^2 = (r_i + clearance)^2 with t_i the places of the centres, and the differences of them are
+// two linear conditions on x and the clearance. Nothing where the centres are not on a line (to the tolerance at
+// which 'trisectorLevel' gives up), or where there is no such circle.
+struct TrisectorCircle
+{
+  double3 centre;
+  double3 axis;
+  double radius;
+  double clearance;
+};
+
+std::optional<TrisectorCircle> collinearTrisectorCircle(const std::array<double3, 3>& centres,
+                                                        const std::array<double, 3>& radii)
+{
+  const double3 first = centres[1] - centres[0];
+  const double3 second = centres[2] - centres[0];
+  const double scale = 2.0 * std::max(first.length(), second.length());
+  if (scale <= 0.0 || 4.0 * double3::cross(first, second).length() >= 1.0e-12 * scale * scale) return std::nullopt;
+
+  const double3 axis = double3::normalize(first.length() > second.length() ? first : second);
+  const double t1 = double3::dot(first, axis);
+  const double t2 = double3::dot(second, axis);
+  const double d1 = radii[1] - radii[0];
+  const double d2 = radii[2] - radii[0];
+  // -2 t_i x - 2 d_i clearance = r_i^2 - r_0^2 - t_i^2
+  const double rhs1 = radii[1] * radii[1] - radii[0] * radii[0] - t1 * t1;
+  const double rhs2 = radii[2] * radii[2] - radii[0] * radii[0] - t2 * t2;
+  const double determinant = 4.0 * (t1 * d2 - t2 * d1);
+  const double size = std::max({std::abs(t1), std::abs(t2), std::abs(d1), std::abs(d2)});
+  if (std::abs(determinant) <= 1.0e-12 * size * size) return std::nullopt;
+  const double x = (-2.0 * d2 * rhs1 + 2.0 * d1 * rhs2) / determinant;
+  const double clearance = (-2.0 * t1 * rhs2 + 2.0 * t2 * rhs1) / determinant;
+  if (radii[0] + clearance < 0.0 || radii[1] + clearance < 0.0 || radii[2] + clearance < 0.0) return std::nullopt;
+  const double radiusSquared = (radii[0] + clearance) * (radii[0] + clearance) - x * x;
+  if (!(radiusSquared > 1.0e-18)) return std::nullopt;
+  return TrisectorCircle{centres[0] + x * axis, axis, std::sqrt(radiusSquared), clearance};
 }
 
 // The pair of directions the angle about the axis of a bisector sheet is measured in.
@@ -2166,117 +2236,225 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       double lowestClearance =
           allowNegativeRadius ? -std::min({tripleRadii[0], tripleRadii[1], tripleRadii[2]}) : 0.0;
 
-      // An open trisector reaches every clearance above its minimum, so if the curve still exists at the
-      // largest clearance any empty sphere can have, it is not closed and is not what is sought here.
-      if (!trisectorPointsAtClearance(centres, tripleRadii, emptyRadiusBound).empty()) continue;
-
-      // Bracket the clearances the curve occupies.
-      double firstPresent = 0.0;
-      double lastPresent = 0.0;
-      bool anyPresent = false;
-      for (std::size_t sample = 0; sample <= bracketSamples; ++sample)
-      {
-        double clearance = lowestClearance + (emptyRadiusBound - lowestClearance) *
-                                                 static_cast<double>(sample) / static_cast<double>(bracketSamples);
-        if (trisectorPointsAtClearance(centres, tripleRadii, clearance).empty()) continue;
-        if (!anyPresent) firstPresent = clearance;
-        lastPresent = clearance;
-        anyPresent = true;
-      }
-      if (!anyPresent) continue;
-
-      // Refine the two ends of that range. They are where the branches meet, so the lower end is the
-      // bottleneck of the ring and the upper end its widest point.
-      double clearanceBelow = std::max(lowestClearance, firstPresent - (emptyRadiusBound - lowestClearance) /
-                                                                          static_cast<double>(bracketSamples));
-      double minimumClearance = firstPresent;
-      for (std::size_t step = 0; step < bisectionSteps; ++step)
-      {
-        double middle = 0.5 * (clearanceBelow + minimumClearance);
-        if (trisectorPointsAtClearance(centres, tripleRadii, middle).empty())
-          clearanceBelow = middle;
-        else
-          minimumClearance = middle;
-      }
-      double clearanceAbove =
-          lastPresent + (emptyRadiusBound - lowestClearance) / static_cast<double>(bracketSamples);
-      double maximumClearance = lastPresent;
-      for (std::size_t step = 0; step < bisectionSteps; ++step)
-      {
-        double middle = 0.5 * (maximumClearance + clearanceAbove);
-        if (trisectorPointsAtClearance(centres, tripleRadii, middle).empty())
-          clearanceAbove = middle;
-        else
-          maximumClearance = middle;
-      }
-      if (maximumClearance <= minimumClearance) continue;
-
-      // Traverse the ring, on both branches, and reject it the moment any site is nearer than the
-      // clearance the three defining sites share. Those three sit exactly at that clearance, so the
-      // tolerance excludes them without having to identify them.
-      bool intruded = false;
+      double minimumClearance = 0.0;
+      double maximumClearance = 0.0;
       double length = 0.0;
-      std::array<std::optional<double3>, 2> previousOnBranch;
-      std::array<double3, 2> firstOnBranch;
-      std::array<std::optional<double3>, 2> secondOnBranch;
-      for (std::size_t sample = 0; sample <= traverseSamples && !intruded; ++sample)
-      {
-        double clearance = minimumClearance + (maximumClearance - minimumClearance) *
-                                                  static_cast<double>(sample) / static_cast<double>(traverseSamples);
-        std::vector<double3> points = trisectorPointsAtClearance(centres, tripleRadii, clearance);
-        if (points.empty()) continue;
+      double3 pinch(0.0, 0.0, 0.0);
+      double3 chord(0.0, 0.0, 0.0);
+      double3 onRing(0.0, 0.0, 0.0);
 
-        // Where the two branches have met the one point is on both of them. Taken as on the first alone, the second
-        // would start a sample late and be a sample behind from there on, and what is read off the two together
-        // at the same clearance, the pinch and the direction there, would come from two different clearances.
-        for (std::size_t branch = 0; branch < 2 && !intruded; ++branch)
+      // Centres on one line: the trisector is a circle about the line, of one clearance all the way round. The
+      // sweep of the clearance below has nothing to hold on to there (the two linear conditions of a level are
+      // parallel, and a curve of one clearance has no band to bracket), and such a ring, the channel about a
+      // linear chain of three atoms that nothing cuts, was not found at all. It is walked by its angle instead.
+      if (const std::optional<TrisectorCircle> circle = collinearTrisectorCircle(centres, tripleRadii))
+      {
+        if (circle->clearance < lowestClearance || circle->clearance > emptyRadiusBound) continue;
+
+        const std::pair<double3, double3> frame = sheetAngleFrame(circle->axis);
+        auto onCircle = [&](double angle)
         {
-          const double3& point = points[std::min(branch, points.size() - 1)];
-          double3 wrapped = unitCell * double3::fract(inverseCell * point);
-          grid.forEachNear(wrapped, std::max(0.0, clearance + maximumRadius),
+          return circle->centre +
+                 circle->radius * (std::cos(angle) * frame.first + std::sin(angle) * frame.second);
+        };
+        bool intruded = false;
+        for (std::size_t sample = 0; sample < 2 * traverseSamples && !intruded; ++sample)
+        {
+          const double angle = 2.0 * std::numbers::pi * static_cast<double>(sample) /
+                               static_cast<double>(2 * traverseSamples);
+          double3 wrapped = unitCell * double3::fract(inverseCell * onCircle(angle));
+          grid.forEachNear(wrapped, std::max(0.0, circle->clearance + maximumRadius),
                            [&](std::size_t j, const double3& image, const int3&)
                            {
-                             if ((wrapped - image).length() - radii[j] < clearance - intrusionTolerance)
+                             if ((wrapped - image).length() - radii[j] < circle->clearance - intrusionTolerance)
                                intruded = true;
                            });
-
-          if (previousOnBranch[branch].has_value())
-          {
-            length += (point - previousOnBranch[branch].value()).length();
-            if (!secondOnBranch[branch].has_value()) secondOnBranch[branch] = point;
-          }
-          else
-          {
-            firstOnBranch[branch] = point;
-          }
-          previousOnBranch[branch] = point;
         }
-      }
-      if (intruded) continue;
+        if (intruded) continue;
 
-      // The two branches meet at both ends, so closing the ring joins their far ends to each other.
-      if (previousOnBranch[0].has_value() && previousOnBranch[1].has_value())
-      {
-        length += (previousOnBranch[0].value() - previousOnBranch[1].value()).length();
-        length += (firstOnBranch[0] - firstOnBranch[1]).length();
+        minimumClearance = circle->clearance;
+        maximumClearance = circle->clearance;
+        length = 2.0 * std::numbers::pi * circle->radius;
+        pinch = onCircle(0.0);
+        onRing = pinch;
+        chord = frame.second;  // the tangent of the circle at angle zero
       }
-
-      // The narrowest point of a ring is the pinch where its two branches meet, at the lowest clearance
-      // it reaches. The ring runs from one branch to the other through that point, so the chord between
-      // the branches just above the pinch is the direction it runs in there.
-      double3 pinch = previousOnBranch[0].has_value() ? firstOnBranch[0] : firstOnBranch[1];
-      double3 chord(0.0, 0.0, 0.0);
-      if (previousOnBranch[0].has_value() && previousOnBranch[1].has_value())
+      else
       {
-        pinch = 0.5 * (firstOnBranch[0] + firstOnBranch[1]);
-        if (secondOnBranch[0].has_value() && secondOnBranch[1].has_value())
-          chord = secondOnBranch[0].value() - secondOnBranch[1].value();
+        // An open trisector reaches every clearance above its minimum, so if the curve still exists at the
+        // largest clearance any empty sphere can have, it is not closed and is not what is sought here.
+        if (!trisectorPointsAtClearance(centres, tripleRadii, emptyRadiusBound).empty()) continue;
+
+        // Bracket the clearances the curve occupies. The discriminant of the level quadratic is a quadratic
+        // polynomial of the clearance (see 'trisectorLevel'), so three values of it give the interval in closed
+        // form. Looked for at evenly spaced clearances alone, a ring whose band of clearances is narrower than
+        // their spacing was not there at any of them and was dropped: three sites that are nearly on a line have a
+        // ring that is nearly a circle of one clearance, a band of a hundredth of an Angstrom against a spacing of
+        // a tenth in a cell of 30.
+        double firstPresent = 0.0;
+        double lastPresent = 0.0;
+        bool anyPresent = false;
+        bool bracketedInClosedForm = false;
+        {
+          const double low = lowestClearance;
+          const double high = emptyRadiusBound;
+          const double middle = 0.5 * (low + high);
+          const std::optional<TrisectorLevel> atLow = trisectorLevel(centres, tripleRadii, low);
+          const std::optional<TrisectorLevel> atMiddle = trisectorLevel(centres, tripleRadii, middle);
+          const std::optional<TrisectorLevel> atHigh = trisectorLevel(centres, tripleRadii, high);
+          if (atLow.has_value() && atMiddle.has_value() && atHigh.has_value() && high > low)
+          {
+            // the polynomial through the three values, in the clearance measured from the lower end
+            const double span = high - low;
+            const double firstSlope = (atMiddle->discriminant - atLow->discriminant) / (middle - low);
+            const double secondSlope = (atHigh->discriminant - atMiddle->discriminant) / (high - middle);
+            const double quadratic = (secondSlope - firstSlope) / span;
+            const double linear = firstSlope - quadratic * (middle - low);
+            const double constant = atLow->discriminant;
+            auto polynomial = [&](double t) { return (quadratic * t + linear) * t + constant; };
+
+            std::vector<double> breaks{0.0, span};
+            const double magnitude =
+                std::max({std::abs(atLow->discriminant), std::abs(atMiddle->discriminant), std::abs(atHigh->discriminant)});
+            if (std::abs(quadratic) * span * span > 1.0e-14 * magnitude)
+            {
+              const double inner = linear * linear - 4.0 * quadratic * constant;
+              if (inner >= 0.0)
+              {
+                // the root of larger magnitude first, the other from the product of the two
+                const double q = -0.5 * (linear + (linear < 0.0 ? -1.0 : 1.0) * std::sqrt(inner));
+                breaks.push_back(q / quadratic);
+                if (q != 0.0) breaks.push_back(constant / q);
+              }
+            }
+            else if (linear != 0.0)
+            {
+              breaks.push_back(-constant / linear);
+            }
+            std::erase_if(breaks, [&](double t) { return !(t >= 0.0 && t <= span); });
+            std::ranges::sort(breaks);
+            for (std::size_t piece = 0; piece + 1 < breaks.size() && !anyPresent; ++piece)
+            {
+              if (!(breaks[piece + 1] > breaks[piece])) continue;
+              const double inside = 0.5 * (breaks[piece] + breaks[piece + 1]);
+              if (polynomial(inside) < 0.0) continue;
+              if (trisectorPointsAtClearance(centres, tripleRadii, low + inside).empty()) continue;
+              firstPresent = low + inside;
+              lastPresent = low + inside;
+              anyPresent = true;
+              bracketedInClosedForm = true;
+            }
+          }
+        }
+        for (std::size_t sample = 0; sample <= bracketSamples && !bracketedInClosedForm; ++sample)
+        {
+          double clearance = lowestClearance + (emptyRadiusBound - lowestClearance) *
+                                                   static_cast<double>(sample) / static_cast<double>(bracketSamples);
+          if (trisectorPointsAtClearance(centres, tripleRadii, clearance).empty()) continue;
+          if (!anyPresent) firstPresent = clearance;
+          lastPresent = clearance;
+          anyPresent = true;
+        }
+        if (!anyPresent) continue;
+
+        // Refine the two ends of that range. They are where the branches meet, so the lower end is the
+        // bottleneck of the ring and the upper end its widest point.
+        // (bracketed in closed form the curve is at one clearance inside its band, and the ends are sought from
+        // there to the ends of the whole range: the curve is not there at the largest clearance, as was asked above)
+        double clearanceBelow =
+            bracketedInClosedForm ? lowestClearance
+                                  : std::max(lowestClearance, firstPresent - (emptyRadiusBound - lowestClearance) /
+                                                                                 static_cast<double>(bracketSamples));
+        minimumClearance = firstPresent;
+        for (std::size_t step = 0; step < bisectionSteps; ++step)
+        {
+          double middle = 0.5 * (clearanceBelow + minimumClearance);
+          if (trisectorPointsAtClearance(centres, tripleRadii, middle).empty())
+            clearanceBelow = middle;
+          else
+            minimumClearance = middle;
+        }
+        double clearanceAbove =
+            bracketedInClosedForm
+                ? emptyRadiusBound
+                : lastPresent + (emptyRadiusBound - lowestClearance) / static_cast<double>(bracketSamples);
+        maximumClearance = lastPresent;
+        for (std::size_t step = 0; step < bisectionSteps; ++step)
+        {
+          double middle = 0.5 * (maximumClearance + clearanceAbove);
+          if (trisectorPointsAtClearance(centres, tripleRadii, middle).empty())
+            clearanceAbove = middle;
+          else
+            maximumClearance = middle;
+        }
+        if (maximumClearance <= minimumClearance) continue;
+
+        // Traverse the ring, on both branches, and reject it the moment any site is nearer than the
+        // clearance the three defining sites share. Those three sit exactly at that clearance, so the
+        // tolerance excludes them without having to identify them.
+        bool intruded = false;
+        length = 0.0;
+        std::array<std::optional<double3>, 2> previousOnBranch;
+        std::array<double3, 2> firstOnBranch;
+        std::array<std::optional<double3>, 2> secondOnBranch;
+        for (std::size_t sample = 0; sample <= traverseSamples && !intruded; ++sample)
+        {
+          double clearance = minimumClearance + (maximumClearance - minimumClearance) *
+                                                    static_cast<double>(sample) / static_cast<double>(traverseSamples);
+          std::vector<double3> points = trisectorPointsAtClearance(centres, tripleRadii, clearance);
+          if (points.empty()) continue;
+
+          // Where the two branches have met the one point is on both of them. Taken as on the first alone, the second
+          // would start a sample late and be a sample behind from there on, and what is read off the two together
+          // at the same clearance, the pinch and the direction there, would come from two different clearances.
+          for (std::size_t branch = 0; branch < 2 && !intruded; ++branch)
+          {
+            const double3& point = points[std::min(branch, points.size() - 1)];
+            double3 wrapped = unitCell * double3::fract(inverseCell * point);
+            grid.forEachNear(wrapped, std::max(0.0, clearance + maximumRadius),
+                             [&](std::size_t j, const double3& image, const int3&)
+                             {
+                               if ((wrapped - image).length() - radii[j] < clearance - intrusionTolerance)
+                                 intruded = true;
+                             });
+
+            if (previousOnBranch[branch].has_value())
+            {
+              length += (point - previousOnBranch[branch].value()).length();
+              if (!secondOnBranch[branch].has_value()) secondOnBranch[branch] = point;
+            }
+            else
+            {
+              firstOnBranch[branch] = point;
+            }
+            previousOnBranch[branch] = point;
+          }
+        }
+        if (intruded) continue;
+
+        // The two branches meet at both ends, so closing the ring joins their far ends to each other.
+        if (previousOnBranch[0].has_value() && previousOnBranch[1].has_value())
+        {
+          length += (previousOnBranch[0].value() - previousOnBranch[1].value()).length();
+          length += (firstOnBranch[0] - firstOnBranch[1]).length();
+        }
+
+        // The narrowest point of a ring is the pinch where its two branches meet, at the lowest clearance
+        // it reaches. The ring runs from one branch to the other through that point, so the chord between
+        // the branches just above the pinch is the direction it runs in there.
+        pinch = previousOnBranch[0].has_value() ? firstOnBranch[0] : firstOnBranch[1];
+        onRing = pinch;
+        if (previousOnBranch[0].has_value() && previousOnBranch[1].has_value())
+        {
+          pinch = 0.5 * (firstOnBranch[0] + firstOnBranch[1]);
+          if (secondOnBranch[0].has_value() && secondOnBranch[1].has_value())
+            chord = secondOnBranch[0].value() - secondOnBranch[1].value();
+        }
       }
       double chordLength = chord.length();
 
       // Further sites on the same curve make it the curve of every triple of them, and it is one ring. They are
       // all tied with the three at any point of it, and the triples of them are then not to be tried again.
-      const double3 onRing = previousOnBranch[0].has_value() ? firstOnBranch[0] : firstOnBranch[1];
       const double3 wrappedOnRing = unitCell * double3::fract(inverseCell * onRing);
       const double3 wrapFractional = inverseCell * (wrappedOnRing - onRing);
       const int3 wrap(static_cast<std::int32_t>(std::llround(wrapFractional.x)),
@@ -2645,11 +2823,34 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       for (const FaceCorner& corner : corners) ++cornerDegrees[iterator->second][corner];
     }
 
+    // A region bounded by rings alone: the annulus between an outer ring and a hole in it, with no vertex on
+    // either. Each of its rings has the surface beyond it in the diagram on one side, so none bounds a face of its
+    // own, and with no face of vertices to be put on each was given one all the same: two faces for the one
+    // region, and Euler's formula one over.
+    std::optional<std::size_t> faceOfRingsAlone;
+    std::size_t ringsOnThatFace = 0;
+
     for (const PatchEdge& patchEdge : patch.edges)
     {
       if (!diagram.edges[patchEdge.edgeIndex].isLoop) continue;
 
-      if (!componentFace.empty() && !ringBoundsOwnFace(patchEdge))
+      const bool boundsOwnFace = ringBoundsOwnFace(patchEdge);
+      if (componentFace.empty() && !boundsOwnFace)
+      {
+        if (!faceOfRingsAlone.has_value())
+        {
+          faceOfRingsAlone = diagram.faces.size();
+          diagram.faces.push_back(SKApolloniusFace{patch.owner, patch.other, patch.relativeImage, {}, true});
+          cornerDegrees.emplace_back();
+        }
+        diagram.faces[faceOfRingsAlone.value()].edgeIndices.push_back(patchEdge.edgeIndex);
+        // Three rings are one region with two holes; with four they could as well be two annuli, which has not
+        // been seen and is counted rather than guessed at.
+        if (++ringsOnThatFace == 4) ++diagram.verification.ringsOfUncertainFace;
+        continue;
+      }
+
+      if (!componentFace.empty() && !boundsOwnFace)
       {
         // A hole belongs to the region around it. Deciding which region that is only takes work when the
         // surface carries several, since then the hole is inside one of them and the others are elsewhere

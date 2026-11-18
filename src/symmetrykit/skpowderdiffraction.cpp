@@ -186,6 +186,16 @@ std::vector<Reflection> reflections(const double3x3& unitCell, const std::vector
       }
     }
   }
+
+  // A reflection the symmetry (or the repetition of a supercell) extinguishes is no part of a peak: its |F|^2 is
+  // zero, or the rounding left of sums that cancel. Left in, it was gathered with the allowed reflections of the same
+  // d-spacing: in P2_13 the absent (3,0,0) with (2,2,1), in Fd-3m (6,0,0) with (4,4,2), in a 3x3x3 supercell (4,1,1)
+  // with (3,3,0). The peak then carried the index of the absent reflection, its multiplicity as well, and a mean
+  // |F|^2 diluted by it.
+  double strongest = 0.0;
+  for (const Reflection& reflection : result) strongest = std::max(strongest, reflection.structureFactorSquared);
+  std::erase_if(result, [&](const Reflection& reflection)
+                { return !(reflection.structureFactorSquared > 1.0e-12 * strongest); });
   return result;
 }
 

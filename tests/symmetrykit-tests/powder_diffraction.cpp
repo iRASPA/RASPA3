@@ -95,6 +95,64 @@ TEST(scattering_factors, anomalous_scattering_follows_the_anode)
   EXPECT_NEAR(SKScatteringFactors::wavelengths(Anode::Copper).alpha2, 1.54439, 1e-12);
 }
 
+// The table of f' and f'' was read from fixed columns: an f'' of ten electrons or more ran into the column of f',
+// which took its tens digit as a fourth decimal (Sm at Cu K-alpha was {-5.6961, 2.32}), and f'' came out ten or
+// twenty electrons too small for 48 entries from Sn to Th.
+TEST(scattering_factors, anomalous_scattering_of_ten_electrons_and_more)
+{
+  const std::complex<double> samarium = SKScatteringFactors::anomalous(62, Anode::Copper);
+  EXPECT_NEAR(samarium.real(), -5.696, 1e-12);
+  EXPECT_NEAR(samarium.imag(), 12.320, 1e-12);
+  const std::complex<double> gadolinium = SKScatteringFactors::anomalous(64, Anode::Copper);
+  EXPECT_NEAR(gadolinium.real(), -9.242, 1e-12);
+  EXPECT_NEAR(gadolinium.imag(), 11.946, 1e-12);
+  const std::complex<double> radium = SKScatteringFactors::anomalous(88, Anode::Chromium);
+  EXPECT_NEAR(radium.real(), -7.614, 1e-12);
+  EXPECT_NEAR(radium.imag(), 20.461, 1e-12);
+  const std::complex<double> lead = SKScatteringFactors::anomalous(82, Anode::Molybdenum);
+  EXPECT_NEAR(lead.real(), -4.133, 1e-12);
+  EXPECT_NEAR(lead.imag(), 10.102, 1e-12);
+
+  // f' and f'' are given to three decimals at most: a fourth is a digit that belongs to f''
+  for (std::size_t atomicNumber = 1; atomicNumber <= 98; ++atomicNumber)
+  {
+    for (const Anode anode : {Anode::Chromium, Anode::Iron, Anode::Copper, Anode::Molybdenum, Anode::Silver})
+    {
+      const double real = 1000.0 * SKScatteringFactors::anomalous(atomicNumber, anode).real();
+      EXPECT_NEAR(real, std::round(real), 1e-6) << "element " << atomicNumber;
+    }
+  }
+}
+
+// A reflection that is extinct is no part of the peak whose d-spacing it shares. In a 3x3x3 supercell only the
+// indices that are all multiples of three are there: (4,1,1) is not, and stands at the d-spacing of (3,3,0), whose
+// peak it gave its index, and its 24 reflections to the multiplicity.
+TEST(powder_diffraction, extinct_reflections_are_no_part_of_a_peak)
+{
+  const double a = 4.0;
+  const Settings settings = copperTo90();
+  const std::vector<Atom> single{Atom{double3(0.0, 0.0, 0.0), 29}};
+  const SKPowderDiffraction reference = SKPowderDiffraction::compute(cubic(a), single, settings);
+
+  std::vector<Atom> repeated;
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j)
+      for (int k = 0; k < 3; ++k) repeated.push_back(Atom{double3(i / 3.0, j / 3.0, k / 3.0), 29});
+  const SKPowderDiffraction pattern = SKPowderDiffraction::compute(cubic(3.0 * a), repeated, settings);
+
+  ASSERT_EQ(pattern.peaks.size(), reference.peaks.size());
+  for (std::size_t i = 0; i < pattern.peaks.size(); ++i)
+  {
+    const int3 expected(3 * reference.peaks[i].hkl.x, 3 * reference.peaks[i].hkl.y, 3 * reference.peaks[i].hkl.z);
+    EXPECT_EQ(pattern.peaks[i].hkl, expected) << "peak " << i;
+    EXPECT_EQ(pattern.peaks[i].multiplicity, reference.peaks[i].multiplicity) << "peak " << i;
+    EXPECT_NEAR(pattern.peaks[i].structureFactorSquared, 729.0 * reference.peaks[i].structureFactorSquared,
+                1e-6 * 729.0 * reference.peaks[i].structureFactorSquared)
+        << "peak " << i;
+    EXPECT_NEAR(pattern.peaks[i].intensity, reference.peaks[i].intensity, 1e-6) << "peak " << i;
+  }
+}
+
 TEST(powder_diffraction, simple_cubic_peaks_and_multiplicities)
 {
   const double a = 4.0;

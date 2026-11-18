@@ -70,14 +70,6 @@ std::string trim(const std::string& string)
   return string.substr(start, end - start);
 }
 
-bool equalsIgnoreCase(const std::string& left, const std::string& right)
-{
-  return left.size() == right.size() &&
-         std::equal(left.begin(), left.end(), right.begin(),
-                    [](char a, char b) { return std::tolower(static_cast<unsigned char>(a)) ==
-                                                std::tolower(static_cast<unsigned char>(b)); });
-}
-
 bool startsWithIgnoreCase(const std::string& line, std::string_view prefix)
 {
   if (line.size() < prefix.size())
@@ -255,14 +247,17 @@ void readCoordinateModeLine(Scanner& scanner, bool& cartesian, bool& hasSelectiv
     throw std::runtime_error("POSCAR parse error: missing Direct/Cartesian coordinate mode");
   }
 
+  // VASP reads the first character of the line alone: 'C', 'c', 'K' or 'k' is Cartesian ("Cart" and "Cartesian"
+  // are both written by common tools; only the full word and the single letter were accepted), 'D' or 'd' direct.
   const std::string& mode = tokens.front();
-  if (equalsIgnoreCase(mode, "direct") || equalsIgnoreCase(mode, "d"))
+  const char first = static_cast<char>(std::tolower(static_cast<unsigned char>(mode.front())));
+  if (first == 'd')
   {
     cartesian = false;
     return;
   }
 
-  if (equalsIgnoreCase(mode, "cartesian") || equalsIgnoreCase(mode, "c") || equalsIgnoreCase(mode, "k"))
+  if (first == 'c' || first == 'k')
   {
     cartesian = true;
     return;

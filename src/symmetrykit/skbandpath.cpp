@@ -195,9 +195,24 @@ std::pair<std::string, double3x3> standardizeTriclinic(const double3x3& conventi
 
   // Sign-flip matrix M3 to make the reciprocal angles all-acute or all-obtuse.
   AngleCosines recip3 = columnAngleCosines(reciprocalLattice(realCell3));
-  bool a = recip3.alpha > 0.0;
-  bool b = recip3.beta > 0.0;
-  bool g = recip3.gamma > 0.0;
+  // A reciprocal angle of 90 degrees is on both sides: its cosine is zero up to the rounding of the reduction and
+  // the inversion, and the sign of that rounding decided, through the flip below, between aP2 and aP3 for one and
+  // the same cell (obtuse, obtuse and +1e-17 was flipped to all-acute, with -1e-17 it stayed all-obtuse). A right
+  // angle goes with the other angles when they agree, and counts as not acute otherwise.
+  constexpr double rightAngleTolerance = 1.0e-8;
+  const std::array<double, 3> cosines = {recip3.alpha, recip3.beta, recip3.gamma};
+  std::size_t numberAcute = 0, numberObtuse = 0;
+  for (const double cosine : cosines)
+  {
+    if (cosine > rightAngleTolerance) ++numberAcute;
+    if (cosine < -rightAngleTolerance) ++numberObtuse;
+  }
+  const bool rightAnglesAreAcute = numberAcute > 0 && numberObtuse == 0;
+  auto acute = [&](double cosine)
+  { return std::abs(cosine) <= rightAngleTolerance ? rightAnglesAreAcute : cosine > 0.0; };
+  bool a = acute(recip3.alpha);
+  bool b = acute(recip3.beta);
+  bool g = acute(recip3.gamma);
   double3x3 M3 = double3x3::identity();
   if ((a && b && g) || (!a && !b && !g))
   {
@@ -218,7 +233,10 @@ std::pair<std::string, double3x3> standardizeTriclinic(const double3x3& conventi
   double3x3 realCellFinal = realCell3 * M3;
 
   AngleCosines recipFinal = columnAngleCosines(reciprocalLattice(realCellFinal));
-  std::string ext = (recipFinal.alpha <= 0.0 && recipFinal.beta <= 0.0 && recipFinal.gamma <= 0.0) ? "aP2" : "aP3";
+  std::string ext = (recipFinal.alpha <= rightAngleTolerance && recipFinal.beta <= rightAngleTolerance &&
+                     recipFinal.gamma <= rightAngleTolerance)
+                        ? "aP2"
+                        : "aP3";
   return {ext, realCellFinal};
 }
 
@@ -671,7 +689,12 @@ Tables buildTables(const std::string& ext, const CellParameters& cp)
     double kE = 0.5 - 2.0 * kZ * c * cosBeta / a;
     double kF = kE / 2.0 + a * a / (4.0 * b * b) + a * c * cosBeta / (2.0 * b * b);
     double kU = 2.0 * kF - kZ;
-    double kW = c / (2.0 * a * cosBeta) * (1.0 - 4.0 * kU + a * a * sin2Beta / (b * b));
+    // c / (2 a cos(beta)) (1 - 4 kU + a^2 sin^2(beta) / b^2) with the factor cos(beta) of the bracket divided out:
+    // written with the division it is 0 / 0 at beta = 90 degrees, and a difference of nearly equal numbers over a
+    // small one close to it
+    double kW = c / (2.0 * a) *
+                (cosBeta * (1.0 / sin2Beta - a * a / (b * b)) + a / (c * sin2Beta) + 8.0 * kZ * c / a -
+                 4.0 * a * c / (b * b));
     double kD = -0.25 + kW / 2.0 - kZ * c * cosBeta / a;
     t.p("GAMMA", 0, 0, 0);
     t.p("Y", 0.5, 0.5, 0);

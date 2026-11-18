@@ -1983,3 +1983,82 @@ TEST(apollonius, an_edge_on_a_nearly_parabolic_trisector_does_not_move_as_the_cu
     EXPECT_LT((found.position - reference.position).length(), 1.0e-5) << "delta " << delta;
   }
 }
+
+// Three sites on a line that nothing else comes near: their trisector is a circle about the line that no fourth
+// site cuts, a ring without a vertex. With the outer two alike, at -a and +a with radius r, and the middle one of
+// radius s, it stands in the plane across the middle at the distance (a^2 - (r - s)^2) / 2(r - s) from the line.
+// The sweep of the clearance had nothing to hold on to there and the ring was not found; pushed off the line a
+// little, its band of clearances fell between the clearances that were tried.
+TEST(apollonius, uncut_ring_about_collinear_and_nearly_collinear_sites_is_found)
+{
+  const double edge = 30.0;
+  const double3x3 cell(double3(edge, 0.0, 0.0), double3(0.0, edge, 0.0), double3(0.0, 0.0, edge));
+  const double3 origin(15.0, 15.0, 15.0);
+  const std::vector<double> radii{1.0, 0.5, 1.0};
+  const double circleRadius = (1.0 - 0.25) / (2.0 * 0.5);
+  const double clearance = circleRadius - 0.5;
+
+  for (const double displacement : {0.0, 1.0e-3, 2.0e-2})
+  {
+    const std::vector<double3> positions{origin + double3(-1.0, 0.0, 0.0), origin + double3(0.0, displacement, 0.0),
+                                         origin + double3(1.0, 0.0, 0.0)};
+    std::vector<double3> fractionalPositions;
+    for (const double3& position : positions) fractionalPositions.push_back((1.0 / edge) * position);
+
+    for (SKApolloniusRegion region : {SKApolloniusRegion::FreeSpace, SKApolloniusRegion::EntireSpace})
+    {
+      SKApolloniusDiagram diagram = SKApolloniusDiagram::create(cell, fractionalPositions, radii, 1, region);
+
+      std::size_t found = 0;
+      for (const SKApolloniusEdge& ring : diagram.edges)
+      {
+        if (!ring.isLoop || ring.siteIndices.size() != 3) continue;
+        if (!std::ranges::all_of(ring.siteImages, [](const int3& image) { return image == int3(0, 0, 0); })) continue;
+        ++found;
+        // off the line the ring is no longer of one clearance: its narrowest point is within the displacement
+        EXPECT_NEAR(ring.bottleneckRadius, clearance, 1.0e-9 + 2.0 * displacement) << "displacement " << displacement;
+        EXPECT_NEAR(ring.length, 2.0 * std::numbers::pi * circleRadius, 1.0e-3 + 10.0 * displacement)
+            << "displacement " << displacement;
+      }
+      EXPECT_EQ(found, 1u) << "displacement " << displacement;
+    }
+  }
+}
+
+// A region of a bisector bounded by two rings and no vertex. Four sites on one axis: between the first two the
+// bisector is the plane across the middle, the small third site at its centre bites a disc out of it, and the
+// large fourth one beyond takes everything outside a larger circle. What is left is an annulus between two rings,
+// one face of each of the two cells; each ring was given a face of its own.
+TEST(apollonius, annulus_between_two_rings_is_one_face)
+{
+  const double edge = 30.0;
+  const double3x3 cell(double3(edge, 0.0, 0.0), double3(0.0, edge, 0.0), double3(0.0, 0.0, edge));
+  const double3 origin(15.0, 15.0, 15.0);
+  const std::vector<double3> positions{origin + double3(0.0, 0.0, -2.0), origin + double3(0.0, 0.0, 2.0), origin,
+                                       origin + double3(0.0, 0.0, 7.0)};
+  const std::vector<double> radii{1.0, 1.0, 0.2, 3.8};
+  std::vector<double3> fractionalPositions;
+  for (const double3& position : positions) fractionalPositions.push_back((1.0 / edge) * position);
+
+  SKApolloniusDiagram diagram =
+      SKApolloniusDiagram::create(cell, fractionalPositions, radii, 1, SKApolloniusRegion::FreeSpace);
+
+  // the hole at 2.1 from the axis (clearance 1.9), the rim where the fourth site is as near
+  std::size_t facesOfTheFirst = 0;
+  for (const SKApolloniusFace& face : diagram.faces)
+  {
+    if (face.site1 != 0 || face.site2 != 1 || !(face.site2Image == int3(0, 0, 0))) continue;
+    ++facesOfTheFirst;
+    ASSERT_EQ(face.edgeIndices.size(), 2u);
+    std::vector<double> bottlenecks;
+    for (std::size_t e : face.edgeIndices)
+    {
+      EXPECT_TRUE(diagram.edges[e].isLoop);
+      bottlenecks.push_back(diagram.edges[e].bottleneckRadius);
+    }
+    std::ranges::sort(bottlenecks);
+    EXPECT_NEAR(bottlenecks[0], 1.9, 1.0e-9);
+    EXPECT_GT(bottlenecks[1], 5.0);
+  }
+  EXPECT_EQ(facesOfTheFirst, 1u);
+}
