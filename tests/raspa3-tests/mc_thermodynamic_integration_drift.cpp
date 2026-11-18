@@ -5,6 +5,8 @@
 
 import std;
 
+import move_statistics;
+
 import int3;
 import double3;
 import double3x3;
@@ -464,7 +466,27 @@ TEST(MC_THERMODYNAMIC_INTEGRATION_DRIFT, the_ensemble_averages_follow_the_lambda
   ASSERT_NEAR(systemA.averageLoadings.averageLoadingNumberOfMolecules(0).first, 5.0, 1e-12);
   ASSERT_NEAR(systemB.averageLoadings.averageLoadingNumberOfMolecules(0).first, 9.0, 1e-12);
 
+  // the averages and the move statistics kept per component are those of the lambda as well
+  systemA.components[0].averageRosenbluthWeights.addWidomSample(0, 2.0, 5, box.volume, 1.0);
+  systemB.components[0].averageRosenbluthWeights.addWidomSample(0, 7.0, 9, box.volume, 1.0);
+  systemA.components[0].averageGibbsRosenbluthWeights.addWidomSample(0, 2.0, 5, box.volume, 1.0);
+  systemB.components[0].averageGibbsRosenbluthWeights.addWidomSample(0, 7.0, 9, box.volume, 1.0);
+  for (int trial = 0; trial < 3; ++trial) systemA.components[0].mc_moves_statistics.addTrial(Move::Types::Widom);
+  systemA.mc_moves_statistics.addTrial(Move::Types::VolumeChange);
+  auto trials = [](const MCMoveStatistics& statistics, Move::Types move)
+  { return std::get<MoveStatistics<double>>(statistics[move]).totalCounts; };
+  ASSERT_DOUBLE_EQ(trials(systemA.components[0].mc_moves_statistics, Move::Types::Widom), 3.0);
+
   systemA.swapEnsembleAverages(systemB);
+
+  EXPECT_DOUBLE_EQ(systemA.components[0].averageRosenbluthWeights.averagedRosenbluthWeight(), 7.0);
+  EXPECT_DOUBLE_EQ(systemB.components[0].averageRosenbluthWeights.averagedRosenbluthWeight(), 2.0);
+  EXPECT_DOUBLE_EQ(systemA.components[0].averageGibbsRosenbluthWeights.averagedRosenbluthWeight(), 7.0);
+  EXPECT_DOUBLE_EQ(systemB.components[0].averageGibbsRosenbluthWeights.averagedRosenbluthWeight(), 2.0);
+  EXPECT_DOUBLE_EQ(trials(systemA.components[0].mc_moves_statistics, Move::Types::Widom), 0.0);
+  EXPECT_DOUBLE_EQ(trials(systemB.components[0].mc_moves_statistics, Move::Types::Widom), 3.0);
+  EXPECT_DOUBLE_EQ(trials(systemA.mc_moves_statistics, Move::Types::VolumeChange), 0.0);
+  EXPECT_DOUBLE_EQ(trials(systemB.mc_moves_statistics, Move::Types::VolumeChange), 1.0);
 
   EXPECT_NEAR(systemA.averageLoadings.averageLoadingNumberOfMolecules(0).first, 9.0, 1e-12);
   EXPECT_NEAR(systemB.averageLoadings.averageLoadingNumberOfMolecules(0).first, 5.0, 1e-12);

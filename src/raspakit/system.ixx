@@ -1472,7 +1472,8 @@ export struct System
    * properties, temperatures, pressure, box), the elastic-constant fluctuations, the radial distribution
    * functions, the density grid, the histograms and the molecule properties. The time series and correlation
    * functions (mean-squared displacement, autocorrelations, evolutions, movies) describe the trajectory of the
-   * configuration and stay, as do the lambda histograms, which are binned by lambda already.
+   * configuration and stay, as do the lambda histograms, which are binned by lambda already. The Widom averages
+   * and the move statistics of every component, and the move statistics of the system, go with the state too.
    */
   void swapEnsembleAverages(System& other) noexcept;
 

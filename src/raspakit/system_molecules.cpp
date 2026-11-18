@@ -542,6 +542,22 @@ void System::swapEnsembleAverages(System& other) noexcept
   swap(propertyMoleculeProperties, other.propertyMoleculeProperties);
   swap(propertyMoleculeShape, other.propertyMoleculeShape);
   swap(propertyMoleculeBackbone, other.propertyMoleculeBackbone);
+
+  // The averages and the move statistics kept per component are those of the state as well: the Widom averages
+  // of every component (of the whole replica, not of the component whose lambda was exchanged alone), and the
+  // acceptance counts with the maximum displacements that were tuned to it. Left with the replica, each reported
+  // a mixture over the lambdas the replica visited under the lambda it ended on. (The CPU times are those of the
+  // replica and stay.)
+  swap(mc_moves_statistics, other.mc_moves_statistics);
+  const std::size_t numberOfSharedComponents = std::min(components.size(), other.components.size());
+  for (std::size_t componentId = 0; componentId < numberOfSharedComponents; ++componentId)
+  {
+    Component& component = components[componentId];
+    Component& otherComponent = other.components[componentId];
+    swap(component.averageRosenbluthWeights, otherComponent.averageRosenbluthWeights);
+    swap(component.averageGibbsRosenbluthWeights, otherComponent.averageGibbsRosenbluthWeights);
+    swap(component.mc_moves_statistics, otherComponent.mc_moves_statistics);
+  }
 }
 
 void System::exchangeConfiguration(System& other)
