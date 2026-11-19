@@ -663,6 +663,56 @@ TEST(phonon_dispersion, rigid_molecule_dispersion_is_time_reversal_symmetric_and
   }
 }
 
+// A linear rigid molecule has no rotation about its axis. The metric discards it, and it stayed in the dynamical
+// matrix as a branch of zero frequency at every k: a flat band in the dispersion and a peak at zero in the density
+// of states that are no vibration. The dispersion along a path and the density of states leave these branches
+// out; what remains are the other eigenvalues, unchanged.
+TEST(phonon_dispersion, the_discarded_rotations_of_linear_molecules_are_no_bands)
+{
+  System system = makeRigidMoleculeChainSystem();
+
+  const std::array<double3, 2> kPath = {double3(0.3, 0.0, 0.0), double3(0.1, 0.2, 0.4)};
+  const std::vector<PhononModes> all = computePhononDispersion(system, kPath);
+  const std::vector<PhononModes> bands = computePhononDispersion(system, kPath, true);
+  ASSERT_EQ(all.size(), 2u);
+  ASSERT_EQ(bands.size(), 2u);
+  for (std::size_t index = 0; index < 2; ++index)
+  {
+    ASSERT_EQ(all[index].eigenvalues.size(), 18u);
+    ASSERT_EQ(bands[index].eigenvalues.size(), 15u);
+    double scale = 0.0;
+    for (const double value : all[index].eigenvalues) scale = std::max(scale, std::abs(value));
+    ASSERT_GT(scale, 0.0);
+
+    // three eigenvalues of the full matrix are zero, away from Gamma where no acoustic mode is
+    std::vector<double> kept;
+    std::size_t zeros = 0;
+    for (const double value : all[index].eigenvalues)
+    {
+      if (std::abs(value) < 1.0e-9 * scale) ++zeros;
+      else kept.push_back(value);
+    }
+    EXPECT_EQ(zeros, 3u);
+    ASSERT_EQ(kept.size(), 15u);
+    for (std::size_t mode = 0; mode < 15u; ++mode)
+    {
+      EXPECT_NEAR(bands[index].eigenvalues[mode], kept[mode], 1.0e-9 * scale) << "index=" << index << " mode=" << mode;
+    }
+  }
+
+  // the dispersion along a path and the density of states are without them
+  const std::array<PhononPathNode, 2> nodes = {PhononPathNode{double3(0.0, 0.0, 0.0), "G"},
+                                               PhononPathNode{double3(0.5, 0.0, 0.0), "X"}};
+  const PhononDispersionResult dispersion = computePhononDispersionAlongPath(system, nodes, 4);
+  for (const PhononModes& modes : dispersion.modes) EXPECT_EQ(modes.eigenvalues.size(), 15u);
+
+  const PhononDensityOfStates dos = computePhononDensityOfStates(system, int3(3, 1, 1), 400, 2.0);
+  ASSERT_GT(dos.frequency.size(), 1u);
+  double integral = 0.0;
+  for (const double value : dos.dos) integral += value * (dos.frequency[1] - dos.frequency[0]);
+  EXPECT_NEAR(integral, 15.0, 0.05);
+}
+
 TEST(phonon_dispersion, gamma_point_matches_normal_modes_charged_rigid_molecules)
 {
   System system = makeChargedRigidMoleculeChainSystem();
@@ -1010,4 +1060,88 @@ TEST(phonon_dispersion, a_doubled_cell_with_ewald_folds_the_zone_boundary_onto_g
   {
     EXPECT_NEAR(together[mode], reference[mode], 1e-4 * scale) << "mode=" << mode;
   }
+}
+
+namespace
+{
+// A flexible chain of five atoms, bonded 1.4 A apart along the cell of 8 A, whose two ends meet through the cell
+// boundary: 5.6 A apart inside the cell, 2.4 A apart at the nearest image, which is where the van der Waals pair
+// of the two ends is taken. With the bonds that closes a ring around the cell. 'copies' cells along x. With a
+// cutoff of 3 A no other pair of the chain is in range, the pair of the ends is out of range inside one molecule
+// of the doubled cell, and the same contact is there between the two molecules.
+System makeChainThroughTheBoundary(std::size_t copies)
+{
+  ForceField forceField({{"C", false, 12.0, 0.0, 0.0, 6, false}}, {{100.0, 2.2}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 3.0, 3.0, 3.0, false, false, false);
+  const double edge = 8.0;
+  const SimulationBox box(edge * static_cast<double>(copies), 9.0, 9.0);
+  const std::uint16_t carbon = static_cast<std::uint16_t>(*forceField.findPseudoAtom("C"));
+
+  const std::array<double3, 5> chain = {double3(1.0, 3.0, 3.0), double3(2.4, 3.2, 3.1), double3(3.8, 3.0, 2.9),
+                                        double3(5.2, 3.2, 3.0), double3(6.6, 3.1, 3.2)};
+  ConnectivityTable connectivity(5);
+  Potentials::IntraMolecularPotentials potentials{};
+  std::vector<Atom> definedAtoms;
+  for (std::size_t atom = 0; atom < 5; ++atom)
+  {
+    definedAtoms.emplace_back(chain[atom] - chain[0], 0.0, 1.0, 0, carbon, 0, false, false);
+    if (atom == 0) continue;
+    connectivity[atom - 1, atom] = true;
+    connectivity[atom, atom - 1] = true;
+    potentials.bonds.emplace_back(std::array<std::size_t, 2>{atom - 1, atom}, BondType::Harmonic,
+                                  std::vector<double>{1500.0, 1.4});
+  }
+  const Component molecule(forceField, "chain-through-the-boundary", 100.0, 1.0e6, 0.2, definedAtoms, connectivity,
+                           potentials, 0, 0);
+
+  std::vector<double3> positions;
+  for (std::size_t copy = 0; copy < copies; ++copy)
+  {
+    for (const double3& position : chain) positions.push_back(position + double3(edge * static_cast<double>(copy), 0.0, 0.0));
+  }
+  return System(forceField, box, false, 300.0, 1e4, 1.0, {}, {molecule}, {positions}, {0}, 5);
+}
+}  // namespace
+
+// The non-bonded pairs inside a molecule are taken at the nearest image of the pair. In a molecule longer than half
+// the cell that is the copy of the partner a lattice vector away, and the coupling belongs in the force constants
+// of that image, where it takes its phase off Gamma. It was filed under the home image with the bonded terms, and
+// took none: the ring the chain closes around the cell was a ring inside it. A cell doubled along x, where the
+// same contact is between two molecules, has at Gamma the modes of the single cell at k = 0 and at
+// k = (1/2, 0, 0) together.
+TEST(phonon_dispersion, a_pair_inside_a_molecule_through_the_boundary_takes_its_phase)
+{
+  System single = makeChainThroughTheBoundary(1);
+  System doubled = makeChainThroughTheBoundary(2);
+  ASSERT_FALSE(single.components[0].rigid);
+
+  const std::vector<PhononModes> primitive =
+      computePhononDispersion(single, std::array<double3, 2>{double3(0.0, 0.0, 0.0), double3(0.5, 0.0, 0.0)});
+  const std::vector<PhononModes> folded = computePhononDispersion(doubled, std::array<double3, 1>{double3(0, 0, 0)});
+  ASSERT_EQ(primitive.size(), 2u);
+  ASSERT_EQ(folded.size(), 1u);
+  ASSERT_EQ(primitive[0].eigenvalues.size(), 15u);
+  ASSERT_EQ(folded[0].eigenvalues.size(), 30u);
+
+  std::vector<double> together = primitive[0].eigenvalues;
+  together.insert(together.end(), primitive[1].eigenvalues.begin(), primitive[1].eigenvalues.end());
+  std::ranges::sort(together);
+  std::vector<double> reference = folded[0].eigenvalues;
+  std::ranges::sort(reference);
+
+  double scale = 0.0;
+  for (const double value : reference) scale = std::max(scale, std::abs(value));
+  ASSERT_GT(scale, 0.0);
+  for (std::size_t mode = 0; mode < reference.size(); ++mode)
+  {
+    EXPECT_NEAR(together[mode], reference[mode], 1e-8 * scale) << "mode=" << mode;
+  }
+
+  // the contact of the ends is what carries the phase: the zone boundary is not Gamma
+  double difference = 0.0;
+  for (std::size_t mode = 0; mode < 15u; ++mode)
+  {
+    difference = std::max(difference, std::abs(primitive[1].eigenvalues[mode] - primitive[0].eigenvalues[mode]));
+  }
+  EXPECT_GT(difference, 1e-4 * scale);
 }

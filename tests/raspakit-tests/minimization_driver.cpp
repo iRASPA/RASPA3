@@ -20,6 +20,7 @@ import minimization_baker;
 import minimization_dof_layout;
 import minimization_generalized_coordinates;
 import minimization;
+import phonon_dynamical_matrix;
 import sample_movies;
 import cross_links;
 
@@ -304,6 +305,91 @@ TEST(minimization_driver, primitive_reduction_keeps_atoms_of_one_type_with_disti
   ASSERT_EQ(atoms.size(), 2u);
   EXPECT_NEAR(atoms[0].charge + atoms[1].charge, 0.0, 1e-12);
   EXPECT_NEAR(std::abs(atoms[0].charge - atoms[1].charge), 1.0, 1e-12);
+}
+
+// The bonded terms of a framework are found per pair of atoms, at the nearest image. A chain of eight equal atoms
+// along the cell has eight bonds; its primitive cell holds one atom, bonded to its own images, and has none. The
+// phonon reduction took that cell all the same and gave the three bands of an atom on no spring. It is taken only
+// when it keeps every bonded term, and the bands here are those of the simulation cell.
+TEST(minimization_driver, primitive_reduction_that_would_lose_bonded_terms_is_not_taken)
+{
+  ForceField forceField({{"C", false, 12.0, 0.0, 0.0, 6, false}}, {{0.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 10.0, 10.0, 10.0, false, false, false);
+  const SimulationBox box(12.0, 8.0, 8.0);
+  std::vector<Atom> atoms;
+  for (std::size_t i = 0; i != 8; ++i)
+  {
+    atoms.emplace_back(double3(static_cast<double>(i) / 8.0, 0.5, 0.5), 0.0, 1.0, 0, 0, 0, 0, true);
+  }
+  Framework framework(forceField, "chain", box, 1, atoms, atoms, int3(1, 1, 1));
+  framework.rigid = false;
+  framework.frameworkDefinitionName = "chain";
+  framework.bondDefinitions = {FrameworkPotentialDefinition<2>{{0, 0}, "HARMONIC", {1000.0, 1.5}}};
+  framework.excludeIntra12Interactions = true;
+  framework.generateIntraMolecularPotentials(forceField);
+  ASSERT_EQ(framework.intraMolecularPotentials.bonds.size(), 8u);
+  System system(forceField, box, false, 300.0, 1.0e4, 1.0, {framework}, {}, {}, {}, 5);
+
+  MinimizationOptions options{};
+  options.maximumNumberOfSteps = 20;
+  options.printEvery = 100;
+  options.computePhononDispersion = true;
+  options.phononDispersionPointsPerSegment = 2;
+  Minimization minimization(options, {system}, false);
+  ASSERT_NO_THROW(minimization.run());
+
+  EXPECT_EQ(minimization.systems[0].spanOfFrameworkAtoms().size(), 8u);
+  ASSERT_TRUE(minimization.results[0].phononDispersion.has_value());
+  for (const PhononModes& modes : minimization.results[0].phononDispersion->modes)
+  {
+    EXPECT_EQ(modes.eigenvalues.size(), 24u);
+  }
+}
+
+// In a cell narrower than twice the cutoff a pair of framework atoms meets through more than one image, and the
+// list of those images follows the atoms: here the second atom is moved along the narrow axis until a second image
+// of the pair is inside the cutoff. At a fixed cell the list stayed that of the starting geometry for the whole
+// run, and the pair that came inside was in no energy, gradient or Hessian.
+TEST(minimization_driver, the_framework_pair_images_follow_the_atoms_at_a_fixed_cell)
+{
+  ForceField forceField({{"C", false, 12.0, 0.0, 0.0, 6, false}}, {{50.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 5.0, 5.0, 5.0, false, false, false);
+  const SimulationBox box(6.0, 20.0, 20.0);
+  const auto makeSystem = [&](double x)
+  {
+    const Atom atomA({0.5 / 6.0, 0.50, 0.5}, 0.0, 1.0, 0, 0, 0, 0, true);
+    const Atom atomB({x / 6.0, 0.65, 0.5}, 0.0, 1.0, 0, 0, 0, 0, true);
+    Framework framework(forceField, "pair", box, 1, {atomA, atomB}, {atomA, atomB}, int3(1, 1, 1));
+    framework.rigid = false;
+    framework.frameworkDefinitionName = "pair";
+    framework.generateIntraMolecularPotentials(forceField);
+    return System(forceField, box, false, 300.0, 1.0e4, 1.0, {framework}, {}, {}, {}, 5);
+  };
+
+  // 3.04 A apart, the next image 6.3 A away: one image inside the cutoff of 5 A
+  System system = makeSystem(1.0);
+  system.framework->regenerateVanDerWaalsImageList(system.forceField, system.simulationBox,
+                                                   system.forceField.cutOffFrameworkVDW, system.spanOfFrameworkAtoms());
+  ASSERT_EQ(system.framework->intraMolecularPotentials.vanDerWaals.size(), 1u);
+
+  // moved to the middle of the cell: 4.24 A from the atom and from its image on the other side
+  const MinimizationDofLayout layout =
+      buildMinimizationDofLayout(system.moleculeData, system.components, system.spanOfFrameworkAtoms().size());
+  ASSERT_EQ(layout.numberOfCellDofs(), 0u);
+  std::vector<double> displacement(layout.numDofs(), 0.0);
+  displacement[*layout.frameworkAtomDof(1, MinimizationDofAxis::X)] = 2.5;
+  applyGeneralizedDisplacement(system, layout, displacement);
+  EXPECT_EQ(system.framework->intraMolecularPotentials.vanDerWaals.size(), 2u);
+
+  // the energy is that of a framework set up there
+  System reference = makeSystem(3.5);
+  reference.framework->regenerateVanDerWaalsImageList(reference.forceField, reference.simulationBox,
+                                                      reference.forceField.cutOffFrameworkVDW,
+                                                      reference.spanOfFrameworkAtoms());
+  ASSERT_EQ(reference.framework->intraMolecularPotentials.vanDerWaals.size(), 2u);
+  const double energy = system.computeTotalEnergies().potentialEnergy();
+  EXPECT_LT(energy, -1.0e-3);
+  EXPECT_NEAR(energy, reference.computeTotalEnergies().potentialEnergy(), 1.0e-10);
 }
 
 // Minimization has no cross-link or polymer-link terms and refuses them instead of pulling linked atoms apart.

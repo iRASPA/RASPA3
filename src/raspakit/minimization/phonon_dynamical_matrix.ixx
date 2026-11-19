@@ -76,8 +76,14 @@ export PhononModes computePhononModes(const System& system, const ForceConstants
  * matrix is mass-weighted with the inertia-tensor metric (so at k = 0 the result matches computeNormalModes).
  * Charged rigid molecules are supported: the reciprocal-space Ewald matrix is added to the Cartesian force
  * constants (as an ordinary position-dependent potential) before the same projection and mass weighting.
+ *
+ * A linear rigid molecule has no rotation about its axis: the metric discards it, and it stays in the matrix as
+ * a branch of zero frequency at every k (computeNormalModes counts it the same way, in 'discardedRotationalDofs').
+ * With `withoutDiscardedRotations` these branches are left out, as the dispersion along a path and the density of
+ * states do: the number of eigenvalues is then the number of degrees of freedom less the discarded rotations.
  */
-export std::vector<PhononModes> computePhononDispersion(const System& system, std::span<const double3> kPath);
+export std::vector<PhononModes> computePhononDispersion(const System& system, std::span<const double3> kPath,
+                                                        bool withoutDiscardedRotations = false);
 
 /** Convert squared angular frequencies to wavenumbers [cm^-1]; imaginary modes are returned as negatives. */
 export std::vector<double> phononFrequenciesWavenumber(std::span<const double> eigenvalues);
@@ -112,7 +118,7 @@ export struct PhononDensityOfStates
   int3 mesh{};                     ///< Gamma-centered Monkhorst-Pack mesh dimensions used for the integration.
   std::size_t numberOfQPoints{};   ///< Total number of sampled q-points (mesh.x * mesh.y * mesh.z).
   std::vector<double> frequency;   ///< Bin-center frequencies [cm^-1] (or reduced units).
-  std::vector<double> dos;         ///< Density of states; integral over frequency equals the number of branches 3N.
+  std::vector<double> dos;         ///< Density of states; integral over frequency equals the number of branches.
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const PhononDensityOfStates& r);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, PhononDensityOfStates& r);
@@ -125,7 +131,7 @@ export struct PhononDensityOfStates
  * dispersion), the resulting frequencies are converted to wavenumbers, and each frequency is accumulated
  * onto a linear frequency grid of `numberOfBins` bins with a normalized Gaussian of width `broadening`
  * (same units as the frequency axis). The DOS is normalized by the number of q-points so that its integral
- * over frequency equals the number of branches (3N). Because a uniform grid over the reciprocal unit cell is
+ * over frequency equals the number of branches. Because a uniform grid over the reciprocal unit cell is
  * an unbiased sampling of the Brillouin zone, this is the quantity to compare with an inelastic-neutron
  * generalized phonon DOS. Intended to be evaluated on the primitive-cell system (unfolded spectrum).
  *

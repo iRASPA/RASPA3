@@ -257,6 +257,26 @@ bool reduceSystemToPrimitiveFramework(System& system, double symmetryPrecision)
     primitiveFramework.intra14ChargeChargeScaling = framework.intra14ChargeChargeScaling;
     primitiveFramework.generateIntraMolecularPotentials(system.forceField);
 
+    // The bonded terms are found per pair of atoms, at the nearest image: an atom bonded to two images of one atom
+    // (or to its own image) has one bond there (or none), and the bends and torsions through it go the same way.
+    // In the simulation cell those are different atoms; in a primitive cell of a few atoms they are not, and the
+    // reduced framework was then a softer material than the one that was minimized. The reduction is only taken
+    // when it keeps every bonded term: as many per primitive cell as the simulation cell has.
+    {
+      const std::size_t numberOfPrimitiveAtoms = primitive->atoms.size();
+      if (frameworkAtoms.size() % numberOfPrimitiveAtoms != 0uz) return false;
+      const std::size_t numberOfCells = frameworkAtoms.size() / numberOfPrimitiveAtoms;
+      const Potentials::IntraMolecularPotentials& reduced = primitiveFramework.intraMolecularPotentials;
+      const Potentials::IntraMolecularPotentials& original = framework.intraMolecularPotentials;
+      if (reduced.bonds.size() * numberOfCells != original.bonds.size() ||
+          reduced.bends.size() * numberOfCells != original.bends.size() ||
+          reduced.torsions.size() * numberOfCells != original.torsions.size() ||
+          reduced.improperTorsions.size() * numberOfCells != original.improperTorsions.size())
+      {
+        return false;
+      }
+    }
+
     // Retarget the minimized system in place to the primitive cell. Keep the (finalized) van der Waals cutoff
     // so the force constants are computed at the same range; periodic-image replicas satisfy the minimum-image
     // convention on the small primitive cell. Only the real-space Coulomb cutoff is clamped to the primitive

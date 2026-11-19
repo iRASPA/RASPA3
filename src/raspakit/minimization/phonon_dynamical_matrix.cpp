@@ -20,6 +20,7 @@ import system;
 import phonon_force_constants;
 import phonon_kpath;
 import hermitian_eigensolver;
+import symmetric_eigensolver;
 import threadpool;
 import generalized_hessian;
 import minimization_cell_layout;
@@ -374,7 +375,30 @@ struct SiteDofContribution
  * weighting with the generalized metric (mass for translations, inertia tensor for rotations) the
  * Hermitian matrix is diagonalized. At k = 0 this reproduces computeNormalModes exactly.
  */
-std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std::span<const double3> kPath)
+// The rotations the metric discards: about the axis of a linear rigid body, which has no inertia there (and
+// about every axis of a body that is a point). The metric block is the pseudo-inverse square root of the inertia
+// tensor, so these are its null directions. Returned as (first orientation DOF, unit vector).
+std::vector<std::pair<std::size_t, std::array<double, 3>>> discardedRotations(const MassMetric& metric)
+{
+  std::vector<std::pair<std::size_t, std::array<double, 3>>> directions;
+  for (const auto& [base, block] : metric.blocks)
+  {
+    const SymmetricEigenSystem eigensystem = diagonalizeSymmetric(block, 3);
+    const double largest = std::max({std::abs(eigensystem.eigenvalues[0]), std::abs(eigensystem.eigenvalues[1]),
+                                     std::abs(eigensystem.eigenvalues[2])});
+    for (std::size_t mode = 0; mode < 3; ++mode)
+    {
+      // a retained rotation has a weight of 1/sqrt(I) with I above the threshold of the metric: far from zero
+      if (std::abs(eigensystem.eigenvalues[mode]) > 1.0e-8 * largest) continue;
+      directions.push_back(
+          {base, {eigensystem.eigenvector(0, mode), eigensystem.eigenvector(1, mode), eigensystem.eigenvector(2, mode)}});
+    }
+  }
+  return directions;
+}
+
+std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std::span<const double3> kPath,
+                                                      bool withoutDiscardedRotations)
 {
   // Polarization is supported here at every k: the image-resolved Cartesian force constants and the
   // Cartesian gradient of the fully-flexible copy already include the polarization contribution, so the
@@ -567,6 +591,9 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
   }
 
   const MassMetric metric = buildMassMetric(system, generalizedLayout);
+  const std::vector<std::pair<std::size_t, std::array<double, 3>>> discarded =
+      withoutDiscardedRotations ? discardedRotations(metric)
+                                : std::vector<std::pair<std::size_t, std::array<double, 3>>>{};
   constexpr double twoPi = 2.0 * std::numbers::pi;
 
   // Charged rigid molecules: the long-ranged reciprocal-space Ewald term is a function of the atomic
@@ -660,9 +687,32 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
           weighted[index] = std::complex<double>(weightedReal[index], weightedImaginary[index]);
         }
 
-        const HermitianEigenSystem eigensystem =
+        // A discarded rotation is a null vector of the weighted matrix at every k: a branch of zero frequency
+        // that is no vibration, flat across the zone and a peak at zero in the density of states. For the
+        // dispersion and the density of states it is taken out: lifted above every other eigenvalue (which
+        // leaves those as they are, the lifted vector being an eigenvector) and dropped from the top.
+        if (!discarded.empty())
+        {
+          double norm = 0.0;
+          for (const std::complex<double>& element : weighted) norm += std::norm(element);
+          const double lift = 2.0 * std::sqrt(norm) + 1.0;
+          for (const auto& [base, direction] : discarded)
+          {
+            for (std::size_t alpha = 0; alpha < 3; ++alpha)
+            {
+              for (std::size_t beta = 0; beta < 3; ++beta)
+              {
+                weighted[(base + alpha) * numberOfGeneralizedDofs + (base + beta)] +=
+                    lift * direction[alpha] * direction[beta];
+              }
+            }
+          }
+        }
+
+        HermitianEigenSystem eigensystem =
             diagonalizeHermitian(weighted, numberOfGeneralizedDofs, /*computeEigenvectors=*/false);
-        return PhononModes{.kFractional = kFractional, .eigenvalues = eigensystem.eigenvalues};
+        eigensystem.eigenvalues.resize(numberOfGeneralizedDofs - discarded.size());
+        return PhononModes{.kFractional = kFractional, .eigenvalues = std::move(eigensystem.eigenvalues)};
       });
 }
 }  // namespace
@@ -798,11 +848,12 @@ PhononModes computePhononModes(const System& system, const ForceConstants& force
   return PhononModes{.kFractional = kFractional, .eigenvalues = eigensystem.eigenvalues};
 }
 
-std::vector<PhononModes> computePhononDispersion(const System& system, std::span<const double3> kPath)
+std::vector<PhononModes> computePhononDispersion(const System& system, std::span<const double3> kPath,
+                                                 bool withoutDiscardedRotations)
 {
   if (systemHasRigidBodies(system))
   {
-    return computeGeneralizedDispersion(system, kPath);
+    return computeGeneralizedDispersion(system, kPath, withoutDiscardedRotations);
   }
 
   const ForceConstants forceConstants = computeRealSpaceForceConstants(system);
@@ -839,7 +890,7 @@ PhononDispersionResult computePhononDispersionAlongPath(const System& system, st
   kFractionalPoints.reserve(result.path.size());
   for (const PhononKPoint& point : result.path) kFractionalPoints.push_back(point.kFractional);
 
-  result.modes = computePhononDispersion(system, kFractionalPoints);
+  result.modes = computePhononDispersion(system, kFractionalPoints, /*withoutDiscardedRotations=*/true);
   return result;
 }
 
@@ -898,7 +949,8 @@ PhononDensityOfStates computePhononDensityOfStates(const System& system, int3 me
   }
   result.numberOfQPoints = qPoints.size();
 
-  const std::vector<PhononModes> modes = computePhononDispersion(system, qPoints);
+  const std::vector<PhononModes> modes =
+      computePhononDispersion(system, qPoints, /*withoutDiscardedRotations=*/true);
 
   std::vector<double> frequencies;
   for (const PhononModes& mode : modes)
@@ -932,7 +984,8 @@ PhononDensityOfStates computePhononDensityOfStates(const System& system, int3 me
   }
 
   // Accumulate each mode frequency as a normalized Gaussian; dividing by the number of q-points makes the
-  // integral of the DOS equal to the number of branches (3N).
+  // integral of the DOS equal to the number of branches (the degrees of freedom, less the rotations a linear
+  // rigid molecule does not have).
   for (const double frequency : frequencies)
   {
     const int firstBin =
@@ -956,7 +1009,7 @@ std::string writePhononDensityOfStates(const PhononDensityOfStates& result)
       "\nPhonon density of states\n"
       "Q-mesh: {} x {} x {} ({} q-points)\n"
       "Frequencies are wavenumbers [{}]; negative values denote imaginary (unstable) modes.\n"
-      "The DOS integrates to the number of branches (3N).\n\n",
+      "The DOS integrates to the number of branches.\n\n",
       result.mesh.x, result.mesh.y, result.mesh.z, result.numberOfQPoints, reduced ? "reduced" : "cm^-1");
   output += std::format("    {:>18}  {:>18}\n", reduced ? "frequency" : "frequency [cm^-1]", "DOS");
   for (std::size_t index = 0; index < result.frequency.size(); ++index)
