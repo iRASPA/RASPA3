@@ -153,6 +153,14 @@ TangentSpheres solveTangencyRows(const std::array<double3, 3>& rows, const doubl
   else
   {
     double discriminant = b * b - 4.0 * a * c;
+    // A double root is a discriminant of zero formed as the difference of two equal numbers, and comes out as
+    // their rounding, of either sign: four spheres in a plane whose tangent sphere has its centre in that plane
+    // (a planar ring of four atoms of two kinds) lost it whenever the rounding fell below zero. What is nothing
+    // against the terms it is formed of is taken as nothing; those are the two squares that c is itself the
+    // difference of, c being as small as b there.
+    const double discriminantScale =
+        b * b + 4.0 * std::abs(a) * (double3::dot(offset, offset) + reach * reach);
+    if (discriminant < 0.0 && discriminant >= -1.0e-11 * discriminantScale) discriminant = 0.0;
     if (discriminant < 0.0) return {};
     const auto [withRootAdded, withRootTaken] = quadraticRoots(a, b, c, std::sqrt(discriminant));
     roots[rootCount++] = withRootAdded;
@@ -1297,7 +1305,9 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       double searchRadius = maximumRadius + 4.0 * radius + 1.0;
       double smallest = 0.0;
       bool found = false;
-      for (std::size_t attempt = 0; attempt < 8; ++attempt)
+      // (one attempt more than the doublings: a site first found on the last doubling still has the nearest
+      // looked for again at the radius that follows from it, which used to be skipped)
+      for (std::size_t attempt = 0; attempt < 9; ++attempt)
       {
         found = false;
         smallest = std::numeric_limits<double>::max();
@@ -1308,6 +1318,7 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
                            smallest = std::min(smallest, (centre - image).length() - radii[j]);
                          });
         if (found && searchRadius >= smallest + 4.0 * radius + maximumRadius) break;
+        if (!found && attempt >= 7) break;
         searchRadius = found ? (smallest + 4.0 * radius + maximumRadius + 1.0e-6) : (2.0 * searchRadius);
       }
       if (!found) return;
@@ -1910,8 +1921,17 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       ++diagram.verification.unpairedTriples;
       continue;
     }
+    // A curve that runs straight through a vertex of more than four sites has that vertex on it twice, at one
+    // and the same place: once for the half that arrives and once for the half that leaves. The half that
+    // arrives is the one whose edge leaves the vertex against the ordering, and it comes first; ordered by the
+    // place alone the two came out either way round, and the wrong way round neither half was paired with
+    // its neighbour, so both edges at the vertex were lost.
     std::sort(ordered.begin(), ordered.end(),
-              [](const OrderedVertex& lhs, const OrderedVertex& rhs) { return lhs.along < rhs.along; });
+              [](const OrderedVertex& lhs, const OrderedVertex& rhs)
+              {
+                if (lhs.along != rhs.along) return lhs.along < rhs.along;
+                return !lhs.forward && rhs.forward;
+              });
 
     // A point of the curve at a given value of that same parameter, and the clearance there. Both are in
     // closed form: the position because the conic is in principal position in the plane's own axes, and
@@ -2016,6 +2036,7 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
     // ends on an open one. An arc is in the diagram only if the edges leaving both of its endpoints
     // run into it, which is what tells the two apart and needs no classification of the curve: on an
     // open trisector the extreme vertices send their edges outwards, so the wrapping arc is refused.
+    std::vector<bool> paired(ordered.size(), false);
     for (std::size_t p = 0; p < ordered.size(); ++p)
     {
       std::size_t q = (p + 1) % ordered.size();
@@ -2031,11 +2052,31 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       const int3& fromOffset = ordered[p].offset;
       const int3& toOffset = ordered[q].offset;
 
+      // The pair that closes the ordering, from its last vertex round to its first.
+      const bool wraps = q < p;
+
+      // An open curve has no such arc: it is ordered one way only, and its clearance grows without bound
+      // towards both of its ends (it is a convex function of the parameter on the line and on the branch
+      // alike), so an edge that runs outwards from an extreme vertex has to end at a vertex further out, of
+      // positive clearance, that was not found. An edge used to be made of the pair all the same, straight
+      // from the one vertex to the other with the narrower of their two radii for a bottleneck, through
+      // whatever lies between them.
+      if (wraps && shape != Shape::Ellipse)
+      {
+        ++diagram.verification.unpairedTriples;
+        continue;
+      }
+
       // The two halves of a trisector that runs through a vertex are consecutive in this ordering, and
-      // the arc between them is the point itself rather than an edge.
-      if (fromVertex == toVertex && fromOffset.x == toOffset.x && fromOffset.y == toOffset.y &&
+      // the arc between them is the point itself rather than an edge. Not so round the closing pair of an
+      // ellipse: with that vertex the only one on it, the arc from the half that leaves round to the half
+      // that arrives is the whole of the curve, and an edge.
+      if (!wraps && fromVertex == toVertex && fromOffset.x == toOffset.x && fromOffset.y == toOffset.y &&
           fromOffset.z == toOffset.z)
         continue;
+
+      paired[p] = true;
+      paired[q] = true;
 
       int3 toImage(fromOffset.x - toOffset.x, fromOffset.y - toOffset.y, fromOffset.z - toOffset.z);
 
@@ -2075,14 +2116,8 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
       // the first the long way round, which is a turn of the parameter past its wrap.
       double alongFrom = ordered[p].along;
       double alongTo = ordered[q].along;
-      bool spanned = true;
-      if (alongTo < alongFrom)
-      {
-        if (shape == Shape::Ellipse)
-          alongTo += 2.0 * std::numbers::pi;
-        else
-          spanned = false;  // an open curve is ordered one way only, so there is no such arc to walk
-      }
+      const bool spanned = true;
+      if (wraps) alongTo += 2.0 * std::numbers::pi;
 
       // The curve is placed in the frame of the key, and this arc in the frame where its own `from`
       // vertex sits at the position it is stored at.
@@ -2185,6 +2220,25 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
                                                std::move(curveImages), clearance[narrowest], curve[narrowest],
                                                direction, length, false});
     }
+
+    // A branch left without an edge. Over the free region its arc runs into the spheres and ends there at a
+    // vertex of negative clearance, which is not in this diagram: the arc is clipped, as the arc of a triple with
+    // a single vertex is, and is counted with those. Counted only there, a curve with three vertices outside the
+    // spheres and one inside them left a vertex one edge short with nothing to account for it. Over all of
+    // space nothing is clipped and the branch shows as the valence its vertex is short of.
+    if (region != SKApolloniusRegion::EntireSpace)
+    {
+      for (std::size_t p = 0; p < ordered.size(); ++p)
+      {
+        if (paired[p]) continue;
+        // an edge running outwards from the end of an open curve is not clipped but short of its far vertex
+        if (shape != Shape::Ellipse && ((p == 0 && !ordered[p].forward) || (p + 1 == ordered.size() && ordered[p].forward)))
+          continue;
+        ++diagram.verification.truncatedTriples;
+        diagram.verification.truncatedSheets +=
+            diagram.vertices[ordered[p].vertex].branches[ordered[p].branch].sites.size();
+      }
+    }
   }
 
   // Trisectors that carry no vertex.
@@ -2284,6 +2338,18 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
         // An open trisector reaches every clearance above its minimum, so if the curve still exists at the
         // largest clearance any empty sphere can have, it is not closed and is not what is sought here.
         if (!trisectorPointsAtClearance(centres, tripleRadii, emptyRadiusBound).empty()) continue;
+
+        // Over the free region the sweep starts at a clearance of zero, which is the bottom of a ring only when
+        // the ring lies outside the spheres. A curve that is there at zero in two places goes on inside them:
+        // what the sweep then walked was an arc from the one place on the surface of the spheres to the other,
+        // and it was closed into a ring by the chord between the two, through the atom, with a bottleneck of
+        // zero at the middle of that chord. Such a curve is followed all the way down, as an arc between two
+        // vertices is followed through its dip: it is a ring whose bottleneck is negative, which no probe
+        // passes, or, with a site intruding on the part inside the spheres, no ring at all.
+        if (!allowNegativeRadius && trisectorPointsAtClearance(centres, tripleRadii, 0.0).size() == 2)
+        {
+          lowestClearance = -std::min({tripleRadii[0], tripleRadii[1], tripleRadii[2]});
+        }
 
         // Bracket the clearances the curve occupies. The discriminant of the level quadratic is a quadratic
         // polynomial of the clearance (see 'trisectorLevel'), so three values of it give the interval in closed
@@ -2887,7 +2953,12 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
     diagram.cells[diagram.faces[f].site1].isEmpty = false;
   }
   for (std::size_t v = 0; v < diagram.vertices.size(); ++v)
-    for (std::size_t site : diagram.vertices[v].siteIndices) diagram.cells[site].vertexIndices.push_back(v);
+    for (std::size_t site : diagram.vertices[v].siteIndices)
+    {
+      diagram.cells[site].vertexIndices.push_back(v);
+      // a site with a vertex has a cell, also where every face of it was clipped away with its arcs
+      diagram.cells[site].isEmpty = false;
+    }
   for (SKApolloniusCell& cell : diagram.cells)
   {
     std::sort(cell.vertexIndices.begin(), cell.vertexIndices.end());
@@ -2906,7 +2977,11 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
   }
   diagram.verification.vertexCount = diagram.vertices.size();
   for (std::size_t v = 0; v < diagram.vertices.size(); ++v)
-    if (valence[v] == diagram.vertices[v].branches.size()) ++diagram.verification.verticesOfFullValence;
+  {
+    const std::size_t branches = diagram.vertices[v].branches.size();
+    if (valence[v] == branches) ++diagram.verification.verticesOfFullValence;
+    if (valence[v] < branches) diagram.verification.branchesWithoutEdge += branches - valence[v];
+  }
 
   // Vertices left sharing a position would be a cotangent set that the gathering above failed to bring
   // together, which would leave each copy pairing along triples the others also claim. The gathering is

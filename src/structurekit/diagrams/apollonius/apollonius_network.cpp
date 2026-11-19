@@ -15,7 +15,7 @@ bool ApolloniusPoreNetwork::networkIsComplete() const
 {
   return verification.vertexCount > 0 && verification.coincidentVertices == 0 && verification.unpairedTriples == 0 &&
          verification.unsampledArcs == 0 &&
-         verification.verticesOfFullValence + verification.truncatedTriples >= verification.vertexCount;
+         verification.branchesWithoutEdge <= verification.truncatedTriples;
 }
 
 void ApolloniusPoreNetwork::writeHeader(std::ostream& stream) const

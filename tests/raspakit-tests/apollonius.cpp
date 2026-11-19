@@ -954,8 +954,7 @@ TEST(apollonius, verification_reports_incomplete_rather_than_hiding_it)
 
   EXPECT_GT(diagram.verification.vertexCount, 0u);
   EXPECT_EQ(diagram.verification.isComplete(),
-            diagram.verification.verticesOfFullValence + diagram.verification.truncatedTriples >=
-                    diagram.verification.vertexCount &&
+            diagram.verification.branchesWithoutEdge <= diagram.verification.truncatedTriples &&
                 diagram.verification.unpairedTriples == 0 &&
                 diagram.verification.unclosedFaces <= diagram.verification.truncatedSheets);
 }
@@ -2061,4 +2060,85 @@ TEST(apollonius, annulus_between_two_rings_is_one_face)
     EXPECT_GT(bottlenecks[1], 5.0);
   }
   EXPECT_EQ(facesOfTheFirst, 1u);
+}
+
+// Four spheres in a plane whose tangent sphere has its centre in that plane: a double root, whose discriminant
+// is the rounding of a difference of equal numbers and of either sign. The sphere was lost where it fell below
+// zero, which depends on how the four are turned and where they stand.
+TEST(apollonius, tangent_sphere_in_the_plane_of_four_coplanar_centres)
+{
+  std::mt19937_64 generator(7);
+  std::uniform_real_distribution<double> uniform(-1.0, 1.0);
+  for (std::size_t n = 0; n < 2000; ++n)
+  {
+    const double3 normal = double3::normalize(double3(uniform(generator), uniform(generator), uniform(generator)));
+    const double3 first = double3::normalize(double3::cross(normal, double3(0.3, 0.5, 0.8)));
+    const double3 second = double3::cross(normal, first);
+    const double3 shift(10.0 * uniform(generator), 10.0 * uniform(generator), 10.0 * uniform(generator));
+    auto place = [&](double x, double y) { return shift + x * first + y * second; };
+    const std::array<double3, 4> centres{place(2.0, 0.0), place(-2.0, 0.0), place(0.0, 2.8), place(0.0, -2.8)};
+
+    const std::vector<SKApolloniusTangentSphere> spheres = skApolloniusTangentSpheres(centres, {1.0, 1.0, 1.8, 1.8});
+    ASSERT_FALSE(spheres.empty()) << "orientation " << n;
+    for (const SKApolloniusTangentSphere& sphere : spheres)
+    {
+      EXPECT_NEAR(sphere.radius, 1.0, 1.0e-5) << "orientation " << n;
+      EXPECT_LT((sphere.centre - shift).length(), 1.0e-4) << "orientation " << n;
+    }
+  }
+}
+
+// Three overlapping spheres whose trisector is closed, lies partly inside them and carries no vertex outside
+// them. Over the free region the part outside is an arc from the surface of the spheres to the surface of the
+// spheres; it was closed by the chord through the atom into a ring with a bottleneck of zero, at a point inside
+// the atom. It is the ring it is over all of space, with the negative bottleneck that no probe passes.
+TEST(apollonius, a_ring_that_dips_into_the_spheres_keeps_its_negative_bottleneck_over_the_free_region)
+{
+  const double edge = 20.0;
+  const double3x3 cell(double3(edge, 0, 0), double3(0, edge, 0), double3(0, 0, edge));
+  const std::vector<double3> positions{double3(10, 10, 8.8) / edge, double3(10, 10.9, 10.0) / edge,
+                                       double3(10, 10, 11.2) / edge};
+  const std::vector<double> radii{2.0, 0.8, 2.0};
+
+  const SKApolloniusDiagram entire =
+      SKApolloniusDiagram::create(cell, positions, radii, 1, SKApolloniusRegion::EntireSpace);
+  const SKApolloniusDiagram free = SKApolloniusDiagram::create(cell, positions, radii, 1, SKApolloniusRegion::FreeSpace);
+  ASSERT_EQ(entire.verification.vertexlessLoops, 1u);
+  ASSERT_EQ(free.verification.vertexlessLoops, 1u);
+
+  const auto isLoop = [](const SKApolloniusEdge& e) { return e.isLoop; };
+  const SKApolloniusEdge& ringOfAll = *std::find_if(entire.edges.begin(), entire.edges.end(), isLoop);
+  const SKApolloniusEdge& ringOfFree = *std::find_if(free.edges.begin(), free.edges.end(), isLoop);
+  EXPECT_LT(ringOfFree.bottleneckRadius, -0.1);
+  EXPECT_NEAR(ringOfFree.bottleneckRadius, ringOfAll.bottleneckRadius, 1.0e-9);
+  EXPECT_NEAR(ringOfFree.length, ringOfAll.length, 1.0e-9);
+  // the bottleneck is where it is said to be
+  EXPECT_NEAR(clearanceAt(cell, positions, radii, cell.inverse() * ringOfFree.bottleneckPosition),
+              ringOfFree.bottleneckRadius, 1.0e-6);
+}
+
+// Every branch of a vertex that carries no edge is the surviving end of one clipped arc, and over all of space
+// there is none: the clipped arcs are counted one for one against the branches, also on a curve that keeps
+// more than one vertex outside the spheres, and a site with a vertex has a cell.
+TEST(apollonius, clipped_arcs_account_for_the_branches_without_an_edge)
+{
+  for (unsigned seed = 1; seed <= 8; ++seed)
+  {
+    const RandomSites sites = makeRandomSites(12.0, 30, seed, 0.4, 2.4);
+    const SKApolloniusDiagram free = SKApolloniusDiagram::create(sites.cell, sites.fractionalPositions, sites.radii);
+    EXPECT_EQ(free.verification.branchesWithoutEdge, free.verification.truncatedTriples) << "seed " << seed;
+    EXPECT_EQ(free.verification.unpairedTriples, 0u) << "seed " << seed;
+    EXPECT_EQ(free.verification.unsampledArcs, 0u) << "seed " << seed;
+    EXPECT_TRUE(free.verification.isComplete()) << "seed " << seed;
+    for (const SKApolloniusCell& cellOfSite : free.cells)
+    {
+      if (!cellOfSite.vertexIndices.empty()) EXPECT_FALSE(cellOfSite.isEmpty) << "seed " << seed;
+    }
+
+    const SKApolloniusDiagram entire = SKApolloniusDiagram::create(sites.cell, sites.fractionalPositions, sites.radii, 1,
+                                                                 SKApolloniusRegion::EntireSpace);
+    EXPECT_EQ(entire.verification.branchesWithoutEdge, 0u) << "seed " << seed;
+    EXPECT_EQ(entire.verification.truncatedTriples, 0u) << "seed " << seed;
+    EXPECT_TRUE(entire.verification.isComplete()) << "seed " << seed;
+  }
 }

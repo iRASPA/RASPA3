@@ -286,6 +286,9 @@ export struct SKApolloniusDiagram
     // ends up in no edge, shows as that vertex falling short of full valence.
     std::size_t unpairedTriples{0};
     std::size_t truncatedTriples{0};       // arcs clipped by the boundary of the free region; none over all of space
+    // Branches of vertices that carry no edge, over all vertices. Each clipped arc accounts for one of them, the
+    // branch of the vertex at its surviving end; any beyond those is an edge that is missing.
+    std::size_t branchesWithoutEdge{0};
     std::size_t truncatedSheets{0};        // bisector sheets those arcs border, one per neighbouring pair of sites
     std::size_t coincidentVertices{0};     // distinct vertices left sharing a position, which is a defect
     std::size_t unclosedFaces{0};
@@ -309,7 +312,10 @@ export struct SKApolloniusDiagram
 
     // True when the complex closes as far as the free region allows: every triple is paired except
     // those clipped by the boundary, every vertex carries an edge along each of its branches except
-    // where a clipped arc leaves it one short, and no face is left open except around a clipped arc. An
+    // where a clipped arc leaves it one short, and no face is left open except around a clipped arc.
+    // The branches are counted against the clipped arcs, one for one: counted as vertices short of full
+    // valence, one vertex with all four of its arcs clipped excused three other vertices that were short of
+    // an edge for no reason. An
     // arc borders one bisector patch per neighbouring pair of its sites, three of them in the general case,
     // which bounds how many faces one clipped arc can leave unclosed.
     //
@@ -319,7 +325,7 @@ export struct SKApolloniusDiagram
     bool isComplete() const
     {
       return vertexCount > 0 && coincidentVertices == 0 && ambiguousBranches == 0 && unpairedTriples == 0 &&
-             unsampledArcs == 0 && verticesOfFullValence + truncatedTriples >= vertexCount &&
+             unsampledArcs == 0 && branchesWithoutEdge <= truncatedTriples &&
              unclosedFaces <= truncatedSheets;
     }
   };
