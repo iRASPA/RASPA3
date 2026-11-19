@@ -6,6 +6,7 @@ import double3;
 import double3x3;
 
 import skbandpath;
+import skspacegroup;
 
 namespace
 {
@@ -217,4 +218,110 @@ TEST(BandPath, ReciprocalCubicMagnitude)
   double3 kCart = path->primitiveReciprocalCell * f;
   // X = (0, 1/2, 0) -> |k| = pi/a
   EXPECT_NEAR(kCart.length(), std::numbers::pi / a, 1e-9);
+}
+
+namespace
+{
+// how far outside the first Brillouin zone the worst labelled point lies (relative; 0 when all are inside or on it)
+double worstOutside(const SKBandPath& path, std::string* which = nullptr)
+{
+  double worst = 0.0;
+  for (const SKKVector& kv : path.kPoints)
+  {
+    const double3 k = path.primitiveReciprocalCell * kv.coordinates;
+    for (int i = -3; i <= 3; ++i)
+      for (int j = -3; j <= 3; ++j)
+        for (int l = -3; l <= 3; ++l)
+        {
+          if (i == 0 && j == 0 && l == 0) continue;
+          const double3 G = path.primitiveReciprocalCell * double3(i, j, l);
+          const double excess = (k.length_squared() - (k - G).length_squared()) / G.length_squared();
+          if (excess > worst)
+          {
+            worst = excess;
+            if (which) *which = kv.label;
+          }
+        }
+  }
+  return worst;
+}
+
+std::vector<std::tuple<double3, std::size_t, double>> atomsOf(std::size_t hallNumber)
+{
+  std::vector<std::tuple<double3, std::size_t, double>> atoms;
+  std::size_t type = 1;
+  for (const double3& position : {double3(0.113, 0.207, 0.341), double3(0.412, 0.069, 0.158)})
+  {
+    for (const double3& image : SKSpaceGroup(hallNumber).listOfSymmetricPositions(position))
+      atoms.emplace_back(double3::fract(image), type, 1.0);
+    ++type;
+  }
+  return atoms;
+}
+}  // namespace
+
+// The labelled points lie in or on the first Brillouin zone for the standard cells of the lattices with a
+// case distinction.
+TEST(BandPath, LabelledPointsLieInTheFirstBrillouinZone)
+{
+  struct Case
+  {
+    double3x3 cell;
+    std::size_t number;
+  };
+  for (const Case& c : {Case{cell(4, 4, 4, 90, 90, 90), 225}, Case{cell(3, 4, 5, 90, 90, 90), 69},
+                        Case{cell(3, 10, 10, 90, 90, 90), 42}, Case{cell(10, 10, 3, 90, 90, 90), 42},
+                        Case{cell(4, 3, 5, 90, 105, 90), 15}, Case{cell(4, 7, 9, 90, 100, 90), 14},
+                        Case{cell(3, 4, 5, 90, 90, 90), 71}, Case{cell(3, 4, 5, 90, 90, 90), 65},
+                        Case{cell(4, 3, 5, 90, 90, 90), 65}, Case{cell(3, 4, 5, 90, 90, 90), 38},
+                        Case{cell(3, 5, 4, 90, 90, 90), 38}, Case{cell(3, 3, 5, 90, 90, 90), 139},
+                        Case{cell(5, 5, 3, 90, 90, 90), 139}, Case{cell(4, 4, 10, 90, 90, 120), 166},
+                        Case{cell(6, 6, 4, 90, 90, 120), 166}, Case{cell(4, 5, 6, 82, 95, 100), 2}})
+  {
+    const auto path = SKBrillouinZonePath(c.cell, c.number, true);
+    ASSERT_TRUE(path.has_value());
+    std::string which;
+    EXPECT_LT(worstOutside(*path, &which), 1.0e-9) << path->extendedBravaisLattice << " " << which;
+  }
+}
+
+// A cell without volume has no path (it used to come back with cells that are not numbers).
+TEST(BandPath, ACellWithoutVolumeHasNoPath)
+{
+  EXPECT_FALSE(
+      SKBrillouinZonePath(double3x3(double3(1, 0, 0), double3(2, 0, 0), double3(0, 0, 1)), 2, true).has_value());
+  EXPECT_FALSE(
+      SKBrillouinZonePath(double3x3(double3(1, 0, 0), double3(0, 1, 0), double3(0, 0, 0)), 47, true).has_value());
+}
+
+// The path of a structure is given in the Cartesian frame of the cell that was passed in: the conventional cell
+// times the reported transformation is that cell, also for a crystal whose conventional axes are a permutation of
+// the given ones, or that is turned in space, and for cells in a setting the tables do not take as it is.
+TEST(BandPath, ThePathOfAStructureIsInTheFrameOfItsCell)
+{
+  struct Case
+  {
+    const char* name;
+    double3x3 cell;
+    std::size_t hallNumber;
+  };
+  const double3x3 rotation(double3(0.36, 0.48, -0.8), double3(-0.8, 0.6, 0.0), double3(0.48, 0.64, 0.6));
+  for (const Case& c :
+       {Case{"P 21/c, beta 118", cell(4, 7, 9, 90, 118, 90), 81},
+        Case{"C 2/c, beta 123.3", cell(10.35, 6.42, 11.81, 90, 123.3, 90), 90},
+        Case{"F m m 2, b shortest", cell(10, 3, 10, 90, 90, 90), 212}, Case{"F m m m, c < b < a", cell(5, 4, 3, 90, 90, 90), 334},
+        Case{"F m m m, turned", rotation * cell(5, 4, 3, 90, 90, 90), 334},
+        Case{"P 21/c, turned", rotation * cell(4, 7, 9, 90, 118, 90), 81}})
+  {
+    const auto path = SKBrillouinZonePath(c.cell, atomsOf(c.hallNumber), false, 1.0e-4);
+    ASSERT_TRUE(path.has_value()) << c.name;
+
+    const double3x3 rebuilt = path->conventionalCell * path->conventionalToAnalyzedTransformation;
+    for (int i = 0; i < 3; ++i)
+    {
+      EXPECT_LT((rebuilt[i] - c.cell[i]).length(), 1.0e-6) << c.name << ", cell vector " << i;
+    }
+    std::string which;
+    EXPECT_LT(worstOutside(*path, &which), 1.0e-9) << c.name << " " << which;
+  }
 }

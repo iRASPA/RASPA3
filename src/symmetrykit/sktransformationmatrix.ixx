@@ -29,7 +29,7 @@ export struct SKTransformationMatrix
   inline int greatestCommonDivisor() { return this->transformation.greatestCommonDivisor(); }
   inline int determinant() const { return this->transformation.determinant(); }
 
-  inline bool operator==(const SKTransformationMatrix& b)
+  inline bool operator==(const SKTransformationMatrix& b) const
   {
     return (this->transformation == b.transformation) && (this->translation == b.translation);
   }

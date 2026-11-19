@@ -157,6 +157,9 @@ std::optional<double3> refinedTranslationOn(const AtomGrid& grid, const double3&
                                             const SKRotationMatrix& rotationMatrix, bool allowPartialOccupancies,
                                             double tolerance)
 {
+  // without atoms there is nothing to refine on; the mean below was 0 / 0
+  if (grid.atoms.empty()) return translationVector;
+
   double3 offsetSum(0.0, 0.0, 0.0);
   for (const Atom& atom : grid.atoms)
   {

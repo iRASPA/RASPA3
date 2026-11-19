@@ -43,20 +43,6 @@ CellParameters cellParameters(const double3x3& cell)
                         double3::dot(v1, v2) / (a * b)};
 }
 
-// Build a cell (columns are lattice vectors) from cell parameters (angles in radians).
-double3x3 cellFromParameters(double a, double b, double c, double alpha, double beta, double gamma)
-{
-  double ca = std::cos(alpha);
-  double cb = std::cos(beta);
-  double cg = std::cos(gamma);
-  double sg = std::sin(gamma);
-  double volumeFactor = std::sqrt(std::max(0.0, 1.0 - ca * ca - cb * cb - cg * cg + 2.0 * ca * cb * cg));
-  double3 va(a, 0.0, 0.0);
-  double3 vb(b * cg, b * sg, 0.0);
-  double3 vc(c * cb, c * (ca - cb * cg) / sg, c * volumeFactor / sg);
-  return double3x3(va, vb, vc);
-}
-
 // Reciprocal lattice (columns are reciprocal vectors), without the 2*pi factor: (cell^{-1})^T.
 double3x3 reciprocalLattice(const double3x3& cell) { return cell.inverse().transpose(); }
 
@@ -794,6 +780,12 @@ std::optional<SKBandPath> SKBrillouinZonePath(double3x3 conventionalCell, std::s
 {
   if (spaceGroupNumber < 1 || spaceGroupNumber > 230) return std::nullopt;
 
+  // a cell without volume has no reciprocal lattice: the path came back with points and cells that are not numbers
+  {
+    const double edges = conventionalCell[0].length() * conventionalCell[1].length() * conventionalCell[2].length();
+    if (!(edges > 0.0) || !(std::abs(conventionalCell.determinant()) > 1.0e-12 * edges)) return std::nullopt;
+  }
+
   char family = crystalFamilyLetter(spaceGroupNumber);
   char centring = centringLetter(spaceGroupNumber);
   std::string bravais = std::string{family} + std::string{centring};
@@ -862,9 +854,12 @@ std::optional<SKBandPath> SKBrillouinZonePath(double3x3 unitCell,
     hasInversionSymmetry = SKPointGroup::pointGroupData[pointGroupNumber].centrosymmetric();
   }
 
-  // Build a canonical conventional cell (columns are lattice vectors) from the standardized cell parameters.
-  const SKSymmetryCell& c = found->cell;
-  double3x3 conventionalCell = cellFromParameters(c.a(), c.b(), c.c(), c.alpha(), c.beta(), c.gamma());
+  // The conventional cell in the Cartesian frame of the unit cell that was passed in: the found cell stands in the
+  // canonical orientation (a along x, b in the xy-plane), and the rotation that the search reports takes it back,
+  // unitCell = rotationMatrix * found->cell * transformationMatrix. Built from the cell parameters alone, the
+  // conventional and primitive cells and the Cartesian wavevectors were those of a crystal turned away from the
+  // one given whenever its conventional axes are not the canonical ones (a permutation of the axes is enough).
+  const double3x3 conventionalCell = found->rotationMatrix * found->cell.unitCell();
 
   std::optional<SKBandPath> path =
       SKBrillouinZonePath(conventionalCell, spaceGroupNumber, hasInversionSymmetry, withTimeReversal, threshold);

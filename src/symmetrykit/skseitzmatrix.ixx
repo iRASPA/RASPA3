@@ -19,7 +19,7 @@ export struct SKSeitzMatrix
   SKSeitzMatrix();
   SKSeitzMatrix(SKRotationMatrix rotation, double3 translation);
 
-  inline bool operator==(const SKSeitzMatrix& b)
+  inline bool operator==(const SKSeitzMatrix& b) const
   {
     double3 dr = (this->translation - b.translation);
     dr.x -= std::rint(dr.x);

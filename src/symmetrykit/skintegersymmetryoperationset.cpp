@@ -72,8 +72,10 @@ std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperation
         double3(double(averageTranslation.x), double(averageTranslation.y), double(averageTranslation.z)) /
         double(count);
 
-    std::tuple<double3, std::size_t, double> symmetrizedAtom = std::make_tuple(
-        averagedRotation * std::get<0>(atoms[i]) + averagedTranslation, std::get<1>(atoms[i]), std::get<2>(atoms[i]));
+    // wrapped into the cell: an atom at 0.9999 on a site at the origin is averaged to 1.0, outside [0, 1)
+    std::tuple<double3, std::size_t, double> symmetrizedAtom =
+        std::make_tuple(double3::fract(averagedRotation * std::get<0>(atoms[i]) + averagedTranslation),
+                        std::get<1>(atoms[i]), std::get<2>(atoms[i]));
     symmetrizedAtoms.push_back(symmetrizedAtom);
   }
 

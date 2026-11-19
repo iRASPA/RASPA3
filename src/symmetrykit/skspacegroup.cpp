@@ -204,6 +204,13 @@ std::optional<std::size_t> SKSpaceGroup::HallNumberFromHMString(std::string stri
         // the symbol with its spaces removed, as "Fm-3m" is written (see HallNumber)
         std::erase(storedSpaceGroupString, ' ');
         matches = SKSpaceGroup::matchSpacegroup(spaceStrippedSearchString, storedSpaceGroupString);
+        // the H-prefixed symbol of the hexagonal-axes setting, as in the pass above: "H-3m" was not read while
+        // "H -3 m" was
+        if (!matches && setting.qualifier() == "H")
+        {
+          matches =
+              SKSpaceGroup::matchSpacegroup(spaceStrippedSearchString, storedSpaceGroupString.replace(0, 1, "h"));
+        }
       }
       if (!matches) continue;
 
@@ -263,14 +270,39 @@ std::optional<double> parseCifRational(std::string_view expression, std::size_t&
     {
       return std::nullopt;  // a lone '.'
     }
-    return std::stod(std::string(expression.substr(start, position - start)));
+    // from_chars rather than stod: a number that does not fit is no number, where stod threw out of the parser
+    double value{};
+    const char* const first = expression.data() + start;
+    const char* const last = expression.data() + position;
+    if (const auto [end, error] = std::from_chars(first, last, value); error != std::errc{} || end != last)
+    {
+      return std::nullopt;
+    }
+    return value;
   }
   if (position == start)
   {
     return std::nullopt;
   }
 
-  const int numerator = std::stoi(std::string(expression.substr(start, position - start)));
+  const auto parseInteger = [&expression](std::size_t from, std::size_t to) -> std::optional<int>
+  {
+    int value{};
+    const char* const first = expression.data() + from;
+    const char* const last = expression.data() + to;
+    if (const auto [end, error] = std::from_chars(first, last, value); error != std::errc{} || end != last)
+    {
+      return std::nullopt;
+    }
+    return value;
+  };
+
+  const std::optional<int> parsedNumerator = parseInteger(start, position);
+  if (!parsedNumerator)
+  {
+    return std::nullopt;
+  }
+  const int numerator = *parsedNumerator;
   if (position < expression.size() && expression[position] == '/')
   {
     ++position;
@@ -283,7 +315,12 @@ std::optional<double> parseCifRational(std::string_view expression, std::size_t&
     {
       return std::nullopt;
     }
-    const int denominator = std::stoi(std::string(expression.substr(denominatorStart, position - denominatorStart)));
+    const std::optional<int> parsedDenominator = parseInteger(denominatorStart, position);
+    if (!parsedDenominator)
+    {
+      return std::nullopt;
+    }
+    const int denominator = *parsedDenominator;
     if (denominator == 0)
     {
       return std::nullopt;
@@ -317,6 +354,11 @@ std::optional<CifCoordinateExpression> parseCifCoordinateExpression(std::string 
     {
       sign = -1;
       ++position;
+    }
+    else if (position > 0)
+    {
+      // terms are joined by a sign: "xx" was read as 2x and "x1/2" as x+1/2
+      return std::nullopt;
     }
 
     if (position >= expression.size())
@@ -381,10 +423,8 @@ std::vector<std::string> splitCifSymmetryCoordinates(std::string expression)
     current.push_back(character);
   }
 
-  if (!current.empty())
-  {
-    coordinates.push_back(current);
-  }
+  // the last field also when it is empty: "x,y,z," has four fields, of which the empty one used to be dropped
+  coordinates.push_back(current);
 
   return coordinates;
 }
@@ -463,6 +503,11 @@ std::optional<SKSeitzMatrix> SKSpaceGroup::parseCifSymmetryOperation(std::string
       int3(parsedCoordinates[0].xCoeff, parsedCoordinates[1].xCoeff, parsedCoordinates[2].xCoeff),
       int3(parsedCoordinates[0].yCoeff, parsedCoordinates[1].yCoeff, parsedCoordinates[2].yCoeff),
       int3(parsedCoordinates[0].zCoeff, parsedCoordinates[1].zCoeff, parsedCoordinates[2].zCoeff));
+  // a symmetry operation maps the lattice onto itself: "x,x,x" (determinant 0) and "2x,y,z" are none
+  if (std::abs(rotation.int3x3_m.determinant()) != 1)
+  {
+    return std::nullopt;
+  }
   const double3 translation(parsedCoordinates[0].translation, parsedCoordinates[1].translation,
                             parsedCoordinates[2].translation);
   return SKSeitzMatrix(rotation, translation);
@@ -596,8 +641,19 @@ SKSymmetryOperationSet SKSpaceGroup::findSpaceGroupSymmetry(
     {
       SKSeitzMatrix matrix = SKSeitzMatrix(rotationMatrix, translation);
 
-      // avoid duplicate Seitz-matrices
-      if (!(std::find(spaceGroupSymmetries.begin(), spaceGroupSymmetries.end(), matrix) != spaceGroupSymmetries.end()))
+      // avoid duplicate Seitz-matrices: the same rotation with a translation within the precision, as a distance.
+      // The translations are accepted within that distance, so two of one operation can be that far apart; the
+      // fixed fractional tolerance of the equality operator is a different distance in every cell, which kept
+      // both in a small cell (two identities, and no point group) and merged the centring translations of a
+      // large one with the identity
+      const auto sameOperation = [&](const SKSeitzMatrix& other)
+      {
+        if (!(other.rotation == matrix.rotation)) return false;
+        double3 dr = other.translation - matrix.translation;
+        dr = dr - double3::rint(dr);
+        return (unitCell * dr).length_squared() < symmetryPrecision * symmetryPrecision;
+      };
+      if (std::none_of(spaceGroupSymmetries.begin(), spaceGroupSymmetries.end(), sameOperation))
       {
         spaceGroupSymmetries.push_back(matrix);
       }
@@ -1208,6 +1264,17 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
     {
       return std::nullopt;
     }
+    // P 1 has no generators to compare, and its one operation is the identity: any single operation, an inversion
+    // or a glide listed alone, used to pass for it
+    for (const SKSeitzMatrix& given : seitzMatrices)
+    {
+      const double3 translation = given.translation - double3::rint(given.translation);
+      if (!(given.rotation == SKRotationMatrix::identity) || std::fabs(translation.x) > symmetryPrecision ||
+          std::fabs(translation.y) > symmetryPrecision || std::fabs(translation.z) > symmetryPrecision)
+      {
+        return std::nullopt;
+      }
+    }
     return double3(0.0, 0.0, 0.0);
   }
 
@@ -1361,7 +1428,13 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
 
     int3 dataBaseTranslation = changeToPrimitive * dataBaseSpaceGroupGenerators[i].translation;
 
-    double3 translationDifference = double3::fract(transPrimitive - double3(dataBaseTranslation) / 24.0);
+    // the difference modulo the lattice as the residue nearest to zero. Wrapped into [0, 1) instead, a difference
+    // of zero that the rounding of the listed translations left just below it ("0.24999" for 1/4) became 0.99999,
+    // and the division by the invariant factors of the Smith normal form below turned that into a shift of 1/2 or
+    // 1/3: a shift of the normaliser, so still a solution, but not the zero shift by which the setting that the
+    // operations are listed in is told from the other settings of the group
+    double3 translationDifference = transPrimitive - double3(dataBaseTranslation) / 24.0;
+    translationDifference = translationDifference - double3::rint(translationDifference);
     b(3 * i, 0) = translationDifference.x;
     b(3 * i + 1, 0) = translationDifference.y;
     b(3 * i + 2, 0) = translationDifference.z;
@@ -1397,7 +1470,10 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
   // sol.Q (3x3), T (3x9), sol.P (9x9), bm (9x1) -> (3x1)
   Matrix cp = (Q * Dinv * P) * b;
 
-  double3 originShift = double3::fract(double3(cp(0, 0), cp(1, 0), cp(2, 0)));
+  // the residue nearest to zero here as well: a shift just below zero in the primitive basis, wrapped to just below
+  // one, is taken by the centring to a centring translation of the conventional basis, (1/2, 1/2, 0) for no shift
+  double3 originShift(cp(0, 0), cp(1, 0), cp(2, 0));
+  originShift = originShift - double3::rint(originShift);
   SKIntegerChangeOfBasis basis = SKIntegerChangeOfBasis(changeToPrimitive).inverse();
   // the shift in the basis of the given operations, and (the returned value) in the basis of the candidate setting
   const double3 shift = double3::fract(basis * originShift);
