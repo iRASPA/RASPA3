@@ -195,7 +195,8 @@ void applyCellDisplacement(System& system, const MinimizationDofLayout& layout, 
   if (system.framework.has_value() && !system.framework->rigid)
   {
     system.framework->regenerateVanDerWaalsImageList(system.forceField, system.simulationBox,
-                                                     system.forceField.cutOffFrameworkVDW);
+                                                     system.forceField.cutOffFrameworkVDW,
+                                                     system.spanOfFrameworkAtoms());
   }
 }
 }  // namespace
@@ -363,6 +364,15 @@ void applyGeneralizedDisplacement(System& system, const MinimizationDofLayout& l
     }
     regenerateRigidAtoms(system, moleculeIndex);
     wrapMoleculeToPrimaryCell(system, moleculeIndex);
+  }
+
+  // (the list of framework pair images follows the atoms as it follows the cell: at a fixed cell it stayed the
+  // list of the starting geometry for the whole run)
+  if (layout.numberOfCellDofs() == 0 && system.framework.has_value() && !system.framework->rigid)
+  {
+    system.framework->regenerateVanDerWaalsImageList(system.forceField, system.simulationBox,
+                                                     system.forceField.cutOffFrameworkVDW,
+                                                     system.spanOfFrameworkAtoms());
   }
 
   if (layout.numberOfCellDofs() != 0)

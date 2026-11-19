@@ -966,9 +966,17 @@ void Framework::generateIntraMolecularPotentials(const ForceField& forceField)
 }
 
 void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, const SimulationBox& box,
-                                               double cutOffFrameworkVDW)
+                                               double cutOffFrameworkVDW, std::span<const Atom> currentAtoms)
 {
   if (rigid || cutOffFrameworkVDW <= 0.0 || atoms.empty()) return;
+
+  // Where the atoms are now, when the caller says: 'atoms' is the copy the framework was built with, and a list
+  // made from it after the atoms or the cell have moved is the list of another geometry. The images inside the
+  // cutoff were picked by the starting positions in the deformed cell, and a pair the relaxation had brought
+  // inside it was in no list and so in no energy, gradient or Hessian.
+  const bool useCurrent = currentAtoms.size() == atoms.size();
+  const auto positionOf = [&](std::size_t index) -> const double3&
+  { return useCurrent ? currentAtoms[index].position : atoms[index].position; };
 
   // Only frameworks whose construction generated the nonbonded van der Waals pair list (and with it the connectivity
   // table) are replicated; a programmatically assembled framework has neither. An empty generated list is not such a
@@ -1066,7 +1074,7 @@ void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, con
       const bool insideGroup = isInsideFixedOrRigidGroup(pair);
       if (insideGroup && isFixedAtom(i)) continue;
       // The covalently bonded neighbour is the minimum image; only that image is excluded or 1-4 scaled.
-      const int3 bondedImage = periodicImageShift(box, atoms[i].position, atoms[j].position);
+      const int3 bondedImage = periodicImageShift(box, positionOf(i), positionOf(j));
 
       for (int a = -shells.x; a <= shells.x; ++a)
       {
@@ -1083,9 +1091,9 @@ void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, con
               if (intra14ChargeChargeScaling > 0.0) emitCoulomb(i, j, shift, intra14ChargeChargeScaling);
               continue;
             }
-            const double3 dr = atoms[i].position - (atoms[j].position + box.cell * double3(static_cast<double>(a),
-                                                                                           static_cast<double>(b),
-                                                                                           static_cast<double>(c)));
+            const double3 dr = positionOf(i) - (positionOf(j) + box.cell * double3(static_cast<double>(a),
+                                                                                   static_cast<double>(b),
+                                                                                   static_cast<double>(c)));
             if (double3::dot(dr, dr) < cutOffSquared) emitPair(i, j, shift, 1.0);
             if (double3::dot(dr, dr) < cutOffCoulombSquared) emitCoulomb(i, j, shift, 1.0);
           }

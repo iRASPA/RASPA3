@@ -9,6 +9,7 @@ import randomnumbers;
 import double3;
 import double3x3;
 import units;
+import dihedral_derivatives;
 
 BendTorsionPotential::BendTorsionPotential(std::array<std::size_t, 4> identifiers, BendTorsionType type,
                                            std::vector<double> vector_parameters)
@@ -274,7 +275,7 @@ static double smoothingDerivative(double theta)
 std::tuple<double, std::array<double3, 4>, double3x3> BendTorsionPotential::potentialEnergyGradientStrain(
     const double3 &posA, const double3 &posB, const double3 &posC, const double3 &posD) const
 {
-  double phi, sign;
+  double phi;
   double3x3 strain_derivative{};
   double3 du_da{}, du_db{}, du_dc{}, du_dd{};
 
@@ -324,15 +325,24 @@ std::tuple<double, std::array<double3, 4>, double3x3> BendTorsionPotential::pote
       DTheta2 = parameters[0] * (theta1 - parameters[1]) * cos_phi / sin_theta2;
       break;
     case BendTorsionType::Smoothed:
-      // IUPAC sign (as AMBER, CHARMM and LAMMPS): minus this dot product
-      sign = -double3::dot(Dbc, double3::cross(double3::cross(Dab_vec, Dbc), double3::cross(Dbc, Dcd_vec)));
-      phi = std::copysign(std::acos(cos_phi), sign);
+    {
+      // Written in phi, and differentiated in phi: U'(phi) grad(phi), with the exact gradient of the signed (IUPAC)
+      // dihedral. Through cos(phi) it was U'(phi) / sin(phi) times grad cos(phi), and at a planar dihedral the
+      // first is bounded and the second is nought: with a phase that is no multiple of 180 degrees U'(phi) is
+      // not nought there, and the gradient came out nought all the same, at odds with the Hessian of this term.
+      const Potentials::DihedralDerivatives dihedral = Potentials::dihedralAngleDerivatives(posA, posB, posC, posD, false);
+      phi = dihedral.phi;
       U = parameters[0] * (1.0 + std::cos(parameters[1] * phi - parameters[2])) * s1 * s2;
-      DCos = (parameters[0] * parameters[1] * std::sin(parameters[1] * phi - parameters[2]) * s1 * s2) /
-             std::copysign(std::max(1.0e-8, std::fabs(std::sin(phi))), std::sin(phi));
+      DCos = 0.0;
+      const double dUdPhi = -parameters[0] * parameters[1] * std::sin(parameters[1] * phi - parameters[2]) * s1 * s2;
+      du_da += dUdPhi * dihedral.gradient[0];
+      du_db += dUdPhi * dihedral.gradient[1];
+      du_dc += dUdPhi * dihedral.gradient[2];
+      du_dd += dUdPhi * dihedral.gradient[3];
       DTheta1 = parameters[0] * (1.0 + std::cos(parameters[1] * phi - parameters[2])) * ds1 * s2 / sin_theta1;
       DTheta2 = parameters[0] * (1.0 + std::cos(parameters[1] * phi - parameters[2])) * s1 * ds2 / sin_theta2;
       break;
+    }
     case BendTorsionType::SmoothedThreeCosine:
     {
       const double torsion_part = 0.5 * parameters[0] * (1.0 + cos_phi) + parameters[1] * (1.0 - cos_phi2) +

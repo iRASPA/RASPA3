@@ -788,3 +788,87 @@ TEST(internal_potentials, modified_trappe_without_a_phase_equals_trappe)
   EXPECT_NEAR(modified.calculateEnergy(A, B, C, D), expected, 1e-9 * std::abs(expected));
   EXPECT_NEAR(std::get<0>(modified.potentialEnergyGradientStrain(A, B, C, D)), expected, 1e-9 * std::abs(expected));
 }
+
+
+// A bend whose minimum is the linear geometry has a limit for dU/dcos(theta) there, which is U''(180 degrees), and
+// that limit is the whole of its Hessian on the line. It came out nought (nought times the bounded 1/sin), so a
+// linear molecule had no bending curvature.
+TEST(internal_potentials, a_linear_bend_at_its_minimum_keeps_its_curvature)
+{
+  const double3 b(1.5, 0.0, 0.0), c(3.0, 0.0, 0.0);
+  for (const double lift : {0.0, 1.0e-9, 1.0e-6})
+  {
+    SCOPED_TRACE(lift);
+    const double3 a(0.0, lift, 0.0);
+    {
+      const BendPotential bend({0, 1, 2}, BendType::Harmonic, {62500.0, 180.0});
+      const auto [energy, gradient, strain, geometry] =
+          Potentials::Internal::bendPotentialEnergyGradientHessianStrain(BendType::Harmonic, bend.parameters, a, b, c);
+      EXPECT_NEAR(geometry.DF, bend.parameters[0], 1.0e-6 * bend.parameters[0]);
+      EXPECT_NEAR(geometry.DDF, bend.parameters[0] / 3.0, 1.0e-5 * bend.parameters[0]);
+    }
+    {
+      // p0 (1 + cos(theta)): linear in the cosine, so dU/dcos is p0 and the second derivative nought
+      const BendPotential bend({0, 1, 2}, BendType::Cosine, {100.0, 1.0, 0.0});
+      const auto [energy, gradient, strain, geometry] =
+          Potentials::Internal::bendPotentialEnergyGradientHessianStrain(BendType::Cosine, bend.parameters, a, b, c);
+      EXPECT_NEAR(geometry.DF, bend.parameters[0], 1.0e-6 * bend.parameters[0]);
+      EXPECT_NEAR(geometry.DDF, 0.0, 1.0e-5 * bend.parameters[0]);
+    }
+  }
+
+  // and the gradient just off the line is U'(theta) and not a step of the arc cosine: k delta / r_ab
+  const BendPotential bend({0, 1, 2}, BendType::Harmonic, {62500.0, 180.0});
+  const double lift = 1.0e-9;
+  const auto [energy, gradient, strain] = bend.potentialEnergyGradientStrain(double3(0.0, lift, 0.0), b, c);
+  // delta = lift / 1.5, and dU/dy of A = k delta / 1.5
+  EXPECT_NEAR(gradient[0].y, bend.parameters[0] * lift / (1.5 * 1.5), 1.0e-6 * bend.parameters[0] * lift);
+}
+
+// The smoothed bend-torsion is written in phi. With a phase that is no multiple of 180 degrees its slope in phi
+// is not nought at a planar dihedral, and the gradient is that slope times the gradient of phi; taken through
+// cos(phi), whose gradient vanishes there, it came out nought.
+TEST(internal_potentials, the_smoothed_bend_torsion_has_its_gradient_at_a_planar_dihedral)
+{
+  const BendTorsionPotential term({0, 1, 2, 3}, BendTorsionType::Smoothed, {1000.0, 1.0, 90.0});
+  const std::array<double3, 4> planar{double3(1.0, 1.0, 0.0), double3(0.0, 0.0, 0.0), double3(1.5, 0.0, 0.0),
+                                      double3(0.5, -1.0, 0.0)};
+  const auto [energy, gradient, strain] = term.potentialEnergyGradientStrain(planar[0], planar[1], planar[2], planar[3]);
+
+  const double step = 1.0e-5;
+  double largest = 0.0;
+  for (std::size_t atom = 0; atom < 4; ++atom)
+  {
+    for (std::size_t axis = 0; axis < 3; ++axis)
+    {
+      std::array<double3, 4> forward = planar;
+      std::array<double3, 4> backward = planar;
+      (&forward[atom].x)[axis] += step;
+      (&backward[atom].x)[axis] -= step;
+      const double reference = (term.calculateEnergy(forward[0], forward[1], forward[2], forward[3]) -
+                                term.calculateEnergy(backward[0], backward[1], backward[2], backward[3])) /
+                               (2.0 * step);
+      largest = std::max(largest, std::abs(reference));
+      EXPECT_NEAR((&gradient[atom].x)[axis], reference, 1.0e-6 * term.parameters[0]) << atom << ", " << axis;
+    }
+  }
+  EXPECT_GT(largest, 0.1 * term.parameters[0]);  // the slope is there to be found
+}
+
+// The out-of-plane angle of an inversion bend near a planar centre is as small as the lift out of the plane, and the
+// gradient of a harmonic form about the plane is in proportion to it. Taken from the arc cosine the angle came in
+// steps of 1.5e-8 rad, and the gradient was nought for a lift of 1e-8.
+TEST(internal_potentials, the_inversion_bend_gradient_follows_a_small_lift_out_of_the_plane)
+{
+  const InversionBendPotential term({0, 1, 2, 3}, InversionBendType::Harmonic, {60000.0, 0.0});
+  const double3 b(0.0, 0.0, 0.0), c(1.54, 0.0, 0.0), d(-0.6, -1.2, 0.0);
+  const auto liftGradient = [&](double lift)
+  {
+    const auto [energy, gradient, strain] = term.potentialEnergyGradientStrain(double3(-0.5, 1.4, lift), b, c, d);
+    return gradient[0].z;
+  };
+  const double reference = liftGradient(1.0e-5);
+  ASSERT_GT(std::abs(reference), 0.0);
+  EXPECT_NEAR(liftGradient(1.0e-8) / reference, 1.0e-3, 1.0e-7);
+  EXPECT_NEAR(liftGradient(1.0e-10) / reference, 1.0e-5, 1.0e-9);
+}

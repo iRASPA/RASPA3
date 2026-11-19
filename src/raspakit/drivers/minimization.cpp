@@ -35,6 +35,19 @@ import units;
 
 namespace
 {
+// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under which
+// 'std::isfinite' is true of everything. (Taken by reference and read as bytes, so that the test is not folded
+// away with it.)
+[[maybe_unused]] bool isFiniteNumber(const double& value)
+{
+  std::uint64_t bits{};
+  std::memcpy(&bits, &value, sizeof(bits));
+  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
+}
+}  // namespace
+
+namespace
+{
 void clipCellStep(BakerStep& step, const MinimizationDofLayout& layout, const CellMinimizationLayout& cellLayout,
                   double maximumNorm)
 {
@@ -363,7 +376,8 @@ void Minimization::setup()
     if (system.framework.has_value() && !system.framework->rigid)
     {
       system.framework->regenerateVanDerWaalsImageList(system.forceField, system.simulationBox,
-                                                       system.forceField.cutOffFrameworkVDW);
+                                                       system.forceField.cutOffFrameworkVDW,
+                                                       system.spanOfFrameworkAtoms());
     }
     system.precomputeTotalRigidEnergy();
     if (outputToFiles && !resumedFromBinaryRestart)
@@ -694,10 +708,24 @@ void Minimization::runPhase()
 
     DerivativeResults derivatives{.gradient = gradient, .hessian = hessian};
     const std::size_t startIteration = (systemIndex == startSystemIndex) ? resumeIteration : 0uz;
+    // The pair kernels of the molecules take one image of a pair, the nearest, which is every image inside the
+    // cutoff only while the cell is at least twice the cutoff across. The cutoffs are held while the cell is
+    // stepped, so a cell that shrinks can come to be narrower than that, and the pairs between half a width and
+    // the cutoff are then silently one image short. A run whose cell was wide enough is stopped when it is not.
+    const auto minimumImageHolds = [&]()
+    {
+      if (system.moleculeData.empty()) return true;
+      double reach = system.forceField.cutOffMoleculeVDW;
+      if (system.framework.has_value()) reach = std::max(reach, system.forceField.cutOffFrameworkVDW);
+      if (system.forceField.useCharge) reach = std::max(reach, system.forceField.cutOffCoulomb);
+      const double3 widths = system.simulationBox.perpendicularWidths();
+      return std::min({widths.x, widths.y, widths.z}) >= 2.0 * reach * (1.0 - 1.0e-12);
+    };
+    const bool minimumImageHeldAtStart = layout.numberOfCellDofs() != 0 && minimumImageHolds();
     for (std::size_t iteration = startIteration; iteration < options.maximumNumberOfSteps; ++iteration)
     {
       evaluateDerivatives(system, layout, capabilities, derivatives);
-      if (!std::isfinite(derivatives.energy))
+      if (!isFiniteNumber(derivatives.energy))
       {
         throw std::runtime_error(std::format("Minimization system {} produced a non-finite energy", systemIndex));
       }
@@ -726,6 +754,13 @@ void Minimization::runPhase()
       {
         applyGeneralizedDisplacement(system, layout, step.displacement);
         step.stepNorm *= acceptedScale;
+      }
+      if (minimumImageHeldAtStart && !minimumImageHolds())
+      {
+        throw std::runtime_error(std::format(
+            "Minimization system {}: the cell has become narrower than twice the cutoff at step {}; the pairs of "
+            "the molecules are summed over one image only. Use more unit cells or a shorter cutoff.\n",
+            systemIndex, iteration));
       }
 
       if (iteration % std::max<std::size_t>(1, options.printEvery) == 0 || step.converged)

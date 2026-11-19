@@ -34,6 +34,7 @@ import interactions_hessian_intramolecular;
 import interactions_polarization_derivatives;
 import potential_pair_derivatives;
 import potential_pair_vdw;
+import potential_intra_pair;
 import potential_pair_coulomb;
 import potential_coulomb_real_space;
 
@@ -290,6 +291,76 @@ void addMoleculeIntramolecular(const System& system, ForceConstants& forceConsta
                                                            dynamics);
 
   forceConstants.addToImage(int3(0, 0, 0), local.positionPosition());
+
+  // The bonded terms above are evaluated from the atoms where they are and belong to the home image. The
+  // non-bonded pairs of a molecule are evaluated at the nearest image of the pair, as the energy has them, and
+  // in a molecule longer than half the cell that is another image: the coupling of A to B is then to the copy of
+  // B a lattice vector away, and belongs in that image's block, where it takes its phase at k != 0. Filed under
+  // the home image with the rest, as it was, it took none. The on-site blocks stay where they are.
+  const auto moveToImage = [&](std::size_t moleculeIndex, std::size_t A, std::size_t B, double f1, double f2,
+                               const double3& rawSeparation, const double3& dr)
+  {
+    const int3 image = latticeVectorFromImage(box, rawSeparation, dr);
+    if (image.x == 0 && image.y == 0 && image.z == 0) return;
+    const std::optional<std::size_t> dofA = layout.flexibleAtomDof(moleculeIndex, A, MinimizationDofAxis::X);
+    const std::optional<std::size_t> dofB = layout.flexibleAtomDof(moleculeIndex, B, MinimizationDofAxis::X);
+    if (!dofA || !dofB) return;
+
+    GeneralizedHessian pairLocal(6, 0);
+    Minimization::scatterAtomicPositionPositionByDof(pairLocal, 0, 3, f1, f2, dr);
+    std::array<double, 9> crossAB{};
+    std::array<double, 9> crossBA{};
+    std::array<double, 9> minusAB{};
+    std::array<double, 9> minusBA{};
+    for (std::size_t alpha = 0; alpha < 3; ++alpha)
+    {
+      for (std::size_t beta = 0; beta < 3; ++beta)
+      {
+        crossAB[alpha * 3 + beta] = pairLocal(alpha, 3 + beta);
+        crossBA[alpha * 3 + beta] = pairLocal(3 + alpha, beta);
+        minusAB[alpha * 3 + beta] = -crossAB[alpha * 3 + beta];
+        minusBA[alpha * 3 + beta] = -crossBA[alpha * 3 + beta];
+      }
+    }
+    // dr = r_A - (r_B + R): B is the copy 'image' cells from the one in the molecule
+    const std::size_t siteA = *dofA / 3;
+    const std::size_t siteB = *dofB / 3;
+    forceConstants.addBlock(siteA, siteB, int3(0, 0, 0), minusAB);
+    forceConstants.addBlock(siteB, siteA, int3(0, 0, 0), minusBA);
+    forceConstants.addBlock(siteA, siteB, image, crossAB);
+    forceConstants.addBlock(siteB, siteA, int3(-image.x, -image.y, -image.z), crossBA);
+  };
+
+  for (std::size_t moleculeIndex = 0; moleculeIndex < moleculeData.size(); ++moleculeIndex)
+  {
+    const Molecule& molecule = moleculeData[moleculeIndex];
+    const Component& component = components[molecule.componentId];
+    if (component.rigid || component.isSemiFlexible()) continue;
+    const std::span<const Atom> atoms = {&moleculeAtoms[molecule.atomIndex], molecule.numberOfAtoms};
+
+    component.intraMolecularPotentials.forEachVanDerWaalsPair(
+        [&](std::size_t A, std::size_t B, double scaling, bool pair14)
+        {
+          const double3 raw = atoms[A].position - atoms[B].position;
+          const double3 dr = box.applyPeriodicBoundaryConditions(raw);
+          const Potentials::PairDerivatives<2> pair = Potentials::intraMolecularVDW<2>(
+              forceField, scaling, double3::dot(dr, dr), static_cast<std::size_t>(atoms[A].type),
+              static_cast<std::size_t>(atoms[B].type), pair14);
+          if (pair.firstDerivativeFactor == 0.0 && pair.secondDerivativeFactor == 0.0) return;
+          moveToImage(moleculeIndex, A, B, pair.firstDerivativeFactor, pair.secondDerivativeFactor, raw, dr);
+        });
+    component.intraMolecularPotentials.forEachCoulombPair(
+        [&](std::size_t A, std::size_t B, double scaling)
+        {
+          const double3 raw = atoms[A].position - atoms[B].position;
+          const double3 dr = box.applyPeriodicBoundaryConditions(raw);
+          const Potentials::PairDerivatives<2> pair = Potentials::intraMolecularCoulomb<2>(
+              forceField, scaling, atoms[A].scalingCoulomb, atoms[B].scalingCoulomb, std::sqrt(double3::dot(dr, dr)),
+              atoms[A].charge, atoms[B].charge);
+          if (pair.firstDerivativeFactor == 0.0 && pair.secondDerivativeFactor == 0.0) return;
+          moveToImage(moleculeIndex, A, B, pair.firstDerivativeFactor, pair.secondDerivativeFactor, raw, dr);
+        });
+  }
 }
 
 // Intramolecular exclusion correction. The reciprocal Fourier sum counts every intramolecular charge pair; for the

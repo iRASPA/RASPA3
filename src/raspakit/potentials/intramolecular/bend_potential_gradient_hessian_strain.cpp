@@ -29,10 +29,10 @@ Potentials::Internal::bendPotentialEnergyGradientHessianStrain(
   double cos_theta = double3::dot(dr_ab, dr_cb);
   cos_theta = std::clamp(cos_theta, -1.0, 1.0);
 
-  const double theta = std::acos(cos_theta);
-  // bounded at a linear geometry (see BendPotential::potentialEnergyGradientStrain)
-  const double sin_theta = std::max(1.0e-8, std::sqrt(std::max(0.0, 1.0 - cos_theta * cos_theta)));
-  const double DTDX = -1.0 / sin_theta;
+  // The sine from the cross product and the angle from the two together: the arc cosine resolves an angle near
+  // 0 or 180 degrees only to about 1.5e-8 rad, and the square root of 1 - cos^2 no better.
+  const double sin_true = double3::cross(dr_ab, dr_cb).length();
+  const double theta = std::atan2(sin_true, cos_theta);
 
   double U{};
   double DF{};
@@ -40,81 +40,134 @@ Potentials::Internal::bendPotentialEnergyGradientHessianStrain(
   double temp{};
   double temp2{};
 
-  switch (type)
+  // The forms written in theta: U and its first and second derivative in theta at the angle given. False for a
+  // form that is not one of them.
+  const auto thetaForm = [&](double angle, double &energy, double &first, double &second) -> bool
   {
-    case BendType::Fixed:
-    case BendType::Rigid:
-      U = 0.0;
-      DF = 0.0;
-      DDF = 0.0;
-      break;
-    case BendType::Harmonic:
-    case BendType::CoreShell:
-      temp = theta - parameters[1];
-      U = 0.5 * parameters[0] * temp * temp;
-      DF = parameters[0] * temp * DTDX;
-      DDF = parameters[0] * DTDX * DTDX + parameters[0] * temp * cos_theta * cube(DTDX);
-      break;
-    case BendType::Quartic:
-      temp = theta - parameters[1];
-      temp2 = temp * temp;
-      U = 0.5 * parameters[0] * temp2 + (1.0 / 3.0) * parameters[2] * temp * temp2 +
-          0.25 * parameters[3] * temp2 * temp2;
-      DF = (parameters[0] * temp + parameters[2] * temp2 + parameters[3] * temp * temp2) * DTDX;
-      DDF = parameters[0] * DTDX * DTDX + parameters[0] * temp * cos_theta * cube(DTDX) +
-            2.0 * parameters[2] * temp * DTDX * DTDX + parameters[2] * temp2 * cos_theta * cube(DTDX) +
-            3.0 * parameters[3] * temp2 * DTDX * DTDX + parameters[3] * temp * temp2 * cos_theta * cube(DTDX);
-      break;
-    case BendType::CFF_Quartic:
-      temp = theta - parameters[1];
-      temp2 = temp * temp;
-      U = parameters[0] * temp2 + parameters[2] * temp * temp2 + parameters[3] * temp2 * temp2;
-      DF = (2.0 * parameters[0] * temp + 3.0 * parameters[2] * temp2 + 4.0 * parameters[3] * temp * temp2) * DTDX;
-      DDF = 2.0 * parameters[0] * DTDX * DTDX + 2.0 * parameters[0] * temp * cos_theta * cube(DTDX) +
-            6.0 * parameters[2] * temp * DTDX * DTDX + 3.0 * parameters[2] * temp2 * cos_theta * cube(DTDX) +
-            12.0 * parameters[3] * temp2 * DTDX * DTDX + 4.0 * parameters[3] * temp * temp2 * cos_theta * cube(DTDX);
-      break;
-    case BendType::HarmonicCosine:
-      temp = cos_theta - parameters[1];
-      temp2 = temp * temp;
-      U = 0.5 * parameters[0] * temp2;
-      DF = parameters[0] * temp;
-      DDF = parameters[0];
-      break;
-    case BendType::Cosine:
-      temp = parameters[1] * theta - parameters[2];
-      U = parameters[0] * (1.0 + std::cos(temp));
-      DF = -(parameters[0] * parameters[1] * std::sin(temp)) * DTDX;
-      DDF = -parameters[0] * parameters[1] *
-            (parameters[1] * std::cos(temp) + std::sin(temp) * cos_theta * DTDX) * DTDX * DTDX;
-      break;
-    case BendType::Tafipolsky:
-      U = 0.5 * parameters[0] * (1.0 + std::cos(theta)) * (1.0 + std::cos(2.0 * theta));
-      DF = parameters[0] * cos_theta * (2.0 + 3.0 * cos_theta);
-      DDF = 2.0 * parameters[0] * (1.0 + 3.0 * cos_theta);
-      break;
-    case BendType::MM3:
-    case BendType::MM3_inplane:
-      temp = (theta - parameters[1]) * Units::RadiansToDegrees;
-      temp2 = temp * temp;
-      U = parameters[0] * temp2 *
-          (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
+    double t{};
+    double t2{};
+    switch (type)
     {
-      // U(t) = K (t^2 - a t^3 + b t^4 - c t^5 + d t^6), t = (theta - theta_0) in degrees
-      const double dUdt = parameters[0] *
-                          (2.0 - (3.0 * 0.014 - (4.0 * 5.6e-5 - (5.0 * 7.0e-7 - 6.0 * 2.2e-8 * temp) * temp) * temp) * temp) *
-                          temp;
-      const double d2Udt2 =
-          parameters[0] *
-          (2.0 - (6.0 * 0.014 - (12.0 * 5.6e-5 - (20.0 * 7.0e-7 - 30.0 * 2.2e-8 * temp) * temp) * temp) * temp);
-      const double dUdtheta = dUdt * Units::RadiansToDegrees;
-      const double d2Udtheta2 = d2Udt2 * Units::RadiansToDegrees * Units::RadiansToDegrees;
-      DF = dUdtheta * DTDX;
-      DDF = d2Udtheta2 * DTDX * DTDX + dUdtheta * cos_theta * cube(DTDX);
-      break;
+      case BendType::Harmonic:
+      case BendType::CoreShell:
+        t = angle - parameters[1];
+        energy = 0.5 * parameters[0] * t * t;
+        first = parameters[0] * t;
+        second = parameters[0];
+        return true;
+      case BendType::Quartic:
+        t = angle - parameters[1];
+        t2 = t * t;
+        energy = 0.5 * parameters[0] * t2 + (1.0 / 3.0) * parameters[2] * t * t2 + 0.25 * parameters[3] * t2 * t2;
+        first = parameters[0] * t + parameters[2] * t2 + parameters[3] * t * t2;
+        second = parameters[0] + 2.0 * parameters[2] * t + 3.0 * parameters[3] * t2;
+        return true;
+      case BendType::CFF_Quartic:
+        t = angle - parameters[1];
+        t2 = t * t;
+        energy = parameters[0] * t2 + parameters[2] * t * t2 + parameters[3] * t2 * t2;
+        first = 2.0 * parameters[0] * t + 3.0 * parameters[2] * t2 + 4.0 * parameters[3] * t * t2;
+        second = 2.0 * parameters[0] + 6.0 * parameters[2] * t + 12.0 * parameters[3] * t2;
+        return true;
+      case BendType::Cosine:
+        t = parameters[1] * angle - parameters[2];
+        energy = parameters[0] * (1.0 + std::cos(t));
+        first = -parameters[0] * parameters[1] * std::sin(t);
+        second = -parameters[0] * parameters[1] * parameters[1] * std::cos(t);
+        return true;
+      case BendType::MM3:
+      case BendType::MM3_inplane:
+      {
+        // U(t) = K (t^2 - a t^3 + b t^4 - c t^5 + d t^6), t = (theta - theta_0) in degrees
+        t = (angle - parameters[1]) * Units::RadiansToDegrees;
+        t2 = t * t;
+        energy = parameters[0] * t2 * (1.0 - 0.014 * t + 5.6e-5 * t2 - 7.0e-7 * t * t2 + 2.2e-8 * t2 * t2);
+        const double dUdt =
+            parameters[0] * (2.0 - (3.0 * 0.014 - (4.0 * 5.6e-5 - (5.0 * 7.0e-7 - 6.0 * 2.2e-8 * t) * t) * t) * t) * t;
+        const double d2Udt2 = parameters[0] *
+                              (2.0 - (6.0 * 0.014 - (12.0 * 5.6e-5 - (20.0 * 7.0e-7 - 30.0 * 2.2e-8 * t) * t) * t) * t);
+        first = dUdt * Units::RadiansToDegrees;
+        second = d2Udt2 * Units::RadiansToDegrees * Units::RadiansToDegrees;
+        return true;
+      }
+      default:
+        return false;
     }
-    default:
-      std::unreachable();
+  };
+
+  // dU/dcos and d2U/dcos2 from the derivatives in theta, at an angle whose sine is given.
+  const auto inCosine = [](double first, double second, double cosine, double sine, double &dF, double &ddF)
+  {
+    const double dtdx = -1.0 / sine;
+    dF = first * dtdx;
+    ddF = second * dtdx * dtdx + first * cosine * cube(dtdx);
+  };
+
+  double dUdTheta{};
+  double d2UdTheta2{};
+  if (thetaForm(theta, U, dUdTheta, d2UdTheta2))
+  {
+    // How near a linear geometry the two terms of d2U/dcos2, each as large as 1/sin^2, still leave their
+    // difference: beyond it the form is read at this distance from the line instead, where it is smooth.
+    constexpr double linearWindow = 1.0e-3;
+    if (sin_true >= linearWindow)
+    {
+      inCosine(dUdTheta, d2UdTheta2, cos_theta, sin_true, DF, DDF);
+    }
+    else
+    {
+      // A form whose minimum (or any stationary point) is the linear geometry itself has dU/dtheta falling off
+      // as the distance from it, and dU/dcos has a limit there: U''. The sine used to be held at 1e-8 and the
+      // angle taken from the arc cosine, so on the line dU/dcos was nought times 1e8, which is nought, and the
+      // Hessian, which there is dU/dcos times the second derivative of the cosine and nothing else, was nought
+      // with it: a linear molecule had no bending curvature and bending modes of no frequency.
+      const double delta = std::asin(sin_true);
+      const double towards = cos_theta < 0.0 ? 1.0 : -1.0;  // dU/dtheta = -+ U'' delta about 180 or 0 degrees
+      const bool stationary = std::fabs(dUdTheta + towards * d2UdTheta2 * delta) <=
+                              1.0e-3 * std::fabs(d2UdTheta2) * delta + 1.0e-14 * std::fabs(d2UdTheta2);
+      if (stationary)
+      {
+        double unusedEnergy{};
+        double firstThere{};
+        double secondThere{};
+        const double there = cos_theta < 0.0 ? std::numbers::pi - linearWindow : linearWindow;
+        thetaForm(there, unusedEnergy, firstThere, secondThere);
+        double unusedFirst{};
+        inCosine(firstThere, secondThere, std::cos(there), std::sin(there), unusedFirst, DDF);
+        DF = sin_true > 1.0e-12 ? -dUdTheta / sin_true : towards * d2UdTheta2;
+      }
+      else
+      {
+        // not stationary on the line: dU/dcos has no limit there, and is bounded as before
+        inCosine(dUdTheta, d2UdTheta2, cos_theta, std::max(1.0e-8, sin_true), DF, DDF);
+      }
+    }
+  }
+  else
+  {
+    switch (type)
+    {
+      case BendType::Fixed:
+      case BendType::Rigid:
+        U = 0.0;
+        DF = 0.0;
+        DDF = 0.0;
+        break;
+      case BendType::HarmonicCosine:
+        temp = cos_theta - parameters[1];
+        temp2 = temp * temp;
+        U = 0.5 * parameters[0] * temp2;
+        DF = parameters[0] * temp;
+        DDF = parameters[0];
+        break;
+      case BendType::Tafipolsky:
+        U = 0.5 * parameters[0] * (1.0 + std::cos(theta)) * (1.0 + std::cos(2.0 * theta));
+        DF = parameters[0] * cos_theta * (2.0 + 3.0 * cos_theta);
+        DDF = 2.0 * parameters[0] * (1.0 + 3.0 * cos_theta);
+        break;
+      default:
+        std::unreachable();
+    }
   }
 
   geometry.DF = DF;

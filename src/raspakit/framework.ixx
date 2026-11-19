@@ -237,7 +237,7 @@ export struct Framework
    * \param cutOffFrameworkVDW Finalized framework van der Waals cutoff distance.
    */
   void regenerateVanDerWaalsImageList(const ForceField& forceField, const SimulationBox& box,
-                                      double cutOffFrameworkVDW);
+                                      double cutOffFrameworkVDW, std::span<const Atom> currentAtoms = {});
 
   /**
    * Reads type-based intramolecular definitions and expands them over the framework supercell.

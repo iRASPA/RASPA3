@@ -956,7 +956,9 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
             // Strain-strain: prefactor curvature + rigid-site corrections.
             double strainStrain = energyThisWaveVector * (traceTheta * traceTheta - rksq / alpha_squared);
             strainStrain += strainStrainSites;
-            strainStrain += 2.0 * temp * std::norm(rigidPhaseSum);
+            // (the pair term among the live sites, as in the position block above: it is the |C|^2 channel, which
+            // cancels against the one subtracted when intermolecular interactions are left out)
+            if (!omitInterInteractions) strainStrain += 2.0 * temp * std::norm(rigidPhaseSum);
             hessian.addStrainStrain(0, 0, strainStrain);
 
             // Position-strain: -traceTheta * gradient - pair coupling to rigid phases + site terms.
@@ -965,7 +967,9 @@ RunningEnergy Interactions::computeEwaldFourierHessian(
               const std::complex<double> va = dofPhase[a];
               const double gradientProjection = 2.0 * temp * (va.real() * total.imag() - va.imag() * total.real());
               const double rigidPairCoupling =
-                  2.0 * temp * (va.real() * rigidPhaseSum.real() + va.imag() * rigidPhaseSum.imag());
+                  omitInterInteractions
+                      ? 0.0
+                      : 2.0 * temp * (va.real() * rigidPhaseSum.real() + va.imag() * rigidPhaseSum.imag());
               const double value = -traceTheta * gradientProjection - rigidPairCoupling + positionStrainScratch[a];
               if (value != 0.0)
               {

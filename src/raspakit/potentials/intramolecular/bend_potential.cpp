@@ -9,6 +9,7 @@ import randomnumbers;
 import rejection_envelope;
 import double3;
 import units;
+import bend_potential_gradient_hessian_strain;
 
 BendPotential::BendPotential(std::array<std::size_t, 3> identifiers, BendType type,
                              std::vector<double> vector_parameters)
@@ -540,146 +541,13 @@ double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, 
 std::tuple<double, std::array<double3, 3>, double3x3> BendPotential::potentialEnergyGradientStrain(
     const double3 &posA, const double3 &posB, const double3 &posC) const
 {
-  double cos_theta, theta;
-  double temp, temp2;
-  double U, DF;
-  double3 du_da, du_db, du_dc;
-  double3x3 strain_derivative;
-
-  double3 dr_ab = posA - posB;
-  double r_ab = std::sqrt(double3::dot(dr_ab, dr_ab));
-  dr_ab /= r_ab;
-
-  double3 dr_cb = posC - posB;
-  double r_cb = std::sqrt(double3::dot(dr_cb, dr_cb));
-  dr_cb /= r_cb;
-
-  cos_theta = double3::dot(dr_ab, dr_cb);
-  cos_theta = std::clamp(cos_theta, -1.0, 1.0);
-
-  theta = std::acos(cos_theta);
-
-  // a linear geometry (sin theta = 0) leaves dtheta/dcos undefined; the bounded value keeps the product with the
-  // vanishing (theta - theta_0) finite, as the bond-bend and bend-bend terms do
-  const double sin_theta = std::max(1.0e-8, std::sqrt(std::max(0.0, 1.0 - cos_theta * cos_theta)));
-  const double DTDX = -1.0 / sin_theta;
-
-  switch (type)
-  {
-    case BendType::Fixed:
-      U = 0.0;
-      DF = 0.0;
-      break;
-    case BendType::Rigid:
-      U = 0.0;
-      DF = 0.0;
-      break;
-    case BendType::Harmonic:
-      // (1/2)p_0*(theta-p_1)^2
-      // ===============================================
-      // p_0/k_B [K/rad^2]
-      // p_1     [degrees]
-      U = 0.5 * parameters[0] * (theta - parameters[1]) * (theta - parameters[1]);
-      DF = parameters[0] * (theta - parameters[1]) * DTDX;
-      break;
-    case BendType::CoreShell:
-      // (1/2)p_0*(theta-p_1)^2
-      // ===============================================
-      // p_0/k_B [K/rad^2]
-      // p_1     [degrees]
-      U = 0.5 * parameters[0] * (theta - parameters[1]) * (theta - parameters[1]);
-      DF = parameters[0] * (theta - parameters[1]) * DTDX;
-      break;
-    case BendType::Quartic:
-      // (1/2)p_0*(theta-p_1)^2+(1/3)*p_2*(theta-p_1)^3+(1/4)*p_2*(theta-p_1)^4
-      // ======================================================================
-      // p_0/k_B [K/rad^2]
-      // p_1     [degrees]
-      // p_2/k_B [K/rad^3]
-      // p_3/k_B [K/rad^4]
-      temp = theta - parameters[1];
-      temp2 = temp * temp;
-      U = 0.5 * parameters[0] * temp2 + (1.0 / 3.0) * parameters[2] * temp * temp2 +
-          0.25 * parameters[3] * temp2 * temp2;
-      DF = (parameters[0] * temp + parameters[2] * temp2 + parameters[3] * temp * temp2) * DTDX;
-      break;
-    case BendType::CFF_Quartic:
-      // p_0*(theta-p_1)^2+p_2*(theta-p_1)^3+p_3*(theta-p_1)^4
-      // =====================================================
-      // p_0/k_B [K/rad^2]
-      // p_1     [degrees]
-      // p_2/k_B [K/rad^3]
-      // p_3/k_B [K/rad^4]
-      temp = theta - parameters[1];
-      temp2 = temp * temp;
-      U = parameters[0] * temp2 + parameters[2] * temp * temp2 + parameters[3] * temp2 * temp2;
-      DF = (2.0 * parameters[0] * temp + 3.0 * parameters[2] * temp2 + 4.0 * parameters[3] * temp * temp2) * DTDX;
-      break;
-    case BendType::HarmonicCosine:
-      // (1/2)*p_0*(cos(theta)-cos(p_1))^2
-      // ===============================================
-      // p_0/k_B [K]
-      // p_1     [degrees]
-      temp = cos_theta - parameters[1];
-      temp2 = temp * temp;
-      U = 0.5 * parameters[0] * temp2;
-      DF = parameters[0] * temp;
-      break;
-    case BendType::Cosine:
-      // p_0*(1+cos(p_1*theta-p_2))
-      // ===============================================
-      // p_0/k_B [K]
-      // p_1     [-]
-      // p_2     [degrees]
-      temp = parameters[1] * theta - parameters[2];
-      U = parameters[0] * (1.0 + std::cos(temp));
-      DF = -parameters[0] * parameters[1] * std::sin(temp) * DTDX;
-      break;
-    case BendType::Tafipolsky:
-      // 0.5*p_0*(1+cos(theta))*(1+cos(2*theta))
-      // ===============================================
-      // p_0/k_B [K]
-      U = 0.5 * parameters[0] * (1.0 + std::cos(theta)) * (1.0 + std::cos(2.0 * theta));
-      DF = parameters[0] * cos_theta * (2.0 + 3.0 * cos_theta);
-      break;
-    case BendType::MM3:
-    case BendType::MM3_inplane:
-    {
-      // p_0*(theta-p_1)^2(1-0.014*(theta-p_1)+5.6e-5*(theta-p_1)^2-7e-7*(theta-p_1)^3+2.2e-8(theta-p_1)^4)
-      // =================================================================================================
-      // p_0/k_B [mdyne A/rad^2]
-      // p_1     [degrees]
-      temp = (theta - parameters[1]) * Units::RadiansToDegrees;
-      temp2 = temp * temp;
-      U = parameters[0] * temp2 *
-          (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
-      DF = parameters[0] * Units::RadiansToDegrees *
-           (2.0 - (3.0 * 0.014 - (4.0 * 5.6e-5 - (5.0 * 7.0e-7 - 6.0 * 2.2e-8 * temp) * temp) * temp) * temp) *
-           temp * DTDX;
-      break;
-    }
-    default:
-      std::unreachable();
-  }
-
-  // Calculate the components of the derivatives.
-  du_da = DF * (dr_cb - cos_theta * dr_ab) / r_ab;
-  du_dc = DF * (dr_ab - cos_theta * dr_cb) / r_cb;
-  du_db = -(du_da + du_dc);
-
-  strain_derivative.ax = r_ab * dr_ab.x * du_da.x + r_cb * dr_cb.x * du_dc.x;
-  strain_derivative.bx = r_ab * dr_ab.y * du_da.x + r_cb * dr_cb.y * du_dc.x;
-  strain_derivative.cx = r_ab * dr_ab.z * du_da.x + r_cb * dr_cb.z * du_dc.x;
-
-  strain_derivative.ay = r_ab * dr_ab.x * du_da.y + r_cb * dr_cb.x * du_dc.y;
-  strain_derivative.by = r_ab * dr_ab.y * du_da.y + r_cb * dr_cb.y * du_dc.y;
-  strain_derivative.cy = r_ab * dr_ab.z * du_da.y + r_cb * dr_cb.z * du_dc.y;
-
-  strain_derivative.az = r_ab * dr_ab.x * du_da.z + r_cb * dr_cb.x * du_dc.z;
-  strain_derivative.bz = r_ab * dr_ab.y * du_da.z + r_cb * dr_cb.y * du_dc.z;
-  strain_derivative.cz = r_ab * dr_ab.z * du_da.z + r_cb * dr_cb.z * du_dc.z;
-
-  return {U, {du_da, du_db, du_dc}, strain_derivative};
+  // One set of expressions for the energy, the gradient and the strain derivative, with or without the Hessian.
+  // The copy that stood here bounded 1/sin(theta) at 1e8 whatever the form, which for a bend whose minimum is the
+  // linear geometry scaled the gradient down within 1e-8 rad of the line; the shared routine takes the limit
+  // there (see 'bendPotentialEnergyGradientHessianStrain').
+  const auto [energy, gradient, strain_derivative, geometry] =
+      Potentials::Internal::bendPotentialEnergyGradientHessianStrain(type, parameters, posA, posB, posC);
+  return {energy, gradient, strain_derivative};
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BendPotential &b)

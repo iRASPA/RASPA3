@@ -5,6 +5,19 @@ module elastic_tensor;
 import std;
 import symmetric_eigensolver;
 
+namespace
+{
+// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under which
+// 'std::isfinite' is true of everything. (Taken by reference and read as bytes, so that the test is not folded
+// away with it.)
+[[maybe_unused]] bool isFiniteNumber(const double& value)
+{
+  std::uint64_t bits{};
+  std::memcpy(&bits, &value, sizeof(bits));
+  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
+}
+}  // namespace
+
 double& elasticAt(std::array<double, 36>& matrix, std::size_t row, std::size_t column)
 {
   return matrix[row * elasticVoigtSize + column];
@@ -30,7 +43,7 @@ void symmetrizeElasticTensor(std::span<double> matrix, std::size_t size)
 
 ElasticDerivedProperties deriveElasticProperties(const std::array<double, 36>& stiffness, double relativeTolerance)
 {
-  if (!(relativeTolerance > 0.0) || !std::isfinite(relativeTolerance))
+  if (!(relativeTolerance > 0.0) || !isFiniteNumber(relativeTolerance))
     throw std::invalid_argument("Elastic eigenvalue tolerance must be finite and positive");
 
   ElasticDerivedProperties result{};

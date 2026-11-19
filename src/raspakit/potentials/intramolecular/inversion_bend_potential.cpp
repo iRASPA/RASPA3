@@ -136,6 +136,16 @@ std::string InversionBendPotential::print() const
   }
 }
 
+// The out-of-plane angle from its sine and its cosine together. From the cosine alone, which is what it used to be
+// taken from, an angle near nought is resolved only to about 1.5e-8 rad: the gradient of a form written in chi came
+// in steps of that size about a planar centre and was nought within one of them, while the Hessian, which takes
+// the angle from its sine, was exact.
+static double accurateChi(double e, double c, double rrab)
+{
+  const double height = std::fabs(e) / std::sqrt(c);
+  return std::atan2(height, std::sqrt(std::max(0.0, rrab * rrab - height * height)));
+}
+
 double InversionBendPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC,
                                                const double3 &posD) const
 {
@@ -186,7 +196,7 @@ double InversionBendPotential::calculateEnergy(const double3 &posA, const double
       // ===============================================
       // p_0/k_B [K]
       // p_1     [degrees]
-      chi = std::acos(cos_chi);
+      chi = accurateChi(e, c, rrab);
       temp = chi - parameters[1];
       return 0.5 * parameters[0] * temp * temp;
     case InversionBendType::HarmonicCosine:
@@ -209,7 +219,7 @@ double InversionBendPotential::calculateEnergy(const double3 &posA, const double
       // =================================================================================================
       // p_0/k_B [mdyne A/rad^2]
       // p_1     [degrees]
-      chi = std::acos(cos_chi);
+      chi = accurateChi(e, c, rrab);
       temp = (chi - parameters[1]) * Units::RadiansToDegrees;
       temp2 = temp * temp;
       return parameters[0] * temp2 *
@@ -266,26 +276,26 @@ std::tuple<double, std::array<double3, 4>, double3x3> InversionBendPotential::po
   {
     case InversionBendType::Harmonic:
     case InversionBendType::Harmonic2:
-      chi = std::acos(cos_chi);
+      chi = accurateChi(e, c, rrab);
       temp = chi - parameters[1];
       U = 0.5 * parameters[0] * temp * temp;
       dedcos = -std::copysign(1.0, e) * (parameters[0] * temp / std::sqrt(c * (rab2 - e * e / c)));
       break;
     case InversionBendType::HarmonicCosine:
     case InversionBendType::HarmonicCosine2:
-      chi = std::acos(cos_chi);
+      chi = accurateChi(e, c, rrab);
       temp = cos_chi - parameters[1];
       U = 0.5 * parameters[0] * temp * temp;
       dedcos = std::copysign(1.0, e) * parameters[0] * temp * std::sin(chi) / std::sqrt(c * (rab2 - e * e / c));
       break;
     case InversionBendType::Planar:
     case InversionBendType::Planar2:
-      chi = std::acos(cos_chi);
+      chi = accurateChi(e, c, rrab);
       U = parameters[0] * (1.0 - cos_chi);
       dedcos = -std::copysign(1.0, e) * parameters[0] * std::sin(chi) / std::sqrt(c * (rab2 - e * e / c));
       break;
     case InversionBendType::MM3:
-      chi = std::acos(cos_chi);
+      chi = accurateChi(e, c, rrab);
       temp = (chi - parameters[1]) * Units::RadiansToDegrees;
       temp2 = temp * temp;
       U = parameters[0] * temp2 *
