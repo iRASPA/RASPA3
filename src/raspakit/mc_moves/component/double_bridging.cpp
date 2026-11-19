@@ -60,6 +60,15 @@ std::optional<RunningEnergy> MC_Moves::doubleBridgingMove(RandomNumber& random, 
   const double maximumDistance = topology.maximumBridgeDistance;
   const SimulationBox& box = system.simulationBox;
 
+  // The partner's tail is joined through the lattice vector of the minimum image of the two anchors, and the
+  // reverse move finds the same vector only while one image of a partner is within reach: in a box narrower
+  // than twice the bridge distance it could take another image, and the two selection probabilities were then
+  // not those of one pair of moves. The move is not performed there.
+  {
+    const double3 widths = box.perpendicularWidths();
+    if (2.0 * maximumDistance > std::min({widths.x, widths.y, widths.z})) return std::nullopt;
+  }
+
   auto backbone = [&](std::span<const Atom> atoms, std::size_t unit)
   { return atoms[units[unit].backboneAtom].position; };
 

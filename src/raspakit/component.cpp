@@ -1850,6 +1850,18 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
   {
     std::print(stream, "    Ideal gas Rosenbluth weight:  {:10.8f}\n", idealGasRosenbluthWeight.value());
   }
+  else if (!rigid && atoms.size() > 1uz &&
+           std::ranges::any_of(std::array{Move::Types::SwapCBMC, Move::Types::SwapMultiTrialCBMC,
+                                          Move::Types::SwapCBCFCMC, Move::Types::IdentityChangeCBMC,
+                                          Move::Types::PairSwapCBMC, Move::Types::PairSwapCBCFCMC,
+                                          Move::Types::GroupSwapCBMC, Move::Types::GroupSwapCBCFCMC},
+                               [&](Move::Types move) { return mc_moves_probabilities.getProbability(move) > 0.0; }))
+  {
+    // not given, it is taken as one: said here, since the loading then belongs to another fugacity
+    std::print(stream, "    Ideal gas Rosenbluth weight:  1 (not given: the configurational-bias insertions of this\n"
+                       "                                  flexible molecule sample the fugacity divided by its\n"
+                       "                                  ideal-gas Rosenbluth weight; set 'IdealGasRosenbluthWeight')\n");
+  }
   if (crossSection.has_value())
   {
     std::print(stream, "    Cross-section (BET):          {:10.4f} [Å²]\n", crossSection.value());
@@ -3310,6 +3322,76 @@ std::vector<std::vector<std::size_t>> Component::readRepeatUnits(
                          std::views::transform([](const CoulombPotential& p) { return p.identifiers; }),
                      "Coulomb pair", true);
   // (the excluded pairs follow from the connectivity and the rigid fragments, checked above and below)
+
+  // The terms that map onto each other under the shift carry the same potential. A term is given by a pattern of
+  // pseudo-atom types or by the indices of its atoms, and by index one unit can be given another force constant
+  // or another functional form than the next: the move relabels the chain by one unit and takes the bonded
+  // energy among the surviving units as unchanged, so the running energy drifted and the acceptance was that of
+  // another molecule. 'symmetric': the parameters do not depend on the order the atoms are named in; for the
+  // others a term named in the opposite order to its shifted counterpart is left to the reader of the terms.
+  auto checkPeriodicParameters = [&](const auto& potentials, std::string_view name, bool symmetric, auto&& signature)
+  {
+    std::map<std::vector<std::size_t>, std::pair<std::vector<double>, bool>> lowTerms;
+    std::map<std::vector<std::size_t>, std::pair<std::vector<double>, bool>> shiftedTerms;
+    for (const auto& potential : potentials)
+    {
+      const std::vector<std::size_t> ids(potential.identifiers.begin(), potential.identifiers.end());
+      const std::vector<double> parameters = signature(potential);
+      if (std::ranges::all_of(ids, [&](std::size_t atom) { return unitOf[atom] <= numberOfUnits - 2; }))
+      {
+        const std::vector<std::size_t> key = normalized(ids);
+        lowTerms[key] = {parameters, key != ids};
+      }
+      if (std::ranges::all_of(ids, [&](std::size_t atom) { return unitOf[atom] >= 1; }))
+      {
+        std::vector<std::size_t> shifted = ids;
+        std::transform(ids.begin(), ids.end(), shifted.begin(), shiftDown);
+        const std::vector<std::size_t> key = normalized(shifted);
+        shiftedTerms[key] = {parameters, key != shifted};
+      }
+    }
+    for (const auto& [key, low] : lowTerms)
+    {
+      const auto found = shiftedTerms.find(key);
+      if (found == shiftedTerms.end()) continue;  // the topology itself was checked above
+      if (!symmetric && low.second != found->second.second) continue;
+      if (low.first != found->second.first)
+      {
+        std::string atoms{};
+        for (std::size_t atom : key) atoms += std::format(" {}", atom);
+        throw std::runtime_error(std::format(
+            "[Component reader]: 'RepeatUnits' are not shift-periodic: the {} term of atoms{} has another type or "
+            "other parameters than the same term one unit on\n",
+            name, atoms));
+      }
+    }
+  };
+  auto typeAndParameters = [](const auto& potential)
+  {
+    std::vector<double> result{static_cast<double>(std::to_underlying(potential.type))};
+    result.insert(result.end(), potential.parameters.begin(), potential.parameters.end());
+    return result;
+  };
+  checkPeriodicParameters(intraMolecularPotentials.bonds, "bond", true, typeAndParameters);
+  checkPeriodicParameters(intraMolecularPotentials.ureyBradleys, "Urey-Bradley", true, typeAndParameters);
+  checkPeriodicParameters(intraMolecularPotentials.bends, "bend", true, typeAndParameters);
+  checkPeriodicParameters(intraMolecularPotentials.torsions, "torsion", true, typeAndParameters);
+  checkPeriodicParameters(intraMolecularPotentials.inversionBends, "inversion-bend", false, typeAndParameters);
+  checkPeriodicParameters(intraMolecularPotentials.improperTorsions, "improper-torsion", false, typeAndParameters);
+  checkPeriodicParameters(intraMolecularPotentials.bondBonds, "bond-bond", false, typeAndParameters);
+  checkPeriodicParameters(intraMolecularPotentials.bondBends, "bond-bend", false, typeAndParameters);
+  checkPeriodicParameters(intraMolecularPotentials.bondTorsions, "bond-torsion", false, typeAndParameters);
+  checkPeriodicParameters(intraMolecularPotentials.bendBends, "bend-bend", false, typeAndParameters);
+  checkPeriodicParameters(intraMolecularPotentials.bendTorsions, "bend-torsion", false, typeAndParameters);
+  checkPeriodicParameters(intraMolecularPotentials.vanDerWaals, "Van der Waals pair", true,
+                          [](const VanDerWaalsPotential& potential)
+                          { return std::vector<double>{potential.scaling, potential.pair14 ? 1.0 : 0.0}; });
+  checkPeriodicParameters(intraMolecularPotentials.coulombs, "Coulomb pair", true,
+                          [](const CoulombPotential& potential)
+                          {
+                            return std::vector<double>{static_cast<double>(std::to_underlying(potential.type)),
+                                                       potential.scaling};
+                          });
 
   // Rigid fragments must lie inside a single repeat unit, map onto rigid fragments under the shift,
   // and be congruent to their shifted counterparts (the relabeled body must fit the slot's rigid

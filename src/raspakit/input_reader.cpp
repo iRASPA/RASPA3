@@ -5532,6 +5532,29 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       throw std::runtime_error(std::format(
           "[Input reader]: system {}: 'ParallelTemperingSwapProbability' needs a second system to swap with\n", i));
     }
+    // Boxes of different size are exchanged between systems that sample their volume. A system at constant
+    // volume has no pressure in its ensemble and keeps its box: exchanged with a neighbour of another size the
+    // boxes wandered over the systems, weighted with an input pressure that plays no part in them. (The
+    // parallel-tempering drivers have their own swaps; this is the swap move of a Monte Carlo run.)
+    if (systems[i].mc_moves_probabilities.getProbability(Move::Types::ParallelTempering) > 0.0 &&
+        simulationType == SimulationType::MonteCarlo && !systems[i].framework.has_value())
+    {
+      auto samplesVolume = [](const System& system)
+      {
+        return system.mc_moves_probabilities.getProbability(Move::Types::VolumeChange) > 0.0 ||
+               system.mc_moves_probabilities.getProbability(Move::Types::AnisotropicVolumeChange) > 0.0;
+      };
+      for (std::size_t j : {i - 1uz, i + 1uz})
+      {
+        if (j >= systems.size()) continue;
+        if (systems[i].simulationBox.cell == systems[j].simulationBox.cell) continue;
+        if (samplesVolume(systems[i]) && samplesVolume(systems[j])) continue;
+        throw std::runtime_error(std::format(
+            "[Input reader]: systems {} and {} have boxes of different size and are not both given a volume move: "
+            "'ParallelTemperingSwapProbability' would exchange the boxes of systems at constant volume\n",
+            i, j));
+      }
+    }
     if (systems[i].mc_moves_probabilities.getProbability(Move::Types::ParallelTempering) > 0.0 &&
         systems[i].framework.has_value() && systems[i].framework->hasMobileAtoms())
     {

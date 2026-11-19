@@ -606,6 +606,37 @@ TEST(MC_U0_SANITY, repeat_units_require_shift_periodic_stereocentres)
                std::runtime_error);
 }
 
+// The terms that map onto each other under the one-unit shift carry the same potential. Given by the indices of
+// its atoms, a bond of one unit can have another force constant than the same bond of the next: the topology is
+// shift-periodic and the chain is not, and the reptation move, which relabels the chain by one unit and takes the
+// bonded energy among the surviving units as unchanged, was accepted for it.
+TEST(MC_U0_SANITY, repeat_units_with_other_parameters_are_not_shift_periodic)
+{
+  const ForceField forceField = makeZeroForceField();
+  auto withBonds = [](std::string_view secondUnitForceConstant)
+  {
+    std::string json(kPeriodicHexaneJson);
+    const std::string_view typed = R"([["CH2", "CH2"], "HARMONIC", [96500.0, 1.54]])";
+    const std::size_t at = json.find(typed);
+    EXPECT_NE(at, std::string::npos);
+    const std::string indexed = std::format(
+        R"([[0, 1], "HARMONIC", [96500.0, 1.54]], [[1, 2], "HARMONIC", [96500.0, 1.54]], )"
+        R"([[2, 3], "HARMONIC", [96500.0, 1.54]], [[3, 4], "HARMONIC", [{}, 1.54]], )"
+        R"([[4, 5], "HARMONIC", [96500.0, 1.54]])",
+        secondUnitForceConstant);
+    json.replace(at, typed.size(), indexed);
+    return json;
+  };
+
+  TemporaryFile same("indexed-hexane-same.json", withBonds("96500.0"));
+  EXPECT_NO_THROW(Component(Component::Type::Adsorbate, 0, forceField, "indexed-hexane-same", same.stemPath().string(),
+                            5, 21, MCMoveProbabilities(), std::nullopt, false));
+  TemporaryFile other("indexed-hexane-other.json", withBonds("48250.0"));
+  EXPECT_THROW(Component(Component::Type::Adsorbate, 0, forceField, "indexed-hexane-other", other.stemPath().string(),
+                         5, 21, MCMoveProbabilities(), std::nullopt, false),
+               std::runtime_error);
+}
+
 TEST(MC_U0_SANITY, reptation_accepts_all_and_samples_ideal_distributions)
 {
   const ForceField forceField = makeZeroForceField();
