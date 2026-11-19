@@ -943,3 +943,71 @@ TEST(phonon_dispersion, gamma_point_with_ewald_matches_normal_modes_charged_flex
     EXPECT_NEAR(dispersion[0].eigenvalues[mode], modes.eigenvalues[mode], 1e-6 * scale + 1e-10) << "mode=" << mode;
   }
 }
+
+
+namespace
+{
+// The ions of 'makeChargedIonSystem' in a cell of 16 Å, repeated 'copies' times along x.
+System makeChargedIonCrystal(std::size_t copies)
+{
+  ForceField forceField({{"P", false, 15.0, 0.8, 0.0, 8, false}, {"N", false, 14.0, -0.4, 0.0, 8, false}},
+                        {{60.0, 3.0}, {40.0, 3.2}}, ForceField::MixingRule::Lorentz_Berthelot, 7.5, 7.5, 7.5, true,
+                        false, true);
+  const double edge = 16.0;
+  const SimulationBox box(edge * static_cast<double>(copies), edge, edge);
+
+  Component cation(forceField, "cation", 100.0, 1e6, 0.2,
+                   {Atom({0.0, 0.0, 0.0}, 0.8, 1.0, 0, 0, 0, false, false)}, ConnectivityTable(1),
+                   Potentials::IntraMolecularPotentials{}, 0, 0);
+  cation.rigid = false;
+  Component anion(forceField, "anion", 100.0, 1e6, 0.2,
+                  {Atom({0.0, 0.0, 0.0}, -0.4, 1.0, 0, 1, 0, false, false)}, ConnectivityTable(1),
+                  Potentials::IntraMolecularPotentials{}, 0, 0);
+  anion.rigid = false;
+
+  System system(forceField, box, false, 300.0, 1e4, 1.0, {}, {cation, anion}, {}, {copies, 2 * copies}, 5);
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  for (std::size_t copy = 0; copy < copies; ++copy)
+  {
+    const double3 shift(edge * static_cast<double>(copy), 0.0, 0.0);
+    atoms[copy].position = double3(5.4, 7.2, 8.7) + shift;
+    atoms[copies + 2 * copy].position = double3(9.1, 6.3, 5.8) + shift;
+    atoms[copies + 2 * copy + 1].position = double3(7.6, 10.0, 9.2) + shift;
+  }
+  return system;
+}
+}  // namespace
+
+// A cell doubled along x has at Gamma the modes of the single cell at k = 0 and at k = (1/2, 0, 0) together. With
+// Ewald charges that holds only with the G = 0 term of the reciprocal sum, which off Gamma is at q = k and is not
+// nought: it was skipped along with the self term of G = 0, and the single cell at the zone boundary had modes the
+// doubled cell does not.
+TEST(phonon_dispersion, a_doubled_cell_with_ewald_folds_the_zone_boundary_onto_gamma)
+{
+  System single = makeChargedIonCrystal(1);
+  System doubled = makeChargedIonCrystal(2);
+  // the same splitting of the sum in both cells
+  ASSERT_NEAR(single.forceField.EwaldAlpha, doubled.forceField.EwaldAlpha, 1e-12);
+
+  const std::vector<PhononModes> primitive =
+      computePhononDispersion(single, std::array<double3, 2>{double3(0.0, 0.0, 0.0), double3(0.5, 0.0, 0.0)});
+  const std::vector<PhononModes> folded = computePhononDispersion(doubled, std::array<double3, 1>{double3(0, 0, 0)});
+  ASSERT_EQ(primitive.size(), 2u);
+  ASSERT_EQ(folded.size(), 1u);
+  ASSERT_EQ(folded[0].eigenvalues.size(), 18u);
+
+  std::vector<double> together = primitive[0].eigenvalues;
+  together.insert(together.end(), primitive[1].eigenvalues.begin(), primitive[1].eigenvalues.end());
+  std::ranges::sort(together);
+  std::vector<double> reference = folded[0].eigenvalues;
+  std::ranges::sort(reference);
+  ASSERT_EQ(together.size(), reference.size());
+
+  double scale = 0.0;
+  for (const double value : reference) scale = std::max(scale, std::abs(value));
+  ASSERT_GT(scale, 0.0);
+  for (std::size_t mode = 0; mode < reference.size(); ++mode)
+  {
+    EXPECT_NEAR(together[mode], reference[mode], 1e-4 * scale) << "mode=" << mode;
+  }
+}

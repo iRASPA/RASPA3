@@ -112,7 +112,13 @@ RunningEnergy Interactions::computeFrameworkMoleculeHessian(
   const bool useCharge = forceField.useCharge;
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-  const bool flexibleFramework = !mixed && layout.numberOfFrameworkAtoms() == frameworkAtoms.size();
+  // Flexible when the framework atoms have coordinates of their own in the layout, and not when the layout merely
+  // counts them: the driver hands over the count of a rigid framework too, whose atoms have none, and every
+  // host-guest pair was then sent to the flexible scatter, which found no framework coordinate and dropped it.
+  // The minimizer stepped a rigid framework's guests on a Hessian without their host.
+  const bool flexibleFramework = !mixed && !frameworkAtoms.empty() &&
+                                 layout.numberOfFrameworkAtoms() == frameworkAtoms.size() &&
+                                 layout.frameworkAtomDof(0, MinimizationDofAxis::X).has_value();
 
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {

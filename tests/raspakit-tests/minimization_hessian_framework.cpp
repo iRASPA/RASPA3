@@ -770,3 +770,51 @@ TEST(minimization_hessian_framework, single_framework_atom_rigid_co2_strain_step
     }
   }
 }
+
+
+// The driver builds its layout with the count of the framework's atoms whatever the framework is. For a rigid one
+// they have no coordinates in it, and the host-guest Hessian is that of the layout the tests above use, with no
+// framework atoms: it used to be taken for a flexible framework by the count alone, every pair was sent to the
+// flexible scatter, which found no framework coordinate and dropped it, and the block came back all nought.
+TEST(minimization_hessian_framework, rigid_framework_counted_in_the_layout_keeps_its_host_guest_hessian)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
+  forceField.useEwaldRealSpaceTable = false;
+  Framework framework = Framework::makeITQ29(forceField, int3(2, 2, 2));
+  Component co2 = Component::makeCO2(forceField, 0, true);
+
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {co2}, {}, {1}, 5);
+  ASSERT_TRUE(system.framework->rigid);
+
+  system.moleculeData[0].centerOfMassPosition = double3(5.93355, 7.93355, 5.93355);
+  system.moleculeData[0].orientation =
+      simd_quatd::fromAxisAngle(0.4, double3(1.0, -2.0, 1.5) / std::sqrt(7.25)).normalized();
+  setRigidMoleculePositions(system, 0);
+
+  const MinimizationDofLayout plain = buildMinimizationDofLayout(system.moleculeData, system.components);
+  const MinimizationDofLayout asTheDriverBuildsIt = buildMinimizationDofLayout(
+      system.moleculeData, system.components, system.spanOfFrameworkAtoms().size(), 0, &*system.framework);
+  ASSERT_EQ(plain.numDofs(), 6u);
+  ASSERT_EQ(asTheDriverBuildsIt.numDofs(), 6u);
+
+  GeneralizedHessian expected(6, 0);
+  Interactions::computeFrameworkMoleculeHessian(system.forceField, system.simulationBox, system.moleculeData,
+                                                system.components, system.spanOfFrameworkAtoms(),
+                                                system.spanOfMoleculeAtoms(), plain, expected);
+  GeneralizedHessian found(6, 0);
+  Interactions::computeFrameworkMoleculeHessian(system.forceField, system.simulationBox, system.moleculeData,
+                                                system.components, system.spanOfFrameworkAtoms(),
+                                                system.spanOfMoleculeAtoms(), asTheDriverBuildsIt, found);
+
+  double largest = 0.0;
+  for (std::size_t i = 0; i < 6; ++i)
+  {
+    for (std::size_t j = 0; j < 6; ++j)
+    {
+      largest = std::max(largest, std::abs(expected(i, j)));
+      EXPECT_DOUBLE_EQ(found(i, j), expected(i, j)) << i << ", " << j;
+    }
+  }
+  EXPECT_GT(largest, 0.0);
+}

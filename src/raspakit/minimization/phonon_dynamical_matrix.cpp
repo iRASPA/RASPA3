@@ -237,7 +237,7 @@ std::vector<std::complex<double>> ewaldReciprocalCartesianMatrix(const System& s
       for (int kz = -kzMax; kz <= kzMax; ++kz)
       {
         const std::size_t integerSquared = static_cast<std::size_t>(kx * kx + ky * ky + kz * kz);
-        if (integerSquared == 0uz || integerSquared > reciprocalIntegerCutOffSquared)
+        if (integerSquared > reciprocalIntegerCutOffSquared)
         {
           continue;
         }
@@ -246,8 +246,11 @@ std::vector<std::complex<double>> ewaldReciprocalCartesianMatrix(const System& s
                                          static_cast<double>(kz) * cStar);
 
         // --- Self term (uses G at k = 0); its G-set matches the Fourier sum, keeping the sum rule exact.
+        // (G = 0 has no self term. It does have a pair term off Gamma, where q = k is no longer nought: the
+        // macroscopic-field term, which is what splits the longitudinal from the transverse optical branches.
+        // Skipped with the self term, as it was, D(k) of a charged system was without it at every k.)
         const double gSquared = double3::dot(gVector, gVector);
-        if (gSquared < reciprocalCutOffSquared)
+        if (integerSquared != 0uz && gSquared < reciprocalCutOffSquared)
         {
           const double weight = coefficientPrefactor * std::exp(-0.25 * gSquared / alphaSquared) / gSquared;
           std::complex<double> structureFactor(0.0, 0.0);
