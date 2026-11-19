@@ -509,6 +509,8 @@ struct SamplingDevice
     if (program != nullptr) clReleaseProgram(program);
   }
 
+  std::mutex busy;
+
   SamplingDevice(const SamplingDevice &) = delete;
   SamplingDevice &operator=(const SamplingDevice &) = delete;
 
@@ -693,6 +695,8 @@ SamplingBackend samplingBackendOpenCL()
     cl_int numberOfAtoms = static_cast<cl_int>(atoms.size());
     cl_int numberOfCases = static_cast<cl_int>(staged.size());
 
+    // one set of kernels, whose arguments are set call by call: one call at a time, from here to its answer
+    const std::lock_guard<std::mutex> oneAtATime(gpu->busy);
     cl_int err = clSetKernelArg(gpu->clearances, 0, sizeof(cl_mem), &atomsBuffer);
     err |= clSetKernelArg(gpu->clearances, 1, sizeof(cl_mem), &pointsBuffer);
     err |= clSetKernelArg(gpu->clearances, 2, sizeof(cl_mem), &output);
@@ -736,6 +740,8 @@ SamplingBackend samplingBackendOpenCL()
     cl_int numberOfAtoms = static_cast<cl_int>(atoms.size());
     cl_int numberOfCases = static_cast<cl_int>(stagedOrigins.size());
 
+    // one set of kernels, whose arguments are set call by call: one call at a time, from here to its answer
+    const std::lock_guard<std::mutex> oneAtATime(gpu->busy);
     cl_int err = clSetKernelArg(gpu->straightWays, 0, sizeof(cl_mem), &atomsBuffer);
     err |= clSetKernelArg(gpu->straightWays, 1, sizeof(cl_mem), &originsBuffer);
     err |= clSetKernelArg(gpu->straightWays, 2, sizeof(cl_mem), &displacementsBuffer);
@@ -800,6 +806,8 @@ SamplingBackend samplingBackendOpenCL()
     cl_float shrink = static_cast<cl_float>(
         steps > 0 ? std::pow(finalStepFraction, 1.0 / static_cast<double>(steps)) : 1.0);
 
+    // one set of kernels, whose arguments are set call by call: one call at a time, from here to its answer
+    const std::lock_guard<std::mutex> oneAtATime(gpu->busy);
     cl_int err = clSetKernelArg(gpu->walksUphill, 0, sizeof(cl_mem), &atomsBuffer);
     err |= clSetKernelArg(gpu->walksUphill, 1, sizeof(cl_mem), &startsBuffer);
     err |= clSetKernelArg(gpu->walksUphill, 2, sizeof(cl_mem), &seedsBuffer);
@@ -860,6 +868,8 @@ SamplingBackend samplingBackendOpenCL()
     cl_float bendShrink =
         static_cast<cl_float>(std::pow(1.0e-3, 1.0 / static_cast<double>(samplingRefinementSteps)));
 
+    // one set of kernels, whose arguments are set call by call: one call at a time, from here to its answer
+    const std::lock_guard<std::mutex> oneAtATime(gpu->busy);
     cl_int err = clSetKernelArg(gpu->widestWays, 0, sizeof(cl_mem), &atomsBuffer);
     err |= clSetKernelArg(gpu->widestWays, 1, sizeof(cl_mem), &originsBuffer);
     err |= clSetKernelArg(gpu->widestWays, 2, sizeof(cl_mem), &displacementsBuffer);

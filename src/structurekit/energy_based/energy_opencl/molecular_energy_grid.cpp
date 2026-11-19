@@ -180,7 +180,7 @@ MolecularEnergyGrid MolecularEnergyGridOpenCL::compute(const PairInteractions &i
   if (err != CL_SUCCESS)
   {
     std::size_t length;
-    char buffer[2048];
+    char buffer[2048] = {};  // a log too long for it is not written at all, and the text read was whatever lay there
     clGetProgramBuildInfo(program, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &length);
     throw std::runtime_error(std::format("MolecularEnergyGridOpenCL: OpenCL failed to build program at {} (error: {})\n",
                                          __LINE__, std::string(buffer)));

@@ -40,7 +40,7 @@ BanVlugtPoreSizeDistribution::BanVlugtPoreSizeDistribution(uint3 grid_size):
     if (err != CL_SUCCESS)
     {
       std::size_t len;
-      char buffer[2048];
+      char buffer[2048] = {};  // a log too long for it is not written at all, and the text read was whatever lay there
       clGetProgramBuildInfo(PSDProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
       std::string message = std::format("Pore size distribution (Ban, Vlugt): OpenCL Failed to build program at {} (line {} error: {})\n", __FILE__, __LINE__, std::string(buffer));
       throw std::runtime_error(message);

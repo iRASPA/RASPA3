@@ -317,7 +317,7 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
   {
     double3 s = unitCell.inverseCell * atom;
     network.atomPositionsFractional.push_back(
-        double3(s.x - std::floor(s.x), s.y - std::floor(s.y), s.z - std::floor(s.z)));
+        double3::fract(s));
   }
 
   network.nodes.resize(numberOfNodes);
@@ -534,7 +534,8 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
         const VoronoiNode &pocket = network.nodes[kept];
         double3 dr =
             unitCell.applyPeriodicBoundaryConditions(candidate.maximalPosition - pocket.maximalPosition);
-        if (double3::dot(dr, dr) < pocket.maximalRadius * pocket.maximalRadius)
+        // (lengths and not their squares: with no atoms the room is the largest double, and its square none)
+        if (dr.length() < pocket.maximalRadius)
         {
           insideARoomierOne = true;
           break;
@@ -560,7 +561,7 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
   for (std::size_t node : pocketOf)
   {
     double3 s = unitCell.inverseCell * network.nodes[node].maximalPosition;
-    double3 wrapped(s.x - std::floor(s.x), s.y - std::floor(s.y), s.z - std::floor(s.z));
+    double3 wrapped = double3::fract(s);
 
     VoronoiNode centre;
     centre.fractional = wrapped;
@@ -739,6 +740,9 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
   // hops, and a piece with no pocket in it was never tried at this range at all.
   //
   // No way is ever invented, every one of them being measured, so this can only ever join and never split.
+  // (one run of seeds through both rounds: begun again from the number of pieces, the second round's ran into
+  // those the first had used and bent its ways the same directions that had failed)
+  std::uint32_t seed = static_cast<std::uint32_t>(numberOfNodes);
   for (std::size_t round = 0; round < 2; ++round)
   {
     ChannelAnalysis components = ChannelAnalysis::compute(network, 0.0);
@@ -770,7 +774,6 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
     };
 
     WayBatch ways(backend, structure, true);
-    std::uint32_t seed = static_cast<std::uint32_t>(numberOfNodes + round * components.pores.size());
 
     const double3x3 &compact = unitCell.obtuseCell;
     const double3x3 &inGivenCells = unitCell.obtuseSteps;  // whole numbers: compact = cell * inGivenCells
@@ -785,12 +788,33 @@ SampledRoadmap SampledRoadmap::build(const SampledStructure &structure, const Sa
 
       if (other != pore)
       {
-        auto [delta, displacement] = nearestImage(origin, network.nodes[to].position);
-        if (double3::dot(displacement, displacement) > pocketLinkDistance * pocketLinkDistance) continue;
+        // The copy of the other piece nearest in Ångström and the ones next to it within reach, as between the
+        // pockets above, and not the nearest alone. Two cavities along a channel are joined through the neck
+        // between them in this cell and through the next neck to the other's copy in the cell beside it, and the
+        // channel is the two ways together: with the nearest alone the first was found, the two became one
+        // piece that ran nowhere, and the second was never sought, a piece being tried after that against its
+        // own repeats only. An open channel went down as a pocket and had a blocking sphere put in it.
+        const auto [nearestDelta, nearestDisplacement] = nearestImage(origin, network.nodes[to].position);
+        for (std::int32_t nz = -1; nz <= 1; ++nz)
+        {
+          for (std::int32_t ny = -1; ny <= 1; ++ny)
+          {
+            for (std::int32_t nx = -1; nx <= 1; ++nx)
+            {
+              const double3 steps(static_cast<double>(nx), static_cast<double>(ny), static_cast<double>(nz));
+              const double3 displacement = nearestDisplacement + compact * steps;
+              if (double3::dot(displacement, displacement) > pocketLinkDistance * pocketLinkDistance) continue;
 
-        ways.add(
-            Candidate{.from = from, .to = to, .delta = delta, .displacement = displacement, .seed = seed++},
-            origin, keepJoin);
+              const double3 cells = inGivenCells * steps;
+              const int3 delta(nearestDelta.x + static_cast<std::int32_t>(std::lround(cells.x)),
+                               nearestDelta.y + static_cast<std::int32_t>(std::lround(cells.y)),
+                               nearestDelta.z + static_cast<std::int32_t>(std::lround(cells.z)));
+              ways.add(
+                  Candidate{.from = from, .to = to, .delta = delta, .displacement = displacement, .seed = seed++},
+                  origin, keepJoin);
+            }
+          }
+        }
         continue;
       }
 

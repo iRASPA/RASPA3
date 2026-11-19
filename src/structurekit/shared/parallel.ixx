@@ -72,8 +72,9 @@ export std::pair<std::size_t, std::size_t> blockOfLane(std::size_t count, std::s
 // hard stretch is left with only its share of it.
 //
 // An exception thrown by `body` comes back out of this call. On one worker it comes out at once and the
-// indices behind it are not reached; on several, each worker carries on with its own and the first exception
-// is rethrown once they have all stopped, there being no way to recall a thread that is already running.
+// indices behind it are not reached; on several, the worker that threw stops there (its scratch is in whatever
+// state the body left it), each of the others carries on with its own, and the first exception is rethrown
+// once they have all stopped, there being no way to recall a thread that is already running.
 export void forEachIndex(std::size_t count, std::size_t workers,
                          const std::function<void(std::size_t worker, std::size_t index)>& body);
 

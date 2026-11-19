@@ -81,7 +81,20 @@ void runLanes(std::size_t lanes, FirstError& error, const std::function<void(std
   };
 
   std::vector<std::future<void>> pending(lanes - 1);
-  for (std::size_t worker = 1; worker < lanes; ++worker) pending[worker - 1] = threadPool().enqueue(guarded, worker);
+  // A lane that could not be queued leaves the ones already queued running, on this frame's `guarded` and on
+  // everything the caller's lane refers to: they are waited for before the failure goes on up and takes those away.
+  try
+  {
+    for (std::size_t worker = 1; worker < lanes; ++worker) pending[worker - 1] = threadPool().enqueue(guarded, worker);
+  }
+  catch (...)
+  {
+    for (std::future<void>& task : pending)
+    {
+      if (task.valid()) task.wait();
+    }
+    throw;
+  }
   guarded(0);
 
   for (std::future<void>& task : pending) task.get();
@@ -136,18 +149,9 @@ void forEachIndex(std::size_t count, std::size_t workers,
   runLanes(lanes, error,
            [&](std::size_t worker)
            {
-             forEachIndexOfLane(count, lanes, worker,
-                                [&](std::size_t index)
-                                {
-                                  try
-                                  {
-                                    body(worker, index);
-                                  }
-                                  catch (...)
-                                  {
-                                    error.capture();
-                                  }
-                                });
+             // (a lane ends at the exception it throws, which `runLanes` keeps: carried on with, its later
+             // indices ran on whatever the body had left half done in that worker's own scratch)
+             forEachIndexOfLane(count, lanes, worker, [&](std::size_t index) { body(worker, index); });
            });
 }
 

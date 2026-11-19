@@ -16,6 +16,22 @@ import surface_curvature;
 import opencl_clearance_grid;
 import grid_connected_components;
 
+namespace
+{
+
+// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under
+// which `std::isfinite` is true of everything and a comparison with infinity is whatever the optimiser makes
+// of it. (Taken by reference and read as bytes: passed by value, the number is one the compiler holds to be
+// finite, and the test was folded away.)
+bool isFiniteNumber(const double &value)
+{
+  std::uint64_t bits{};
+  std::memcpy(&bits, &value, sizeof(bits));
+  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
+}
+
+}  // namespace
+
 
 GridSurfaceArea::GridSurfaceArea() {}
 
@@ -80,7 +96,10 @@ void GridSurfaceArea::run(const PairInteractions &interactions, const Crystal &f
     }
   }
 
-  cube.run(this->probeRadius);
+  // The surface is drawn at the level the points are told apart by below, which is the radius as the field
+  // holds it, in single precision. Drawn at the radius itself, a cube with a corner between the two had a
+  // triangle and no point below the level to give it to, and its area was in the total and in no atom's share.
+  cube.run(static_cast<double>(static_cast<float>(this->probeRadius)));
 
   this->atomSurfaceArea.assign(framework.atoms.size(), 0.0);
 
@@ -115,7 +134,7 @@ void GridSurfaceArea::run(const PairInteractions &interactions, const Crystal &f
     double3 pb = cell * b;
     double3 pc = cell * c;
     double area = 0.5 * double3::cross(pb - pa, pc - pa).length();
-    if (!std::isfinite(area)) continue;
+    if (!isFiniteNumber(area)) continue;
 
     this->totalSurfaceArea += area;
 

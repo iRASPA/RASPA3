@@ -37,7 +37,7 @@ Integration_OpenCL_SurfaceArea::Integration_OpenCL_SurfaceArea()
     if (err != CL_SUCCESS)
     {
       size_t len;
-      char buffer[2048];
+      char buffer[2048] = {};  // a log too long for it is not written at all, and the text read was whatever lay there
       clGetProgramBuildInfo(surfaceAreaProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer,
                             &len);
       std::string message =

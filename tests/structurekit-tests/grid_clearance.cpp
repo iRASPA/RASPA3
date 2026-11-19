@@ -277,3 +277,48 @@ TEST(grid_clearance, the_room_in_a_cell_given_by_leaning_vectors_is_to_the_neare
     EXPECT_LT(worst, 1.0e-4) << name << ": the room is off by " << worst << " Å somewhere";
   }
 }
+
+
+// A cage whose only openings are narrower than the probe is not reached by it. The walls here are atoms of radius
+// one on a square lattice two apart, and between four of them is a hole of radius 0.41: bare void, which joins the
+// inside of the cage to the outside for a point and for nothing of radius one. The void used to be divided by
+// which piece of the bare void held a channel, so the whole inside of the cage was counted as reached.
+TEST(grid_clearance, void_behind_a_window_narrower_than_the_probe_is_not_reached)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+
+  ReportCleanup cleanup;
+  PairInteractions interactions = probeOfRadiusOne();
+
+  const double wide = 20.0;
+  Crystal framework;
+  framework.name = "grid_clearance_test";
+  framework.unitCell = UnitCell(wide, wide, wide);
+  framework.mass = 1.0;
+  for (int i = 0; i < 6; ++i)
+  {
+    for (int j = 0; j < 6; ++j)
+    {
+      for (int k = 0; k < 6; ++k)
+      {
+        const bool onAFace = i == 0 || i == 5 || j == 0 || j == 5 || k == 0 || k == 5;
+        if (!onAFace) continue;
+        const double3 position(4.0 + 2.0 * i, 4.0 + 2.0 * j, 4.0 + 2.0 * k);
+        framework.atoms.push_back(CrystalAtom{position, 0.0, 0});
+        framework.fractionalPositions.push_back(position / wide);
+      }
+    }
+  }
+
+  ClearanceGrid grid = ClearanceGrid::compute(interactions, framework, uint3(40, 40, 40));
+  // the middle of a window is void, and so is the middle of the cage, with room for the probe
+  ASSERT_GE(grid.clearance[grid.voxelIndex(10, 10, 8)], 0.0f);
+  ASSERT_GT(grid.clearance[grid.voxelIndex(18, 18, 18)], 1.0f);
+
+  GridPoreSizeDistribution distribution;
+  distribution.run(interactions, framework, "X", grid, 20.0, 10uz);
+  // the inside of the cage is some 6% of the cell
+  EXPECT_GT(distribution.voidFraction - distribution.accessibleVoidFraction, 0.03);
+  EXPECT_GT(distribution.accessibleVoidFraction, 0.5);
+}

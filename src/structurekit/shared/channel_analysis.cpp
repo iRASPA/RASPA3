@@ -19,6 +19,15 @@ int latticeVectorRank(const std::vector<int3>& vectors)
     return vector{u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]};
   };
   auto nonZero = [](const vector& u) { return u[0] != 0 || u[1] != 0 || u[2] != 0; };
+  // A direction is what matters and not its length, so each is brought down to its lowest terms: left as they
+  // came, the normal grew as the square of the entries and its product with a third as their cube, past what
+  // sixty-four bits hold for translations of a million cells or so, and three independent ones counted as two.
+  auto reduced = [](vector u) {
+    const std::int64_t divisor = std::gcd(std::gcd(u[0], u[1]), u[2]);
+    if (divisor > 1)
+      for (std::int64_t& entry : u) entry /= divisor;
+    return u;
+  };
 
   vector along{}, normal{};
   int rank = 0;
@@ -29,19 +38,20 @@ int latticeVectorRank(const std::vector<int3>& vectors)
 
     if (rank == 0)
     {
-      along = row;
+      along = reduced(row);
       rank = 1;
     }
     else if (rank == 1)
     {
-      vector off = cross(along, row);
+      vector off = cross(along, reduced(row));
       if (nonZero(off))
       {
-        normal = off;
+        normal = reduced(off);
         rank = 2;
       }
     }
-    else if (normal[0] * row[0] + normal[1] * row[1] + normal[2] * row[2] != 0)
+    else if (static_cast<__int128>(normal[0]) * row[0] + static_cast<__int128>(normal[1]) * row[1] +
+             static_cast<__int128>(normal[2]) * row[2] != 0)
     {
       return 3;
     }

@@ -153,6 +153,12 @@ GridPercolation sweepPercolation(uint3 gridSize, std::span<const float> openness
   const std::int32_t nx = static_cast<std::int32_t>(gridSize.x);
   const std::int32_t ny = static_cast<std::int32_t>(gridSize.y);
   const std::int32_t nz = static_cast<std::int32_t>(gridSize.z);
+  // a voxel is named by a 32-bit number throughout, and its strides are worked out in one
+  if (openness.size() > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+  {
+    throw std::runtime_error(std::format("sweepPercolation: a grid of {} voxels is more than a 32-bit index can name ({})\n",
+                                         openness.size(), std::numeric_limits<std::int32_t>::max()));
+  }
   const std::size_t numberOfVoxels = openness.size();
   if (numberOfVoxels == 0) return result;
 

@@ -21,14 +21,15 @@ bool hasRightAngles(const UnitCell &unitCell)
          std::fabs(unitCell.angleGamma - rightAngle) < angleTolerance;
 }
 
-// Whether the cell is the matrix with three positive lengths down its diagonal, to the tolerance the angles
-// are held to, which is what the quick form of the minimum image convention takes it for.
+// Whether the cell is the matrix with three positive lengths down its diagonal and nothing off it, which is
+// what the quick form of the minimum image convention takes it for. Nothing, and not nearly nothing: that form
+// rounds each component against the diagonal alone, so a cell a hundred-thousandth of its length off the axes
+// had images that were not the shortest near a face, and far along one vector came back a whole cell vector
+// out along another. A cell that is anything off its diagonal takes the reduction that is exact for any shape.
 bool liesAlongTheAxes(const double3x3 &cell)
 {
   if (!(cell.ax > 0.0 && cell.by > 0.0 && cell.cz > 0.0)) return false;
-  return std::fabs(cell.ay) <= angleTolerance * cell.ax && std::fabs(cell.az) <= angleTolerance * cell.ax &&
-         std::fabs(cell.bx) <= angleTolerance * cell.by && std::fabs(cell.bz) <= angleTolerance * cell.by &&
-         std::fabs(cell.cx) <= angleTolerance * cell.cz && std::fabs(cell.cy) <= angleTolerance * cell.cz;
+  return cell.ay == 0.0 && cell.az == 0.0 && cell.bx == 0.0 && cell.bz == 0.0 && cell.cx == 0.0 && cell.cy == 0.0;
 }
 
 // The angle between two cell vectors. The cosine of two vectors along one line comes out a rounding error past

@@ -424,6 +424,9 @@ BruteForcePoreSpikes BruteForcePoreSpikes::compute(const BruteForceStructure &st
 
   const std::size_t numberOfVoxels = voxels.clearance.size();
   if (numberOfVoxels == 0 || voxels.numberOfVoidVoxels == 0) return self;
+  // no atoms, no pore: the room everywhere is the mark for unlimited, which is no diameter to double or to
+  // count voxels across
+  if (structure.size() == 0) return self;
 
   // Seeds: every grid local maximum, plus the roomiest voxels (as for Di).
   std::vector<std::size_t> seeds;

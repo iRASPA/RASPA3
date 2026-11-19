@@ -204,7 +204,7 @@ std::pair<double3, double> BruteForceStructure::walkUphill(const double3 &from, 
 double3 BruteForceStructure::wrappedFractional(const double3 &position) const
 {
   double3 s = this->unitCell.inverseCell * position;
-  return double3(s.x - std::floor(s.x), s.y - std::floor(s.y), s.z - std::floor(s.z));
+  return double3::fract(s);
 }
 
 // The displacement to `position` from atom `j`, the position less the atom, with the fractional difference
@@ -319,10 +319,30 @@ double3 BruteForceStructure::nearestImage(const double3 &from, const double3 &to
 
 double BruteForceStructure::segmentClearance(const double3 &origin, const double3 &displacement) const
 {
-  double3 s = this->unitCell.inverseCell * origin;
-
   double lengthSquared = double3::dot(displacement, displacement);
   double length = std::sqrt(lengthSquared);
+
+  // The images kept are those that can hold what is nearest a point, and the far end of a segment is another
+  // point: an atom of an image left out is at least `covered` from the start, so at least that less the length
+  // from the segment, and the answer found among the images kept stands only while it is no more than that.
+  // It is never more than `spread`, the room at the start being no more, so a segment no longer than `covered`
+  // less `spread` is safe as it is and a longer one is taken in pieces of that length, each from its own start.
+  // Taken whole, a segment of a cell or more read the room along its far end from atoms that were not the
+  // nearest there.
+  const double safeLength = this->covered - this->spread;
+  if (safeLength > 0.0 && length > safeLength)
+  {
+    const std::size_t pieces = static_cast<std::size_t>(std::ceil(length / safeLength));
+    const double3 step = displacement / static_cast<double>(pieces);
+    double least = std::numeric_limits<double>::max();
+    for (std::size_t piece = 0; piece < pieces; ++piece)
+    {
+      least = std::min(least, this->segmentClearance(origin + static_cast<double>(piece) * step, step));
+    }
+    return least;
+  }
+
+  double3 s = this->unitCell.inverseCell * origin;
 
   double smallest = std::numeric_limits<double>::max();
 
@@ -355,40 +375,48 @@ double BruteForceStructure::segmentClearance(const double3 &origin, const double
 std::optional<double> BruteForceStructure::firstExit(const double3 &origin, const double3 &direction,
                                                      double limit) const
 {
-  double3 s = this->unitCell.inverseCell * origin;
-
   // Every atom the ray passes through gives the interval of the ray that is inside it. Sorted and merged,
   // the first gap is the first place the ray is outside everything.
   std::vector<std::pair<double, double>> intervals;
 
-  for (std::size_t j = 0; j < this->positions.size(); ++j)
+  // The images kept hold every atom within `covered` of a point and no further, so the ray is read a stretch
+  // of that length at a time, each from its own start. Read whole from the origin, a ray longer than that
+  // passed through atoms of images that were not kept, and came out of the framework where it was still in it.
+  const double stretch = this->covered > 0.0 ? this->covered : limit;
+  for (double start = 0.0; start < limit; start += stretch)
   {
-    double3 base = this->baseDisplacement(s, j);
-    double reach = base.length() + this->radii[j] + limit;
+    const double3 s = this->unitCell.inverseCell * (origin + start * direction);
+    const double within = std::min(stretch, limit - start);
 
-    for (const Image &image : this->imageList)
+    for (std::size_t j = 0; j < this->positions.size(); ++j)
     {
-      if (image.distance >= reach) break;
+      double3 base = this->baseDisplacement(s, j);
+      double reach = base.length() + this->radii[j] + within;
 
-      // From the atom to the ray's origin, which is the way the displacement already runs. Turned round, as
-      // it was here, it is from the origin to the atom, and the ray laid along it below is the ray sent the
-      // other way: the distance came back for the direction opposite the one asked.
-      double3 toOrigin = base + image.translation;
+      for (const Image &image : this->imageList)
+      {
+        if (image.distance >= reach) break;
 
-      // |toOrigin + t d|² = r², solved for t.
-      double b = double3::dot(toOrigin, direction);
-      double c = double3::dot(toOrigin, toOrigin) - this->radii[j] * this->radii[j];
+        // From the atom to the stretch's start, which is the way the displacement already runs. Turned round,
+        // as it was here, it is from the start to the atom, and the ray laid along it below is the ray sent
+        // the other way: the distance came back for the direction opposite the one asked.
+        double3 toOrigin = base + image.translation;
 
-      double discriminant = b * b - c;
-      if (discriminant <= 0.0) continue;
+        // |toOrigin + t d|² = r², solved for t.
+        double b = double3::dot(toOrigin, direction);
+        double c = double3::dot(toOrigin, toOrigin) - this->radii[j] * this->radii[j];
 
-      double root = std::sqrt(discriminant);
-      double enter = -b - root;
-      double leave = -b + root;
+        double discriminant = b * b - c;
+        if (discriminant <= 0.0) continue;
 
-      if (leave <= 0.0 || enter >= limit) continue;
+        double root = std::sqrt(discriminant);
+        double enter = -b - root;
+        double leave = -b + root;
 
-      intervals.emplace_back(std::max(enter, 0.0), std::min(leave, limit));
+        if (leave <= 0.0 || enter >= within) continue;
+
+        intervals.emplace_back(start + std::max(enter, 0.0), start + std::min(leave, within));
+      }
     }
   }
 

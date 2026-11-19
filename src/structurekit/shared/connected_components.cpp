@@ -15,6 +15,16 @@ int latticeVectorRank(const std::vector<int3> &vectors)
   auto cross = [](const vector &u, const vector &v)
   { return vector{u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]}; };
   auto nonZero = [](const vector &u) { return u[0] != 0 || u[1] != 0 || u[2] != 0; };
+  // A direction is what matters and not its length, so each is brought down to its lowest terms: left as they
+  // came, the normal grew as the square of the entries and its product with a third as their cube, past what
+  // sixty-four bits hold for windings of a million or so, and three independent vectors were counted as two.
+  auto reduced = [](vector u)
+  {
+    const std::int64_t divisor = std::gcd(std::gcd(u[0], u[1]), u[2]);
+    if (divisor > 1)
+      for (std::int64_t &entry : u) entry /= divisor;
+    return u;
+  };
 
   vector along{}, normal{};
   int rank = 0;
@@ -25,19 +35,20 @@ int latticeVectorRank(const std::vector<int3> &vectors)
 
     if (rank == 0)
     {
-      along = row;
+      along = reduced(row);
       rank = 1;
     }
     else if (rank == 1)
     {
-      vector off = cross(along, row);
+      vector off = cross(along, reduced(row));
       if (nonZero(off))
       {
-        normal = off;
+        normal = reduced(off);
         rank = 2;
       }
     }
-    else if (normal[0] * row[0] + normal[1] * row[1] + normal[2] * row[2] != 0)
+    else if (static_cast<__int128>(normal[0]) * row[0] + static_cast<__int128>(normal[1]) * row[1] +
+                 static_cast<__int128>(normal[2]) * row[2] != 0)
     {
       return 3;
     }
@@ -84,6 +95,12 @@ GridComponents GridComponents::compute(uint3 gridSize, std::span<const float> op
   const std::int32_t nz = static_cast<std::int32_t>(gridSize.z);
   const std::size_t numberOfVoxels = openness.size();
 
+  // a voxel is named by a 32-bit number throughout, and its strides are worked out in one
+  if (numberOfVoxels > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+  {
+    throw std::runtime_error(std::format("GridComponents: a grid of {} voxels is more than a 32-bit index can name ({})\n",
+                                         numberOfVoxels, std::numeric_limits<std::int32_t>::max()));
+  }
   components.voxelPore.assign(numberOfVoxels, -1);
   if (numberOfVoxels == 0) return components;
 
@@ -245,8 +262,7 @@ GridComponents GridComponents::compute(uint3 gridSize, std::span<const float> op
     if (poreVoxels > 0)
     {
       double3 centre = centreSum / static_cast<double>(poreVoxels);
-      pore.centroidFractional = double3(centre.x - std::floor(centre.x), centre.y - std::floor(centre.y),
-                                        centre.z - std::floor(centre.z));
+      pore.centroidFractional = double3::fract(centre);
     }
     pore.windingVectors = windings;
     pore.dimensionality = latticeVectorRank(windings);

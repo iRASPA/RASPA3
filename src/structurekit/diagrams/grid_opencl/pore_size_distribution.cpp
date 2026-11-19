@@ -25,6 +25,7 @@ import pair_interactions;
 import units;
 import opencl_clearance_grid;
 import grid_connected_components;
+import structure_parallel;
 import grid_pore_size;
 import grid_pore_size_opencl;
 
@@ -90,29 +91,76 @@ void GridPoreSizeDistribution::run(const PairInteractions &interactions, const C
     this->gpuSeconds = gpuElapsed.count();
   }
 
-  // Which of the void a probe can reach: the pores it fits in are the channels, and the void around them is
-  // reached by anything that gets into the channel, so the void divides by which void component holds a
-  // channel and which does not.
+  // Which of the void a probe can reach: the points its centre can be at in a channel, and the void its own
+  // sphere covers from those. The void was divided before by which piece of the bare void held a channel, the
+  // bare void being followed wherever the clearance is not below nought: a window narrower than the probe is
+  // bare void all the same, and joined a cage sealed behind it to the channel in front, so that the whole of
+  // the sodalite cages of LTA and FAU were counted as reached by a probe that cannot enter them.
   GridComponents probeComponents = GridComponents::compute(grid.gridSize, grid.clearance, this->probeRadius);
-  GridComponents voidComponents = GridComponents::compute(grid.gridSize, grid.clearance, 0.0);
 
-  std::vector<std::uint8_t> voidComponentReached(voidComponents.pores.size(), 0);
+  std::vector<std::uint8_t> channelCentre(numberOfVoxels, 0);
   for (std::size_t v = 0; v < numberOfVoxels; ++v)
   {
     std::int32_t probePore = probeComponents.voxelPore[v];
-    std::int32_t voidPore = voidComponents.voxelPore[v];
-    if (probePore < 0 || voidPore < 0) continue;
-    if (probeComponents.pores[static_cast<std::size_t>(probePore)].isChannel)
-    {
-      voidComponentReached[static_cast<std::size_t>(voidPore)] = 1;
-    }
+    if (probePore >= 0 && probeComponents.pores[static_cast<std::size_t>(probePore)].isChannel) channelCentre[v] = 1;
   }
 
   std::vector<std::uint8_t> accessible(numberOfVoxels, 0);
-  for (std::size_t v = 0; v < numberOfVoxels; ++v)
   {
-    std::int32_t voidPore = voidComponents.voxelPore[v];
-    if (voidPore >= 0 && voidComponentReached[static_cast<std::size_t>(voidPore)] != 0) accessible[v] = 1;
+    const std::int64_t nx = grid.gridSize.x, ny = grid.gridSize.y, nz = grid.gridSize.z;
+    // the grid's own slack for a centre that lies between its points
+    const double reach = this->probeRadius + this->slack;
+    const double3 widths = framework.unitCell.perpendicularWidths();
+    const std::int64_t stepsX = static_cast<std::int64_t>(std::ceil(reach * static_cast<double>(nx) / widths.x));
+    const std::int64_t stepsY = static_cast<std::int64_t>(std::ceil(reach * static_cast<double>(ny) / widths.y));
+    const std::int64_t stepsZ = static_cast<std::int64_t>(std::ceil(reach * static_cast<double>(nz) / widths.z));
+    const double3x3 cell = framework.unitCell.cell;
+
+    forEachIndex(static_cast<std::size_t>(nz), workersAvailable(),
+                 [&](std::size_t, std::size_t plane)
+                 {
+                   const std::int64_t k = static_cast<std::int64_t>(plane);
+                   for (std::int64_t j = 0; j < ny; ++j)
+                   {
+                     for (std::int64_t i = 0; i < nx; ++i)
+                     {
+                       const std::size_t v = static_cast<std::size_t>((k * ny + j) * nx + i);
+                       if (grid.clearance[v] < 0.0f) continue;
+                       if (channelCentre[v] != 0)
+                       {
+                         accessible[v] = 1;
+                         continue;
+                       }
+                       // a centre the probe fits at in a pocket is the pocket's, however near a channel
+                       if (probeComponents.voxelPore[v] >= 0) continue;
+
+                       bool covered = false;
+                       for (std::int64_t dk = -stepsZ; dk <= stepsZ && !covered; ++dk)
+                       {
+                         for (std::int64_t dj = -stepsY; dj <= stepsY && !covered; ++dj)
+                         {
+                           for (std::int64_t di = -stepsX; di <= stepsX; ++di)
+                           {
+                             const std::size_t centre = static_cast<std::size_t>(
+                                 ((((k + dk) % nz + nz) % nz) * ny + ((j + dj) % ny + ny) % ny) * nx +
+                                 ((i + di) % nx + nx) % nx);
+                             if (channelCentre[centre] == 0) continue;
+                             const double3 dr =
+                                 cell * double3(static_cast<double>(di) / static_cast<double>(nx),
+                                                static_cast<double>(dj) / static_cast<double>(ny),
+                                                static_cast<double>(dk) / static_cast<double>(nz));
+                             if (double3::dot(dr, dr) <= reach * reach)
+                             {
+                               covered = true;
+                               break;
+                             }
+                           }
+                         }
+                       }
+                       if (covered) accessible[v] = 1;
+                     }
+                   }
+                 });
   }
 
   // The curve is a count of grid points against the size found at each of them, binned by the one routine

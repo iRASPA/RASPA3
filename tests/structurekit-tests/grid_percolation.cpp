@@ -3,6 +3,7 @@
 import std;
 
 import uint3;
+import int3;
 import grid_percolation;
 import grid_connected_components;
 
@@ -394,4 +395,14 @@ TEST(grid_percolation, a_point_that_is_its_own_neighbour_across_the_cell_runs_th
     EXPECT_TRUE(components.pores[0].isChannel) << which;
     EXPECT_EQ(components.pores[0].dimensionality, thin.directions) << which;
   }
+}
+
+
+// Three windings along the three axes are three directions however long they are. The normal of the first two was
+// kept at its full length, and its product with the third went past sixty-four bits and came back nought.
+TEST(grid_percolation, long_windings_along_three_axes_are_three_directions)
+{
+  EXPECT_EQ(latticeVectorRank({int3(4194304, 0, 0), int3(0, 4194304, 0), int3(0, 0, 1048576)}), 3);
+  EXPECT_EQ(latticeVectorRank({int3(4194304, 0, 0), int3(0, 4194304, 0), int3(4194304, 4194304, 0)}), 2);
+  EXPECT_EQ(latticeVectorRank({int3(2000000, 2000000, 0), int3(-1000000, -1000000, 0)}), 1);
 }

@@ -332,17 +332,17 @@ TEST(unit_cell, a_zero_cutoff_still_takes_one_cell)
   EXPECT_EQ(replicas.z, 1);
 }
 
-// A cell counts as lying along the axes to a tolerance, and what it has off its diagonal within that tolerance is
-// still part of its vectors. The quick way took the diagonal parts off alone: a cell vector then came back as its
-// own off-diagonal part, and a displacement of several cells was out by as many times that, more than the exact
-// geometry that compares images holds its points to.
-TEST(unit_cell, a_cell_within_tolerance_of_the_axes_takes_off_whole_cell_vectors)
+// A cell is rectangular when it is its diagonal and nothing else. One that leans by less than a hundred-thousandth
+// of a length used to count as rectangular too, and the quick form of the convention rounds each component against
+// the diagonal alone: a displacement of many cells along the leaning vector came back a whole cell vector out along
+// another, and near a face the image returned was not the shortest. Such a cell takes the exact reduction.
+TEST(unit_cell, a_cell_that_leans_at_all_is_not_rectangular_and_its_images_are_exact)
 {
   const double beta = (90.0004 / 180.0) * std::numbers::pi;
   const UnitCell cell(20.0, 20.0, 100.0, 0.5 * std::numbers::pi, beta, 0.5 * std::numbers::pi);
-  ASSERT_EQ(cell.type, UnitCell::Type::Rectangular);
+  ASSERT_EQ(cell.type, UnitCell::Type::Triclinic);
   const double3 c = cell.cell[2];
-  ASSERT_GT(std::abs(c.x), 1.0e-4);  // the cell does lean, by less than the tolerance
+  ASSERT_GT(std::abs(c.x), 1.0e-4);  // the cell does lean
 
   EXPECT_LT(cell.shortestImage(c, nullptr).length(), 1.0e-12);
   EXPECT_LT(cell.applyPeriodicBoundaryConditions(c).length(), 1.0e-12);
@@ -354,4 +354,14 @@ TEST(unit_cell, a_cell_within_tolerance_of_the_axes_takes_off_whole_cell_vectors
     EXPECT_LT((cell.shortestImage(moved, nullptr) - inside).length(), 1.0e-11) << count << " cells";
     EXPECT_LT((cell.applyPeriodicBoundaryConditions(moved) - inside).length(), 1.0e-11) << count << " cells";
   }
+
+  // far enough along c that what it leans by adds up to more than half of a: a lattice vector, and so nothing
+  const double3 far = 20000.0 * c;
+  ASSERT_GT(std::abs(far.x), 10.0);
+  EXPECT_LT(cell.shortestImage(far, nullptr).length(), 1.0e-6);
+  EXPECT_LT(cell.applyPeriodicBoundaryConditions(far).length(), 1.0e-6);
+
+  // and a cell that is its diagonal is rectangular still
+  EXPECT_EQ(UnitCell(20.0, 20.0, 100.0, 0.5 * std::numbers::pi, 0.5 * std::numbers::pi, 0.5 * std::numbers::pi).type,
+            UnitCell::Type::Rectangular);
 }

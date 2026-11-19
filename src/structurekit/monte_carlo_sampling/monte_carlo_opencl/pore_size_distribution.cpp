@@ -54,7 +54,7 @@ MC_OpenCL_PoreSizeDistribution::MC_OpenCL_PoreSizeDistribution(std::size_t numbe
     if (err != CL_SUCCESS)
     {
       size_t len;
-      char buffer[2048];
+      char buffer[2048] = {};  // a log too long for it is not written at all, and the text read was whatever lay there
       clGetProgramBuildInfo(poreSizeDistributionProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer,
                             &len);
       std::string message =
@@ -184,7 +184,8 @@ void MC_OpenCL_PoreSizeDistribution::run(const SampledStructure &structure,
   cl_int number_of_atoms = cl_int(numberOfAtoms);
   cl_int number_of_inner_steps_parameter = cl_int(number_of_inner_steps);
 
-  double delta_r = maximumRange.value_or(10.0) / static_cast<double>(numberOfBins);
+  // (no bins is a histogram of nothing, and a bin of no width rather than a range over nought)
+  double delta_r = numberOfBins > 0 ? maximumRange.value_or(10.0) / static_cast<double>(numberOfBins) : 0.0;
 
   // A second run is a run of its own and does not add to the first.
   std::ranges::fill(histogram, 0.0);

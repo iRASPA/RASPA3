@@ -664,3 +664,32 @@ TEST(brute_force_structure, a_walk_uphill_reaches_the_peak_along_a_ridge_between
   }
   EXPECT_GT(walks, 200uz);
 }
+
+
+// A segment or a ray longer than the images kept are known to cover is read a stretch at a time. Read whole from
+// its start, a segment ending on an atom ten cells off had room all along it, that image not being among those
+// kept, and a ray down a row of overlapping atoms came out of them where the images ran out.
+TEST(brute_force_structure, a_long_segment_and_a_long_ray_meet_the_atoms_of_far_images)
+{
+  const UnitCell cell(20.0, 20.0, 20.0);
+
+  {
+    BruteForceStructure structure = BruteForceStructure::create("one sphere", cell, {double3(5.0, 5.0, 5.0)}, {2.0});
+    // from the middle of the void to the centre of the image ten cells along x and one along y and z
+    const double3 start(15.0, 15.0, 15.0);
+    EXPECT_NEAR(structure.segmentClearance(start, double3(190.0, 10.0, 10.0)), -2.0, 1.0e-9);
+    // and a short one is what it was
+    EXPECT_NEAR(structure.segmentClearance(start, double3(1.0, 0.0, 0.0)), std::sqrt(281.0) - 2.0, 1.0e-9);
+  }
+
+  {
+    // two spheres of radius six, ten apart along x in a cell of twenty: a row with no gap in it
+    BruteForceStructure structure = BruteForceStructure::create(
+        "a row", cell, {double3(5.0, 5.0, 5.0), double3(15.0, 5.0, 5.0)}, {6.0, 6.0});
+    EXPECT_FALSE(structure.firstExit(double3(5.0, 5.0, 5.0), double3(1.0, 0.0, 0.0), 300.0).has_value());
+    // across the row it is out after the radius
+    const std::optional<double> across = structure.firstExit(double3(5.0, 5.0, 5.0), double3(0.0, 1.0, 0.0), 300.0);
+    ASSERT_TRUE(across.has_value());
+    EXPECT_NEAR(across.value(), 6.0, 1.0e-9);
+  }
+}

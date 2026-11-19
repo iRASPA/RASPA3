@@ -19,7 +19,8 @@ void MC_PoreSizeDistribution::run(const SampledStructure &structure, std::option
 
   std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
 
-  double delta_r = maximumRange.value_or(10.0) / static_cast<double>(numberOfBins);
+  // (no bins is a histogram of nothing, and a bin of no width rather than a range over nought)
+  double delta_r = numberOfBins > 0 ? maximumRange.value_or(10.0) / static_cast<double>(numberOfBins) : 0.0;
 
   // A second run is a run of its own and does not add to the first.
   std::ranges::fill(histogram, 0.0);
