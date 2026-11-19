@@ -1038,3 +1038,102 @@ TEST(MC_CYCLIC_CBMC, ring_with_tail_geometry_matches_molecular_dynamics)
   EXPECT_NEAR(mcBond, kRingBondLength, 0.1);
   EXPECT_NEAR(mcBend, mdBend, 8.0 * (std::numbers::pi / 180.0));
 }
+
+namespace
+{
+// United-atom trans-1,2-dimethylcyclohexane: both methyl groups equatorial in the reference geometry, the two
+// ring carbons that carry them declared as chiral centres, so that the methyl groups stay trans.
+constexpr std::string_view kTransDimethylJson = R"({
+  "CriticalTemperature" : 572.2, "CriticalPressure" : 3470000.0, "AcentricFactor" : 0.235,
+  "pseudoAtoms" : [
+      ["CH_c",  [1.465493, 0.000000, 0.236606]],
+      ["CH_c",  [0.732747, 1.269154, -0.236606]],
+      ["CH2_c", [-0.732747, 1.269154, 0.236606]],
+      ["CH2_c", [-1.465493, 0.000000, -0.236606]],
+      ["CH2_c", [-0.732747, -1.269154, 0.236606]],
+      ["CH2_c", [0.732747, -1.269154, -0.236606]],
+      ["CH3",   [2.905493, 0.000000, 0.786606]],
+      ["CH3",   [1.452747, 2.516231, -0.786606]]
+    ],
+  "Connectivity" : [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0], [0, 6], [1, 7]],
+  "ChiralCenters" : [[0, 1, 5, 6], [1, 0, 2, 7]],
+  "Bonds" : [
+    [["CH2_c", "CH2_c"], "HARMONIC", [96500.0, 1.54]],
+    [["CH_c", "CH2_c"],  "HARMONIC", [96500.0, 1.54]],
+    [["CH_c", "CH_c"],   "HARMONIC", [96500.0, 1.54]],
+    [["CH_c", "CH3"],    "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2_c", "CH2_c", "CH2_c"], "HARMONIC", [62500.0, 114.0]],
+    [["CH_c", "CH2_c", "CH2_c"],  "HARMONIC", [62500.0, 114.0]],
+    [["CH2_c", "CH_c", "CH_c"],   "HARMONIC", [62500.0, 114.0]],
+    [["CH3", "CH_c", "CH2_c"],    "HARMONIC", [62500.0, 114.0]],
+    [["CH3", "CH_c", "CH_c"],     "HARMONIC", [62500.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH2_c", "CH2_c", "CH2_c", "CH2_c"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+    [["CH_c", "CH2_c", "CH2_c", "CH2_c"],  "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+    [["CH_c", "CH_c", "CH2_c", "CH2_c"],   "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+    [["CH2_c", "CH_c", "CH_c", "CH2_c"],   "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+    [["CH3", "CH_c", "CH2_c", "CH2_c"],    "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+    [["CH3", "CH_c", "CH_c", "CH2_c"],     "TRAPPE", [0.0, 355.03, -68.19, 791.32]],
+    [["CH3", "CH_c", "CH_c", "CH3"],       "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ],
+  "VanDerWaals" : "auto"
+})";
+
+bool isDiaxial(std::span<const Atom> a)
+{
+  double3 centre(0.0, 0.0, 0.0);
+  for (std::size_t i = 0; i != 6; ++i) centre += a[i].position / 6.0;
+  double3 normal(0.0, 0.0, 0.0);
+  for (std::size_t i = 0; i != 6; ++i) normal += double3::cross(a[i].position - centre, a[(i + 1) % 6].position - centre);
+  normal = normal.normalized();
+  const double c0 = std::abs(double3::dot((a[6].position - a[0].position).normalized(), normal));
+  const double c1 = std::abs(double3::dot((a[7].position - a[1].position).normalized(), normal));
+  return c0 > 0.7 && c1 > 0.7;
+}
+}  // namespace
+
+// The two chairs of a six-ring are each other's mirror image and the same to the ring-closure step, which
+// samples the bonded terms of the ring alone. On a trans-1,2-disubstituted ring one of them carries the
+// substituents equatorial and the other axial, and the growth of the substituents weighs the two. The seeds of
+// the ring are conformations of the whole molecule, nearly all with the equatorial chair, and the walk of the
+// step seldom inverts a ring: the axial chair was proposed as rarely as the molecule shows it and then weighted
+// down again by the substituents, a fraction of 0.001 at 450 K where a twelve times longer walk gave 0.008 and
+// a seventy times longer one 0.021. The seed is now taken or mirrored with equal probability, and the fraction
+// is 0.035 for either walk.
+TEST(MC_CYCLIC_CBMC, a_ring_is_seeded_with_either_mirror_image)
+{
+  const ForceField forceField({{"CH_c", false, 13.019, 0.0, 0.0, 6, false},
+                               {"CH2_c", false, 14.02658, 0.0, 0.0, 6, false},
+                               {"CH3", false, 15.04, 0.0, 0.0, 6, false}},
+                              {{0.0, 4.68}, {0.0, 3.91}, {0.0, 3.75}}, ForceField::MixingRule::Lorentz_Berthelot,
+                              12.0, 12.0, 12.0, true, true, false);
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  TemporaryFile file("trans-dimethyl.json", kTransDimethylJson);
+  Component molecule(Component::Type::Adsorbate, 0, forceField, "trans-dimethyl", file.stemPath().string(), 5, 21,
+                     probabilities, std::nullopt, false);
+  System system(forceField, SimulationBox(40.0, 40.0, 40.0), false, 450.0, 1e4, 1.0, {}, {molecule}, {}, {1}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+  system.trialEik = system.storedEik;
+
+  RandomNumber random(3);
+  const std::size_t steps = 8000;
+  std::size_t diaxial = 0;
+  for (std::size_t step = 0; step < steps; ++step)
+  {
+    if (const std::optional<RunningEnergy> difference = MC_Moves::reinsertionMove(random, system, 0, 0))
+    {
+      system.runningEnergies += difference.value();
+    }
+    if (isDiaxial(std::as_const(system).spanOfMoleculeAtoms())) ++diaxial;
+  }
+  const double fraction = static_cast<double>(diaxial) / static_cast<double>(steps);
+  EXPECT_GT(fraction, 0.022);
+  EXPECT_LT(fraction, 0.050);
+
+  const RunningEnergy recomputed = system.computeTotalEnergies();
+  EXPECT_NEAR((system.runningEnergies - recomputed).potentialEnergy(), 0.0, 1e-6);
+}

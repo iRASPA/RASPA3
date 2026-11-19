@@ -118,8 +118,12 @@ class RingSampler
   // O(1), deterministic correction instead of a random re-roll.
   void reflectThroughJunctionPlane()
   {
-    const double3 axis = (chain_[step_.previousBead.value()].position - anchorPosition_).normalized();
-    const double3 normal = double3::perpendicular(axis, random_.randomVectorOnUnitSphere());
+    // without a placed neighbour any plane through the anchor will do
+    const double3 normal =
+        step_.previousBead.has_value()
+            ? double3::perpendicular((chain_[step_.previousBead.value()].position - anchorPosition_).normalized(),
+                                     random_.randomVectorOnUnitSphere())
+            : random_.randomVectorOnUnitSphere();
     for (std::size_t atom : nextBeads_)
     {
       const double3 relative = chain_[atom].position - anchorPosition_;
@@ -212,7 +216,27 @@ class RingSampler
     {
       placeSeedWithRotation(seedAtoms, random_.randomRotationMatrix());
     }
-    return parityPreserved();
+    if (!parityPreserved()) return false;
+
+    // The seed or its mirror image, with equal probability. The seeds are conformations of the whole molecule,
+    // and of the two forms of a ring that are each other's mirror image (the two chairs of a six-ring) the
+    // molecule prefers the one its substituents sit well on, while to the terms this step samples the two are
+    // the same. The walk below seldom takes a ring from one to the other, so the form the substituents dislike
+    // was proposed as rarely as the molecule shows it, and then weighted down once more by the growth of the
+    // substituents: the diaxial form of a trans-1,2-disubstituted ring came out twenty times too rare. The
+    // mirror image is taken only where it is the same to this step: no monitored centre changes its parity,
+    // and the energy the walk samples is unchanged (a torsion with a phase tells the two apart).
+    if (random_.uniform() < 0.5)
+    {
+      const double energy = baseEnergy();
+      saveNextBeads();
+      reflectThroughJunctionPlane();
+      if (!parityPreserved() || std::abs(baseEnergy() - energy) > 1.0e-8 * (1.0 + std::abs(energy)))
+      {
+        restoreNextBeads();
+      }
+    }
+    return true;
   }
 
   // ----------------------------------------------------------------------------------------------
