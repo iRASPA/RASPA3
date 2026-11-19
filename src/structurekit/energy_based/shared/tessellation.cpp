@@ -65,6 +65,13 @@ static void divideAmongAtoms(EnergyTessellation &tessellation, const Crystal &fr
   const std::size_t numberOfAtoms = framework.atoms.size();
   tessellation.atoms.assign(numberOfAtoms, EnergyAtomShare{});
   for (EnergyAtomShare &share : tessellation.atoms) share.deepestEnergy = 0.0;
+  // the totals of this division alone: an object run a second time added to those of the first
+  tessellation.totalArea = 0.0;
+  tessellation.undecidedArea = 0.0;
+  tessellation.totalVoidVolume = 0.0;
+  tessellation.totalBindingEnergy = 0.0;
+  tessellation.numberOfTriangles = 0;
+  tessellation.numberOfRejectedTriangles = 0;
 
   const double volume = framework.unitCell.volume;
   const double voxelVolume = volume / static_cast<double>(numberOfVoxels);
@@ -78,9 +85,12 @@ static void divideAmongAtoms(EnergyTessellation &tessellation, const Crystal &fr
     ++share.numberOfVoxels;
 
     const double here = static_cast<double>(division.energy[v]);
-    if (here < isoValue) share.voidVolume += voxelVolume;
+    // (at the iso-value is void, as for the percolation and the surface: the middle of a pore wider than twice
+    // the cutoff has an energy of exactly nought, which is the default iso-value, and was counted as solid)
+    if (here <= isoValue) share.voidVolume += voxelVolume;
     if (here < 0.0) share.bindingEnergy += here;
-    share.deepestEnergy = std::min(share.deepestEnergy, here);
+    // (the deepest of the share's own points, also where none of them binds: it used to start from nought)
+    share.deepestEnergy = (share.numberOfVoxels == 1) ? here : std::min(share.deepestEnergy, here);
   }
 
   // The surface of the void, cut up by the same labels. A triangle is given to the atom holding the voxel

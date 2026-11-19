@@ -12,6 +12,22 @@ import units;
 
 EwaldSplit ewaldSplit(double cutOff, double relativePrecision, std::optional<double> alphaOverride)
 {
+  // a precision of one and more has no decay to take the root of, and a cutoff of nought no splitting parameter:
+  // the potential built on either was not a number throughout, or its count of wave vectors beyond an integer
+  if (!(relativePrecision > 0.0) || !(relativePrecision < 1.0))
+  {
+    throw std::invalid_argument(
+        std::format("Ewald: the relative precision {} is not between 0 and 1", relativePrecision));
+  }
+  if (!alphaOverride.has_value() && !(cutOff > 0.0))
+  {
+    throw std::invalid_argument(std::format("Ewald: the cutoff {} is not positive", cutOff));
+  }
+  if (alphaOverride.has_value() && !(*alphaOverride > 0.0))
+  {
+    throw std::invalid_argument(std::format("Ewald: the splitting parameter {} is not positive", *alphaOverride));
+  }
+
   double decay = std::sqrt(-std::log(relativePrecision));
 
   EwaldSplit split;
@@ -87,5 +103,7 @@ std::vector<WaveVector> waveVectors(const Crystal &framework, const std::vector<
 
 double neutralisingBackground(double netCharge, double alpha, double volume)
 {
+  // a neutral structure has no background, whatever it would be divided by
+  if (netCharge == 0.0) return 0.0;
   return -Units::CoulombicConversionFactor * std::numbers::pi * netCharge / (alpha * alpha * volume);
 }

@@ -848,9 +848,26 @@ void assignFilamentPacking(WellSurface &result, const WellField &field, const Un
     double3 nrm = planeNormal[s];
     if (nrm.length_squared() < 0.25) nrm = double3(1.0, 0.0, 0.0);
     nrm = double3::normalize(nrm);
-    double thickness = std::max({std::abs(double3::dot(nrm, ax)), std::abs(double3::dot(nrm, ay)),
-                                 std::abs(double3::dot(nrm, az))});
-    if (thickness > 0.0) ridgeFace += voxelVolume / thickness;
+    const std::array<double, 3> along{std::abs(double3::dot(nrm, ax)), std::abs(double3::dot(nrm, ay)),
+                                      std::abs(double3::dot(nrm, az))};
+    const std::size_t steepest = static_cast<std::size_t>(std::ranges::max_element(along) - along.begin());
+    const double thickness = along[steepest];
+
+    // One face per column of voxels along the axis the plane is steepest to. A ridge is where the inscribed
+    // radius is not exceeded by a neighbour's, and in a slit an even number of voxels across the two middle
+    // layers tie: both are ridge, and counted a face each the midplane came out at twice its area. Ridge
+    // voxels that are neighbours along the column share its one face.
+    int ix, iy, iz;
+    decode(filamentIndex[s], ix, iy, iz);
+    std::size_t sharing = 1;
+    for (const int step : {-1, 1})
+    {
+      const std::uint32_t other = slotOf[linear(wrap(ix + (steepest == 0 ? step : 0), nx),
+                                                wrap(iy + (steepest == 1 ? step : 0), ny),
+                                                wrap(iz + (steepest == 2 ? step : 0), nz))];
+      if (other != std::numeric_limits<std::uint32_t>::max() && ridge[other] && kind[other] == 2) ++sharing;
+    }
+    if (thickness > 0.0) ridgeFace += voxelVolume / (thickness * static_cast<double>(sharing));
   }
 
   double overlayPlanar = 0.0;

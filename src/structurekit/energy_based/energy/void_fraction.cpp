@@ -78,17 +78,11 @@ void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal
     {
       double3 random_position = {random.uniform(), random.uniform(), random.uniform()};
 
-      // A point in a pocket the probe cannot reach has the pocket's energy, as it has on the grids, and what the
-      // atoms round it would have made of it is not asked.
+      // A point in a pocket the probe cannot reach has the pocket's energy, as it has on the grids, where the
+      // atoms round it do not make it higher still (below): the foot of the ramp inside a wall is not void.
       const double pocket = blockingSpheres.empty()
                                 ? 1.0
                                 : blockingSphereDistance(random_position, framework.unitCell, blockingSpheres);
-      if (pocket < 0.0)
-      {
-        sumBoltzmannWeight += std::exp(-beta * std::min(-pocket * blockedEnergyPerAngstrom, ceiling));
-        count++;
-        continue;
-      }
 
       double energy = 0.0;
       for (std::size_t atomIndex = 0; atomIndex < framework.size(); ++atomIndex)
@@ -129,6 +123,8 @@ void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal
           }
         }
       }
+
+      if (pocket < 0.0) energy = std::max(energy, std::min(-pocket * blockedEnergyPerAngstrom, ceiling));
 
       sumBoltzmannWeight += std::exp(-beta * energy);
       count++;

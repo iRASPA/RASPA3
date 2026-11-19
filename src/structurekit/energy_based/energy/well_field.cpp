@@ -794,20 +794,22 @@ void refineVertices(std::vector<double3> &corners, std::vector<double> &energies
                  const std::vector<NearbyImage> &nearby = neighbourhood.gather(point);
 
                  // a point in a blocking sphere has the blocked ramp's energy, as on the field: the bare framework
-                 // energy there (an attractive inaccessible cage) put the sphere's cap below the cap threshold
+                 // energy there (an attractive inaccessible cage) put the sphere's cap below the cap threshold.
+                 // Where the framework's energy is the higher of the two, in the wall the sphere reaches into,
+                 // it stays.
                  auto blockedEnergy = [&](double pocket)
                  { return std::min(-pocket * neighbourhood.blockedEnergyPerAngstrom, neighbourhood.ceiling); };
                  double pocket = blockingSphereDistance(point, neighbourhood.unitCell, neighbourhood.spheres);
-                 if (pocket < 0.0)
-                 {
-                   energies[vertex] = blockedEnergy(pocket);
-                   return;
-                 }
 
                  double nearest = 0.0;
                  std::size_t bestOrientation = 0;
                  double energyHere =
                      neighbourhood.reduce<true>(nearby, point, double3{}, double3{}, nearest, bestOrientation);
+                 if (pocket < 0.0)
+                 {
+                   energies[vertex] = std::max(energyHere, blockedEnergy(pocket));
+                   return;
+                 }
                  energies[vertex] = energyHere;
 
                  if (energyHere > static_cast<double>(iso) - 0.02 * std::fabs(static_cast<double>(iso)))
@@ -830,8 +832,9 @@ void refineVertices(std::vector<double3> &corners, std::vector<double> &energies
                    const double3 moved = wrapUnit(point + rayFractional * s);
                    const double pocketThere =
                        blockingSphereDistance(moved, neighbourhood.unitCell, neighbourhood.spheres);
-                   if (pocketThere < 0.0) return blockedEnergy(pocketThere);
-                   return neighbourhood.energyAlong(nearby, point, rayFractional * s, direction * s);
+                   const double energyThere = neighbourhood.energyAlong(nearby, point, rayFractional * s, direction * s);
+                   if (pocketThere < 0.0) return std::max(energyThere, blockedEnergy(pocketThere));
+                   return energyThere;
                  };
 
                  constexpr int coarse = 14;
@@ -991,14 +994,20 @@ WellField WellFieldCPU::compute(const PairInteractions &interactions, const Crys
                          }
                          if (pocket < 0.0 && orientationOut != nullptr)
                          {
-                           for (std::size_t o = 0; o < nOrient; ++o) orientationOut[o] = static_cast<float>(
-                               std::min(-pocket * neighbourhood.blockedEnergyPerAngstrom, neighbourhood.ceiling));
+                           for (std::size_t o = 0; o < nOrient; ++o)
+                             orientationOut[o] = std::max(
+                                 orientationOut[o],
+                                 static_cast<float>(std::min(-pocket * neighbourhood.blockedEnergyPerAngstrom,
+                                                             neighbourhood.ceiling)));
                          }
                        }
 
+                       // the pocket's ramp, and no lower than the framework's own energy: the sphere reaches
+                       // into the walls round the pocket, and the foot of the ramp is nought
                        const double energy =
                            pocket < 0.0
-                               ? std::min(-pocket * neighbourhood.blockedEnergyPerAngstrom, neighbourhood.ceiling)
+                               ? std::max(value, std::min(-pocket * neighbourhood.blockedEnergyPerAngstrom,
+                                                          neighbourhood.ceiling))
                                : value;
                        field.energy[voxel] = static_cast<float>(energy);
                        field.distance[voxel] = static_cast<float>(std::min(bestClearance, pocket));

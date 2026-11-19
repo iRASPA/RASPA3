@@ -62,7 +62,11 @@ void applyBlockingSpheresToEnergy(std::span<float> energy, uint3 gridSize, const
                        if (pocket < 0.0)
                        {
                          const std::size_t voxel = (iz * gridSize.y + iy) * gridSize.x + ix;
-                         energy[voxel] = static_cast<float>(std::min(-pocket * energyPerAngstrom, ceiling));
+                         // No lower than what the framework makes of the point: a sphere reaches into the walls
+                         // round its pocket, and the foot of the ramp, nought at the sphere's surface, written
+                         // over the energy of an atom's core there left a rim of void inside the wall.
+                         energy[voxel] = std::max(
+                             energy[voxel], static_cast<float>(std::min(-pocket * energyPerAngstrom, ceiling)));
                        }
                      }
                    }

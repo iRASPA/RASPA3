@@ -4,6 +4,12 @@ import std;
 
 import energy_shared_well_surface;
 import energy_shared_bet_surface_area;
+import energy_shared_blocking_mask;
+import energy_shared_ewald;
+import blocking_spheres;
+import unit_cell;
+import uint3;
+import double3;
 
 // The BET fit, on samples whose isotherm is known in closed form.
 
@@ -650,4 +656,67 @@ TEST(energy_bet_area, geometric_sites_pack_a_filament_by_length)
   EXPECT_NEAR(geometry.filamentCapacity, 2.0, 1.0e-12);
   ASSERT_EQ(geometry.sites.size(), 1u);
   EXPECT_NEAR(geometry.sites.front().capacity, 2.0, 1.0e-12);
+}
+
+// An exact Langmuir isotherm of a micropore, one layer with its knee at a relative pressure of 1e-5, is fitted
+// as what it is. Its monolayer is above every loading on it (the occupancy C x / (1 + C x) never reaches one),
+// for which every such isotherm used to be refused, and its knee lies below the 9e-5 the window used to start at.
+TEST(energy_bet_area, an_exact_langmuir_isotherm_of_a_micropore_is_fitted)
+{
+  const double monolayer = 10.0;
+  const double c = 1.0e5;
+  std::vector<IsothermPoint> isotherm;
+  for (int i = 0; i <= 160; ++i)
+  {
+    const double x = std::pow(10.0, -8.0 + 0.05 * static_cast<double>(i));
+    if (x > 0.95) break;
+    isotherm.push_back(IsothermPoint{x, monolayer * c * x / (1.0 + c * x)});
+  }
+
+  const FiniteLayerBETFit oneLayer =
+      fitFiniteLayerBETFixedLayers(isotherm, 1000.0, 1000.0, 1.0, 1.0e-7, 0.9, 16.2, 34.7);
+  ASSERT_TRUE(oneLayer.ok);
+  EXPECT_NEAR(oneLayer.monolayerCapacity, monolayer, 1.0e-3 * monolayer);
+  EXPECT_NEAR(oneLayer.cConstant, c, 1.0e-2 * c);
+
+  const FiniteLayerBETFit searched = fitFiniteLayerBET(isotherm, 1000.0, 1000.0, 16.2, 34.7);
+  ASSERT_TRUE(searched.ok);
+  EXPECT_LT(searched.windowLow, 1.0e-6);
+  EXPECT_NEAR(searched.monolayerCapacity, monolayer, 2.0e-2 * monolayer);
+}
+
+// The ramp of a blocking sphere is written no lower than the energy that is there: a sphere reaches into the
+// walls round its pocket, and the foot of the ramp, nought at the sphere's surface, used to replace the energy
+// of the atoms' cores there, a rim of void inside the wall.
+TEST(energy_bet_area, a_blocking_sphere_does_not_lower_the_energy_of_a_wall)
+{
+  const UnitCell box{20.0, 20.0, 20.0};
+  const uint3 gridSize(20, 20, 20);
+  const std::vector<BlockingSphere> spheres{BlockingSphere{double3(0.5, 0.5, 0.5), 5.0}};
+  const double ceiling = 1.0e6;
+  const double perAngstrom = 1.0e4;
+
+  std::vector<float> wall(8000, static_cast<float>(ceiling));
+  applyBlockingSpheresToEnergy(wall, gridSize, box, spheres, perAngstrom, ceiling);
+  for (const float value : wall) EXPECT_EQ(value, static_cast<float>(ceiling));
+
+  // an attractive pocket is raised to the ramp inside the sphere and left alone outside it
+  std::vector<float> pocket(8000, -500.0f);
+  applyBlockingSpheresToEnergy(pocket, gridSize, box, spheres, perAngstrom, ceiling);
+  auto at = [&](std::size_t ix, std::size_t iy, std::size_t iz) { return pocket[(iz * 20 + iy) * 20 + ix]; };
+  EXPECT_NEAR(at(10, 10, 10), 5.0 * perAngstrom, 1.0);
+  EXPECT_NEAR(at(13, 10, 10), 2.0 * perAngstrom, 1.0);
+  EXPECT_EQ(at(17, 10, 10), -500.0f);
+}
+
+// The Ewald split refuses what it cannot split: a precision that is no fraction, a cutoff of nought; and a
+// neutral structure has no background whatever the volume.
+TEST(energy_bet_area, the_ewald_split_refuses_a_precision_or_cutoff_it_cannot_use)
+{
+  EXPECT_THROW(ewaldSplit(12.0, 1.0), std::invalid_argument);
+  EXPECT_THROW(ewaldSplit(12.0, 0.0), std::invalid_argument);
+  EXPECT_THROW(ewaldSplit(12.0, 2.0), std::invalid_argument);
+  EXPECT_THROW(ewaldSplit(0.0, 1.0e-6), std::invalid_argument);
+  EXPECT_NO_THROW(ewaldSplit(12.0, 1.0e-6));
+  EXPECT_EQ(neutralisingBackground(0.0, 0.0, 0.0), 0.0);
 }

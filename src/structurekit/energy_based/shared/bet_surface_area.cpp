@@ -47,7 +47,8 @@ double betOccupancy(double x, double C, double layers)
 double langmuirOccupancy(double x, double C)
 {
   if (!(x > 0.0)) return 0.0;
-  return C * x / (1.0 + C * x);
+  // (as one less the vacancy: C x / (1 + C x) is infinity over infinity for a C beyond the range of a double)
+  return 1.0 - 1.0 / (1.0 + C * x);
 }
 
 // The relative pressures the model isotherm is tabulated on. The grid has to start below the knee or the
@@ -1073,18 +1074,26 @@ FiniteLayerCandidate fitFiniteLayerAtFixedN(std::span<const IsothermPoint> point
 
     double sumFN = 0.0;
     double sumFF = 0.0;
+    double largestOccupancy = 0.0;
     for (const IsothermPoint &point : points)
     {
       const double f = finiteLayerBETOccupancy(point.relativePressure, c, numberOfLayers);
       if (!(f > 0.0) || !isBoundedValue(f)) return candidate;
       sumFN += f * point.moleculesPerCell;
       sumFF += f * f;
+      largestOccupancy = std::max(largestOccupancy, f);
     }
     if (!(sumFF > 0.0)) return candidate;
     const double monolayer = sumFN / sumFF;
     if (!(monolayer > 0.0) || !isBoundedValue(monolayer)) return candidate;
-    // A monolayer larger than the highest loading on the isotherm is unphysical.
-    if (saturationLoading > 0.0 && monolayer > saturationLoading) return candidate;
+    // A monolayer larger than the highest loading on the isotherm is unphysical, where the model has the
+    // monolayer filled within the window. Where it has not (one layer: the Langmuir occupancy C x / (1 + C x) is
+    // below one at every pressure) the monolayer is above every loading by construction, and held to this every
+    // exact Langmuir isotherm was refused; there it is what the model puts at the top of the window that has to
+    // stay under the highest loading.
+    if (saturationLoading > 0.0 &&
+        monolayer * std::min(1.0, largestOccupancy) > saturationLoading * (1.0 + 1.0e-9))
+      return candidate;
 
     double residual = 0.0;
     for (const IsothermPoint &point : points)
@@ -1234,8 +1243,10 @@ FiniteLayerBETFit fitFiniteLayerBET(std::span<const IsothermPoint> isotherm, dou
 
   const double windowHigh = finiteLayerWindowCap(isotherm);
   if (!(windowHigh > 0.0) || !isBoundedValue(xMin)) return result;
-  // Drop the deepest Henry decade so the residual is not dominated by the dilute wing.
-  const double windowLow = std::max(xMin, windowHigh * 1.0e-4);
+  // Drop the deepest Henry decade so the residual is not dominated by the dilute wing. (A decade above the
+  // lowest pressure, as said: taken as four decades below the top of the window, never below 9e-5, the knee of
+  // a micropore that fills at 1e-6 was left out of the fit, and with it all that tells C from infinity.)
+  const double windowLow = (10.0 * xMin < windowHigh) ? 10.0 * xMin : xMin;
 
   std::vector<IsothermPoint> points;
   points.reserve(isotherm.size());

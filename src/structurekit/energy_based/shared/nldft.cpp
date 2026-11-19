@@ -406,7 +406,11 @@ NLDFTBulk nldftBulkCoexistence(const NLDFTOptions &options)
     return bulk;
   }
 
-  const double rhoMax = 0.60 / (model.sites * model.packingFactor);
+  // The liquid branch is sought up to a packing fraction of 0.90. Up to 0.60, as the spinodals are, a liquid
+  // denser than that (a cold fluid: an attraction of about 1.8 kT and more) was held at 0.60, where its pressure
+  // is below the gas's at every chemical potential, and the bisection ran to the top of the loop: the gas
+  // spinodal was returned for the saturation pressure, tens of times too high.
+  const double rhoMax = 0.90 / (model.sites * model.packingFactor);
   double muLow = model.muOf(highSpinodal);   // the loop's minimum
   double muHigh = model.muOf(lowSpinodal);   // the loop's maximum
   for (int iteration = 0; iteration < 100; ++iteration)
@@ -1688,7 +1692,10 @@ NLDFTGridIsotherm nldftIsothermOnGrid(std::span<const float> energyKelvin, uint3
 
     const NLDFTBranchPoint &chosen = takeDown ? down : up;
     result.isotherm.push_back(IsothermPoint{chosen.relativePressure, chosen.moleculesPerCell});
-    if (takeDown && apart && result.equilibriumTransition == 0.0) result.equilibriumTransition = chosen.relativePressure;
+    // (a transition between two states that are both there: the sweep down taken because the sweep up has no state
+    // at this pressure is no crossing of their grand potentials)
+    if (takeDown && apart && up.stationary && down.stationary && result.equilibriumTransition == 0.0)
+      result.equilibriumTransition = chosen.relativePressure;
   }
 
   {

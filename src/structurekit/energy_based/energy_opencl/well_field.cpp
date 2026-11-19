@@ -1171,7 +1171,8 @@ __kernel void WellField(__global float *energyOut,
   float pocket = blockingPocket(centre, spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2, obtuseA, obtuseB,
                                 obtuseC, obtuseInv0, obtuseInv1, obtuseInv2);
   int index = (iz * gridSize.y + iy) * gridSize.x + ix;
-  float energy = pocket < 0.0f ? fmin(-pocket * blockedEnergyPerAngstrom, ceiling) : value;
+  // (the pocket's ramp, and no lower than the framework's own energy, as on the CPU)
+  float energy = pocket < 0.0f ? fmax(value, fmin(-pocket * blockedEnergyPerAngstrom, ceiling)) : value;
   energyOut[index] = energy;
 
   // U(r, omega) itself, orientation by orientation, as the CPU field keeps it: each held at the ceiling, a
@@ -1184,7 +1185,7 @@ __kernel void WellField(__global float *energyOut,
     for(int o = 0; o < numberOfOrientations; o++)
     {
       float held = (dummyHit[o] != 0) ? ceiling : fmin(df_hi(energies[o]), ceiling);
-      row[o] = pocket < 0.0f ? fmin(-pocket * blockedEnergyPerAngstrom, ceiling) : held;
+      row[o] = pocket < 0.0f ? fmax(held, fmin(-pocket * blockedEnergyPerAngstrom, ceiling)) : held;
     }
   }
   distanceOut[index] = fmin(bestClearance, pocket);
@@ -1203,7 +1204,11 @@ static df blockedOrEnergy(df energy, float4 point, float4 shiftFractional, __glo
   float3 moved = wrapUnit((point + shiftFractional).xyz);
   float pocket = blockingPocket((float4)(moved.x, moved.y, moved.z, 0.0f), spheres, numberOfSpheres, cellRow0, cellRow1,
                                 cellRow2, obtuseA, obtuseB, obtuseC, obtuseInv0, obtuseInv1, obtuseInv2);
-  if(pocket < 0.0f) return (df)(fmin(-pocket * blockedEnergyPerAngstrom, ceiling), 0.0f);
+  if(pocket < 0.0f)
+  {
+    float ramp = fmin(-pocket * blockedEnergyPerAngstrom, ceiling);
+    if(df_hi(energy) < ramp) return (df)(ramp, 0.0f);
+  }
   return energy;
 }
 
@@ -1347,12 +1352,6 @@ __kernel void RefineWellVertices(__global float4 *corners,
   // a vertex in a blocking sphere has the blocked ramp's energy, as on the field
   float pocket = blockingPocket(point, spheres, numberOfSpheres, cellRow0, cellRow1, cellRow2, obtuseA, obtuseB,
                                 obtuseC, obtuseInv0, obtuseInv1, obtuseInv2);
-  if(pocket < 0.0f)
-  {
-    energies[vertex] = fmin(-pocket * blockedEnergyPerAngstrom, ceiling);
-    return;
-  }
-
   df energyHereDf = energyAtShift(position, epsilonTimesFour, sigmaSquared, contact, shiftValue, chargeProduct,
                                   siteOffset, siteCharge, siteDispersion, screenedTable, smoothPotential, point,
                                   (float4)(0.0f), (float4)(0.0f), potentialGridSize, numberOfAtoms, numberOfSites,
@@ -1360,6 +1359,11 @@ __kernel void RefineWellVertices(__global float4 *corners,
                                   coulombCutOffSquared, longestCutOff, longestCutOffSquared, ceiling, beta, kT,
                                   screenedScale, screenedBins, alpha, useCharges, extraReach);
   float energyHere = df_hi(energyHereDf);
+  if(pocket < 0.0f)
+  {
+    energies[vertex] = fmax(energyHere, fmin(-pocket * blockedEnergyPerAngstrom, ceiling));
+    return;
+  }
   energies[vertex] = energyHere;
   if(energyHere > iso - 0.02f * fabs(iso)) return;
 
