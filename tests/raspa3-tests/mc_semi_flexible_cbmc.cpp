@@ -40,6 +40,8 @@ import bend_bend_potential;
 import bond_torsion_potential;
 import bend_torsion_potential;
 import inversion_bend_potential;
+import mc_moves_reinsertion;
+import randomnumbers;
 
 // Tests for semi-flexible molecules: molecules mixing rigid bodies ('RigidBodies' in the molecule
 // JSON) with flexible beads, grown with CBMC or recoil growth.
@@ -1686,4 +1688,57 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, nvt_polarization_drift_and_rigid_geometry)
 
     expectRigidCoreGeometryPreserved(s);
   }
+}
+
+// The tilt of a rigid ring on a flexible tail, grown by configurational bias, has the Boltzmann distribution of
+// the two bends that hold it. The ring of diethyl-biphenyl sits on its ethyl tail with the bends CH2-C_ar-CH_ar
+// alone (the torsions through that bond are zero here, and the pair interactions are switched off), so the
+// direction of the bond in the frame of the ring has the density exp(-beta (U(t1) + U(t2))) on the sphere: its
+// out-of-plane component is soft (the bends change at second order) and has <z^2> = 0.0813 at 300 K by
+// quadrature, and the spread of the two angles has <(t1 - t2)^2> = 0.00957. The tilt is drawn by a Monte Carlo
+// walk that carries no weight, so a walk that has not converged shows up here (0.076 with two moves a bead).
+TEST(MC_SEMI_FLEXIBLE_CBMC, the_tilt_of_a_rigid_ring_on_a_tail_is_boltzmann_distributed)
+{
+  const ForceField forceField({{"CH3", false, 15.04, 0.0, 0.0, 6, false},
+                               {"CH2", false, 14.03, 0.0, 0.0, 6, false},
+                               {"C_ar", false, 12.011, 0.0, 0.0, 6, false},
+                               {"CH_ar", false, 13.019, 0.0, 0.0, 6, false}},
+                              {{0.0, 3.75}, {0.0, 3.95}, {0.0, 3.88}, {0.0, 3.695}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, true, false);
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  Component biphenyl = makeDiethylBiphenyl(forceField, 0, probabilities);
+  System system(forceField, SimulationBox(60.0, 60.0, 60.0), false, 300.0, 1e4, 1.0, {}, {biphenyl}, {}, {1}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+  system.trialEik = system.storedEik;
+
+  // the ring atom of the junction, its two ring neighbours, and the tail atom bonded to it
+  const std::array<std::array<std::size_t, 4>, 2> junctions{{{2, 3, 7, 1}, {11, 10, 12, 14}}};
+  RandomNumber random(5);
+  const std::size_t steps = 4000;
+  double outOfPlane = 0.0;
+  double spread = 0.0;
+  for (std::size_t step = 0; step < steps; ++step)
+  {
+    if (const std::optional<RunningEnergy> difference = MC_Moves::reinsertionMove(random, system, 0, 0))
+    {
+      system.runningEnergies += difference.value();
+    }
+    const std::span<const Atom> atoms = std::as_const(system).spanOfMoleculeAtoms();
+    for (const std::array<std::size_t, 4>& junction : junctions)
+    {
+      const double3 centre = atoms[junction[0]].position;
+      const double3 first = (atoms[junction[1]].position - centre).normalized();
+      const double3 second = (atoms[junction[2]].position - centre).normalized();
+      const double3 bond = (atoms[junction[3]].position - centre).normalized();
+      const double3 normal = double3::cross(first, second).normalized();
+      const double firstAngle = std::acos(std::clamp(double3::dot(bond, first), -1.0, 1.0));
+      const double secondAngle = std::acos(std::clamp(double3::dot(bond, second), -1.0, 1.0));
+      outOfPlane += double3::dot(bond, normal) * double3::dot(bond, normal);
+      spread += (firstAngle - secondAngle) * (firstAngle - secondAngle);
+    }
+  }
+  const double samples = static_cast<double>(steps * junctions.size());
+  EXPECT_NEAR(outOfPlane / samples, 0.0813, 0.006);
+  EXPECT_NEAR(spread / samples, 0.00957, 0.0008);
 }
