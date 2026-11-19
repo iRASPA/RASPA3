@@ -116,18 +116,45 @@ class RingSampler
   // it is only a valid fix when it restores every monitored parity at once: the caller keeps it only
   // when 'parityPreserved()' then holds. This makes the dominant single-junction-stereocentre case an
   // O(1), deterministic correction instead of a random re-roll.
-  void reflectThroughJunctionPlane()
+  void reflectThroughJunctionPlane() { reflectThroughPlane(junctionPlaneNormal()); }
+
+  // without a placed neighbour any plane through the anchor will do
+  double3 junctionPlaneNormal()
   {
-    // without a placed neighbour any plane through the anchor will do
-    const double3 normal =
-        step_.previousBead.has_value()
-            ? double3::perpendicular((chain_[step_.previousBead.value()].position - anchorPosition_).normalized(),
-                                     random_.randomVectorOnUnitSphere())
-            : random_.randomVectorOnUnitSphere();
+    return step_.previousBead.has_value()
+               ? double3::perpendicular((chain_[step_.previousBead.value()].position - anchorPosition_).normalized(),
+                                        random_.randomVectorOnUnitSphere())
+               : random_.randomVectorOnUnitSphere();
+  }
+
+  void reflectThroughPlane(const double3 &normal)
+  {
     for (std::size_t atom : nextBeads_)
     {
       const double3 relative = chain_[atom].position - anchorPosition_;
       chain_[atom].position = anchorPosition_ + (relative - 2.0 * double3::dot(relative, normal) * normal);
+    }
+  }
+
+  // The seed or its mirror image through a plane through the anchor, with equal probability. The seeds are
+  // conformations of the whole molecule, and of the two forms of a ring that are each other's mirror image (the
+  // two chairs of a six-ring) the molecule prefers the one its substituents sit well on, while to the terms this
+  // step samples the two are the same. The walk below seldom takes a ring from one to the other, so the form the
+  // substituents dislike was proposed as rarely as the molecule shows it, and then weighted down once more by the
+  // growth of the substituents: the diaxial form of a trans-1,2-disubstituted ring came out twenty times too
+  // rare. The mirror image is taken only where it is the same to this step: no monitored centre changes its
+  // parity, and the energy the walk samples is unchanged (a torsion with a phase tells the two apart, and so
+  // does a term to a placed atom off the plane).
+  template <typename Normal>
+  void takeSeedOrMirrorImage(Normal normal)
+  {
+    if (!(random_.uniform() < 0.5)) return;
+    const double energy = baseEnergy();
+    saveNextBeads();
+    reflectThroughPlane(normal());
+    if (!parityPreserved() || std::abs(baseEnergy() - energy) > 1.0e-8 * (1.0 + std::abs(energy)))
+    {
+      restoreNextBeads();
     }
   }
 
@@ -183,6 +210,7 @@ class RingSampler
     };
     const std::array<double3, 3> seedBasis = basisOf(seedU, seedAtoms[second].position - seedOrigin);
     const std::array<double3, 3> chainBasis = basisOf(chainU, chain_[second].position - anchorPosition_);
+    framePlaneNormal_ = chainBasis[2];
     for (std::size_t atom : nextBeads_)
     {
       const double3 relative = seedAtoms[atom].position - seedOrigin;
@@ -201,7 +229,21 @@ class RingSampler
     {
       // no orientation to draw again: a seed of the wrong parity is no seed
       placeSeedOnFrame(seedAtoms);
-      return parityPreserved();
+      if (!parityPreserved()) return false;
+      // The mirror image in the plane of the unit (of its anchor and the two atoms that span it), or in any plane
+      // through the line of a unit on one line. Where an atom of the unit off that plane holds the ring, the
+      // mirror image does not fit and its energy says so. (An anchored ring was seeded as it came, and the
+      // diaxial chair of a trans-disubstituted ring closed onto a rigid unit was a hundred times too rare.)
+      if (frameAxis_.has_value())
+      {
+        takeSeedOrMirrorImage(
+            [&] { return double3::perpendicular(frameAxis_.value(), random_.randomVectorOnUnitSphere()); });
+      }
+      else if (framePlaneNormal_.has_value())
+      {
+        takeSeedOrMirrorImage([&] { return framePlaneNormal_.value(); });
+      }
+      return true;
     }
 
     placeSeedWithRotation(seedAtoms, random_.randomRotationMatrix());
@@ -218,24 +260,7 @@ class RingSampler
     }
     if (!parityPreserved()) return false;
 
-    // The seed or its mirror image, with equal probability. The seeds are conformations of the whole molecule,
-    // and of the two forms of a ring that are each other's mirror image (the two chairs of a six-ring) the
-    // molecule prefers the one its substituents sit well on, while to the terms this step samples the two are
-    // the same. The walk below seldom takes a ring from one to the other, so the form the substituents dislike
-    // was proposed as rarely as the molecule shows it, and then weighted down once more by the growth of the
-    // substituents: the diaxial form of a trans-1,2-disubstituted ring came out twenty times too rare. The
-    // mirror image is taken only where it is the same to this step: no monitored centre changes its parity,
-    // and the energy the walk samples is unchanged (a torsion with a phase tells the two apart).
-    if (random_.uniform() < 0.5)
-    {
-      const double energy = baseEnergy();
-      saveNextBeads();
-      reflectThroughJunctionPlane();
-      if (!parityPreserved() || std::abs(baseEnergy() - energy) > 1.0e-8 * (1.0 + std::abs(energy)))
-      {
-        restoreNextBeads();
-      }
-    }
+    takeSeedOrMirrorImage([&] { return junctionPlaneNormal(); });
     return true;
   }
 
@@ -467,6 +492,8 @@ class RingSampler
   const double3 anchorPosition_;
   /// Anchored ring on a unit whose atoms lie on one line: that line, the one rotation left to the ring.
   std::optional<double3> frameAxis_{};
+  /// The normal of the plane of an anchored ring's unit that is not on one line.
+  std::optional<double3> framePlaneNormal_{};
   std::vector<std::pair<const std::array<std::size_t, 4> *, double>> monitoredCenters_{};
   double currentEnergy_{0.0};
 

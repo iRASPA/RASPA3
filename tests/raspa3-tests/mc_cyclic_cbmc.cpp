@@ -1137,3 +1137,58 @@ TEST(MC_CYCLIC_CBMC, a_ring_is_seeded_with_either_mirror_image)
   const RunningEnergy recomputed = system.computeTotalEnergies();
   EXPECT_NEAR((system.runningEnergies - recomputed).potentialEnergy(), 0.0, 1e-6);
 }
+
+// The same for a ring closed onto a rigid unit it contains: here three ring atoms opposite the methyl groups are
+// one rigid body, placed first, and the other three close the ring onto both of its ends. Such a ring has no
+// orientation to draw and was seeded as the conformation of the whole molecule came, without its mirror image:
+// the diaxial chair had a fraction of 0.001 at 700 K, where the ring that is flexible throughout has 0.10. The
+// mirror image in the plane of the unit stays closed onto it, and is now taken as often as the seed.
+TEST(MC_CYCLIC_CBMC, a_ring_closed_onto_a_rigid_unit_is_seeded_with_either_mirror_image)
+{
+  ForceField forceField({{"CH_c", false, 13.019, 0.0, 0.0, 6, false},
+                               {"CH2_c", false, 14.02658, 0.0, 0.0, 6, false},
+                               {"CH3", false, 15.04, 0.0, 0.0, 6, false}},
+                              {{0.0, 4.68}, {0.0, 3.91}, {0.0, 3.75}}, ForceField::MixingRule::Lorentz_Berthelot,
+                              12.0, 12.0, 12.0, true, true, false);
+  // (a shorter walk than the default: every trial of this step walks a ring of its own, and the seeds are the matter here)
+  forceField.settings.numberOfTrialMovesPerOpenBead = 50;
+  MCMoveProbabilities probabilities = MCMoveProbabilities();
+  probabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  std::string json(kTransDimethylJson);
+  const std::string_view centres = "\"ChiralCenters\"";
+  json.insert(json.find(centres), "\"RigidBodies\" : [[3, 4, 5]], \"StartingBead\" : 3,\n  ");
+  TemporaryFile file("trans-dimethyl-rigid-unit.json", json);
+  Component molecule(Component::Type::Adsorbate, 0, forceField, "trans-dimethyl-rigid-unit", file.stemPath().string(),
+                     5, 21, probabilities, std::nullopt, false);
+
+  const std::vector<CBMC::GrowStep> plan = molecule.growthPlan({molecule.startingBead});
+  ASSERT_EQ(plan.size(), 4uz);
+  ASSERT_EQ(plan[1].kind, CBMC::GrowStep::Kind::CloseRing);
+  ASSERT_TRUE(plan[1].ring.anchored());
+
+  System system(forceField, SimulationBox(40.0, 40.0, 40.0), false, 700.0, 1e4, 1.0, {}, {molecule}, {}, {1}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+  system.trialEik = system.storedEik;
+
+  RandomNumber random(3);
+  const std::size_t steps = 3000;
+  std::size_t diaxial = 0;
+  for (std::size_t step = 0; step < steps; ++step)
+  {
+    if (const std::optional<RunningEnergy> difference = MC_Moves::reinsertionMove(random, system, 0, 0))
+    {
+      system.runningEnergies += difference.value();
+    }
+    const std::span<const Atom> atoms = std::as_const(system).spanOfMoleculeAtoms();
+    if (isDiaxial(atoms)) ++diaxial;
+    // the unit keeps the geometry of the reference
+    ASSERT_NEAR((atoms[3].position - atoms[5].position).length(),
+                (molecule.atoms[3].position - molecule.atoms[5].position).length(), 1.0e-8);
+  }
+  const double fraction = static_cast<double>(diaxial) / static_cast<double>(steps);
+  EXPECT_GT(fraction, 0.06);
+  EXPECT_LT(fraction, 0.15);
+
+  const RunningEnergy recomputed = system.computeTotalEnergies();
+  EXPECT_NEAR((system.runningEnergies - recomputed).potentialEnergy(), 0.0, 1e-6);
+}

@@ -84,16 +84,19 @@ Atom carbon(double3 position) { return Atom(position, 0.0, 1.0, 0, 1, 0, false, 
 
 // A three-membered rigid ring {1, 2, 3} hinged on atom 1, a stereocentre with the tail atom 0 and the two ring
 // atoms: the tail lies off the plane of the ring, on the side the reference geometry gives.
-Component makeRigidRingAtStereocentre(const ForceField& forceField)
+Component makeRigidRingAtStereocentre(const ForceField& forceField, bool firstBend = true, bool chiral = true)
 {
   Potentials::IntraMolecularPotentials potentials;
   potentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {96500.0, 1.5})};
-  potentials.bends = {BendPotential({0, 1, 2}, BendType::Harmonic, {62500.0, 110.4}),
-                      BendPotential({0, 1, 3}, BendType::Harmonic, {62500.0, 110.4})};
-  ChiralCenter centre;
-  centre.ids = {1, 0, 2, 3};
-  centre.type = ChiralCenter::Chirality::R_Chiral;
-  potentials.chiralCenters = {centre};
+  if (firstBend) potentials.bends.push_back(BendPotential({0, 1, 2}, BendType::Harmonic, {62500.0, 110.4}));
+  potentials.bends.push_back(BendPotential({0, 1, 3}, BendType::Harmonic, {62500.0, 110.4}));
+  if (chiral)
+  {
+    ChiralCenter centre;
+    centre.ids = {1, 0, 2, 3};
+    centre.type = ChiralCenter::Chirality::R_Chiral;
+    potentials.chiralCenters = {centre};
+  }
 
   Component component(forceField, "rigid-ring-at-stereocentre", 300.0, 1.0e6, 0.1,
                       {carbon({-1.5, 0.0, 0.0}), carbon({0.0, 0.0, 0.0}), carbon({0.5, 1.2, 0.6}),
@@ -118,6 +121,56 @@ Component makeBranch(const ForceField& forceField, BendType siblingBend)
                    {carbon({-1.5, 0.0, 0.0}), carbon({0.0, 0.0, 0.0}), carbon({0.6, 1.2, 0.7}),
                     carbon({0.6, -1.2, 0.7})},
                    connect(4, {{0, 1}, {1, 2}, {1, 3}}), potentials, 5, 21);
+}
+
+// The direction of the tail of 'makeRigidRingAtStereocentre' seen from the hinge, in the frame of the ring: its
+// components along the two ring bonds and along the normal of the ring, and the square of the last.
+std::array<double, 4> tiltOf(const double3& tail, const double3& hinge, const double3& first, const double3& second)
+{
+  const double3 u = (tail - hinge).normalized();
+  const double3 e2 = (first - hinge).normalized();
+  const double3 e3 = (second - hinge).normalized();
+  const double3 n = double3::cross(e2, e3).normalized();
+  const double out = double3::dot(u, n);
+  return {double3::dot(u, e2), double3::dot(u, e3), out, out * out};
+}
+
+// The same four averages by quadrature over the sphere, with the density exp(-beta U) of the bends that hold the
+// ring, on the side of the ring the reference geometry has the tail when the hinge is a declared centre.
+std::array<double, 4> exactTilt(const Component& component, double beta)
+{
+  const double3 hinge = component.atoms[1].position;
+  const double3 first = component.atoms[2].position;
+  const double3 second = component.atoms[3].position;
+  const double side = tiltOf(component.atoms[0].position, hinge, first, second)[2];
+  const bool chiral = !component.intraMolecularPotentials.chiralCenters.empty();
+
+  std::array<double, 4> sum{};
+  double norm = 0.0;
+  constexpr std::size_t numberOfPolar = 1600;
+  constexpr std::size_t numberOfAzimuth = 3200;
+  for (std::size_t i = 0; i != numberOfPolar; ++i)
+  {
+    const double cosTheta = -1.0 + 2.0 * (static_cast<double>(i) + 0.5) / numberOfPolar;
+    const double sinTheta = std::sqrt(1.0 - cosTheta * cosTheta);
+    for (std::size_t j = 0; j != numberOfAzimuth; ++j)
+    {
+      const double phi = 2.0 * std::numbers::pi * (static_cast<double>(j) + 0.5) / numberOfAzimuth;
+      const double3 tail = hinge + double3(sinTheta * std::cos(phi), sinTheta * std::sin(phi), cosTheta);
+      const std::array<double, 4> tilt = tiltOf(tail, hinge, first, second);
+      if (chiral && tilt[2] * side <= 0.0) continue;
+      double energy = 0.0;
+      for (const BendPotential& bend : component.intraMolecularPotentials.bends)
+      {
+        energy += bend.calculateEnergy(tail, hinge, component.atoms[bend.identifiers[2]].position, std::nullopt);
+      }
+      const double weight = std::exp(-beta * energy);
+      norm += weight;
+      for (std::size_t k = 0; k != 4; ++k) sum[k] += weight * tilt[k];
+    }
+  }
+  for (double& value : sum) value /= norm;
+  return sum;
 }
 }  // namespace
 
@@ -323,4 +376,52 @@ TEST(MC_MOVES_AND_CBMC_ENGINE, the_exchange_of_grand_canonical_dynamics_uses_the
   const double running = system.runningEnergies.potentialEnergy();
   const double recomputed = system.computeTotalEnergies().potentialEnergy();
   EXPECT_NEAR(running, recomputed, 1.0e-6 * std::max(1.0, std::abs(recomputed)));
+}
+
+// The tilt of a rigid body hinged on one of its own atoms, grown by configurational bias, has the Boltzmann
+// distribution of the bends that hold it: here a three-ring on a tail, with the bends tail-hinge-ring atom to both
+// ring atoms or to the second alone, and the hinge a declared centre or not. The exact averages are a quadrature
+// over the sphere. With the bend to the second ring atom alone the tilt was started at the default angle about the
+// first, which nothing holds, and the walk of the default length did not bring it back: the tail lay at a cosine
+// of -0.37 to the first ring bond, where the bend that is declared puts it at -0.22.
+TEST(MC_MOVES_AND_CBMC_ENGINE, the_tilt_of_a_rigid_body_has_the_distribution_of_the_bends_that_are_declared)
+{
+  for (const auto [firstBend, chiral] :
+       std::array<std::pair<bool, bool>, 4>{{{true, true}, {true, false}, {false, true}, {false, false}}})
+  {
+    Environment environment;
+    Component component = makeRigidRingAtStereocentre(environment.forceField, firstBend, chiral);
+
+    const std::vector<CBMC::GrowStep> plan = planFrom(component, {0, 1});
+    ASSERT_EQ(plan.size(), 1uz);
+    ASSERT_TRUE(plan.front().rigidTilt.junctionBend.has_value());
+    EXPECT_EQ(plan.front().rigidTilt.innerBead, firstBend ? 2uz : 3uz);
+
+    component.prepareGrowthPlans(environment.beta);
+    const CBMC::GrowContext context = environment.context({});
+    const std::array<double, 4> exact = exactTilt(component, environment.beta);
+
+    RandomNumber random(3);
+    std::array<double, 4> sum{};
+    std::size_t numberGrown = 0;
+    for (std::size_t i = 0; i != 8000; ++i)
+    {
+      const std::optional<CBMC::GrowResult> grown =
+          CBMC::growNewMolecule(random, context, component, {.componentId = 0, .moleculeId = 0});
+      if (!grown.has_value()) continue;
+      ++numberGrown;
+      const std::array<double, 4> tilt = tiltOf(grown->atoms[0].position, grown->atoms[1].position,
+                                                grown->atoms[2].position, grown->atoms[3].position);
+      for (std::size_t k = 0; k != 4; ++k) sum[k] += tilt[k];
+    }
+    ASSERT_GT(numberGrown, 7000uz);
+    for (std::size_t k = 0; k != 4; ++k)
+    {
+      // without a centre the tail is on either side of the ring, and the mean of its side is a coin
+      const double tolerance = (k == 2 && !chiral) ? 0.05 : (firstBend ? 0.004 : 0.03);
+      EXPECT_NEAR(sum[k] / static_cast<double>(numberGrown), exact[k], tolerance)
+          << "average " << k << " with" << (firstBend ? "" : "out") << " the first bend, "
+          << (chiral ? "chiral" : "achiral");
+    }
+  }
 }

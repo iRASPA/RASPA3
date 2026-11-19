@@ -354,10 +354,19 @@ void prepareRigidTilt(CBMC::GrowStep &step, const ConnectivityTable &connectivit
   const std::size_t currentBead = step.currentBead;
   const std::size_t previousBead = step.previousBead.value();
 
+  // The body atom bonded to the anchor, and of several the first with a bend to the previous bead: a body hinged
+  // on one of its own atoms is bonded to the anchor twice, and where only the bend to the second atom is declared
+  // the tilt has that bend to be drawn from. (The first atom was taken whatever its bend: the tilt then started at
+  // the default angle about an atom nothing holds, and the walk of the default length left it a long way from the
+  // distribution of the bend that is there.)
   step.rigidTilt.innerBead = step.nextBeads[0];
+  bool bonded = false;
   for (std::size_t atom : step.nextBeads)
   {
-    if (connectivity[atom, currentBead])
+    if (!connectivity[atom, currentBead]) continue;
+    if (!bonded) step.rigidTilt.innerBead = atom;
+    bonded = true;
+    if (findAnchorBend(step.intra, previousBead, currentBead, atom).has_value())
     {
       step.rigidTilt.innerBead = atom;
       break;
