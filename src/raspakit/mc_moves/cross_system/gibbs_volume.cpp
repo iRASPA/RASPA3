@@ -117,7 +117,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
     systemA.mc_moves_statistics.addAccepted(move);
     systemB.mc_moves_statistics.addAccepted(move);
 
-    return std::make_pair(newTotalEnergyA - oldTotalEnergyA, newTotalEnergyB - oldTotalEnergyB);
+    return std::make_pair(volumeEnergyDifference(newTotalEnergyA, oldTotalEnergyA),
+                          volumeEnergyDifference(newTotalEnergyB, oldTotalEnergyB));
   }
 
   restoreVolumeState(systemA, savedA);

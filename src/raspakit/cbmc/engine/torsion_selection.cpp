@@ -101,6 +101,7 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
   // zero) and is counted: with the project's fast-math flags a test for minus infinity folds to a constant.
   constexpr double deadLogFactor = -1.0e300;
   std::size_t deadTrials = 0;
+  bool firstTrialDead = false;
   std::vector<double> logGuides(hasGuides ? numberOfTorsionTrials : 0, 0.0);
 
   // A declared chiral centre whose parity this spin decides (see 'GrowStep::SpinSelectionData').
@@ -173,6 +174,7 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
     {
       logTorsionBoltzmannFactors[j] = deadLogFactor;
       ++deadTrials;
+      if (j == 0) firstTrialDead = true;
     }
     if (hasGuides)
     {
@@ -181,8 +183,10 @@ CBMC::TorsionOrientation CBMC::selectTorsionOrientation(RandomNumber &random, st
     }
   }
 
-  // every trial behind the wall (a grow; the retrace pins the old spin, which satisfies it): a dead spin
-  if (deadTrials == numberOfTorsionTrials)
+  // Every trial behind the wall: a dead spin. So is a retrace whose pinned old spin is behind it, whatever the
+  // other trials are: no growth makes that spin, and the weight of the others was handed out for it as if one
+  // could (a centre of the wrong parity in a restart file, or inverted by a move that does not guard it).
+  if (deadTrials == numberOfTorsionTrials || (pinFirstToBase && firstTrialDead))
   {
     placeSpin(angles[0]);
     std::vector<Atom> dead(nextBeads.size());

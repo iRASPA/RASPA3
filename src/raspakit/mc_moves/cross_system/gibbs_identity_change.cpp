@@ -252,6 +252,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsIdentityCh
   System& boxI = random.uniform() < 0.5 ? systemI : systemII;
   System& boxII = (&boxI == &systemI) ? systemII : systemI;
 
+  // An attempt on an empty component is an attempt: it is counted before it is turned down, as the swap moves
+  // count theirs (the acceptance ratio was taken over the attempts that found a molecule only).
+  boxI.components[componentA].mc_moves_statistics.addTrial(move);
+  boxII.components[componentB].mc_moves_statistics.addTrial(move);
+
   if (boxI.numberOfIntegerMoleculesPerComponent[componentA] == 0)
   {
     return std::nullopt;
@@ -261,8 +266,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsIdentityCh
     return std::nullopt;
   }
 
-  boxI.components[componentA].mc_moves_statistics.addTrial(move);
-  boxII.components[componentB].mc_moves_statistics.addTrial(move);
 
   const double numberOfMoleculesA_boxI =
       static_cast<double>(boxI.numberOfIntegerMoleculesPerComponent[componentA]);

@@ -698,3 +698,33 @@ TEST(MC_NPT_DRIFT, volume_moves_keep_the_fixed_cut_offs_inside_the_minimum_image
     EXPECT_GT(accepted, 0uz) << (anisotropic ? "anisotropic" : "isotropic");
   }
 }
+
+// With 'ExternalPressureX/Y/Z' the isotropic volume move weighs its boxes with the pressure tensor, as the
+// anisotropic move does: it used the scalar pressure, so the two moves sampled different distributions and the
+// isotropic move alone ignored the tensor. Here the scalar pressure is zero and the tensor crushing: no
+// expansion is accepted. An accepted move also leaves the kinetic energy of the running energies alone (the
+// recomputed energies hold none, and the difference took what a hybrid Monte Carlo move had left there away).
+TEST(MC_NPT_DRIFT, the_isotropic_volume_move_works_against_the_pressure_tensor)
+{
+  std::size_t accepted = 0;
+  for (std::size_t seed = 0; seed < 40; ++seed)
+  {
+    System system = makeDiluteCO2System();
+    system.mc_moves_statistics.setMaxChange(Move::Types::VolumeChange, 0.2);
+    system.pressure = 0.0;
+    system.pressureTensorDiagonal = double3(1.0e3, 1.0e3, 1.1e3);
+    system.runningEnergies.translationalKineticEnergy = 7.0;
+    system.runningEnergies.rotationalKineticEnergy = 3.0;
+    const double volumeBefore = system.simulationBox.volume;
+
+    RandomNumber random(seed);
+    const std::optional<RunningEnergy> result = MC_Moves::volumeMove(random, system);
+    if (!result.has_value()) continue;
+    ++accepted;
+    system.runningEnergies += result.value();
+    EXPECT_LT(system.simulationBox.volume, volumeBefore) << "seed " << seed;
+    EXPECT_DOUBLE_EQ(system.runningEnergies.translationalKineticEnergy, 7.0);
+    EXPECT_DOUBLE_EQ(system.runningEnergies.rotationalKineticEnergy, 3.0);
+  }
+  EXPECT_GT(accepted, 3uz);
+}

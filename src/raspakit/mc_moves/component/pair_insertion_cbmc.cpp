@@ -26,7 +26,8 @@ import mc_moves_cputime;
 import mc_moves_acceptance;
 
 static std::size_t reversePairDeletionPartnerCount(const System& system, std::size_t componentB,
-                                                   const double3& positionA, std::span<const Atom> trialMoleculeB,
+                                                   const double3& positionA,
+                                                   [[maybe_unused]] std::span<const Atom> trialMoleculeB,
                                                    double maximumPairDistance)
 {
   const std::size_t startingBeadB = system.components[componentB].startingBead;
@@ -43,9 +44,10 @@ static std::size_t reversePairDeletionPartnerCount(const System& system, std::si
     if (dr.length_squared() <= maximumPairDistanceSquared) ++count;
   }
 
-  const double3 trialDr =
-      system.simulationBox.applyPeriodicBoundaryConditions(positionA - trialMoleculeB[startingBeadB].position);
-  if (trialDr.length_squared() <= maximumPairDistanceSquared) ++count;
+  // The trial partner was placed inside the pair sphere and is counted as such. Tested against the radius again,
+  // a partner placed within rounding of it could fall outside: with no other partner in range the count was
+  // zero, the prefactor infinite, and the pair accepted whatever its energy.
+  ++count;
 
   return count;
 }

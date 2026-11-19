@@ -73,14 +73,17 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   Component &oldComponentData = system.components[oldComponent];
   Component &newComponentData = system.components[newComponent];
 
+  // An attempt on an empty component is an attempt: it is counted before it is turned down, as the swap moves
+  // count theirs (the acceptance ratio was taken over the attempts that found a molecule only).
+  // The statistics and timings are those of the component the move was drawn for, as the dispatcher's overall
+  // count and total time are: after the coin flip the molecule that changes may belong to the partner.
+  startComponent.mc_moves_statistics.addTrial(move);
+
   if (system.numberOfIntegerMoleculesPerComponent[oldComponent] == 0)
   {
     return std::nullopt;
   }
 
-  // The statistics and timings are those of the component the move was drawn for, as the dispatcher's overall
-  // count and total time are: after the coin flip the molecule that changes may belong to the partner.
-  startComponent.mc_moves_statistics.addTrial(move);
 
   const std::size_t selectedMoleculeOld = system.randomIntegerMoleculeOfComponent(random, oldComponent);
 

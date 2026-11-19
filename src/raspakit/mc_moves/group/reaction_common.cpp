@@ -28,6 +28,19 @@ import interactions_external_field;
 import reaction;
 import mc_moves_move_types;
 
+namespace
+{
+// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under which
+// 'std::isfinite' is true of everything. (Taken by reference and read as bytes, so that the test is not folded
+// away with it.)
+[[maybe_unused]] bool isFiniteNumber(const double& value)
+{
+  std::uint64_t bits{};
+  std::memcpy(&bits, &value, sizeof(bits));
+  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
+}
+}  // namespace
+
 namespace MC_Moves::ReactionCommon
 {
 
@@ -353,7 +366,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
   // state (overlapping trials are discarded), corrupting the running energies. Reject instead.
   // The test uses the exact log-weight (an overlap drives it to -inf/NaN); the raw product
   // legitimately underflows to zero for long chains, so it cannot be thresholded directly.
-  if (!std::isfinite(result.logRosenbluthWeight))
+  if (!isFiniteNumber(result.logRosenbluthWeight))
   {
     return std::nullopt;
   }

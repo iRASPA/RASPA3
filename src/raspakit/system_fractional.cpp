@@ -112,6 +112,16 @@ void System::determineFractionalComponents()
     if (components[i].mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCFCMC) > 0.0 ||
         components[i].mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCBCFCMC) > 0.0)
     {
+      // The Gibbs swap moves along 'lambdaGC' too, with a fractional molecule that is in one of the two boxes.
+      // Next to a grand-canonical CFCMC swap the component had two fractional molecules on the one bin and the
+      // one bias: after either move changed the bin the other's molecule kept the scaling of the old one.
+      if (needsGCSlot)
+      {
+        throw std::runtime_error(std::format(
+            "[System]: component '{}' enables both a grand-canonical CFCMC swap (or a fixed lambda) and a Gibbs "
+            "CFCMC swap; both move along the same lambda of the component and can not be combined.\n",
+            components[i].name));
+      }
       numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[i] = 1;
       components[i].hasFractionalMolecule = true;
     }
@@ -151,32 +161,52 @@ void System::determineFractionalComponents()
       continue;
     }
     const std::size_t partner = components[i].pairComponentId.value();
-    if (partner != i)
+    if (partner == i)
     {
-      if (components[i].mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0 ||
-          pinsFixedLambda(components[i], Component::FixedLambdaCoordinate::PairSwap))
+      continue;
+    }
+    const bool wantsPairSwap = components[i].mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0 ||
+                               pinsFixedLambda(components[i], Component::FixedLambdaCoordinate::PairSwap);
+    const bool wantsPairSwapCB = components[i].mc_moves_probabilities.getProbability(Move::Types::PairSwapCBCFCMC) > 0.0;
+
+    // The pair moves along the lambda of its lower-index member, and only that member performs the move. With
+    // the probability on both members the higher one used to claim the slots as a second driver, which was
+    // refused as two pairs sharing a fractional molecule; with the probability on the higher member alone the
+    // slots were made and the move never ran. The higher member is now a second mention of the same pair, and
+    // on its own it is refused by name.
+    if (i > partner)
+    {
+      const bool lowerDrives =
+          components[partner].pairComponentId.has_value() && components[partner].pairComponentId.value() == i;
+      const bool lowerWantsPairSwap =
+          lowerDrives && (components[partner].mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0 ||
+                          pinsFixedLambda(components[partner], Component::FixedLambdaCoordinate::PairSwap));
+      const bool lowerWantsPairSwapCB =
+          lowerDrives && components[partner].mc_moves_probabilities.getProbability(Move::Types::PairSwapCBCFCMC) > 0.0;
+      if ((wantsPairSwap && !lowerWantsPairSwap) || (wantsPairSwapCB && !lowerWantsPairSwapCB))
       {
-        claimPairSlot(pairSlotOwner, i, i, "PairSwapCFCMC");
-        claimPairSlot(pairSlotOwner, partner, i, "PairSwapCFCMC");
+        throw std::runtime_error(std::format(
+            "[System]: component '{}' enables a CFCMC pair swap with '{}', but the pair is moved by its first "
+            "(lowest-index) component: set 'PairComponent' and the pair-swap probability on '{}'.\n",
+            components[i].name, components[partner].name, components[partner].name));
       }
-      if (components[i].mc_moves_probabilities.getProbability(Move::Types::PairSwapCBCFCMC) > 0.0)
-      {
-        claimPairSlot(pairCBSlotOwner, i, i, "PairSwapCBCFCMC");
-        claimPairSlot(pairCBSlotOwner, partner, i, "PairSwapCBCFCMC");
-      }
+      continue;
     }
 
-    if (components[i].mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0 ||
-        pinsFixedLambda(components[i], Component::FixedLambdaCoordinate::PairSwap))
+    if (wantsPairSwap)
     {
+      claimPairSlot(pairSlotOwner, i, i, "PairSwapCFCMC");
+      claimPairSlot(pairSlotOwner, partner, i, "PairSwapCFCMC");
       numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[i] = 1;
       numberOfPairSwapFractionalMoleculesPerComponent_CFCMC[partner] = 1;
       components[i].hasFractionalMolecule = true;
       components[partner].hasFractionalMolecule = true;
     }
 
-    if (components[i].mc_moves_probabilities.getProbability(Move::Types::PairSwapCBCFCMC) > 0.0)
+    if (wantsPairSwapCB)
     {
+      claimPairSlot(pairCBSlotOwner, i, i, "PairSwapCBCFCMC");
+      claimPairSlot(pairCBSlotOwner, partner, i, "PairSwapCBCFCMC");
       numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC[i] = 1;
       numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC[partner] = 1;
       components[i].hasFractionalMolecule = true;

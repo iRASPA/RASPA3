@@ -175,19 +175,36 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber& random, System& 
   // Update constructed move counts
   system.mc_moves_statistics.addConstructed(move);
 
+  // With 'ExternalPressureX/Y/Z' the work is the one the anisotropic move weighs its boxes with: the two moves
+  // sampled different distributions (the scalar pressure here, the tensor there), and alone this move ignored
+  // the tensor. A hydrostatic tensor is the scalar pressure, p dV.
+  const double3& tensor = system.pressureTensorDiagonal;
+  const bool hydrostatic = tensor.x == tensor.y && tensor.y == tensor.z;
+  const double pressureWork = hydrostatic ? system.pressure * (newVolume - oldVolume)
+                                          : anisotropicPressureWork(system, saved.box, newBox);
+
   // Apply acceptance/rejection rule
   if (random.uniform() < MC_Moves::boundedExp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
-                                  (system.pressure * (newVolume - oldVolume) +
+                                  (pressureWork +
                                    (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *
                                       system.beta))
   {
     // Move accepted: the system already holds the new box, positions, structure factors and electric field.
     system.mc_moves_statistics.addAccepted(move);
-    return newTotalEnergy - oldTotalEnergy;
+    return volumeEnergyDifference(newTotalEnergy, oldTotalEnergy);
   }
 
   restoreVolumeState(system, saved);
   return std::nullopt;
+}
+
+RunningEnergy MC_Moves::volumeEnergyDifference(RunningEnergy newTotalEnergy, const RunningEnergy& oldTotalEnergy)
+{
+  newTotalEnergy.translationalKineticEnergy = oldTotalEnergy.translationalKineticEnergy;
+  newTotalEnergy.rotationalKineticEnergy = oldTotalEnergy.rotationalKineticEnergy;
+  newTotalEnergy.NoseHooverEnergy = oldTotalEnergy.NoseHooverEnergy;
+  newTotalEnergy.thermobarostatEnergy = oldTotalEnergy.thermobarostatEnergy;
+  return newTotalEnergy - oldTotalEnergy;
 }
 
 double MC_Moves::anisotropicPressureWork(const System& system, const SimulationBox& oldBox, const SimulationBox& newBox)
@@ -255,7 +272,7 @@ std::optional<RunningEnergy> MC_Moves::anisotropicVolumeMove(RandomNumber& rando
                (pressureWork + (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) * system.beta))
   {
     system.mc_moves_statistics.addAccepted(move);
-    return newTotalEnergy - oldTotalEnergy;
+    return volumeEnergyDifference(newTotalEnergy, oldTotalEnergy);
   }
 
   restoreVolumeState(system, saved);

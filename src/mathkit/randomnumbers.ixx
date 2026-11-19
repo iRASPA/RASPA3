@@ -79,10 +79,16 @@ export struct RandomNumber
   std::pair<std::size_t, std::size_t> randomPairAdjacentIntegers(std::size_t size)
   {
     if (size <= 1) return std::make_pair(0, 0);
-    std::size_t first = static_cast<std::size_t>(static_cast<double>(size - 1) * uniform());
-    std::size_t second = first + 1;
-    if (uniform() < 0.5) std::swap(first, second);
-    return std::make_pair(first, second);
+    // The first of the pair is uniform over all the integers, the second one of its neighbours. Drawing the
+    // lower of the pair from [0, size-2] and swapping the two with probability one half made the first and the
+    // last integer the first of the pair half as often as the ones in between: of three systems the middle one
+    // took half the steps. The order of the pair is not symmetric at the two ends, so what is done with a pair
+    // may not depend on it (the moves between two systems draw their own direction).
+    const std::size_t first = std::min(static_cast<std::size_t>(static_cast<double>(size) * uniform()), size - 1);
+    const bool up = uniform() < 0.5;
+    if (first == 0) return std::make_pair(first, first + 1);
+    if (first == size - 1) return std::make_pair(first, first - 1);
+    return std::make_pair(first, up ? first + 1 : first - 1);
   }
 
   /// Uniformly distributed unit vector (Marsaglia). Same as 'randomVectorOnUnitSphere'; kept for the call sites

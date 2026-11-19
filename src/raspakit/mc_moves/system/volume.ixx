@@ -124,6 +124,16 @@ std::optional<RunningEnergy> volumeMove(RandomNumber& random, System& system);
 double anisotropicPressureWork(const System& system, const SimulationBox& oldBox, const SimulationBox& newBox);
 
 /**
+ * \brief The energy change of an accepted volume move: the recomputed energies of the trial box minus the
+ *        running energies, with the kinetic and thermostat terms left where they are.
+ *
+ * The recomputation holds potential terms only. Subtracting the running energies as a whole took the kinetic and
+ * thermostat energies an accepted hybrid Monte Carlo move had left there away again, with the velocities still
+ * in the system.
+ */
+RunningEnergy volumeEnergyDifference(RunningEnergy newTotalEnergy, const RunningEnergy& oldTotalEnergy);
+
+/**
  * \brief Performs an anisotropic volume move with independent pressures along a, b, and c.
  *
  * Scales each lattice vector length independently (the angles are kept) and accepts with the constant-stress

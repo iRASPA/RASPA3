@@ -195,8 +195,10 @@ TEST(MC_FRACTIONAL_MOLECULE_ORDER, swap_and_gibbs_swap_layout)
   componentProbabilities.setProbability(Move::Types::Translation, 1.0);
   componentProbabilities.setProbability(Move::Types::Rotation, 1.0);
   componentProbabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  // The grand-canonical swap beside the conventional Gibbs CFCMC move, which has a lambda of its own. (Beside
+  // the Gibbs CFCMC swap, which moves along the lambda of the grand-canonical swap, it is refused.)
   componentProbabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
-  componentProbabilities.setProbability(Move::Types::GibbsSwapCFCMC, 1.0);
+  componentProbabilities.setProbability(Move::Types::GibbsConventionalCFCMC, 1.0);
 
   Component propane = makeAlkaneFromExample(forceField, 0, "propane", componentProbabilities);
   propane.lnPartitionFunction = 1.0;
@@ -205,10 +207,10 @@ TEST(MC_FRACTIONAL_MOLECULE_ORDER, swap_and_gibbs_swap_layout)
                          5, MCMoveProbabilities());
 
   const std::size_t gcIndex = system.indexOfFractionalMoleculeForMove(Move::Types::SwapCFCMC, 0);
-  const std::size_t gibbsSwapIndex = system.indexOfFractionalMoleculeForMove(Move::Types::GibbsSwapCFCMC, 0);
+  const std::size_t gibbsSwapIndex = system.indexOfFractionalMoleculeForMove(Move::Types::GibbsConventionalCFCMC, 0);
 
   EXPECT_EQ(system.numberOfGCFractionalMoleculesPerComponent_CFCMC[0], 1uz);
-  EXPECT_EQ(system.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC[0], 1uz);
+  EXPECT_EQ(system.numberOfGibbsFractionalMoleculesPerComponent_CFCMC[0], 1uz);
   EXPECT_EQ(gcIndex, 0uz);
   EXPECT_EQ(gibbsSwapIndex, 1uz);
   EXPECT_NE(gcIndex, gibbsSwapIndex);
@@ -224,7 +226,7 @@ TEST(MC_FRACTIONAL_MOLECULE_ORDER, degrees_of_freedom_count_every_fractional_mol
   MCMoveProbabilities componentProbabilities = MCMoveProbabilities();
   componentProbabilities.setProbability(Move::Types::Translation, 1.0);
   componentProbabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
-  componentProbabilities.setProbability(Move::Types::GibbsSwapCFCMC, 1.0);
+  componentProbabilities.setProbability(Move::Types::GibbsConventionalCFCMC, 1.0);
   Component propane = makeAlkaneFromExample(forceField, 0, "propane", componentProbabilities);
   propane.lnPartitionFunction = 1.0;
 
@@ -238,7 +240,7 @@ TEST(MC_FRACTIONAL_MOLECULE_ORDER, degrees_of_freedom_count_every_fractional_mol
   EXPECT_EQ(system.rotationalDegreesOfFreedom, (integers + 2) * perMoleculeRotation);
 
   // a fractional molecule leaves and comes back (as in the serial reaction moves)
-  const std::size_t slot = system.indexOfFractionalMoleculeForMove(Move::Types::GibbsSwapCFCMC, 0);
+  const std::size_t slot = system.indexOfFractionalMoleculeForMove(Move::Types::GibbsConventionalCFCMC, 0);
   const std::vector<Atom> atoms(system.spanOfMolecule(0, slot).begin(), system.spanOfMolecule(0, slot).end());
   const Molecule molecule = system.moleculeData[slot];
   system.deleteFractionalMolecule(0, slot, system.spanOfMolecule(0, slot));

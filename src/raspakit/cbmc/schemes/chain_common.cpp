@@ -191,9 +191,10 @@ void CBMC::throwExistingConfigurationOverlaps(std::string_view scheme, const Com
   std::string beads{};
   for (std::size_t bead : step.nextBeads) beads += std::format(" {}", bead);
   throw std::runtime_error(std::format(
-      "{}: the existing configuration of component '{}' overlaps at growth step {} (bead(s){}); the retrace of an "
-      "overlapping molecule has no defined weight. The simulation state is inconsistent (overlapping molecules in "
-      "the initial/restart configuration, a molecule inside a blocked pocket, or a force field or scaling changed "
-      "after placement).\n",
+      "{}: the existing configuration of component '{}' overlaps at growth step {} (bead(s){}), or its geometry "
+      "there is outside what the step generates (a declared chiral centre of the other parity, a degenerate "
+      "bridge). The retrace of such a molecule has no defined weight. The simulation state is "
+      "inconsistent (overlapping molecules in the initial/restart configuration, a molecule inside a blocked "
+      "pocket, an inverted stereocentre, or a force field or scaling changed after placement).\n",
       scheme, component.name, stepIndex, beads));
 }

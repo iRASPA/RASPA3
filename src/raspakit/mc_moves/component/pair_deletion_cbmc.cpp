@@ -301,6 +301,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 
+  // the retrace is done: it is counted as constructed before the window of the transition matrix can turn it down
+  componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwapCBMC, 1);
+
   if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
   {
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
@@ -309,8 +312,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
   const double biasTransitionMatrix =
       tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, oldN) : 1.0;
-
-  componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwapCBMC, 1);
 
   if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, Pacc))
   {
@@ -551,6 +552,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 
+  // the retrace is done: it is counted as constructed before the window of the transition matrix can turn it down
+  componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwap, 1);
+
   if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
   {
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
@@ -559,8 +563,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
   const double biasTransitionMatrix =
       tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, oldN) : 1.0;
-
-  componentA.mc_moves_statistics.addConstructed(Move::Types::PairSwap, 1);
 
   if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, Pacc))
   {

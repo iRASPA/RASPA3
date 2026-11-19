@@ -479,7 +479,7 @@ void MonteCarlo::preInitialize(std::function<void()> call_back_function, std::si
     ++system_id;
   }
 
-  for (currentCycle = 0uz; currentCycle != numberOfPreInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle < numberOfPreInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::steady_clock::now();
 
@@ -509,7 +509,7 @@ void MonteCarlo::preInitialize(std::function<void()> call_back_function, std::si
       }
     }
 
-    if (currentCycle % callBackEvery == 0uz)
+    if (callBackEvery != 0uz && currentCycle % callBackEvery == 0uz)
     {
       if (call_back_function)
       {
@@ -586,7 +586,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
     ++system_id;
   }
 
-  for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle < numberOfInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::steady_clock::now();
 
@@ -622,7 +622,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
       }
     }
 
-    if (currentCycle % callBackEvery == 0uz)
+    if (callBackEvery != 0uz && currentCycle % callBackEvery == 0uz)
     {
       if(call_back_function)
       {
@@ -701,7 +701,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
     system.reactionLambdaClearBookkeeping();
   };
 
-  for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle < numberOfEquilibrationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::steady_clock::now();
 
@@ -744,7 +744,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
       }
     }
 
-    if (currentCycle % callBackEvery == 0uz)
+    if (callBackEvery != 0uz && currentCycle % callBackEvery == 0uz)
     {
       if(call_back_function)
       {
@@ -907,7 +907,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
   }
 
   numberOfSteps = 0uz;
-  for (currentCycle = 0uz; currentCycle != numberOfProductionCycles; ++currentCycle, ++absoluteCurrentCycle)
+  for (currentCycle = 0uz; currentCycle < numberOfProductionCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::steady_clock::now();
 
@@ -1001,7 +1001,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       }
     }
 
-    if (currentCycle % callBackEvery == 0uz)
+    if (callBackEvery != 0uz && currentCycle % callBackEvery == 0uz)
     {
       if(call_back_function)
       {

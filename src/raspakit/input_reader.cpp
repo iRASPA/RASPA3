@@ -5523,6 +5523,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   // without a word).
   for (std::size_t i = 0uz; i < systems.size(); ++i)
   {
+    // with one system the pair of the swap is that system twice: it was exchanged with itself, always accepted,
+    // and its molecules came out of the exchange twice over
+    // (the transition-matrix runs refuse the move itself, below)
+    if (systems[i].mc_moves_probabilities.getProbability(Move::Types::ParallelTempering) > 0.0 && systems.size() < 2uz &&
+        !systems[i].tmmc.doTMMC && simulationType != SimulationType::ParallelTMMC)
+    {
+      throw std::runtime_error(std::format(
+          "[Input reader]: system {}: 'ParallelTemperingSwapProbability' needs a second system to swap with\n", i));
+    }
     if (systems[i].mc_moves_probabilities.getProbability(Move::Types::ParallelTempering) > 0.0 &&
         systems[i].framework.has_value() && systems[i].framework->hasMobileAtoms())
     {

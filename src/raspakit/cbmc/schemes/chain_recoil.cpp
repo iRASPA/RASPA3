@@ -337,12 +337,14 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
       statistics.discarded += 1.0;
       return std::nullopt;
     case GrowOutcome::Complete:
-      statistics.completed += 1.0;
       break;
   }
 
   // 'chainAtoms' now holds the complete grown molecule; the alternatives of every step are probed
   // a posteriori against it (the feelers use the beads beyond the step as scratch).
+  // The growth is counted as completed, and its steps with it, once the weight of every step is in: a step under
+  // the floor of the Rosenbluth factor still fails the growth below.
+  double availableDirectionsSum = 0.0;
   ChainAccumulator chain{};
   for (std::size_t seg = 0; seg != ctx.steps.size(); ++seg)
   {
@@ -351,8 +353,7 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
     // The directions tried and failed by the growth are unavailable by construction; only the
     // untried ones are probed.
     const std::size_t available = countAvailableDirections(random, ctx, seg, chainAtoms, record.triedCount);
-    statistics.availableDirectionsSum += static_cast<double>(available);
-    statistics.growSteps += 1.0;
+    availableDirectionsSum += static_cast<double>(available);
 
     const double logWeight = stepLogWeight(ctx, seg, available, record.energy.potentialEnergy(),
                                            record.selected.logTorsionWeight, chainAtoms);
@@ -361,6 +362,10 @@ RecoilContext makeRecoilContext(const GrowContext &context, const Component &com
       return std::nullopt;
     }
   }
+
+  statistics.completed += 1.0;
+  statistics.availableDirectionsSum += availableDirectionsSum;
+  statistics.growSteps += static_cast<double>(ctx.steps.size());
 
   return finishGrownChain(context, component, std::move(chainAtoms), chain);
 }

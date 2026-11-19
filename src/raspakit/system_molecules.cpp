@@ -870,11 +870,21 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
 
     // The grow filters every trial against the blocking pockets, so the returned molecule needs no
     // further pocket check.
+    // The growth is retried until it places the molecule, but not for ever: more molecules than fit the box,
+    // or all the open space inside blocking pockets, used to keep the start of the run in this loop.
+    constexpr std::size_t maximumNumberOfCreationAttempts = 1'000'000uz;
     std::optional<CBMC::GrowResult> current = std::nullopt;
-    do
+    for (std::size_t attempt = 0uz; !isValid(current); ++attempt)
     {
+      if (attempt == maximumNumberOfCreationAttempts)
+      {
+        throw std::runtime_error(std::format(
+            "[System]: no room was found for a molecule of component '{}' in {} attempts; the requested number of "
+            "molecules does not fit the box (or the open space is blocked)\n",
+            component.name, maximumNumberOfCreationAttempts));
+      }
       current = CBMC::growNewMolecule(random, creationContext(), component, identity);
-    } while (!isValid(current));
+    }
 
     // An overlapping proposal has no weight and counts as rejected. In a dense background that is the
     // fate of most growths, and there the weight of a valid candidate is dominated by its fit into the
@@ -1022,6 +1032,14 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>>& ini
     if (componentId < initialPositions.size())
     {
       std::vector<double3> positions = initialPositions[componentId];
+      // whole molecules only: a last molecule short of atoms was read past the end of the positions
+      if (component.atoms.empty() ? !positions.empty() : positions.size() % component.atoms.size() != 0uz)
+      {
+        throw std::runtime_error(std::format(
+            "[System]: component '{}' is given {} initial positions, which is not a whole number of molecules of "
+            "{} atoms\n",
+            component.name, positions.size(), component.atoms.size()));
+      }
       for (std::size_t i = 0; i < positions.size(); i += component.atoms.size())
       {
         std::span<double3> position_view = std::span<double3>(&positions[i], component.atoms.size());

@@ -585,3 +585,34 @@ TEST(MC_DRIVER_BOOKKEEPING, inner_cut_off_of_the_dual_cut_off_scheme_is_held_at_
     EXPECT_DOUBLE_EQ(context.cutOffCoulomb, system.forceField.cutOffCoulomb);
   }
 }
+
+// The first of a pair of neighbouring integers is the system a Monte Carlo step is taken in: it is uniform over
+// all of them. Drawn as the lower of the pair and swapped with probability one half, the first and the last were
+// the first of the pair half as often as the ones in between.
+TEST(MC_DRIVER_BOOKKEEPING, the_system_of_a_step_is_drawn_uniformly)
+{
+  RandomNumber random(11);
+  const std::size_t size = 4;
+  const std::size_t draws = 400000;
+  std::vector<std::size_t> counts(size, 0);
+  for (std::size_t i = 0; i < draws; ++i)
+  {
+    const auto [first, second] = random.randomPairAdjacentIntegers(size);
+    ASSERT_LT(first, size);
+    ASSERT_LT(second, size);
+    ASSERT_EQ(first > second ? first - second : second - first, 1uz);
+    ++counts[first];
+  }
+  for (std::size_t count : counts)
+  {
+    EXPECT_NEAR(static_cast<double>(count) / static_cast<double>(draws), 0.25, 0.005);
+  }
+
+  // one integer is its own pair, two are each other's neighbour
+  EXPECT_EQ(random.randomPairAdjacentIntegers(1), (std::pair<std::size_t, std::size_t>(0, 0)));
+  for (std::size_t i = 0; i < 100; ++i)
+  {
+    const auto [first, second] = random.randomPairAdjacentIntegers(2);
+    EXPECT_EQ(first + second, 1uz);
+  }
+}

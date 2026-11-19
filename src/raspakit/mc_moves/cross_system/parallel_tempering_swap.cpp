@@ -682,6 +682,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
 {
   Move::Types move = Move::Types::ParallelTempering;
 
+  // A system is not exchanged with itself: the drivers that advance each system on its own lane hand the move
+  // the one system twice, and the exchange of a configuration with itself duplicated its molecules.
+  if (&systemA == &systemB)
+  {
+    return std::nullopt;
+  }
+
   systemA.mc_moves_statistics.addTrial(move);
 
   const std::optional<double> logAcceptance =

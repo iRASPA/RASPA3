@@ -2448,3 +2448,29 @@ TEST(MC_GIBBS_DRIFT, the_inactive_box_of_a_serial_gibbs_swap_starts_without_tail
   EXPECT_DOUBLE_EQ(groupCount(systems[0]), 3.0);
   EXPECT_DOUBLE_EQ(groupCount(systems[1]), 0.0);
 }
+
+// A system is not exchanged with itself. The drivers that advance each system on its own lane hand the swap the
+// one system twice, and so did a run of a single system: the exchange was always accepted and the molecules of
+// the system came out of it twice over.
+TEST(MC_GIBBS_DRIFT, a_system_is_not_tempered_against_itself)
+{
+  const ForceField forceField({{"X", false, 1.0, 0.0, 0.0, 1, false}}, {{0.0, 1.0}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  const Component particle(forceField, "particle", 1.0, 1.0, 0.0,
+                           {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21);
+  System system(forceField, SimulationBox(20.0, 20.0, 20.0), false, 300.0, 1e4, 1.0, {}, {particle}, {}, {4}, 5);
+  system.runningEnergies = system.computeTotalEnergies();
+  system.trialEik = system.storedEik;
+  const auto atoms = system.atomData;
+
+  RandomNumber random(3);
+  for (std::size_t attempt = 0; attempt < 4; ++attempt)
+  {
+    EXPECT_FALSE(MC_Moves::ParallelTemperingSwap(random, system, system).has_value());
+  }
+  ASSERT_EQ(system.atomData.size(), atoms.size());
+  for (std::size_t i = 0; i < atoms.size(); ++i)
+  {
+    EXPECT_EQ(system.atomData[i].position, atoms[i].position);
+  }
+}

@@ -752,6 +752,9 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
   const std::optional<std::size_t> tmmcMember = system.groupSwapTMMCMember(selectedComponent);
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 
+  // the retrace is done: it is counted as constructed before the window of the transition matrix can turn it down
+  centralComponent.mc_moves_statistics.addConstructed(move, 1);
+
   if (tmmcMember.has_value() && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
   {
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
@@ -759,8 +762,6 @@ static std::pair<std::optional<RunningEnergy>, double3> groupDeletion(RandomNumb
 
   const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
   const double biasTransitionMatrix = tmmcMember.has_value() ? system.tmmcIntegerSwapBiasFactor(tmmcMember.value(), newN, oldN) : 1.0;
-
-  centralComponent.mc_moves_statistics.addConstructed(move, 1);
 
   if (MC_Moves::acceptedWithBias(random.uniform(), biasTransitionMatrix, Pacc))
   {

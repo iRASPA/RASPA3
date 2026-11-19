@@ -51,6 +51,13 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
     return std::nullopt;
   }
 
+  // An attempt on an empty component is an attempt: it is counted before it is turned down, as the swap moves
+  // count theirs (the acceptance ratio was taken over the attempts that found a molecule only).
+  // The statistics are those of the component the move was drawn for (the partner is a parameter of the move),
+  // as the dispatcher's overall count and total time are; counting the partner too would double the trials in
+  // the sum over the components.
+  componentAData.mc_moves_statistics.addTrial(move);
+
   // Composition is conserved (one A and one B are exchanged), so picking one molecule of each
   // uniformly gives identical proposal probabilities for the forward and reverse moves.
   if (system.numberOfIntegerMoleculesPerComponent[componentA] == 0 ||
@@ -59,10 +66,6 @@ std::optional<RunningEnergy> MC_Moves::identitySwitchMove(RandomNumber &random, 
     return std::nullopt;
   }
 
-  // The statistics are those of the component the move was drawn for (the partner is a parameter of the move),
-  // as the dispatcher's overall count and total time are; counting the partner too would double the trials in
-  // the sum over the components.
-  componentAData.mc_moves_statistics.addTrial(move);
 
   const std::size_t moleculeA = system.randomIntegerMoleculeOfComponent(random, componentA);
   const std::size_t moleculeB = system.randomIntegerMoleculeOfComponent(random, componentB);

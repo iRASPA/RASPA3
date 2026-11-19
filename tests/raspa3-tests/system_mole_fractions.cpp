@@ -136,6 +136,48 @@ TEST(SYSTEM_MOLE_FRACTIONS, a_partner_shared_by_two_pair_swaps_is_refused)
   }
 }
 
+// The CFCMC pair swap named on both ions of the pair is one pair, moved by its lower-index member: the second
+// mention used to claim the fractional molecules as a second driver and was refused as two pairs sharing them.
+// Named on the higher-index member alone the move never ran: that is refused, by name.
+TEST(SYSTEM_MOLE_FRACTIONS, a_cfcmc_pair_swap_named_on_both_ions_is_one_pair)
+{
+  const ForceField forceField = makeForceField();
+  for (const Move::Types move : {Move::Types::PairSwapCFCMC, Move::Types::PairSwapCBCFCMC})
+  {
+    Component cation = makeComponent(forceField, "cation", false, 1.0);
+    cation.mc_moves_probabilities.setProbability(move, 1.0);
+    cation.pairComponentId = 1;
+    cation.maximumPairDistance = 5.0;
+    Component anion = makeComponent(forceField, "anion", false, 1.0);
+    anion.mc_moves_probabilities.setProbability(move, 1.0);
+    anion.pairComponentId = 0;
+    anion.maximumPairDistance = 5.0;
+
+    EXPECT_NO_THROW((void)makeSystem({cation, anion}));
+    const System system = makeSystem({cation, anion});
+    EXPECT_TRUE(system.componentDrivesPairSwapLambda(0, move));
+    EXPECT_FALSE(system.componentDrivesPairSwapLambda(1, move));
+
+    Component silentCation = makeComponent(forceField, "cation", false, 1.0);
+    EXPECT_THROW((void)makeSystem({silentCation, anion}), std::runtime_error);
+  }
+}
+
+// The grand-canonical CFCMC swap and the Gibbs CFCMC swap both move along the one lambda of the component, each
+// with a fractional molecule of its own: after either changed the bin the other's molecule kept the old scaling.
+TEST(SYSTEM_MOLE_FRACTIONS, a_grand_canonical_and_a_gibbs_cfcmc_swap_on_one_component_are_refused)
+{
+  const ForceField forceField = makeForceField();
+  Component both = makeComponent(forceField, "co2", true, 1.0);
+  both.mc_moves_probabilities.setProbability(Move::Types::SwapCFCMC, 1.0);
+  both.mc_moves_probabilities.setProbability(Move::Types::GibbsSwapCFCMC, 1.0);
+  EXPECT_THROW((void)makeSystem({both}), std::runtime_error);
+
+  Component gibbsOnly = makeComponent(forceField, "co2", true, 1.0);
+  gibbsOnly.mc_moves_probabilities.setProbability(Move::Types::GibbsSwapCFCMC, 1.0);
+  EXPECT_NO_THROW((void)makeSystem({gibbsOnly}));
+}
+
 // The pair sphere is wrapped onto the box by the insertion and looked at by minimum image in the deletion: with a
 // radius above half the smallest width of the box the two count different sets of partners. Refused at the start,
 // and the moves are not performed in a box that has shrunk below it.
