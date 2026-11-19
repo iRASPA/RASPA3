@@ -5,6 +5,10 @@ import std;
 import double3;
 import double3x3;
 import skposcarparser;
+import skstructure;
+import skatom;
+import skcell;
+import bool3;
 
 namespace
 {
@@ -193,4 +197,95 @@ Direct
   ASSERT_EQ(totalAtomCount(atoms), 2U);
   EXPECT_EQ(std::get<1>(atoms[0]), 26U);
   EXPECT_EQ(std::get<1>(atoms[1]), 8U);
+}
+
+namespace
+{
+std::string poscarWith(const std::string& scale, const std::string& firstAtomLine,
+                       const std::string& mode = "Direct")
+{
+  return "comment\n" + scale + "\n4.0 0.0 0.0\n0.0 4.0 0.0\n0.0 0.0 4.0\nSn Cl\n1 1\n" + mode + "\n" + firstAtomLine +
+         "\n0.5 0.5 0.5 T T T\n";
+}
+}  // namespace
+
+// A number is the whole token, with the 'D' exponent Fortran writes: "0.5D-01" was read as 0.5, and "nan" and
+// "inf" as numbers.
+TEST(POSCARParser, NumbersAreReadWhole)
+{
+  SKPOSCARParser parser(poscarWith("0.10000000D+01", "0.50000000D-01 +2.5d-1 1.0E-1"));
+  parser.startParsing();
+  const auto atoms = parser.firstTestFrame();
+  ASSERT_EQ(atoms.size(), 2U);
+  EXPECT_DOUBLE_EQ(std::get<0>(atoms[0]).x, 0.05);
+  EXPECT_DOUBLE_EQ(std::get<0>(atoms[0]).y, 0.25);
+  EXPECT_DOUBLE_EQ(std::get<0>(atoms[0]).z, 0.1);
+  EXPECT_DOUBLE_EQ(parser.movies().front().front()->cell->unitCell().ax, 4.0);
+
+  for (const auto& [scale, line] :
+       {std::pair{"nan", "0 0 0"}, std::pair{"inf", "0 0 0"}, std::pair{"1.0", "nan 0 0"}, std::pair{"1.0", "0 inf 0"},
+        std::pair{"1.0", "0.5x 0 0"}, std::pair{"1.0", "0 0 1e999"}, std::pair{"1.0abc", "0 0 0"}})
+  {
+    SKPOSCARParser refused(poscarWith(scale, line));
+    EXPECT_THROW(refused.startParsing(), std::runtime_error) << scale << " / " << line;
+  }
+}
+
+// The selective-dynamics flags are kept: 'F' holds the atom along that lattice vector.
+TEST(POSCARParser, SelectiveDynamicsFlagsFixTheAtom)
+{
+  SKPOSCARParser parser(poscarWith("1.0", "0.0 0.0 0.0 F T .FALSE.", "Selective dynamics\nDirect"));
+  parser.startParsing();
+  const auto& atoms = parser.movies().front().front()->atoms;
+  ASSERT_EQ(atoms.size(), 2U);
+  EXPECT_TRUE(atoms[0]->isFixed().x);
+  EXPECT_FALSE(atoms[0]->isFixed().y);
+  EXPECT_TRUE(atoms[0]->isFixed().z);
+  EXPECT_FALSE(atoms[1]->isFixed().x || atoms[1]->isFixed().y || atoms[1]->isFixed().z);
+
+  SKPOSCARParser refused(poscarWith("1.0", "0.0 0.0 0.0 F T 7", "Selective dynamics\nDirect"));
+  EXPECT_THROW(refused.startParsing(), std::runtime_error);
+}
+
+// Lines that end in a carriage return, with or without a line feed, are the lines of the file.
+TEST(POSCARParser, CarriageReturnLineEnds)
+{
+  for (const std::string lineEnd : {"\r", "\r\n"})
+  {
+    std::string content = poscarWith("1.0", "0.25 0.5 0.75");
+    std::string converted;
+    for (const char character : content)
+    {
+      if (character == '\n')
+        converted += lineEnd;
+      else
+        converted.push_back(character);
+    }
+    SKPOSCARParser parser(converted);
+    ASSERT_NO_THROW(parser.startParsing());
+    const auto atoms = parser.firstTestFrame();
+    ASSERT_EQ(atoms.size(), 2U);
+    EXPECT_DOUBLE_EQ(std::get<0>(atoms[0]).y, 0.5);
+    EXPECT_EQ(std::get<1>(atoms[0]), 50U);
+  }
+}
+
+// More unnamed species than there are elements: the ones past the table have no element (their number in the
+// file was taken for one, and read past the end of the table of elements).
+TEST(POSCARParser, UnnamedSpeciesPastTheTableOfElements)
+{
+  std::string content = "comment\n1.0\n40.0 0.0 0.0\n0.0 40.0 0.0\n0.0 0.0 40.0\n";
+  const std::size_t numberOfSpecies = 125;
+  for (std::size_t i = 0; i < numberOfSpecies; ++i) content += "1 ";
+  content += "\nDirect\n";
+  for (std::size_t i = 0; i < numberOfSpecies; ++i) content += std::format("{} 0.0 0.0\n", i / 200.0);
+
+  SKPOSCARParser parser(content);
+  ASSERT_NO_THROW(parser.startParsing());
+  const auto atoms = parser.firstTestFrame();
+  ASSERT_EQ(atoms.size(), numberOfSpecies);
+  EXPECT_EQ(std::get<1>(atoms[0]), 1U);
+  EXPECT_EQ(std::get<1>(atoms[117]), 118U);
+  EXPECT_EQ(std::get<1>(atoms[118]), 0U);
+  EXPECT_EQ(std::get<1>(atoms[124]), 0U);
 }

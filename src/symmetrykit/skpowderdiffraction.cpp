@@ -60,6 +60,17 @@ std::string elementSymbol(std::size_t atomicNumber)
   return std::format("of atomic number {}", atomicNumber);
 }
 
+// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under which
+// a comparison with infinity is whatever the optimiser makes of it.
+// (Taken by reference and read as bytes: passed by value, the number is one the compiler holds to be finite, and
+// the test was folded away.)
+bool isFiniteNumber(const double& value)
+{
+  std::uint64_t bits{};
+  std::memcpy(&bits, &value, sizeof(bits));
+  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
+}
+
 void validate(const SKPowderDiffraction::Settings& settings)
 {
   if (!(settings.twoThetaMin >= 0.0) || !(settings.twoThetaMax > settings.twoThetaMin) ||
@@ -80,7 +91,9 @@ void validate(const SKPowderDiffraction::Settings& settings)
   }
   for (const SKPowderDiffraction::Line& line : settings.lines)
   {
-    if (!(line.wavelength > 0.0) || !(line.weight >= 0.0))
+    // (an infinite weight made the strongest peak infinite, and the scaling to 100 every intensity not a number)
+    if (!(line.wavelength > 0.0) || !(line.weight >= 0.0) || !isFiniteNumber(line.wavelength) ||
+        !isFiniteNumber(line.weight))
     {
       throw std::invalid_argument(std::format(
           "powder diffraction: a wavelength of {} Angstrom with weight {} is not a line of the radiation",
@@ -143,6 +156,13 @@ std::vector<Reflection> reflections(const double3x3& unitCell, const std::vector
   const double3 b(unitCell.bx, unitCell.by, unitCell.bz);
   const double3 c(unitCell.cx, unitCell.cy, unitCell.cz);
   const double reach = maximumReciprocalLength * (1.0 + 1.0e-9);
+  // more indices than can be counted, let alone summed over: a wavelength of 1e-12 Angstrom overflowed the int
+  constexpr double mostIndices = 1.0e4;
+  if (!(reach * a.length() < mostIndices) || !(reach * b.length() < mostIndices) || !(reach * c.length() < mostIndices))
+  {
+    throw std::invalid_argument(
+        "powder diffraction: the wavelength is too short for the cell (more than 10^4 Miller indices along an axis)");
+  }
   const int hmax = static_cast<int>(std::floor(reach * a.length()));
   const int kmax = static_cast<int>(std::floor(reach * b.length()));
   const int lmax = static_cast<int>(std::floor(reach * c.length()));
@@ -295,6 +315,11 @@ SKPowderDiffraction SKPowderDiffraction::compute(const double3x3& unitCell, std:
 
   SKPowderDiffraction result;
 
+  if (!((settings.twoThetaMax - settings.twoThetaMin) / settings.twoThetaStep < 1.0e8))
+  {
+    throw std::invalid_argument(std::format("powder diffraction: a two-theta step of {} gives more than 10^8 points",
+                                            settings.twoThetaStep));
+  }
   const std::size_t numberOfPoints =
       static_cast<std::size_t>(std::floor((settings.twoThetaMax - settings.twoThetaMin) / settings.twoThetaStep + 1.0e-9)) +
       1;
@@ -359,6 +384,11 @@ SKPowderDiffraction SKPowderDiffraction::compute(const double3x3& unitCell, std:
   // the table: the strongest peak of the range is 100, and what is left without intensity is not a peak
   double strongest = 0.0;
   for (const Peak& peak : result.peaks) strongest = std::max(strongest, peak.intensity);
+  if (!isFiniteNumber(strongest))
+  {
+    // exp(-B s^2) of a large negative B overflows, and the scaling below made every intensity not a number
+    throw std::invalid_argument("powder diffraction: the intensities are not finite (check the displacement factors)");
+  }
   if (strongest > 0.0)
   {
     for (Peak& peak : result.peaks) peak.intensity *= 100.0 / strongest;
@@ -373,8 +403,11 @@ SKPowderDiffraction SKPowderDiffraction::compute(const double3x3& unitCell, std:
 
     if (bragg.fullWidth < 1.0e-5)
     {
+      // a line only inside the range, as in the table of peaks: one within half a step outside it was rounded onto
+      // the first or the last point, a spike in the pattern with no peak in the table
       const double position = std::round((bragg.twoTheta - settings.twoThetaMin) / settings.twoThetaStep);
-      if (position >= 0.0 && position < static_cast<double>(numberOfPoints))
+      if (bragg.twoTheta >= settings.twoThetaMin - 1.0e-9 && bragg.twoTheta <= settings.twoThetaMax + 1.0e-9 &&
+          position >= 0.0 && position < static_cast<double>(numberOfPoints))
       {
         result.intensity[static_cast<std::size_t>(position)] += bragg.intensity / settings.twoThetaStep;
       }

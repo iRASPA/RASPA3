@@ -13,6 +13,61 @@ import characterset;
 import skparser;
 import skstructure;
 import skcell;
+import bool3;
+
+// A number of a POSCAR, the whole token: digits with an optional sign, point and exponent, the exponent also with
+// the 'D' that Fortran writes. Read with stod, "0.5D-01" was 0.5 (the rest of the token was dropped, a factor of
+// ten), and "nan" and "inf" were numbers that passed every check on the scaling factor and the cell.
+double parseNumber(const std::string& token, const std::string& context)
+{
+  std::string text = token;
+  bool wellFormed = !text.empty();
+  for (char& character : text)
+  {
+    if (character == 'D' || character == 'd') character = 'e';
+    if (!(std::isdigit(static_cast<unsigned char>(character)) || character == '+' || character == '-' ||
+          character == '.' || character == 'e' || character == 'E'))
+    {
+      wellFormed = false;
+    }
+  }
+  // from_chars takes no leading plus sign
+  const std::size_t start = (wellFormed && text.front() == '+') ? 1 : 0;
+  double value{};
+  if (wellFormed)
+  {
+    const char* const first = text.data() + start;
+    const char* const last = text.data() + text.size();
+    const auto [end, error] = std::from_chars(first, last, value);
+    wellFormed = error == std::errc{} && end == last;
+  }
+  if (!wellFormed)
+  {
+    throw std::runtime_error(std::format("POSCAR parse error: '{}' is not a number in {}", token, context));
+  }
+  return value;
+}
+
+// Carriage returns as line ends: a file with "\r\n" or with "\r" alone has the lines of one with "\n" (the
+// comment line is read up to the "\n", which swallowed a file of "\r" lines whole)
+std::string withUnixLineEnds(const std::string& content)
+{
+  std::string result;
+  result.reserve(content.size());
+  for (std::size_t i = 0; i < content.size(); ++i)
+  {
+    if (content[i] == '\r')
+    {
+      result.push_back('\n');
+      if (i + 1 < content.size() && content[i + 1] == '\n') ++i;
+    }
+    else
+    {
+      result.push_back(content[i]);
+    }
+  }
+  return result;
+}
 
 std::vector<std::string> splitTokens(const std::string& line)
 {
@@ -144,7 +199,7 @@ double readScaleFactor(Scanner& scanner)
     throw std::runtime_error("POSCAR parse error: missing universal scaling factor");
   }
 
-  return std::stod(tokens.front());
+  return parseNumber(tokens.front(), "the universal scaling factor");
 }
 
 double3x3 readLatticeVectors(Scanner& scanner, double scale)
@@ -166,7 +221,7 @@ double3x3 readLatticeVectors(Scanner& scanner, double scale)
                                 {&unitCell.cx, &unitCell.cy, &unitCell.cz}};
     for (std::size_t componentIndex = 0; componentIndex < 3; ++componentIndex)
     {
-      *components[vectorIndex][componentIndex] = scale * std::stod(tokens[componentIndex]);
+      *components[vectorIndex][componentIndex] = scale * parseNumber(tokens[componentIndex], std::format("lattice vector {}", vectorIndex + 1));
     }
   }
 
@@ -275,7 +330,31 @@ double3 parseAtomPosition(const std::vector<std::string>& tokens, bool hasSelect
     throw std::runtime_error("POSCAR parse error: incomplete atom coordinate line");
   }
 
-  return double3(std::stod(tokens[0]), std::stod(tokens[1]), std::stod(tokens[2]));
+  return double3(parseNumber(tokens[0], "an atom coordinate line"), parseNumber(tokens[1], "an atom coordinate line"),
+                 parseNumber(tokens[2], "an atom coordinate line"));
+}
+
+// The selective-dynamics flags of an atom line: 'T' lets the atom move along that lattice vector, 'F' holds it.
+// They were neither checked nor kept.
+bool3 parseFixedFlags(const std::vector<std::string>& tokens)
+{
+  std::array<bool, 3> fixed{};
+  for (std::size_t i = 0; i < 3; ++i)
+  {
+    const std::string& flag = tokens[3 + i];
+    const char first = static_cast<char>(std::toupper(static_cast<unsigned char>(flag.front())));
+    // VASP reads a Fortran logical: T or F, also written .TRUE. and .FALSE.
+    const char letter = (first == '.' && flag.size() > 1)
+                            ? static_cast<char>(std::toupper(static_cast<unsigned char>(flag[1])))
+                            : first;
+    if (letter != 'T' && letter != 'F')
+    {
+      throw std::runtime_error(
+          std::format("POSCAR parse error: expected a selective dynamics flag T or F, got '{}'", flag));
+    }
+    fixed[i] = letter == 'F';
+  }
+  return bool3(fixed[0], fixed[1], fixed[2]);
 }
 
 std::string readFileContents(const std::filesystem::path& path)
@@ -310,7 +389,9 @@ void assignAtomElement(std::shared_ptr<SKAsymmetricAtom>& atom, const std::strin
   }
   else
   {
-    atom->setElementIdentifier(speciesIndex + 1);
+    // an unnamed species takes its number in the file for an element; past the table there is none
+    atom->setElementIdentifier(speciesIndex + 1 < PredefinedElements::predefinedElements.size() ? speciesIndex + 1
+                                                                                                : 0);
   }
 }
 
@@ -318,7 +399,7 @@ void assignAtomElement(std::shared_ptr<SKAsymmetricAtom>& atom, const std::strin
 SKPOSCARParser::SKPOSCARParser(const std::string& content, bool proteinOnlyAsymmetricUnitCell, bool asMolecule,
                                CharacterSet charactersToBeSkipped)
     : SKParser(),
-      _scanner(content, charactersToBeSkipped),
+      _scanner(withUnixLineEnds(content), charactersToBeSkipped),
       _proteinOnlyAsymmetricUnitCell(proteinOnlyAsymmetricUnitCell),
       _asMolecule(asMolecule),
       _frame(std::make_shared<SKStructure>()),
@@ -384,6 +465,7 @@ void SKPOSCARParser::startParsing() noexcept(false)
 
       std::shared_ptr<SKAsymmetricAtom> atom = std::make_shared<SKAsymmetricAtom>();
       assignAtomElement(atom, chemicalElementString, speciesIndex);
+      if (hasSelectiveDynamics) atom->setIsFixed(parseFixedFlags(tokens));
       // Cartesian positions are scaled by the scaling factor like the lattice vectors
       atom->setPosition(cartesian ? inverseUnitCell * (scale * position) : position);
       _frame->atoms.push_back(atom);

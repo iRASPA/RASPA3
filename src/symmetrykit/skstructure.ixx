@@ -80,9 +80,9 @@ export class SKStructure
   int3 dimensions;
   double3 origin;
   double3 spacing;
-  DataType dataType;
+  DataType dataType{};
   std::pair<double, double> range;
-  double average;
-  double variance;
+  double average{};
+  double variance{};
   std::vector<char> byteData;
 };

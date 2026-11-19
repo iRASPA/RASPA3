@@ -115,6 +115,14 @@ SKCell::SKCell(double a, double b, double c, double alpha, double beta, double g
   _boundingBox = enclosingBoundingBox();
 }
 
+// An axis brought to a length. An axis of no length has no direction to keep, and takes the given one (the ratio
+// of the lengths was a division by zero, and the cell not a number).
+static double3 scaledAxis(const double3& axis, double length, const double3& fallback)
+{
+  const double current = axis.length();
+  return current > 0.0 ? (length / current) * axis : length * fallback;
+}
+
 SKCell::SKCell(SKBoundingBox boundingBox)
 {
   _minimumReplica = int3(0, 0, 0);
@@ -123,6 +131,12 @@ SKCell::SKCell(SKBoundingBox boundingBox)
   double3 v1 = double3(std::fabs(boundingBox.maximum().x - boundingBox.minimum().x), 0.0, 0.0);
   double3 v2 = double3(0.0, std::fabs(boundingBox.maximum().y - boundingBox.minimum().y), 0.0);
   double3 v3 = double3(0.0, 0.0, std::fabs(boundingBox.maximum().z - boundingBox.minimum().z));
+
+  // a flat box, that of a planar molecule, is given a thickness: a cell without volume has no inverse
+  constexpr double minimumThickness = 1.0e-6;
+  v1.x = std::max(v1.x, minimumThickness);
+  v2.y = std::max(v2.y, minimumThickness);
+  v3.z = std::max(v3.z, minimumThickness);
 
   _unitCell = double3x3(v1, v2, v3);
   _inverseUnitCell = _unitCell.inverse();
@@ -219,10 +233,14 @@ int3 SKCell::replicaFromIndex(int index)
   int dz = _maximumReplica.z - _minimumReplica.z + 1;
   int n = dx * dy * dz;
 
+  // no replicas (a maximum below a minimum) is a division by zero, and a negative index a negative remainder
+  if (dx <= 0 || dy <= 0 || dz <= 0) return _minimumReplica;
+  const int wrapped = ((index % n) + n) % n;
+
   // the order of renderTranslationVectors: x fastest, z slowest (it used to be decoded the other way round)
-  int k1 = (index % n) % dx + _minimumReplica.x;
-  int k2 = ((index % n) / dx) % dy + _minimumReplica.y;
-  int k3 = ((index % n) / (dx * dy)) + _minimumReplica.z;
+  int k1 = wrapped % dx + _minimumReplica.x;
+  int k2 = (wrapped / dx) % dy + _minimumReplica.y;
+  int k3 = (wrapped / (dx * dy)) + _minimumReplica.z;
 
   return int3(k1, k2, k3);
 }
@@ -236,6 +254,10 @@ void SKCell::setBox(const double3x3& fullCell)
   int dx = _maximumReplica.x - _minimumReplica.x + 1;
   int dy = _maximumReplica.y - _minimumReplica.y + 1;
   int dz = _maximumReplica.z - _minimumReplica.z + 1;
+  // a maximum below a minimum is no replica to divide over
+  dx = std::max(dx, 1);
+  dy = std::max(dy, 1);
+  dz = std::max(dz, 1);
 
   // the unit cell is the box divided over the replicas
   _unitCell = fullCell;
@@ -335,16 +357,14 @@ void SKCell::updateFullCell()
 
 void SKCell::a(const double& newValue)
 {
-  double multiplier = newValue / a();
-  _unitCell = double3x3(multiplier * _unitCell[0], _unitCell[1], _unitCell[2]);
+  _unitCell = double3x3(scaledAxis(_unitCell[0], newValue, double3(1.0, 0.0, 0.0)), _unitCell[1], _unitCell[2]);
   _inverseUnitCell = _unitCell.inverse();
   updateFullCell();
 }
 
 void SKCell::setLengthA(double value)
 {
-  double multiplier = value / a();
-  _unitCell = double3x3(multiplier * _unitCell[0], _unitCell[1], _unitCell[2]);
+  _unitCell = double3x3(scaledAxis(_unitCell[0], value, double3(1.0, 0.0, 0.0)), _unitCell[1], _unitCell[2]);
   _inverseUnitCell = _unitCell.inverse();
 
   updateFullCell();
@@ -353,16 +373,14 @@ void SKCell::setLengthA(double value)
 double SKCell::b() const { return _unitCell[1].length(); }
 void SKCell::b(const double& newValue)
 {
-  double multiplier = newValue / b();
-  _unitCell = double3x3(_unitCell[0], multiplier * _unitCell[1], _unitCell[2]);
+  _unitCell = double3x3(_unitCell[0], scaledAxis(_unitCell[1], newValue, double3(0.0, 1.0, 0.0)), _unitCell[2]);
   _inverseUnitCell = _unitCell.inverse();
   updateFullCell();
 }
 
 void SKCell::setLengthB(double value)
 {
-  double multiplier = value / b();
-  _unitCell = double3x3(_unitCell[0], multiplier * _unitCell[1], _unitCell[2]);
+  _unitCell = double3x3(_unitCell[0], scaledAxis(_unitCell[1], value, double3(0.0, 1.0, 0.0)), _unitCell[2]);
   _inverseUnitCell = _unitCell.inverse();
 
   updateFullCell();
@@ -372,8 +390,7 @@ double SKCell::c() const { return _unitCell[2].length(); }
 
 void SKCell::setLengthC(double value)
 {
-  double multiplier = value / c();
-  _unitCell = double3x3(_unitCell[0], _unitCell[1], multiplier * _unitCell[2]);
+  _unitCell = double3x3(_unitCell[0], _unitCell[1], scaledAxis(_unitCell[2], value, double3(0.0, 0.0, 1.0)));
   _inverseUnitCell = _unitCell.inverse();
 
   updateFullCell();
@@ -381,8 +398,7 @@ void SKCell::setLengthC(double value)
 
 void SKCell::c(const double& newValue)
 {
-  double multiplier = newValue / c();
-  _unitCell = double3x3(_unitCell[0], _unitCell[1], multiplier * _unitCell[2]);
+  _unitCell = double3x3(_unitCell[0], _unitCell[1], scaledAxis(_unitCell[2], newValue, double3(0.0, 0.0, 1.0)));
   _inverseUnitCell = _unitCell.inverse();
   updateFullCell();
 }

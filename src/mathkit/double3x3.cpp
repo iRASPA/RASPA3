@@ -110,7 +110,7 @@ double3x3 double3x3::fromCellParameters(double a, double b, double c, double alp
   const double temp = (cosAlpha - cosGamma * cosBeta) / sinGamma;
   const double3 v1(a, 0.0, 0.0);
   const double3 v2(b * cosGamma, b * sinGamma, 0.0);
-  const double3 v3(c * cosBeta, c * temp, c * std::sqrt(1.0 - cosBeta * cosBeta - temp * temp));
+  const double3 v3(c * cosBeta, c * temp, c * std::sqrt(std::max(0.0, 1.0 - cosBeta * cosBeta - temp * temp)));
   return double3x3(v1, v2, v3);
 }
 

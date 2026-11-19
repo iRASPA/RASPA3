@@ -163,13 +163,16 @@ export class SKAsymmetricAtom
 SKAsymmetricAtom::SKAsymmetricAtom(std::string displayName, std::size_t elementIdentifier)
     : _displayName(displayName), _elementIdentifier(elementIdentifier)
 {
-  _uniqueForceFieldName = PredefinedElements::predefinedElements[elementIdentifier]._chemicalSymbol;
+  // an identifier past the table of elements has no symbol to read (it was read past the end of the table)
+  if (_elementIdentifier >= PredefinedElements::predefinedElements.size()) _elementIdentifier = 0;
+  _uniqueForceFieldName = PredefinedElements::predefinedElements[_elementIdentifier]._chemicalSymbol;
 }
 
 SKAsymmetricAtom::SKAsymmetricAtom(std::string displayName, std::size_t elementIdentifier, double occupancy)
     : _displayName(displayName), _elementIdentifier(elementIdentifier), _occupancy(occupancy)
 {
-  _uniqueForceFieldName = PredefinedElements::predefinedElements[elementIdentifier]._chemicalSymbol;
+  if (_elementIdentifier >= PredefinedElements::predefinedElements.size()) _elementIdentifier = 0;
+  _uniqueForceFieldName = PredefinedElements::predefinedElements[_elementIdentifier]._chemicalSymbol;
 }
 
 SKAsymmetricAtom::SKAsymmetricAtom(const SKAsymmetricAtom& asymmetricAtom)

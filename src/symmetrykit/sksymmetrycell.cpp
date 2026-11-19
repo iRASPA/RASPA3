@@ -258,7 +258,8 @@ SKSymmetryCell SKSymmetryCell::idealized(std::size_t pointGroupNumber, std::stri
       double cb = std::cos(_beta);
       double ca = std::cos(_alpha);
       double sg = std::sin(_gamma);
-      double temp = _c * std::sqrt(1.0 - ca * ca - cb * cb - cg * cg + 2.0 * ca * cb * cg) / sg;
+      // (clamped: the rounding of a nearly flat cell puts the radicand below zero)
+      double temp = _c * std::sqrt(std::max(0.0, 1.0 - ca * ca - cb * cb - cg * cg + 2.0 * ca * cb * cg)) / sg;
       return SKSymmetryCell::createFromUnitCell(double3x3(double3(_a, 0.0, 0.0), double3(_b * cg, _b * sg, 0.0),
                                                           double3(_c * cb, _c * (ca - cb * cg) / sg, temp)));
     }
@@ -328,7 +329,7 @@ double SKSymmetryCell::volume()
   double cosGamma = std::cos(_gamma);
   double temp =
       1.0 - cosAlpha * cosAlpha - cosBeta * cosBeta - cosGamma * cosGamma + 2.0 * cosAlpha * cosBeta * cosGamma;
-  return _a * _b * _c * std::sqrt(temp);
+  return _a * _b * _c * std::sqrt(std::max(0.0, temp));
 }
 
 bool SKSymmetryCell::isOverlap(double3 a, double3 b, double3x3 lattice, double symmetryPrecision = 1e-2)

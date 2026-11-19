@@ -10,7 +10,12 @@ import sktransformationmatrix;
 export class SKIntegerChangeOfBasis
 {
  public:
-  SKIntegerChangeOfBasis() { ; }
+  // the identity (the matrices used to be left zero beside determinants of one)
+  SKIntegerChangeOfBasis()
+      : _changeOfBasis(int3(1, 0, 0), int3(0, 1, 0), int3(0, 0, 1)),
+        _inverseChangeOfBasis(int3(1, 0, 0), int3(0, 1, 0), int3(0, 0, 1))
+  {
+  }
   SKIntegerChangeOfBasis(SKTransformationMatrix inversionTransformation);
   SKIntegerChangeOfBasis inverse();
   SKTransformationMatrix operator*(const SKTransformationMatrix& b) const;

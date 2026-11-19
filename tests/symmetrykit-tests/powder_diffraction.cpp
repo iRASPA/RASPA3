@@ -474,3 +474,48 @@ TEST(powder_diffraction, what_cannot_be_measured_is_refused)
   EXPECT_EQ(empty.intensity.size(), 4701uz);
   EXPECT_EQ(std::ranges::max(empty.intensity), 0.0);
 }
+
+// Input that cannot be worked out is refused: a line of infinite weight made every intensity not a number, and a
+// wavelength of 1e-12 Angstrom overflowed the count of the Miller indices.
+TEST(powder_diffraction, input_that_is_not_finite_or_out_of_reach_is_refused)
+{
+  const std::vector<Atom> atoms{Atom{double3(0.0, 0.0, 0.0), 29}};
+
+  Settings infiniteWeight = copperTo90();
+  // the infinity from its bits: this file is compiled with finite mathematics only as well, under which the
+  // constant is whatever the optimiser makes of it (it arrived as 1.0)
+  const std::uint64_t infinityBits = 0x7ff0000000000000ull;
+  infiniteWeight.lines = {SKPowderDiffraction::Line{1.54, 1.0}};
+  std::memcpy(&infiniteWeight.lines[0].weight, &infinityBits, sizeof(double));
+  EXPECT_THROW(SKPowderDiffraction::compute(cubic(4.0), atoms, infiniteWeight), std::invalid_argument);
+
+  Settings shortWavelength = copperTo90();
+  shortWavelength.lines = {SKPowderDiffraction::Line{1.0e-12, 1.0}};
+  EXPECT_THROW(SKPowderDiffraction::compute(cubic(4.0), atoms, shortWavelength), std::invalid_argument);
+
+  Settings tinyStep = copperTo90();
+  tinyStep.twoThetaStep = 1.0e-12;
+  EXPECT_THROW(SKPowderDiffraction::compute(cubic(4.0), atoms, tinyStep), std::invalid_argument);
+}
+
+// A peak of no width just outside the range is not drawn onto its first or last point: the pattern has a line
+// only where the table has a peak.
+TEST(powder_diffraction, a_line_outside_the_range_is_not_drawn_onto_its_edge)
+{
+  const double a = 4.0;
+  const std::vector<Atom> atoms{Atom{double3(0.0, 0.0, 0.0), 29}};
+  Settings settings = copperTo90();
+  settings.u = 0.0;
+  settings.v = 0.0;
+  settings.w = 0.0;
+  settings.twoThetaStep = 0.5;
+  const SKPowderDiffraction whole = SKPowderDiffraction::compute(cubic(a), atoms, settings);
+  ASSERT_FALSE(whole.peaks.empty());
+
+  // a range that starts 0.2 degrees, less than half a step, past the first peak
+  settings.twoThetaMin = whole.peaks.front().twoTheta + 0.2;
+  const SKPowderDiffraction clipped = SKPowderDiffraction::compute(cubic(a), atoms, settings);
+  ASSERT_FALSE(clipped.peaks.empty());
+  EXPECT_GT(clipped.peaks.front().twoTheta, settings.twoThetaMin);
+  EXPECT_DOUBLE_EQ(clipped.intensity.front(), 0.0);
+}

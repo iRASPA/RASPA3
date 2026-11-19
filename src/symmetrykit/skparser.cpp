@@ -35,10 +35,11 @@ std::vector<std::tuple<double3, std::size_t, double>> SKParser::firstTestFrame()
     {
       for (const std::shared_ptr<SKAsymmetricAtom>& atom : structure->atoms)
       {
-        std::tuple<double3, std::size_t, double> atomTuple = std::make_tuple<double3, std::size_t, double>(
-            atom->position(), atom->elementIdentifier(), 1.0);
-        atoms.push_back(atomTuple);
+        atoms.emplace_back(atom->position(), atom->elementIdentifier(), atom->occupancy());
       }
+      // the first frame: every frame of every movie used to be run together into one list of atoms, each
+      // with an occupancy of one whatever the file gave
+      return atoms;
     }
   }
   return atoms;
