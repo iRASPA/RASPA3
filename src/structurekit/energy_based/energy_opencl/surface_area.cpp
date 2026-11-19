@@ -127,6 +127,17 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
         std::format("EnergyOpenCLSurfaceArea: a grid of {} voxels is more than the device kernels can index ({})\n",
                     temp, std::numeric_limits<std::int32_t>::max()));
   }
+  if (temp == 0)
+  {
+    throw std::runtime_error("EnergyOpenCLSurfaceArea: the grid must have at least one point along each axis\n");
+  }
+  // The kernel is built when the object is made, and only if the device was there by then: made before
+  // OpenCL::initialize() it has none, and the division below was by a work group of no points.
+  if (energyGridKernel == nullptr || energyGridWorkGroupSize == 0)
+  {
+    throw std::runtime_error(
+        "EnergyOpenCLSurfaceArea: the kernel was not built (the object was made before the OpenCL device)\n");
+  }
   cl_int err = 0;
 
   // make sure the the global work size is an multiple of the work group size

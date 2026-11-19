@@ -358,6 +358,7 @@ __kernel void ProbeEnergyField(__global const float4 *position,
 
   int voxel = (iz * gridSize.y + iy) * gridSize.x + ix;
   energy[voxel] = min(total, ceiling);
-  strongestAtom[voxel] = (pullingAtom >= 0) ? pullingAtom : nearestAtom;
+  // (a point the framework pushes away on balance is in a wall, and is the nearest atom's)
+  strongestAtom[voxel] = (pullingAtom >= 0 && total <= 0.0f) ? pullingAtom : nearestAtom;
 }
 )foo";

@@ -1141,6 +1141,7 @@ __kernel void MolecularStrongestAtom(__global const float4 *position,
   float nearestDistanceSquared = MAXFLOAT;
   int pullingAtom = -1;
   int nearestAtom = -1;
+  float netPull = 0.0f;
 
   for(int iatom = 0; iatom < numberOfAtoms; iatom++)
   {
@@ -1161,6 +1162,7 @@ __kernel void MolecularStrongestAtom(__global const float4 *position,
       closestOverOrientations = fmin(closestOverOrientations, closest);
     }
 
+    netPull += pull;
     if(pull < strongestPull)
     {
       strongestPull = pull;
@@ -1174,6 +1176,7 @@ __kernel void MolecularStrongestAtom(__global const float4 *position,
   }
 
   int index = (iz * gridSize.y + iy) * gridSize.x + ix;
-  label[index] = (pullingAtom >= 0) ? pullingAtom : nearestAtom;
+  // (a point the framework pushes away on balance is in a wall, and is the nearest atom's)
+  label[index] = (pullingAtom >= 0 && netPull <= 0.0f) ? pullingAtom : nearestAtom;
 }
 )foo";

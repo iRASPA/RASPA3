@@ -92,6 +92,9 @@ void EnergyVoidFraction::run(const PairInteractions &interactions, const Crystal
         const PairParameters &pair = interactions(probe_type.value(), typeB);
         double epsilonTimesFour = 4.0 * pair.strengthParameter;
         double sigmaSquared = pair.sizeParameter * pair.sizeParameter;
+        // A pair with no strength has no energy and is left out, as on the device: a size of nought with it
+        // (silicon in an oxygen-only force field) made the ratio below nought over nought.
+        if (epsilonTimesFour == 0.0 || sigmaSquared == 0.0) continue;
         for (std::size_t i = 0; i < static_cast<std::size_t>(numberOfReplicas.x); i++)
         {
           for (std::size_t j = 0; j < static_cast<std::size_t>(numberOfReplicas.y); j++)

@@ -366,7 +366,8 @@ struct Neighbourhood
     // so it is given a floor of one Ångström, which is not a contact wall. That is a massless charge site
     // (N_com) against every atom, and a dispersing site against an atom it has only charge in common with.
     // A pair that does have dispersion needs none: its r^-12 outruns any 1/r long before the ceiling.
-    const bool chargeOnly = !dispersion || (pair.epsilon4 == 0.0 && pair.chargeProduct != 0.0);
+    // An atom without a charge has no 1/r to be kept off, and no floor: the site is not held from it at all.
+    const bool chargeOnly = (!dispersion || pair.epsilon4 == 0.0) && pair.chargeProduct != 0.0;
     const bool dummyCore = chargeOnly && rr < this->dummyCore2;
     if (dummyCore)
     {
@@ -537,7 +538,9 @@ struct Neighbourhood
       this->addSmoothPotential(centre + shiftFractional, energies, skipSmooth.data(), skipElectro.data());
       for (std::size_t o = 0; o < this->numberOfOrientations; ++o)
       {
-        if (dummyHit[o])
+        // (an overlap is the ceiling itself: held there for the one pair alone, the attraction of every
+        // other pair was still added and left an orientation inside a wall below it)
+        if (dummyHit[o] || overlapHit[o])
           energies[o] = this->ceiling;
         else
           energies[o] = std::min(lj[o] + energies[o], this->ceiling);
@@ -547,7 +550,7 @@ struct Neighbourhood
     {
       for (std::size_t o = 0; o < this->numberOfOrientations; ++o)
       {
-        if (dummyHit[o]) energies[o] = this->ceiling;
+        if (dummyHit[o] || overlapHit[o]) energies[o] = this->ceiling;
       }
     }
 
@@ -707,7 +710,8 @@ Neighbourhood makeNeighbourhood(const PairInteractions &interactions, const Crys
     kept.push_back(s);
     neighbourhood.sites.push_back(ProbeSite{site.offset, charge, carriesDispersion});
   }
-  if (!std::ranges::any_of(neighbourhood.sites, &ProbeSite::dispersion))
+  // (a framework without atoms has nothing for a site to disperse against, and is not the probe's fault)
+  if (numberOfAtoms > 0 && !std::ranges::any_of(neighbourhood.sites, &ProbeSite::dispersion))
   {
     throw std::runtime_error(
         std::format("Well field: probe '{}' has no site with any dispersion against this framework\n", probe.name));
@@ -931,6 +935,12 @@ WellField WellFieldCPU::compute(const PairInteractions &interactions, const Crys
   field.energy.assign(numberOfVoxels, 0.0f);
   field.distance.assign(numberOfVoxels, 1.0e10f);
   field.reliability.assign(numberOfVoxels, 1.0f);
+  // no atoms, no field: flat, as the device builder has it
+  if (framework.atoms.empty())
+  {
+    field.seconds = 0.0;
+    return field;
+  }
   const std::size_t nOrient = field.numberOfOrientations;
   // Cap is a soft memory guard for U(r, ω). 128³ × 128 orientations is ~1.07 GB of floats and
   // is the default --nldft --molecule N2 grid; the old 250M cutoff silently dropped that case

@@ -163,7 +163,8 @@ ProbeEnergyGrid ProbeEnergyGridCPU::compute(const PairInteractions &interactions
 
                     // Each term is held down before it is added rather than the sum afterwards, so that no term
                     // ever overflows to something a later addition would turn into a value that is not a number.
-                    contribution += std::min(epsilon4 * ratio3 * (ratio3 - 1.0) - shift, ceiling);
+                    // (a pair with no strength is left out, as on the device; its distance still counts above)
+                    if (epsilon4 != 0.0) contribution += std::min(epsilon4 * ratio3 * (ratio3 - 1.0) - shift, ceiling);
                   }
                 }
               }
@@ -184,7 +185,9 @@ ProbeEnergyGrid ProbeEnergyGridCPU::compute(const PairInteractions &interactions
 
             const std::size_t voxel = (iz * gridSize.y + iy) * gridSize.x + ix;
             grid.energy[voxel] = static_cast<float>(std::min(total, ceiling));
-            grid.strongestAtom[voxel] = (pullingAtom >= 0) ? pullingAtom : nearestAtom;
+            // (a point the framework pushes away on balance is in a wall, and is the nearest atom's: the atoms beyond
+            // sigma still pull there, and the hardest of them, some Ångströms off, was given the nucleus of another)
+            grid.strongestAtom[voxel] = (pullingAtom >= 0 && total <= 0.0) ? pullingAtom : nearestAtom;
           }
         }
       });

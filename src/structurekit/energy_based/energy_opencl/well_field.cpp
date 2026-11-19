@@ -208,7 +208,8 @@ GpuPack packNeighbourhood(const PairInteractions &interactions, const Crystal &f
     kept.push_back(s);
     sites.push_back(ProbeSite{site.offset, charge, carriesDispersion});
   }
-  if (!std::ranges::any_of(sites, &ProbeSite::dispersion))
+  // (a framework without atoms has nothing for a site to disperse against, and is not the probe's fault)
+  if (numberOfAtoms > 0 && !std::ranges::any_of(sites, &ProbeSite::dispersion))
   {
     throw std::runtime_error(
         std::format("Well field: probe '{}' has no site with any dispersion against this framework\n", probe.name));
@@ -257,8 +258,9 @@ GpuPack packNeighbourhood(const PairInteractions &interactions, const Crystal &f
       // A charge with no dispersion against the atom is held off its nucleus by this floor and nothing else.
       // For a pair like that sigma has no other use on the device, so the floor is kept in its place.
       const std::size_t index = s * numberOfAtoms + i;
+      // (an atom without a charge has no 1/r to be kept off, and no floor)
       const bool chargeOnly =
-          !sites[s].dispersion || (pack.epsilonTimesFour[index] == 0.0f && pack.chargeProduct[index] != 0.0f);
+          (!sites[s].dispersion || pack.epsilonTimesFour[index] == 0.0f) && pack.chargeProduct[index] != 0.0f;
       if (chargeOnly) pack.sigmaSquared[index] = dummyCore2;
     }
   }
@@ -596,11 +598,21 @@ void WellFieldOpenCL::refineVertices(std::vector<double3> &corners, std::vector<
   energies.assign(corners.size(), 0.0);
   if (corners.empty()) return;
 
-  GpuPack pack =
-      packNeighbourhood(interactions, framework, parameters.probe, parameters.numberOfOrientations,
-                        parameters.thermalEnergy, blockingSpheres, parameters.blockedEnergyPerAngstrom,
-                        parameters.ceiling, parameters.potential, parameters.coulombFactor,
-                        parameters.extraReach > 0.0 ? parameters.extraReach : wellRefinementReach);
+  GpuPack pack;
+  try
+  {
+    pack = packNeighbourhood(interactions, framework, parameters.probe, parameters.numberOfOrientations,
+                             parameters.thermalEnergy, blockingSpheres, parameters.blockedEnergyPerAngstrom,
+                             parameters.ceiling, parameters.potential, parameters.coulombFactor,
+                             parameters.extraReach > 0.0 ? parameters.extraReach : wellRefinementReach);
+  }
+  catch (const TooManyOrientations &)
+  {
+    // the field itself came from the processor builder for this many orientations (above), and its vertices
+    // are refined there too: left uncaught, this ended every --gpu run with more than 'maxOrientations'
+    WellFieldCPU::refineVertices(corners, energies, interactions, framework, parameters, blockingSpheres, iso);
+    return;
+  }
 
   cl_program program = buildProgram();
   cl_int err = CL_SUCCESS;
@@ -846,7 +858,7 @@ static void addPair(float rr, float epsilon4, float sigma2, float contact, float
   // A charge with no dispersion against this atom has no wall of its own, so it is given a floor of one
   // Ångström, which the host has put in sigma2 for it: a massless charge site against every atom, and a
   // dispersing site against an atom it has only charge in common with.
-  int chargeOnly = (dispersion == 0 || (epsilon4 == 0.0f && charges != 0.0f)) ? 1 : 0;
+  int chargeOnly = ((dispersion == 0 || epsilon4 == 0.0f) && charges != 0.0f) ? 1 : 0;
   int inCore = (chargeOnly != 0 && sigma2 > 0.0f && rr < sigma2) ? 1 : 0;
   if(inCore != 0 && skipSmooth != 0) *skipSmooth = 1;
   if(useCharges != 0 && inCore == 0 && rr < coulombCutOffSquared && charges != 0.0f)
@@ -1107,6 +1119,12 @@ __kernel void WellField(__global float *energyOut,
                  &energies[o], &clearances[o], &dummyHit[o], 0);
     }
   }
+  // an overlap is the ceiling itself, as a charge inside its floor is: the attraction of the other pairs is
+  // not left under it
+  for(int o = 0; o < numberOfOrientations; o++)
+  {
+    if(overlapHit[o] != 0) dummyHit[o] = 1;
+  }
 
   int bestOrientation = 0;
   float bestClearance = 1.0e10f;
@@ -1283,6 +1301,12 @@ static df energyAtShift(__global const float4 *position,
                  1, 0, &energies[o], &clearances[o], &dummyHit[o], 0);
     }
   }
+  // an overlap is the ceiling itself, as a charge inside its floor is: the attraction of the other pairs is
+  // not left under it
+  for(int o = 0; o < numberOfOrientations; o++)
+  {
+    if(overlapHit[o] != 0) dummyHit[o] = 1;
+  }
 
   int bestOrientation = 0;
   float bestClearance = 0.0f;
@@ -1397,6 +1421,12 @@ __kernel void RefineWellVertices(__global float4 *corners,
                  longestCutOff, longestCutOffSquared, extraReach, ceiling, screenedScale, screenedBins, alpha, o, 0,
                  1, 0, &energiesO[o], &clearancesO[o], &dummyHitO[o], 0);
     }
+  }
+  // an overlap is the ceiling itself, as a charge inside its floor is: the attraction of the other pairs is
+  // not left under it
+  for(int o = 0; o < numberOfOrientations; o++)
+  {
+    if(overlapHitO[o] != 0) dummyHitO[o] = 1;
   }
   int bestOrientation = 0;
   float nearest = 1.0e10f;

@@ -33,6 +33,10 @@ MolecularVoidFraction MolecularVoidFraction::fromGrid(const MolecularEnergyGrid 
   result.numberOfVoxels = grid.numberOfVoxels();
 
   if (grid.numberOfVoxels() == 0) return result;
+  if (temperature <= 0.0)
+  {
+    throw std::runtime_error("MolecularVoidFraction: a Boltzmann average needs a temperature above zero\n");
+  }
 
   const double beta = 1.0 / (Units::KB * temperature);
 
@@ -40,15 +44,24 @@ MolecularVoidFraction MolecularVoidFraction::fromGrid(const MolecularEnergyGrid 
   // in the wall contributes nothing at all and a deep site contributes a great deal, and adding those in
   // single precision would lose the small ones entirely. A point inside an atom sits at the ceiling and its
   // term underflows to zero, which is the right answer for a place the molecule cannot be.
+  //
+  // The terms are measured from the deepest of them, so that none overflows: a charge at its one Ångström
+  // floor by a bare cation is deeper than 709 kT at 77 K, and summed as it stood the average was infinity and
+  // the chemical potential minus infinity. The logarithm is kept apart from the average, which may itself
+  // be more than a double holds and is then held at the largest one.
+  double deepest = -beta * static_cast<double>(grid.freeEnergy[0]);
+  for (float freeEnergy : grid.freeEnergy) deepest = std::max(deepest, -beta * static_cast<double>(freeEnergy));
   double total = 0.0;
-  for (float freeEnergy : grid.freeEnergy) total += std::exp(-beta * static_cast<double>(freeEnergy));
+  for (float freeEnergy : grid.freeEnergy) total += std::exp(-beta * static_cast<double>(freeEnergy) - deepest);
 
-  result.boltzmannAverage = total / static_cast<double>(grid.numberOfVoxels());
+  // (total is at least one: the deepest voxel is in it)
+  const double logAverage = deepest + std::log(total / static_cast<double>(grid.numberOfVoxels()));
+  result.boltzmannAverage = logAverage < 709.0 ? std::exp(logAverage) : std::numeric_limits<double>::max();
   result.readsAsFraction = result.boltzmannAverage <= 1.0;
 
-  if (result.boltzmannAverage > 0.0)
+  if (logAverage > -700.0)
   {
-    result.excessChemicalPotential = -Units::KB * temperature * std::log(result.boltzmannAverage);
+    result.excessChemicalPotential = -Units::KB * temperature * logAverage;
   }
 
   // The framework's density is what turns an average per unit volume into one per unit mass, which is the

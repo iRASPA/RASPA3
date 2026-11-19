@@ -36,6 +36,8 @@ void EnergyPoreVolume::run(const EnergyBackend &backend, const PairInteractions 
   this->isoValue = isoValue;
   this->temperature = temperature;
   this->thresholdInKT = thresholdInKT;
+  // (a run on an object that has run before starts from nothing)
+  this->largestReachableBarrierInKT = 0.0;
 
   const std::size_t numberOfVoxels = this->grid.numberOfVoxels();
   if (numberOfVoxels == 0) return;
@@ -137,17 +139,23 @@ void EnergyPoreVolume::run(const EnergyBackend &backend, const PairInteractions 
     const double beta = 1.0 / (Units::KB * temperature);
     for (std::size_t v = 0; v < numberOfVoxels; ++v)
     {
-      sum += std::exp(-beta * static_cast<double>(this->grid.freeEnergy[v]));
+      // held below what a double holds: one voxel deeper than 709 kT (a charge at its floor by a bare cation)
+      // made the whole volume infinity
+      sum += std::exp(std::min(-beta * static_cast<double>(this->grid.freeEnergy[v]), 690.0));
     }
   }
   this->boltzmannFraction = sum / total;
   this->boltzmannVolume = this->boltzmannFraction * volume;
   this->readsAsFraction = this->boltzmannFraction <= 1.0;
 
-  double toGravimetric = (Units::Angstrom * Units::Angstrom * Units::Angstrom * 1.0e6) * Units::AvogadroConstant /
-                         framework.mass;
-  this->frameworkDensity = framework.mass / (volume * Units::Angstrom * Units::Angstrom * Units::Angstrom *
-                                                     1.0e6 * Units::AvogadroConstant);
+  // a framework without mass has no volume per gram, rather than nought times infinity
+  double toGravimetric = framework.mass > 0.0
+                             ? (Units::Angstrom * Units::Angstrom * Units::Angstrom * 1.0e6) *
+                                   Units::AvogadroConstant / framework.mass
+                             : 0.0;
+  this->frameworkDensity = volume > 0.0 ? framework.mass / (volume * Units::Angstrom * Units::Angstrom *
+                                                                    Units::Angstrom * 1.0e6 * Units::AvogadroConstant)
+                                        : 0.0;
 
   this->gravimetricVoidVolume = this->voidVolume * toGravimetric;
   this->gravimetricAccessibleVolume = this->accessibleVolume * toGravimetric;

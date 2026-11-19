@@ -166,6 +166,10 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
   // mask, which is only a multiple of anything when the unit is a power of two. The padding points are
   // never counted: the energy kernel evaluates them, harmlessly, and the reduction is told how many points
   // are real.
+  if (temp == 0)
+  {
+    throw std::runtime_error("EnergyOpenCLVoidFraction: the grid must have at least one point along each axis\n");
+  }
   if (energyGridWorkGroupSize == 0 || energyVoidFractionWorkGroupSize == 0)
   {
     throw std::runtime_error("EnergyOpenCLVoidFraction: a work group of no points\n");

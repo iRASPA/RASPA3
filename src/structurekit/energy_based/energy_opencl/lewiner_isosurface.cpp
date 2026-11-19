@@ -146,7 +146,8 @@ int test_interior(char s, char caseId, char config, char subconfig, __private co
     b = cube[2] * (cube[4] - cube[0]) + cube[0] * (cube[6] - cube[2]) - cube[1] * (cube[7] - cube[3]) -
         cube[3] * (cube[5] - cube[1]);
     t = -b / (2.0f * a);
-    if (t < 0.0f || t > 1.0f) return s > 0;
+    // a == 0: no interior extremum (t is infinite, or not a number when b is nought too), as on the host
+    if (a == 0.0f || t < 0.0f || t > 1.0f) return s > 0;
     At = cube[0] + (cube[4] - cube[0]) * t;
     Bt = cube[3] + (cube[7] - cube[3]) * t;
     Ct = cube[2] + (cube[6] - cube[2]) * t;
@@ -715,13 +716,22 @@ void exclusiveScan(LewinerGpu &gpu, cl_mem counts, cl_mem offsets, std::size_t n
         "clEnqueueReadBuffer blockSums", __LINE__);
 
   std::vector<cl_uint> exclusive(nBlocks, 0);
-  cl_uint running = 0;
+  // Counted wider than the device counts: the emitting kernel writes six entries a triangle at a 32-bit slot,
+  // so past a sixth of that range the slots wrapped round and wrote over the start of the buffer.
+  std::uint64_t running = 0;
   for (std::size_t i = 0; i < nBlocks; ++i)
   {
-    exclusive[i] = running;
+    exclusive[i] = static_cast<cl_uint>(running);
     running += sums[i];
   }
-  total = running;
+  if (running > std::numeric_limits<cl_uint>::max() / 6)
+  {
+    clReleaseMemObject(blockSums);
+    throw std::runtime_error(std::format(
+        "LewinerIsosurface: a surface of {} triangles is more than the device kernels can index ({})\n", running,
+        std::numeric_limits<cl_uint>::max() / 6));
+  }
+  total = static_cast<cl_uint>(running);
   if (total == 0)
   {
     clReleaseMemObject(blockSums);
@@ -763,6 +773,10 @@ std::vector<double3> trianglesOfLewinerIsosurface(std::span<const float> field, 
   }
   if (nVoxels == 0) return {};
 
+  // one set of kernels, whose arguments are set call by call: one surface at a time
+  static std::mutex oneAtATime;
+  std::lock_guard<std::mutex> lock(oneAtATime);
+
   LewinerGpu &gpu = device();
   const std::size_t nCubes = nVoxels;
   const cl_uint nCubesU = static_cast<cl_uint>(nCubes);
@@ -775,6 +789,13 @@ std::vector<double3> trianglesOfLewinerIsosurface(std::span<const float> field, 
   check(clGetKernelWorkGroupInfo(gpu.classify, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
                                  sizeof(std::size_t), &maxGroup, nullptr),
         "clGetKernelWorkGroupInfo classify", __LINE__);
+  // The emitting kernel runs over the same range in the same groups and is the heavier of the two: a device
+  // that allows it a smaller group than the classifier refused the classifier's (CL_INVALID_WORK_GROUP_SIZE).
+  std::size_t maxEmitGroup = maxGroup;
+  check(clGetKernelWorkGroupInfo(gpu.emit, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
+                                 sizeof(std::size_t), &maxEmitGroup, nullptr),
+        "clGetKernelWorkGroupInfo emit", __LINE__);
+  maxGroup = std::max<std::size_t>(std::min(maxGroup, maxEmitGroup), 1);
   std::size_t group = std::min(maxGroup, std::size_t{256});
   std::size_t global = ((nCubes + group - 1) / group) * group;
 

@@ -579,6 +579,7 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
                      double nearestDistanceSquared = std::numeric_limits<double>::max();
                      std::int32_t pullingAtom = -1;
                      std::int32_t nearestAtom = -1;
+                     double netPull = 0.0;
 
                      for (std::size_t iatom = 0; iatom < numberOfAtoms; ++iatom)
                      {
@@ -592,6 +593,7 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
                          closestOverOrientations = std::min(closestOverOrientations, closest);
                        }
 
+                       netPull += pull;
                        if (pull < strongestPull)
                        {
                          strongestPull = pull;
@@ -605,7 +607,9 @@ std::vector<std::int32_t> MolecularEnergyGridCPU::strongestAtoms(const PairInter
                      }
 
                      const std::size_t voxel = (iz * gridSize.y + iy) * gridSize.x + ix;
-                     labels[voxel] = (pullingAtom >= 0) ? pullingAtom : nearestAtom;
+                     // (a point the framework pushes away on balance is in a wall, and is the nearest atom's:
+                     // the atoms beyond sigma still pull there, and the hardest of them was given another's core)
+                     labels[voxel] = (pullingAtom >= 0 && netPull <= 0.0) ? pullingAtom : nearestAtom;
                    }
                  }
                });

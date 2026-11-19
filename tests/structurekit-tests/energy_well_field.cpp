@@ -13,6 +13,11 @@ import energy_shared_well_field;
 import energy_shared_blocking_mask;
 import energy_well_field;
 import energy_opencl_well_field;
+import energy_probe_energy_grid;
+import energy_shared_probe_energy_grid;
+import energy_shared_molecular_energy_grid;
+import energy_shared_molecular_void_fraction;
+import units;
 import opencl;
 
 // The processor well field for a single site. Each pair is held to the ceiling, and so must their sum be:
@@ -276,4 +281,137 @@ TEST(energy_well_field, a_vertex_in_a_blocking_sphere_is_refined_to_the_blocked_
   WellFieldOpenCL::refineVertices(corners, energies, interactions, framework, parameters, spheres, -50.0);
   ASSERT_EQ(energies.size(), 1uz);
   EXPECT_NEAR(energies[0], expected, 1.0e-3 * expected);
+}
+
+
+namespace
+{
+
+// Two sites of the probe's own kind, 'half' either side of the centre.
+LinearProbe dumbbell(double half, bool headTailSymmetric)
+{
+  LinearProbe probe;
+  probe.name = "dumbbell";
+  probe.sites = {LinearProbe::Site{0, -half, 0.0, "X"}, LinearProbe::Site{0, half, 0.0, "X"}};
+  probe.headTailSymmetric = headTailSymmetric;
+  return probe;
+}
+
+PairInteractions smallProbeAndAtom()
+{
+  PairInteractions interactions = probeAndAtom();
+  interactions.parameters = {PairParameters{1.0, 100.0, 0.0}, PairParameters{1.0, 100.0, 0.0},
+                             PairParameters{1.0, 100.0, 0.0}, PairParameters{1.0, 100.0, 0.0}};
+  return interactions;
+}
+
+}  // namespace
+
+
+// An orientation with a site on top of an atom is an overlap, and is the ceiling: the pair is held there, and the
+// attraction the other site feels three Ångström off is not left under it (it was, by half a unit here).
+TEST(energy_well_field, an_orientation_with_a_site_inside_an_atom_is_at_the_ceiling)
+{
+  PairInteractions interactions = smallProbeAndAtom();
+  Crystal framework = oneAtomAt(double3(0.0, 0.0, 0.15), true);
+  const double lowCeiling = 1.0e4;
+
+  // one orientation, along z: the site at +1.5 Å is on the atom, the one at -1.5 Å is 3 Å from it
+  WellField field =
+      WellFieldCPU::compute(interactions, framework, dumbbell(1.5, true), gridSize, 1, 0.0, {}, 1000.0, lowCeiling);
+  EXPECT_EQ(field.energy[0], static_cast<float>(lowCeiling));
+
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) return;
+  WellField device =
+      WellFieldOpenCL::compute(interactions, framework, dumbbell(1.5, true), gridSize, 1, 0.0, {}, 1000.0, lowCeiling);
+  EXPECT_EQ(device.energy[0], static_cast<float>(lowCeiling));
+}
+
+// A framework without atoms has a flat field, from either builder, and not a complaint about the probe.
+TEST(energy_well_field, a_framework_without_atoms_has_a_flat_field)
+{
+  PairInteractions interactions = probeAndAtom();
+  Crystal framework;
+  framework.name = "empty";
+  framework.unitCell = UnitCell(edge, edge, edge);
+  LinearProbe probe = LinearProbe::singleSite(interactions, "X").value();
+
+  WellField field;
+  ASSERT_NO_THROW(field = WellFieldCPU::compute(interactions, framework, probe, gridSize, 1, 0.0, {}, 1000.0, ceiling));
+  ASSERT_EQ(field.numberOfVoxels(), 125u);
+  for (float energy : field.energy) EXPECT_EQ(energy, 0.0f);
+
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) return;
+  ASSERT_NO_THROW(field =
+                      WellFieldOpenCL::compute(interactions, framework, probe, gridSize, 1, 0.0, {}, 1000.0, ceiling));
+  for (float energy : field.energy) EXPECT_EQ(energy, 0.0f);
+}
+
+// The device kernel holds 128 orientations and hands a field of more to the processor; the vertices of that field
+// are refined there too, and were not: the refusal went uncaught and ended the run.
+TEST(energy_well_field, vertices_are_refined_for_more_orientations_than_the_device_holds)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+
+  PairInteractions interactions = probeAndAtom();
+  Crystal framework = oneAtomAt(double3(0.5, 0.5, 0.5), true);
+  NeighbourhoodParameters parameters{};
+  parameters.probe = dumbbell(0.5, false);
+  parameters.numberOfOrientations = 600;
+  parameters.thermalEnergy = 1.0;
+  parameters.blockedEnergyPerAngstrom = 1000.0;
+  parameters.ceiling = ceiling;
+
+  const std::vector<double3> start{double3(0.5, 0.5, 0.9), double3(0.1, 0.5, 0.5)};
+  std::vector<double3> onProcessor = start;
+  std::vector<double> processorEnergies;
+  WellFieldCPU::refineVertices(onProcessor, processorEnergies, interactions, framework, parameters, {}, -50.0);
+
+  std::vector<double3> onDevice = start;
+  std::vector<double> deviceEnergies;
+  ASSERT_NO_THROW(
+      WellFieldOpenCL::refineVertices(onDevice, deviceEnergies, interactions, framework, parameters, {}, -50.0));
+  ASSERT_EQ(deviceEnergies.size(), processorEnergies.size());
+  for (std::size_t i = 0; i < deviceEnergies.size(); ++i)
+  {
+    EXPECT_EQ(deviceEnergies[i], processorEnergies[i]) << "vertex " << i;
+  }
+}
+
+// A voxel on an atom's nucleus is that atom's. Its neighbour 3.5 Å off pulls on the point, as every atom beyond
+// sigma does, and was given it for being the only one that pulls.
+TEST(energy_well_field, a_voxel_inside_an_atom_is_labelled_with_that_atom)
+{
+  PairInteractions interactions = probeAndAtom();
+  Crystal framework = oneAtomAt(double3(0.0, 0.0, 0.0), true);
+  framework.atoms.push_back(CrystalAtom{double3(3.5, 0.0, 0.0), 0.0, 1});
+  framework.fractionalPositions.push_back(double3(0.35, 0.0, 0.0));
+
+  ProbeEnergyGrid grid = ProbeEnergyGridCPU::compute(interactions, framework, "X", gridSize);
+  ASSERT_EQ(grid.strongestAtom.size(), 125uz);
+  EXPECT_EQ(grid.strongestAtom[0], 0);
+}
+
+// A site deeper than 709 kT is more than exp holds in a double. The chemical potential is its logarithm and is
+// a number all the same; the average is held at the largest double rather than at infinity.
+TEST(energy_well_field, a_boltzmann_average_past_the_range_of_a_double_keeps_its_chemical_potential)
+{
+  const double temperature = 77.0;
+  const double kT = Units::KB * temperature;
+
+  MolecularEnergyGrid grid;
+  grid.gridSize = uint3(2, 1, 1);
+  grid.freeEnergy = {static_cast<float>(-800.0 * kT), 0.0f};
+  grid.minimumEnergy = grid.freeEnergy;
+
+  Crystal framework = oneAtomAt(double3(0.0, 0.0, 0.0), true);
+  MolecularVoidFraction result = MolecularVoidFraction::fromGrid(grid, framework, temperature);
+
+  // ln((e^800 + 1) / 2) = 800 - ln 2
+  EXPECT_NEAR(result.excessChemicalPotential / kT, -(800.0 - std::log(2.0)), 1.0e-3);
+  EXPECT_EQ(result.boltzmannAverage, std::numeric_limits<double>::max());
+  EXPECT_FALSE(result.readsAsFraction);
 }
