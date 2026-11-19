@@ -21,9 +21,36 @@ std::pair<int, int> binAndImage(int coordinate, int gridExtent)
 
 int3 binOfFractional(const double3& fractional, const int3& gridSize)
 {
-  return int3(std::min(gridSize.x - 1, static_cast<int>(fractional.x * static_cast<double>(gridSize.x))),
-              std::min(gridSize.y - 1, static_cast<int>(fractional.y * static_cast<double>(gridSize.y))),
-              std::min(gridSize.z - 1, static_cast<int>(fractional.z * static_cast<double>(gridSize.z))));
+  // (clamped from below as well: a fractional coordinate that was not wrapped indexed before the first bin)
+  return int3(std::clamp(static_cast<int>(fractional.x * static_cast<double>(gridSize.x)), 0, gridSize.x - 1),
+              std::clamp(static_cast<int>(fractional.y * static_cast<double>(gridSize.y)), 0, gridSize.y - 1),
+              std::clamp(static_cast<int>(fractional.z * static_cast<double>(gridSize.z)), 0, gridSize.z - 1));
+}
+
+// A fractional position split into the cell it is in and the place in that cell, so that the two always add up
+// to it. Taken apart as the floor and as double3::fract, they do not for a coordinate just below zero (from
+// -2^-54, which is where an atom on a face of the cell lands after a round trip through a skewed cell): the floor
+// is -1, and the place 1 - 2^-54 rounds to 1 and is put back to 0 by fract, so that the point was held to be one
+// cell away from where it was wrapped to.
+double3 wrapFractional(const double3& unwrapped, int3& wrap)
+{
+  auto component = [](double value, std::int32_t& cellIndex)
+  {
+    const double floor = std::floor(value);
+    double place = value - floor;
+    cellIndex = static_cast<std::int32_t>(floor);
+    if (place >= 1.0)
+    {
+      place = 0.0;
+      ++cellIndex;
+    }
+    return place;
+  };
+  double3 fractional;
+  fractional.x = component(unwrapped.x, wrap.x);
+  fractional.y = component(unwrapped.y, wrap.y);
+  fractional.z = component(unwrapped.z, wrap.z);
+  return fractional;
 }
 
 PoreAccessibility PoreAccessibility::create(const UnitCell& unitCell,
@@ -43,6 +70,12 @@ PoreAccessibility PoreAccessibility::createFromNetwork(VoronoiNetwork network, M
 {
   PoreAccessibility accessibility;
   const UnitCell unitCell = network.unitCell;
+  // a cell without volume has bins of no width, and the walks over shells of bins, which stop once a shell is
+  // further off than what they look for, would never stop
+  if (!(unitCell.volume > 0.0))
+  {
+    throw std::invalid_argument("PoreAccessibility: the unit cell has no volume");
+  }
   accessibility.unitCell = unitCell;
   accessibility.metric = metric;
   accessibility.probeRadius = probeRadius;
@@ -136,10 +169,8 @@ PointClassification PoreAccessibility::classify(const double3& point) const
   // the wrapped point equals that of the original. The translation that wrapping removed is kept, since
   // the frame the answer refers to is the caller's point and not the wrapped one.
   double3 unwrappedFractional = unitCell.inverseCell * point;
-  const int3 wrap(static_cast<int>(std::floor(unwrappedFractional.x)),
-                  static_cast<int>(std::floor(unwrappedFractional.y)),
-                  static_cast<int>(std::floor(unwrappedFractional.z)));
-  double3 fractional = double3::fract(unwrappedFractional);
+  int3 wrap(0, 0, 0);
+  double3 fractional = wrapFractional(unwrappedFractional, wrap);
   double3 wrappedPoint = unitCell.cell * fractional;
   const int3 pointBin = binOfFractional(fractional, gridSize);
 
@@ -507,10 +538,8 @@ std::vector<NeighbourImage> PoreAccessibility::neighbourAtomImages(const double3
   // shell reached outside the cell -- and the only correction is the wrap the query point itself went
   // through on the way in, since the translations are wanted relative to the point as given.
   double3 unwrappedFractional = unitCell.inverseCell * point;
-  const int3 wrap(static_cast<int>(std::floor(unwrappedFractional.x)),
-                  static_cast<int>(std::floor(unwrappedFractional.y)),
-                  static_cast<int>(std::floor(unwrappedFractional.z)));
-  double3 fractional = double3::fract(unwrappedFractional);
+  int3 wrap(0, 0, 0);
+  double3 fractional = wrapFractional(unwrappedFractional, wrap);
   double3 wrappedPoint = unitCell.cell * fractional;
   const int3 pointBin = binOfFractional(fractional, gridSize);
 
@@ -566,10 +595,9 @@ bool PoreAccessibility::overlapsAtom(const double3& point, std::size_t excludedA
   // round-off, and a sampled area comes out short by the part of every boundary-crossing sphere that
   // pokes out.
   double3 unwrappedFractional = unitCell.inverseCell * point;
-  const int3 excludedImage(-static_cast<int>(std::floor(unwrappedFractional.x)),
-                           -static_cast<int>(std::floor(unwrappedFractional.y)),
-                           -static_cast<int>(std::floor(unwrappedFractional.z)));
-  double3 fractional = double3::fract(unwrappedFractional);
+  int3 wrap(0, 0, 0);
+  double3 fractional = wrapFractional(unwrappedFractional, wrap);
+  const int3 excludedImage(-wrap.x, -wrap.y, -wrap.z);
   double3 wrappedPoint = unitCell.cell * fractional;
   const int3 pointBin = binOfFractional(fractional, gridSize);
 

@@ -101,7 +101,8 @@ void ApolloniusSurfaceArea::run(const PairInteractions& interactions, const Crys
   std::chrono::duration<double> timing = std::chrono::steady_clock::now() - time_begin;
 
   double volume = framework.unitCell.volume;
-  double toGravimetric = Units::Angstrom * Units::Angstrom * Units::AvogadroConstant / framework.mass;
+  double toGravimetric =
+      framework.mass > 0.0 ? Units::Angstrom * Units::Angstrom * Units::AvogadroConstant / framework.mass : 0.0;
 
   std::ofstream myfile;
   myfile.open(framework.name + ".apollonius.sa.txt");

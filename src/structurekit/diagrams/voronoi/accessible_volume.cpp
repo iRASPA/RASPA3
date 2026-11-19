@@ -128,8 +128,10 @@ void VoronoiAccessibleVolume::run(const PairInteractions& interactions, const Cr
   double densityCrystal = framework.mass / (volume * Units::Angstrom * Units::Angstrom * Units::Angstrom *
                                                     1.0e6 * Units::AvogadroConstant);
   // cm³/g : (fraction * volume[Å³]) converted to cm³ per gram
-  double toGravimetric = (Units::Angstrom * Units::Angstrom * Units::Angstrom * 1.0e6) * Units::AvogadroConstant /
-                         framework.mass;
+  // (per gram of a framework that has a mass: one without atoms gave a division by zero)
+  double toGravimetric = framework.mass > 0.0 ? (Units::Angstrom * Units::Angstrom * Units::Angstrom * 1.0e6) *
+                                                    Units::AvogadroConstant / framework.mass
+                                              : 0.0;
 
   std::ofstream myfile;
   myfile.open(framework.name + ".voronoi.av.txt");

@@ -133,6 +133,8 @@ struct Sampler
 
   // Distinct maximal-sphere diameters from that same vanishing-probe network (peaks-only route).
   std::vector<double> candidateDiameters;
+  // The smallest diameter merged into each candidate, which is the largest of its family.
+  std::vector<double> candidateLowestDiameters;
 
   double scale{0.0};                  // one over the void volume, which the whole curve is normalised by
   double probeAccessibleVolume{0.0};  // and the blocked remaining volume, which the primary curve is
@@ -236,16 +238,28 @@ double Sampler::measureVoidVolume(double cellVolume)
     if (node.maximalRadius > 0.0) candidateDiameters.push_back(2.0 * node.maximalRadius);
   }
   std::sort(candidateDiameters.begin(), candidateDiameters.end());
+  // The family keeps its smallest diameter beside its largest. The tolerance is twice the half width of the
+  // bracket about a candidate, and a family chains on for as long as each member is within it of the last: kept
+  // as its largest member alone, the bracket about that started above the smaller members, past the cliffs of
+  // rooms 0.008 Å narrower, whose volume then went into no spike.
   std::vector<double> merged;
+  std::vector<double> lowest;
   merged.reserve(candidateDiameters.size());
+  lowest.reserve(candidateDiameters.size());
   for (double diameter : candidateDiameters)
   {
     if (merged.empty() || diameter - merged.back() > peaksDiameterMergeTol)
+    {
       merged.push_back(diameter);
+      lowest.push_back(diameter);
+    }
     else
+    {
       merged.back() = std::max(merged.back(), diameter);
+    }
   }
   candidateDiameters = std::move(merged);
+  candidateLowestDiameters = std::move(lowest);
 
   scale = (voidVolume > 0.0) ? 1.0 / voidVolume : 0.0;
   return voidVolume;
@@ -642,13 +656,15 @@ PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibili
                  const double diameter = candidates[index];
                  if (diameter <= 0.0 || diameter > sampler.largestIncludedDiameter + defaultHalfWidth) return;
 
+                 // the bracket spans the family, from below its smallest member to above its largest
+                 const double lowest = sampler.candidateLowestDiameters[index];
                  double half = defaultHalfWidth;
-                 if (index > 0) half = std::min(half, 0.25 * (diameter - candidates[index - 1]));
+                 if (index > 0) half = std::min(half, 0.25 * (lowest - candidates[index - 1]));
                  if (index + 1 < candidates.size())
-                   half = std::min(half, 0.25 * (candidates[index + 1] - diameter));
+                   half = std::min(half, 0.25 * (sampler.candidateLowestDiameters[index + 1] - diameter));
                  half = std::max(half, 1.0e-4);
 
-                 Sample left = (diameter - half <= 0.0) ? origin : sampler.at(diameter - half, nullptr);
+                 Sample left = (lowest - half <= 0.0) ? origin : sampler.at(lowest - half, nullptr);
                  Sample right = sampler.at(diameter + half, nullptr);
                  if (refinements == 0)
                    brackets[index] = {left, right};

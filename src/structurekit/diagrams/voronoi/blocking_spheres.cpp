@@ -109,7 +109,9 @@ std::vector<BlockingSphere> withoutContainedSpheres(const UnitCell& unitCell, st
     for (const BlockingSphere& wider : kept)
     {
       double separation = periodicDistance(unitCell, centre, unitCell.cell * wider.centerFractional);
-      if (separation + sphere.radius <= wider.radius + 1.0e-9)
+      // (the margin is wider than the distance below which a diagram takes two sites for one, 1e-8 Å: two
+      // spheres nearer than that used to be both kept, and the diagram built on them refused them as coinciding)
+      if (separation + sphere.radius <= wider.radius + 1.0e-7)
       {
         contained = true;
         break;
@@ -255,6 +257,13 @@ std::vector<BlockingSphere> computeBlockingSpheres(const PoreAccessibility& acce
       // radius.
       double reach = radius - bareAllowance;
 
+      // a sphere of no radius blocks nothing (the first sphere of a pocket is otherwise written whatever its size)
+      if (!(radius > 0.0))
+      {
+        covered[i] = 1;
+        continue;
+      }
+
       // Near the rim of a pocket there is no room for a sphere worth writing, and the classification
       // there is the least certain anyway. Leaving those points uncovered is what bounds the count: the
       // clearance falls to zero at the boundary, so insisting on covering the last of it would take
@@ -356,6 +365,9 @@ void VoronoiBlockingSpheres::compute(const UnitCell& unitCell, const std::vector
                                      std::optional<std::size_t> numberOfSamples)
 {
   this->probeRadius = probeRadius;
+  // (an object used a second time kept the pockets of the first when the second fell back to sampling)
+  measured = false;
+  pockets.clear();
 
   PoreAccessibility accessibility =
       PoreAccessibility::create(unitCell, fractionalPositions, radii, probeRadius);

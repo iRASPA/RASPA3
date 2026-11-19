@@ -205,7 +205,8 @@ void GridSurfaceArea::run(const PairInteractions &interactions, const Crystal &f
   this->seconds = elapsed.count();
 
   const double volume = framework.unitCell.volume;
-  const double toGravimetric = Units::Angstrom * Units::Angstrom * Units::AvogadroConstant / framework.mass;
+  const double toGravimetric =
+      framework.mass > 0.0 ? Units::Angstrom * Units::Angstrom * Units::AvogadroConstant / framework.mass : 0.0;
   const double3 spacing = grid.spacing();
 
   std::ofstream myfile;

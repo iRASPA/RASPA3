@@ -3,6 +3,8 @@
 import std;
 
 import double3;
+import int3;
+import double3x3;
 import unit_cell;
 import randomnumbers;
 import voronoi_network;
@@ -152,4 +154,51 @@ TEST(pore_accessibility, void_that_is_decided_is_always_in_a_pore)
     }
     EXPECT_EQ(inNoPore, 0uz) << "structure " << s;
   }
+}
+
+// A point whose fractional coordinate is just below zero, from -2^-54, which is where a point on a face of the
+// cell lands after rounding: the cell it was wrapped out of and the place it was wrapped to add up to the point.
+// They used to be a whole cell apart there, so that the images of the neighbours were named one cell off and a
+// point on a sphere was buried by that sphere itself.
+TEST(pore_accessibility, a_point_just_below_a_cell_face_is_wrapped_consistently)
+{
+  const UnitCell box{10.0, 10.0, 10.0};
+  const std::vector<double3> fractionalPositions{double3(0.0, 0.0, 0.0), double3(0.5, 0.5, 0.5)};
+  const std::vector<double> radii{1.5, 1.5};
+  const PoreAccessibility accessibility = PoreAccessibility::create(box, fractionalPositions, radii, 0.0);
+
+  for (const double below : {-1.0e-16, -3.0e-16, -5.0e-16})
+  {
+    // inside the sphere of the atom at the origin, on the far side of the face x = 0 by a rounding error
+    const double3 point(below, 1.2, 0.3);
+    ASSERT_LT(box.inverseCell.ax * point.x, 0.0);
+
+    // drawn on the atom at the origin, the point is not buried by that atom, and no other atom reaches it
+    EXPECT_FALSE(accessibility.overlapsAtom(point, 0)) << below;
+    EXPECT_TRUE(accessibility.overlapsAtom(point, 1)) << below;
+
+    const std::vector<NeighbourImage> neighbours = accessibility.neighbourAtomImages(point, 6.0);
+    ASSERT_FALSE(neighbours.empty());
+    for (const NeighbourImage& neighbour : neighbours)
+    {
+      const double3 centre =
+          accessibility.atomPositions[neighbour.index] +
+          box.cell * double3(static_cast<double>(neighbour.image.x), static_cast<double>(neighbour.image.y),
+                             static_cast<double>(neighbour.image.z));
+      EXPECT_LT((centre - point - neighbour.delta).length(), 1.0e-9)
+          << below << ": atom " << neighbour.index << " image " << neighbour.image.x << " " << neighbour.image.y
+          << " " << neighbour.image.z;
+    }
+  }
+}
+
+// A cell without volume is refused: the walks over shells of bins never ended on it.
+TEST(pore_accessibility, a_cell_without_volume_is_refused)
+{
+  VoronoiNetwork network;
+  network.unitCell = UnitCell(double3x3(double3(5.0, 0.0, 0.0), double3(0.0, 5.0, 0.0), double3(5.0, 5.0, 0.0)));
+  network.atomPositionsFractional = {double3(0.1, 0.2, 0.3)};
+  network.atomRadii = {1.0};
+  EXPECT_THROW(PoreAccessibility::createFromNetwork(network, PoreAccessibility::Metric::Power, 0.0),
+               std::invalid_argument);
 }

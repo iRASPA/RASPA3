@@ -98,6 +98,12 @@ SurfaceDistances surfaceDistances(const PoreAccessibility& accessibility, const 
     // buried or not. Where a direction is not on the patch the extremum is on the patch's edges instead, and
     // taking it anyway would put the answer out at the whole sphere's, most of which is buried.
     double distance = outward.length();
+    if (distance <= 1.0e-12 && boundary.circles.empty())
+    {
+      // the point is the centre of a sphere that nothing cuts: every direction is as far, and one stands for all
+      const double3 any(1.0, 0.0, 0.0);
+      if (components.patchOfDirection(atomIndex, any) == static_cast<std::int32_t>(patch)) consider(any);
+    }
     if (distance > 1.0e-12)
     {
       for (double sign : {1.0, -1.0})
@@ -142,7 +148,10 @@ SurfaceDistances surfaceDistances(const PoreAccessibility& accessibility, const 
     }
   };
 
-  auto facesAChannel = [&](std::int32_t of) { return of >= 0 && facesChannel[static_cast<std::size_t>(of)] != 0; };
+  // (never the pocket's own wall: where the sides are taken from the network, a wall the network has open is
+  // marked as facing a channel, and the distance to the channel came out as the distance to that wall)
+  auto facesAChannel = [&](std::int32_t of)
+  { return of >= 0 && of != component && facesChannel[static_cast<std::size_t>(of)] != 0; };
 
   for (std::size_t atomIndex = 0; atomIndex < components.atoms.size(); ++atomIndex)
   {

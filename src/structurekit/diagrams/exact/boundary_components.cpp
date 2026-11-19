@@ -295,11 +295,18 @@ bool insideLoop(const SphereBoundary& boundary, const std::vector<std::size_t>& 
 
     double3 perpendicular = x - circle.axis * alignment;
     double length = perpendicular.length();
-    if (length < 1.0e-12) continue;  // `x` is on that axis, where every point of the circle is as near
-
-    perpendicular = perpendicular * (1.0 / length);
     nearest = distance;
     landedOn = c;
+    if (length < 1.0e-12)
+    {
+      // `x` is on that axis, where every point of the circle is as near and every meridian a shortest path:
+      // any of them serves. The circle used to be passed over, and with it the only circle of a loop made of
+      // one, so that the point opposite a single cap was outside the loop round that cap.
+      landing = circle.direction(0.0);
+      continue;
+    }
+
+    perpendicular = perpendicular * (1.0 / length);
     landing = circle.axis * circle.cosineHalfAngle + perpendicular * circle.sineHalfAngle;
   }
   if (nearest == std::numeric_limits<double>::max()) return false;

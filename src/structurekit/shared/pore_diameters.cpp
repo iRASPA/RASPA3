@@ -66,6 +66,8 @@ PercolatingPath widestPercolatingPath(const VoronoiNetwork& network, std::span<c
     // structure that percolates only through such edges does not percolate
     if (edge.radius <= 0.0) break;
     if (path.percolates && edge.radius < path.radius) break;
+    // nor does one pass an edge that ends at a vertex inside the atoms, as the channel analysis has it
+    if (network.nodes[edge.from].radius <= 0.0 || network.nodes[edge.to].radius <= 0.0) continue;
 
     auto [rootFrom, accFrom] = unionFind.find(edge.from);
     auto [rootTo, accTo] = unionFind.find(edge.to);

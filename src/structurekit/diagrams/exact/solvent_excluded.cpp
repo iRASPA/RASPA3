@@ -774,13 +774,18 @@ VertexTerms vertexTerms(const SasVertex& vertex, double probeRadius, const std::
   SphericalRegion region = regionOutsideCaps(caps, subdivisions);
   if (region.solidAngle <= 0.0)
   {
+    // Nothing is left of the concave patch: the neighbouring probes have taken all of the sphere. The cell of
+    // the vertex is still there, the cone closed off by the flat faces alone, and its volume is that of the
+    // pyramids over them below. Returning here left it out, a drop in the shell at the radius where the patch
+    // goes, which the pore-size distribution took for a room.
     terms.vanished = true;
-    return terms;
   }
-
-  terms.shell = region.solidAngle * radius * radius * radius / 3.0;
-  terms.normalSpeed = -radius * radius * (double3::dot(vertex.velocity, region.moment) + region.solidAngle);
-  terms.area = region.solidAngle * radius * radius;
+  else
+  {
+    terms.shell = region.solidAngle * radius * radius * radius / 3.0;
+    terms.normalSpeed = -radius * radius * (double3::dot(vertex.velocity, region.moment) + region.solidAngle);
+    terms.area = region.solidAngle * radius * radius;
+  }
 
   // The flat faces. Each lies halfway to a neighbouring probe, is a disc of what the probe's sphere leaves
   // there, and is cut back by the same hull planes as the concave patch and by the halfway planes to the other
