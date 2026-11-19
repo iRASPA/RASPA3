@@ -14,6 +14,7 @@ import mc_moves_move_types;
 import mc_moves_probabilities;
 import mc_moves_identity_change;
 import mc_moves_identity_switch;
+import mc_moves_gibbs_identity_change;
 
 // The dispatcher books the overall count and the total time of a component move on the component the move was
 // drawn for. The identity moves involve a second component (the partner of the switch, or the old component
@@ -82,4 +83,50 @@ TEST(MC_IDENTITY_MOVE_STATISTICS, identity_change_counts_on_the_component_it_was
   EXPECT_EQ(changesA.totalCounts, static_cast<double>(numberOfTrials));
   EXPECT_EQ(changesB.totalCounts, 0.0);
   EXPECT_GT(changesA.totalAccepted, 0.0);
+}
+
+// An attempt that finds no molecule to change is an attempt, and is counted before it is turned down, as the swap
+// moves count theirs. The trials were counted after the test for an empty component, so that the acceptance ratio
+// was taken over the attempts that found a molecule only.
+TEST(MC_IDENTITY_MOVE_STATISTICS, an_attempt_on_an_empty_component_is_counted)
+{
+  const std::size_t numberOfTrials = 50;
+  const auto trials = [](const System& system, std::size_t component, Move::Types move)
+  { return std::get<MoveStatistics<double>>(system.components[component].mc_moves_statistics[move]).totalCounts; };
+  {
+    System system = makeTwoBeadSystem(0, 10);
+    RandomNumber random(7);
+    for (std::size_t i = 0; i != numberOfTrials; ++i)
+    {
+      EXPECT_FALSE(MC_Moves::identitySwitchMove(random, system, 0).has_value());
+    }
+    EXPECT_EQ(trials(system, 0, Move::Types::IdentitySwitchCBMC), static_cast<double>(numberOfTrials));
+  }
+  {
+    System system = makeTwoBeadSystem(0, 0);
+    RandomNumber random(7);
+    for (std::size_t i = 0; i != numberOfTrials; ++i)
+    {
+      EXPECT_FALSE(MC_Moves::identityChangeMove(random, system, 0).has_value());
+    }
+    EXPECT_EQ(trials(system, 0, Move::Types::IdentityChangeCBMC), static_cast<double>(numberOfTrials));
+  }
+  {
+    // the Gibbs identity change counts a trial on the component of each box that would change
+    System boxI = makeTwoBeadSystem(0, 0);
+    System boxII = makeTwoBeadSystem(0, 0);
+    boxI.components[0].gibbsIdentityChanges = {1};
+    boxII.components[0].gibbsIdentityChanges = {1};
+    RandomNumber random(7);
+    for (std::size_t i = 0; i != numberOfTrials; ++i)
+    {
+      EXPECT_FALSE(MC_Moves::GibbsIdentityChangeMove_CBMC(random, boxI, boxII, 0).has_value());
+    }
+    double total = 0.0;
+    for (const System* box : {&boxI, &boxII})
+    {
+      for (std::size_t component : {0uz, 1uz}) total += trials(*box, component, Move::Types::GibbsIdentityChangeCBMC);
+    }
+    EXPECT_EQ(total, 2.0 * static_cast<double>(numberOfTrials));
+  }
 }

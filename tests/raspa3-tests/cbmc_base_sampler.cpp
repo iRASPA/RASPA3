@@ -1117,3 +1117,41 @@ TEST(CBMC_BASE_SAMPLER, a_stereocentre_declared_twice_restricts_the_base_to_one_
   // the parity fraction of the two is a sampled one half (frozen seed): within its statistical error
   EXPECT_NEAR(normalization[1], normalization[0], 0.02);
 }
+
+// The retrace of a molecule whose spin-decided centre has the other parity (a centre inverted in a restart file, or
+// by a move that does not guard it) has no weight: no growth makes that spin. The retrace pins the old spin as its
+// first trial, and with that trial behind the chiral wall the weight of the other trials was handed out for it as
+// if a growth could have made it. It is refused, as the retrace of an overlapping molecule is.
+TEST(CBMC_BASE_SAMPLER, the_retrace_of_an_old_spin_behind_the_chiral_wall_is_refused)
+{
+  ForceField forceField = makeZeroForceField();
+  TemporaryFile file("chiral-quaternary-retrace.json", kChiralQuaternaryJson);
+  Component component(Component::Type::Adsorbate, 0, forceField, "chiral-quaternary-retrace", file.stemPath().string(),
+                      5, 21, MCMoveProbabilities(), std::nullopt, false);
+
+  System system(forceField, kBox, false, kTemperature, 1e4, 1.0, {}, {component}, {}, {0}, 5);
+  Component& grown = system.components[0];
+  grown.prepareGrowthPlans(system.beta);
+  const std::vector<std::size_t> placed{0, 1, 4};
+  ASSERT_EQ(grown.growthPlan(placed).front().spin.determinedChiralCenters.size(), 1uz);
+  const CBMC::GrowContext context = system.makeGrowContext();
+  ASSERT_GT(context.settings.numberOfTorsionTrialDirections, 1uz);
+
+  RandomNumber random(97);
+  std::size_t checked = 0;
+  for (std::size_t attempt = 0; attempt != 50; ++attempt)
+  {
+    const std::optional<CBMC::GrowResult> result = CBMC::growChainCBMC(random, context, grown, component.atoms, placed);
+    if (!result.has_value()) continue;
+    ++checked;
+    // the declared parity retraces
+    EXPECT_NO_THROW((void)CBMC::retraceChainCBMC(random, context, grown, result->atoms, placed));
+
+    // the two methyl groups the step grew, exchanged: the same bonds and bends, the other parity
+    std::vector<Atom> inverted = result->atoms;
+    std::swap(inverted[2].position, inverted[3].position);
+    ASSERT_FALSE(grown.intraMolecularPotentials.preservesChiralCenters(inverted));
+    EXPECT_THROW((void)CBMC::retraceChainCBMC(random, context, grown, inverted, placed), std::runtime_error);
+  }
+  EXPECT_GT(checked, 10uz);
+}

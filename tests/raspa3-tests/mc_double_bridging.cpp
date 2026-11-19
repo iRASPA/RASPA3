@@ -1187,3 +1187,43 @@ TEST(MC_DOUBLE_BRIDGING, local_moves_reject_inverted_declared_chiral_centres)
   EXPECT_NEAR(system.runningEnergies.potentialEnergy(), recomputed.potentialEnergy(),
               1e-6 * std::max(1.0, std::abs(recomputed.potentialEnergy())));
 }
+
+// The partner's tail is joined through the lattice vector of the minimum image of the two anchors, and the reverse
+// move finds that vector again only while a single image of a partner is within reach. In a box narrower than twice
+// the bridge distance it could take another image, and the selection probabilities of the move and its reverse
+// were not those of one pair: the move is not made there. (It was, and its bridges were accepted.)
+TEST(MC_DOUBLE_BRIDGING, a_double_bridge_is_not_made_in_a_box_narrower_than_twice_its_reach)
+{
+  const ForceField forceField = makeZeroForceField();
+  Component decane = makeComponent(forceField, "db-decane-narrow", chainJson(10, "0.0, 0.0, 0.0, 0.0"));
+  const double reach = decane.bridgingTopology().maximumBridgeDistance;
+  ASSERT_GT(reach, 3.0);
+
+  constexpr std::size_t numberOfChains = 6;
+  for (const bool narrow : {true, false})
+  {
+    const double width = narrow ? 1.9 * reach : 14.0;
+    System system = System(forceField, SimulationBox(width, width, width), false, 300.0, 1e4, 1.0, {}, {decane}, {},
+                           {numberOfChains}, 5);
+    system.runningEnergies = system.computeTotalEnergies();
+    system.components[0].pivotRandomizationFraction = 1.0;
+
+    RandomNumber random(4711);
+    std::size_t accepted = 0;
+    for (std::size_t i = 0; i != 20000; ++i)
+    {
+      const std::size_t molecule = static_cast<std::size_t>(random.uniform() * static_cast<double>(numberOfChains));
+      std::optional<RunningEnergy> energyDifference;
+      if (i % 20 == 0) energyDifference = MC_Moves::pivotMove(random, system, 0, molecule);
+      else if (i % 20 == 10) energyDifference = MC_Moves::translationMove(random, system, 0, molecule);
+      else
+      {
+        energyDifference = MC_Moves::doubleBridgingMove(random, system, 0, molecule);
+        if (energyDifference.has_value()) ++accepted;
+      }
+      if (energyDifference.has_value()) system.runningEnergies += energyDifference.value();
+    }
+    if (narrow) EXPECT_EQ(accepted, 0uz);
+    else EXPECT_GT(accepted, 0uz);
+  }
+}

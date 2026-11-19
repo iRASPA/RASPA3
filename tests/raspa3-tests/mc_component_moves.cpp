@@ -727,6 +727,56 @@ TEST(MC_COMPONENT_MOVES, cfcmc_cbmc_restores_atoms_after_lower_tmmc_window_rejec
   EXPECT_TRUE(testedBoundary);
 }
 
+// A deletion the window of the transition matrix turns down has retraced its molecules all the same: it is counted
+// as constructed. It was counted after the window, so that the constructed deletions at the lower edge of the
+// window were missing from the statistics of the pair and group swaps.
+TEST(MC_COMPONENT_MOVES, a_deletion_turned_down_by_the_tmmc_window_is_counted_as_constructed)
+{
+  const auto constructedDeletions = [](const System& system, Move::Types move)
+  {
+    return std::get<MoveStatistics<double3>>(system.components[0].mc_moves_statistics[move]).totalConstructed.y;
+  };
+  const auto atTheLowerEdge = [](System& system)
+  {
+    system.tmmc.doTMMC = true;
+    system.tmmc.rejectOutOfBound = true;
+    system.tmmc.minMacrostate = system.numberOfIntegerMoleculesPerComponent[0];
+    system.tmmc.maxMacrostate = system.numberOfIntegerMoleculesPerComponent[0] + 2uz;
+    system.tmmc.initialize();
+  };
+
+  {
+    System system = makePairDeletionSystem(false);
+    atTheLowerEdge(system);
+    ASSERT_EQ(system.pairSwapTMMCMember(0), std::optional<std::size_t>{0});
+    RandomNumber random(91);
+    const auto [energy, acceptance] = MC_Moves::pairDeletionMove(random, system, 0, 0);
+    EXPECT_FALSE(energy.has_value());
+    EXPECT_GT(acceptance.x, 0.0);
+    EXPECT_EQ(constructedDeletions(system, Move::Types::PairSwap), 1.0);
+  }
+  {
+    System system = makePairDeletionSystem(false);
+    atTheLowerEdge(system);
+    RandomNumber random(91);
+    const auto [energy, acceptance] = MC_Moves::pairDeletionMoveCBMC(random, system, 0, 0);
+    EXPECT_FALSE(energy.has_value());
+    EXPECT_GT(acceptance.x, 0.0);
+    EXPECT_EQ(constructedDeletions(system, Move::Types::PairSwapCBMC), 1.0);
+  }
+  {
+    System system = makeGroupSystem({double3(5.0, 5.0, 5.0)},
+                                    {double3(6.5, 5.0, 5.0), double3(3.5, 5.0, 5.0), double3(5.0, 5.0, 9.0)}, 1.0e12);
+    atTheLowerEdge(system);
+    ASSERT_EQ(system.groupSwapTMMCMember(0), std::optional<std::size_t>{0});
+    RandomNumber random(91);
+    const auto [energy, acceptance] = MC_Moves::groupDeletionMove(random, system, 0, 0);
+    EXPECT_FALSE(energy.has_value());
+    EXPECT_GT(acceptance.x, 0.0);
+    EXPECT_EQ(constructedDeletions(system, Move::Types::GroupSwap), 1.0);
+  }
+}
+
 TEST(MC_COMPONENT_MOVES, neutral_trial_leaves_tmmc_matrix_untouched)
 {
   const ForceField forceField = makeNonInteractingForceField();

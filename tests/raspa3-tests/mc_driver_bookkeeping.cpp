@@ -616,3 +616,35 @@ TEST(MC_DRIVER_BOOKKEEPING, the_system_of_a_step_is_drawn_uniformly)
     EXPECT_EQ(first + second, 1uz);
   }
 }
+
+// A stage is left when its cycles are done, also when it is entered at a cycle beyond its last: a run that is
+// finished and started again resumes inside the loop of the production stage, one cycle past the end. The loops
+// tested for the last cycle exactly, and went on from there until the counter came round.
+TEST(MC_DRIVER_BOOKKEEPING, a_finished_stage_entered_again_ends)
+{
+  std::vector<System> systems{makeMethaneCFCMCSystem(10)};
+  MonteCarlo mc(makeSchedule(4, 3, 2), systems, 11uz, 5, false);
+  mc.run();
+  ASSERT_EQ(mc.simulationStage, MonteCarlo::SimulationStage::Production);
+  ASSERT_EQ(mc.absoluteCurrentCycle, 9uz);
+
+  mc.run();
+  EXPECT_LE(mc.absoluteCurrentCycle, 10uz);
+}
+
+// 'callBackEvery' of zero is no call-back at all (it was the divisor of a remainder).
+TEST(MC_DRIVER_BOOKKEEPING, a_call_back_interval_of_zero_is_no_call_back)
+{
+  for (const std::size_t every : {0uz, 1uz})
+  {
+    std::vector<System> systems{makeMethaneCFCMCSystem(10)};
+    MonteCarlo mc(makeSchedule(4, 3, 2), systems, 11uz, 5, false);
+    mc.setup();
+    std::size_t calls = 0;
+    const auto count = [&] { ++calls; };
+    mc.initialize(count, every);
+    mc.equilibrate(count, every);
+    mc.production(count, every);
+    EXPECT_EQ(calls, every == 0uz ? 0uz : 9uz);
+  }
+}

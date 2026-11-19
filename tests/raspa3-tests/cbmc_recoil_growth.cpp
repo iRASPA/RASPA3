@@ -19,6 +19,7 @@ import cbmc_results;
 import cbmc_grow_context;
 import cbmc_grow_step;
 import cbmc_chain_recoil;
+import cbmc_statistics;
 
 // Detailed-balance tests of recoil growth (RG) as a chain-growth scheme. RG and configurational-bias
 // (CBMC) growth are two proposal schemes for the same regrow move; with their own Rosenbluth-like
@@ -558,4 +559,58 @@ TEST(CBMC_RECOIL_GROWTH, retrace_of_overlapping_old_configuration_throws)
   const CBMC::GrowContext valid = makeContext(distant);
   EXPECT_NO_THROW(
       (void)CBMC::retraceChainRecoil(random, valid, chain, std::span<Atom>(molecule), placed));
+}
+
+// A recoil growth is counted as completed, and its steps with it, once the weight of every step is in: a step
+// under the floor of the Rosenbluth factor fails the growth after the chain has been grown. Such growths were
+// counted as completed all the same, and the steps before the failing one added to the average of the open
+// directions.
+TEST(CBMC_RECOIL_GROWTH, a_growth_that_falls_under_the_rosenbluth_floor_is_not_counted_as_completed)
+{
+  ForceField forceField = makeProbeForceField(ProbeParameters{15.0, 6.4, 2.6, 4.0});
+  forceField.settings.useRecoilGrowth = true;
+  forceField.settings.recoilGrowthNumberOfTrialDirections = 3;
+  forceField.settings.recoilGrowthMaximumRecoilLength = 2;
+
+  TemporaryFile file("recoil-probe-chain-floor.json", kProbeChainJson);
+  Component chain(Component::Type::Adsorbate, 0, forceField, "recoil-probe-chain-floor", file.stemPath().string(), 5,
+                  21, MCMoveProbabilities(), std::nullopt, false);
+
+  const SimulationBox box(30.0, 30.0, 30.0);
+  const double beta = 1.0 / (Units::KB * 300.0);
+  chain.prepareGrowthPlans(beta);
+  const std::optional<Framework> noFramework{};
+  const std::vector<std::optional<InterpolationEnergyGrid>> noGrids(forceField.pseudoAtoms.size() + 1);
+  const std::optional<InterpolationEnergyGrid> noExternalFieldGrid{};
+  const std::vector<std::size_t> placed{chain.startingBead};
+  const std::vector<Atom> start(chain.atoms.begin(), chain.atoms.end());
+
+  RandomNumber random(12345);
+  for (const bool floored : {false, true})
+  {
+    // every step of an isolated chain has a weight of order one: far under a floor of 1e100
+    forceField.settings.minimumRosenbluthFactor = floored ? 1.0e100 : 0.0;
+    const CBMC::GrowContext context(false, forceField, box, noGrids, noExternalFieldGrid, noFramework,
+                                    std::span<const Atom>{}, std::span<const Atom>{}, beta, CBMC::CutOffMode::Full);
+    const CBMC::RecoilGrowthStatistics before = chain.recoilGrowthStatistics;
+    std::size_t numberGrown = 0;
+    for (std::size_t i = 0; i != 50; ++i)
+    {
+      if (CBMC::growChainRecoil(random, context, chain, start, placed).has_value()) ++numberGrown;
+    }
+    const CBMC::RecoilGrowthStatistics& after = chain.recoilGrowthStatistics;
+    EXPECT_EQ(after.grows - before.grows, 50.0);
+    if (floored)
+    {
+      EXPECT_EQ(numberGrown, 0uz);
+      EXPECT_EQ(after.completed, before.completed);
+      EXPECT_EQ(after.growSteps, before.growSteps);
+      EXPECT_EQ(after.availableDirectionsSum, before.availableDirectionsSum);
+    }
+    else
+    {
+      EXPECT_GT(numberGrown, 0uz);
+      EXPECT_EQ(after.completed - before.completed, static_cast<double>(numberGrown));
+    }
+  }
 }

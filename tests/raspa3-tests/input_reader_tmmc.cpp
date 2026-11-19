@@ -451,6 +451,44 @@ TEST(INPUT_READER_TMMC, accepts_elastic_constant_minimization_options)
   EXPECT_DOUBLE_EQ(reader.minimizationOptions.elasticEigenvalueTolerance, 2.5e-9);
 }
 
+// The swap move of a Monte Carlo run exchanges the configurations of two neighbouring systems. With one system
+// the pair is that system twice (it was exchanged with itself, and its molecules came out twice over), and two
+// boxes of different size are exchanged only between systems that sample their volume (at constant volume the
+// boxes wandered over the systems, weighted with a pressure that plays no part in them).
+TEST(INPUT_READER, a_tempering_swap_needs_a_second_system_and_boxes_that_may_be_exchanged)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+
+  nlohmann::json one = readNVTExample();
+  one["SimulationType"] = "MonteCarlo";
+  for (const char* key : {"Ensemble", "ComputeMSD", "SampleMSDEvery", "WriteMSDEvery"}) one["Systems"][0].erase(key);
+  one["Components"][0]["CreateNumberOfMolecules"] = 4;
+  EXPECT_EQ(refusalOf(one, "swap_none", workspace.path()), "");
+
+  one["Systems"][0]["ParallelTemperingSwapProbability"] = 1.0;
+  const std::string alone = refusalOf(one, "swap_alone", workspace.path());
+  EXPECT_NE(alone.find("needs a second system"), std::string::npos) << alone;
+
+  nlohmann::json two = one;
+  two["Systems"].push_back(one["Systems"][0]);
+  two["Systems"][1]["ExternalTemperature"] = 350.0;
+  two["Components"][0]["CreateNumberOfMolecules"] = {4, 4};
+  EXPECT_EQ(refusalOf(two, "swap_same_box", workspace.path()), "");
+
+  two["Systems"][1]["BoxLengths"] = {32.0, 32.0, 32.0};
+  const std::string differentBoxes = refusalOf(two, "swap_other_box", workspace.path());
+  EXPECT_NE(differentBoxes.find("boxes of different size"), std::string::npos) << differentBoxes;
+
+  // one of the two samples its volume: still refused; both: exchanged
+  two["Systems"][0]["ExternalPressure"] = 1.0e5;
+  two["Systems"][1]["ExternalPressure"] = 1.0e5;
+  two["Systems"][0]["VolumeMoveProbability"] = 0.1;
+  EXPECT_NE(refusalOf(two, "swap_one_volume", workspace.path()).find("boxes of different size"), std::string::npos);
+  two["Systems"][1]["VolumeMoveProbability"] = 0.1;
+  EXPECT_EQ(refusalOf(two, "swap_both_volume", workspace.path()), "");
+}
+
 TEST(INPUT_READER_MD, accepts_nvt_stress_fluctuation_elastic_constants)
 {
   TemporaryDirectory workspace = makeBoxMdWorkspace();
