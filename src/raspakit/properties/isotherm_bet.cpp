@@ -16,6 +16,7 @@ import property_lambda_probability_histogram;
 import equation_of_states;
 import component;
 import system;
+import system_preparation;
 import units;
 
 BETProbeProperties requireBETProbeProperties(const Component& component)
@@ -530,8 +531,7 @@ void pinSystemTemperature(System& system, double temperature)
     system.forceField.preComputeTailCorrection();
   }
   for (Component& component : system.components) component.updateLnPartitionFunction(temperature);
-  system.buildConformationReservoirs();
-  system.buildRecoilReferenceConformations();
+  Preparation::prepareConformations(system);
 }
 
 void removeSwappableIntegerMolecules(System& system)

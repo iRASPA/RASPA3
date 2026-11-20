@@ -29,6 +29,7 @@ import mc_moves;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import mc_moves_parallel_tempering_swap;
+import system_preparation;
 import json;
 import equation_of_states;
 
@@ -229,18 +230,16 @@ ParallelTempering::ParallelTempering(InputReader& reader)
       system.scaleSoluteHamiltonian(soluteComponentId.value(), lambda);
     }
 
-    // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature
-    system.buildConformationReservoirs();
-    // so is the recoil-growth openness reference (a no-op when recoil growth is off)
-    system.buildRecoilReferenceConformations();
-
     randoms.emplace_back(random.seed + replicaId + 1);
   }
 
-  // what belongs to the temperature of each replica: the ideal-gas Rosenbluth weight of a flexible molecule and
-  // the normalization that lets configurations with different molecule counts be exchanged between temperatures
-  // (not for the scaled Hamiltonians of solute tempering, where such a molecule is refused)
-  if (!soluteComponentId.has_value()) MC_Moves::prepareIdealGasReferences(systems, temperatures);
+  // What belongs to the state point of each replica: the conformations of the isolated molecules (Boltzmann
+  // samples at its temperature, of its scaled Hamiltonian under solute tempering), the ideal-gas Rosenbluth weight
+  // of a flexible molecule and the normalization that lets configurations with different molecule counts be
+  // exchanged between temperatures (not for the scaled Hamiltonians of solute tempering, where such a molecule is
+  // refused).
+  Preparation::prepareReplicas(
+      systems, {.ladderTemperatures = temperatures, .acrossTemperatures = !soluteComponentId.has_value()});
 
   stepsPerReplica.assign(numberOfReplicas, 0uz);
   swapAttemptsPerPair.assign(numberOfReplicas - 1uz, 0uz);

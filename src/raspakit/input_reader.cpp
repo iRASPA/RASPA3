@@ -2738,6 +2738,24 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      // how far a weight that is not given is computed: the standard error of its mean over the mean
+      if (item.contains("IdealGasRosenbluthWeightTolerance"))
+      {
+        if (!item["IdealGasRosenbluthWeightTolerance"].is_number() ||
+            !(item["IdealGasRosenbluthWeightTolerance"].get<double>() > 0.0))
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'IdealGasRosenbluthWeightTolerance' of component '{}' must be a positive number "
+              "(the relative standard error, e.g. 0.005)\n",
+              jsonComponents[0][componentId].name));
+        }
+        const double tolerance = item["IdealGasRosenbluthWeightTolerance"].get<double>();
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].idealGasRosenbluthWeightTolerance = tolerance;
+        }
+      }
+
       // The mean intramolecular energy of the molecule in the ideal gas [K]: the reference the enthalpy of
       // adsorption (and the isosteric heat of the reweighting drivers) of a flexible molecule is measured from.
       // The component carried it and every such output subtracted it, but no key set it.
@@ -3237,7 +3255,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         // The weight depends on the temperature. The drivers that replicate the one declared system over a ladder
         // of temperatures take the list as one value per temperature of the ladder (checked against it, and
-        // handed to the replicas, by 'MC_Moves::prepareIdealGasReferences'); for systems that are declared one by
+        // handed to the replicas, by 'Preparation::prepareIdealGasReferences'); for systems that are declared one by
         // one it is one value per system.
         const bool replicatedOverALadder = simulationType == SimulationType::ParallelTempering ||
                                            simulationType == SimulationType::ParallelTemperingMolecularDynamics ||
@@ -6999,6 +7017,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "StartingBead",
     "FugacityCoefficient",
     "IdealGasRosenbluthWeight",
+    "IdealGasRosenbluthWeightTolerance",
     "IdealGasEnergy",
     "CrossSection",
     "LiquidVolume",

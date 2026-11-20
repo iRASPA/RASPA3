@@ -31,6 +31,7 @@ import mc_moves;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import mc_moves_parallel_tempering_swap;
+import system_preparation;
 import json;
 import isotherm_bet;
 import nitrogen_bet_setup;
@@ -243,7 +244,7 @@ static void validateReweightingTemplate(const System& system, std::span<const do
   }
 
   // (A flexible adsorbate across temperatures: the activity it is sampled at contains its intramolecular
-  // configuration integral q(beta), which 'MC_Moves::prepareIdealGasReferences' computes for the sampled and the
+  // configuration integral q(beta), which 'Preparation::prepareIdealGasReferences' computes for the sampled and the
   // reweighted temperatures when the replicas are made.)
 }
 
@@ -485,20 +486,17 @@ void ReweightedHistogram::initializeReplicas(System templateSystem)
       // the log partition functions given as species, at the replica temperature
       for (Component& component : system.components) component.updateLnPartitionFunction(T);
 
-      // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature,
-      // and so is the recoil-growth openness reference (a no-op when recoil growth is off)
-      system.buildConformationReservoirs();
-      system.buildRecoilReferenceConformations();
-
       randoms.emplace_back(random.seed + replicaId + 1);
     }
   }
 
   // What belongs to the temperature of each replica, and of each temperature that is reweighted to: a flexible
   // molecule is sampled at the activity beta f / q(beta), with q its intramolecular configuration integral (see
-  // 'MC_Moves::idealGasReferences'). The reduced potentials and the configuration swaps need it across temperatures.
-  reweightingLogNormalization = MC_Moves::prepareIdealGasReferences(
-      systems, temperatures, reweightingTemperatures)[systems.front().tmmcComponent()];
+  // 'Preparation::idealGasReferences'). The reduced potentials and the configuration swaps need it across
+  // temperatures. With it, the conformations of the isolated molecules at the temperature of each replica.
+  reweightingLogNormalization = Preparation::prepareReplicas(
+      systems, {.ladderTemperatures = temperatures,
+                .otherTemperatures = reweightingTemperatures})[systems.front().tmmcComponent()];
 
   reweightingSamples.resize(numberOfReplicas);
   for (std::vector<Sample>& samples : reweightingSamples)

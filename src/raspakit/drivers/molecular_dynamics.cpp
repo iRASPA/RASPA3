@@ -36,6 +36,7 @@ import property_energy;
 import property_msd;
 import property_vacf;
 import mc_moves;
+import system_preparation;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 import mc_moves_cputime;
@@ -830,6 +831,10 @@ void MolecularDynamics::setup()
 
     ++system_id;
   }
+
+  // what the Monte Carlo stages before the dynamics need worked out: the ideal-gas Rosenbluth weight of the flexible
+  // molecules that are inserted, deleted or probed with configurational bias and were given none
+  Preparation::prepareSystems(systems);
 
   if (outputToFiles)
   {

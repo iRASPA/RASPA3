@@ -1849,6 +1849,14 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
   if (idealGasRosenbluthWeight.has_value())
   {
     std::print(stream, "    Ideal gas Rosenbluth weight:  {:10.8f}\n", idealGasRosenbluthWeight.value());
+    if (idealGasRosenbluthWeightEstimate.has_value())
+    {
+      const IdealGasRosenbluthWeightEstimate& estimate = idealGasRosenbluthWeightEstimate.value();
+      std::print(stream, "                                  computed at {} K from {} grows of the isolated molecule\n",
+                 estimate.temperature, estimate.numberOfGrows);
+      std::print(stream, "                                  relative standard error {:.2e}{}\n", estimate.relativeError,
+                 estimate.converged ? "" : " (WARNING: above the tolerance; give 'IdealGasRosenbluthWeight')");
+    }
     if (logInsertionNormalization.has_value())
     {
       std::print(stream, "    ln ideal-gas normalization:   {:10.8f} (relative to the other temperatures)\n",
@@ -4026,6 +4034,16 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.idealGasRosenbluthWeightLadder;  // version 3
   archive << c.logInsertionNormalization;
 
+  archive << c.idealGasRosenbluthWeightEstimate.has_value();  // version 4
+  if (c.idealGasRosenbluthWeightEstimate.has_value())
+  {
+    archive << c.idealGasRosenbluthWeightEstimate->temperature;
+    archive << c.idealGasRosenbluthWeightEstimate->relativeError;
+    archive << c.idealGasRosenbluthWeightEstimate->numberOfGrows;
+    archive << c.idealGasRosenbluthWeightEstimate->converged;
+  }
+  archive << c.idealGasRosenbluthWeightTolerance;
+
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -4169,6 +4187,27 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   {
     c.idealGasRosenbluthWeightLadder.clear();
     c.logInsertionNormalization.reset();
+  }
+
+  c.idealGasRosenbluthWeightEstimate.reset();
+  if (versionNumber >= 4)
+  {
+    bool hasEstimate{false};
+    archive >> hasEstimate;
+    if (hasEstimate)
+    {
+      Component::IdealGasRosenbluthWeightEstimate estimate{};
+      archive >> estimate.temperature;
+      archive >> estimate.relativeError;
+      archive >> estimate.numberOfGrows;
+      archive >> estimate.converged;
+      c.idealGasRosenbluthWeightEstimate = estimate;
+    }
+    archive >> c.idealGasRosenbluthWeightTolerance;
+  }
+  else
+  {
+    c.idealGasRosenbluthWeightTolerance.reset();
   }
 
 #if DEBUG_ARCHIVE

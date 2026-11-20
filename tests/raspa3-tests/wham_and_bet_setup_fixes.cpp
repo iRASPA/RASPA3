@@ -115,7 +115,7 @@ TEST(WHAM_AND_BET_SETUP_FIXES, dctst_wham_reports_disconnected_states)
 
 // A flexible molecule samples beta f / Z_intra(beta): at one temperature (a pressure ladder) Z_intra cancels and
 // the swap goes ahead; across temperatures the ratio is needed, and a pair of replicas that was not given it
-// ('MC_Moves::prepareIdealGasReferences') is refused. Under solute tempering it is refused up front.
+// ('Preparation::prepareIdealGasReferences') is refused. Under solute tempering it is refused up front.
 TEST(WHAM_AND_BET_SETUP_FIXES, flexible_molecules_swap_only_at_equal_temperature)
 {
   System cold = makeCO2InFAU(300.0);

@@ -28,6 +28,7 @@ import mc_moves;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import mc_moves_parallel_tempering_swap;
+import system_preparation;
 import integrators;
 import integrators_compute;
 import integrators_update;
@@ -181,17 +182,13 @@ ParallelTemperingMolecularDynamics::ParallelTemperingMolecularDynamics(InputRead
       system.forceField.preComputeTailCorrection();
     }
 
-    // the CBMC ideal-gas conformation reservoirs (used by the MC stages) are Boltzmann samples at
-    // the system temperature
-    system.buildConformationReservoirs();
-    system.buildRecoilReferenceConformations();
-
     randoms.emplace_back(random.seed + replicaId + 1);
   }
 
-  // what belongs to the temperature of each replica: the ideal-gas Rosenbluth weight of a flexible molecule and
-  // the normalization that lets configurations with different molecule counts be exchanged between temperatures
-  MC_Moves::prepareIdealGasReferences(systems, temperatures);
+  // what belongs to the temperature of each replica: the conformations of the isolated molecules (used by the MC
+  // stages), the ideal-gas Rosenbluth weight of a flexible molecule and the normalization that lets configurations
+  // with different molecule counts be exchanged between temperatures
+  Preparation::prepareReplicas(systems, {.ladderTemperatures = temperatures});
 
   stepsPerReplica.assign(numberOfReplicas, 0uz);
   integratorsCPUTimePerReplica.assign(numberOfReplicas, IntegratorsCPUTime{});

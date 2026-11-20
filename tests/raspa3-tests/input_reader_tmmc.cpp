@@ -717,6 +717,28 @@ TEST(INPUT_READER, ideal_gas_rosenbluth_weights_of_a_ladder_are_kept_per_tempera
   EXPECT_FALSE(component.idealGasRosenbluthWeight.has_value());
 }
 
+// The tolerance to which a weight that is not given is computed is a key of the component; it is a positive number.
+TEST(INPUT_READER, ideal_gas_rosenbluth_weight_tolerance_is_read)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+  {
+    nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+    input["Components"][0]["IdealGasRosenbluthWeightTolerance"] = 0.001;
+    TemporaryInput temporary(std::move(input), "weight_tolerance", workspace.path());
+    InputReader reader(temporary.path().filename().string());
+    const Component& component = reader.systems.front().components[0];
+    ASSERT_TRUE(component.idealGasRosenbluthWeightTolerance.has_value());
+    EXPECT_EQ(component.idealGasRosenbluthWeightTolerance.value(), 0.001);
+  }
+  {
+    nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+    input["Components"][0]["IdealGasRosenbluthWeightTolerance"] = 0.0;
+    TemporaryInput temporary(std::move(input), "weight_tolerance_zero", workspace.path());
+    EXPECT_THROW(InputReader(temporary.path().filename().string()), std::runtime_error);
+  }
+}
+
 TEST(INPUT_READER, auto_pressures_rejected_without_compute_bet)
 {
   TemporaryDirectory workspace = makeTmmcWorkspace();

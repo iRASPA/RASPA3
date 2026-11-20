@@ -33,6 +33,7 @@ import property_widom;
 import property_simulationbox;
 import property_energy;
 import mc_moves;
+import system_preparation;
 import mc_moves_hybridmc;
 import mc_moves_probabilities;
 import mc_moves_cputime;
@@ -197,6 +198,11 @@ void MonteCarlo::setup()
 
     ++system_id;
   }
+
+  // what the moves need worked out before the first cycle: the ideal-gas Rosenbluth weight of the flexible molecules
+  // that are inserted, deleted or probed with configurational bias and were given none
+  Preparation::prepareSystems(systems);
+
   if (outputToFiles)
   {
     createOutputFiles();

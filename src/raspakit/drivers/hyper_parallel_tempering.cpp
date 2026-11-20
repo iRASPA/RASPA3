@@ -31,6 +31,7 @@ import mc_moves;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import mc_moves_parallel_tempering_swap;
+import system_preparation;
 import json;
 
 // The analysis-property writers (RDFs, density grid, histograms, molecule properties) gate
@@ -158,18 +159,14 @@ HyperParallelTempering::HyperParallelTempering(InputReader& reader)
       // the log partition functions given as species, at the replica temperature
       for (Component& component : system.components) component.updateLnPartitionFunction(T);
 
-      // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature
-      system.buildConformationReservoirs();
-      // so is the recoil-growth openness reference (a no-op when recoil growth is off)
-      system.buildRecoilReferenceConformations();
-
       randoms.emplace_back(random.seed + replicaId + 1);
     }
   }
 
-  // what belongs to the temperature of each replica: the ideal-gas Rosenbluth weight of a flexible molecule and
-  // the normalization that lets configurations with different molecule counts be exchanged between temperatures
-  MC_Moves::prepareIdealGasReferences(systems, temperatures);
+  // what belongs to the temperature of each replica: the conformations of the isolated molecules, the ideal-gas
+  // Rosenbluth weight of a flexible molecule and the normalization that lets configurations with different molecule
+  // counts be exchanged between temperatures
+  Preparation::prepareReplicas(systems, {.ladderTemperatures = temperatures});
 
   stepsPerReplica.assign(numberOfReplicas, 0uz);
   swapAttemptsPerTemperaturePair.assign(numberOfTemperatures > 0uz ? numberOfTemperatures - 1uz : 0uz, 0uz);

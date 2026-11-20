@@ -40,6 +40,7 @@ import integrators_update;
 import thermobarostat;
 import elastic_constants;
 import units;
+import ideal_gas_reference;
 
 namespace
 {
@@ -503,122 +504,11 @@ namespace
 // the insertions of a flexible molecule draw (or grow) its conformation from the intramolecular Boltzmann
 // distribution, so a replica samples the activity beta f / Z_intra(beta); the swap knows beta f only and the
 // ratio Z_intra(beta_B) / Z_intra(beta_A) per molecule exchanged is missing from its acceptance
-bool isFlexibleOpenComponent(const Component& component)
-{
-  return component.swappable && !component.rigid && component.atoms.size() > 1uz;
-}
+using Preparation::isFlexibleOpenComponent;
 
 bool hasFlexibleOpenComponent(const System& system)
 {
   return std::ranges::any_of(system.components, isFlexibleOpenComponent);
-}
-
-// Grows of the isolated molecule at one temperature: ln of the weight of each (the Rosenbluth weight, with the
-// Ewald compensation of the intramolecular pairs taken back out as in 'System::equilibratedIdealGasConformation')
-// and its intramolecular energy, of which generation density times weight is exp(-beta U) / Z_b. A grow that
-// fails has the weight zero: it is counted in 'attempts' only.
-struct IdealGasGrows
-{
-  double beta{0.0};
-  std::size_t attempts{0};
-  std::vector<double> logWeight{};
-  std::vector<double> energy{};
-
-  // ln sum_j W_j exp(-betaShift U_j)
-  double logSum(double betaShift) const
-  {
-    double largest = -1e300;
-    for (std::size_t j = 0; j < logWeight.size(); ++j)
-    {
-      largest = std::max(largest, logWeight[j] - betaShift * energy[j]);
-    }
-    double sum = 0.0;
-    for (std::size_t j = 0; j < logWeight.size(); ++j)
-    {
-      sum += std::exp(logWeight[j] - betaShift * energy[j] - largest);
-    }
-    return largest + std::log(sum);
-  }
-
-  double logMeanWeight() const { return logSum(0.0) - std::log(static_cast<double>(attempts)); }
-
-  // the spread of the energy in the Boltzmann distribution (the grows weighted with W)
-  double energySpread() const
-  {
-    const double largest = *std::ranges::max_element(logWeight);
-    double norm = 0.0, mean = 0.0, meanSquare = 0.0;
-    for (std::size_t j = 0; j < logWeight.size(); ++j)
-    {
-      const double weight = std::exp(logWeight[j] - largest);
-      norm += weight;
-      mean += weight * energy[j];
-      meanSquare += weight * energy[j] * energy[j];
-    }
-    mean /= norm;
-    return std::sqrt(std::max(0.0, meanSquare / norm - mean * mean));
-  }
-};
-
-constexpr std::size_t idealGasNumberOfGrows = 20000;
-// the widest step of a free-energy perturbation, in standard deviations of beta U: wider, a temperature is put
-// in between
-constexpr double idealGasMaximumPerturbation = 1.0;
-constexpr std::size_t idealGasMaximumBisections = 8;
-
-IdealGasGrows growIdealGas(System& scratch, std::size_t componentId, double temperature, std::size_t seed)
-{
-  scratch.temperature = temperature;
-  scratch.beta = 1.0 / (Units::KB * temperature);
-  // the growth plans and the conformation reservoirs (the seeds of the ring closures) of this temperature
-  scratch.buildConformationReservoirs();
-
-  const Component& component = scratch.components[componentId];
-  const CBMC::GrowContext context = scratch.makeIdealGasGrowContext();
-  RandomNumber random(seed);
-
-  IdealGasGrows grows;
-  grows.beta = scratch.beta;
-  grows.attempts = idealGasNumberOfGrows;
-  grows.logWeight.reserve(idealGasNumberOfGrows);
-  grows.energy.reserve(idealGasNumberOfGrows);
-  for (std::size_t attempt = 0; attempt < idealGasNumberOfGrows; ++attempt)
-  {
-    const std::optional<CBMC::GrowResult> growData =
-        CBMC::growNewMolecule(random, context, component, {.componentId = componentId, .moleculeId = 0uz});
-    if (!growData.has_value()) continue;
-    const double compensation = scratch.ewaldIntraCoulombCompensationEnergy(componentId, growData->atoms);
-    grows.logWeight.push_back(growData->logRosenbluthWeight + scratch.beta * compensation);
-    grows.energy.push_back(component.intraMolecularPotentials
-                               .computeInternalEnergies(scratch.forceField, scratch.simulationBox, growData->atoms)
-                               .potentialEnergy() -
-                           compensation);
-  }
-  if (grows.logWeight.empty())
-  {
-    throw std::runtime_error(std::format(
-        "[Ideal-gas reference]: no isolated molecule of component '{}' could be grown at {} K\n", component.name,
-        temperature));
-  }
-  return grows;
-}
-
-// ln q(beta_b) / q(beta_a) and the disagreement of its two estimates
-std::pair<double, double> logPartitionFunctionRatio(System& scratch, std::size_t componentId, const IdealGasGrows& a,
-                                                    const IdealGasGrows& b, std::size_t& seed, std::size_t depth)
-{
-  const double betaShift = b.beta - a.beta;
-  if (depth < idealGasMaximumBisections &&
-      std::abs(betaShift) * std::max(a.energySpread(), b.energySpread()) > idealGasMaximumPerturbation)
-  {
-    const double temperature = 1.0 / (Units::KB * 0.5 * (a.beta + b.beta));
-    const IdealGasGrows middle = growIdealGas(scratch, componentId, temperature, seed++);
-    const std::pair<double, double> lower = logPartitionFunctionRatio(scratch, componentId, a, middle, seed, depth + 1);
-    const std::pair<double, double> upper = logPartitionFunctionRatio(scratch, componentId, middle, b, seed, depth + 1);
-    return {lower.first + upper.first, lower.second + upper.second};
-  }
-  const double forward = a.logSum(betaShift) - a.logSum(0.0);
-  const double backward = b.logSum(0.0) - b.logSum(-betaShift);
-  return {0.5 * (forward + backward), std::abs(forward - backward)};
 }
 
 std::optional<std::string> unsupportedReason(const System& system, bool soluteTempering, bool checkFlexible)
@@ -643,7 +533,7 @@ std::optional<std::string> unsupportedReason(const System& system, bool soluteTe
   // An 'IdealGasRosenbluthWeight' is no ground for a refusal: the acceptance divides the activity of each replica
   // by its own weight, which is the activity its insertions and deletions sample, at any temperature. For a
   // flexible molecule the normalization of the bonded distributions its growth draws from is in the activity as
-  // well: across temperatures it is computed ('prepareIdealGasReferences'), for the scaled Hamiltonians of solute
+  // well: across temperatures it is computed ('Preparation::prepareIdealGasReferences'), for the scaled Hamiltonians of solute
   // tempering it is not.
   if (checkFlexible && hasFlexibleOpenComponent(system))
   {
@@ -672,7 +562,7 @@ std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& sys
   // the cases the drivers refuse up front (see parallelTemperingUnsupportedReason). Between two replicas at one
   // temperature and one Hamiltonian (a pressure ladder) a flexible molecule samples beta f / q(beta) with the
   // same intramolecular configuration integral q, which cancels. Across temperatures the ratio of the two is
-  // needed, which the replicas carry once they were prepared ('prepareIdealGasReferences'); a pair that was not
+  // needed, which the replicas carry once they were prepared ('Preparation::prepareIdealGasReferences'); a pair that was not
   // is refused.
   const bool soluteTempering = temperedComponent(systemA, systemB).has_value();
   if (unsupportedReason(systemA, soluteTempering, soluteTempering).has_value() ||
@@ -875,119 +765,4 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
   rebuildMolecularDynamicsState(systemB, std::sqrt(temperatureB / temperatureA));
 
   return std::make_pair(systemA.runningEnergies, systemB.runningEnergies);
-}
-
-std::vector<MC_Moves::IdealGasReference> MC_Moves::idealGasReferences(const System& system, std::size_t componentId,
-                                                                      std::span<const double> temperatures)
-{
-  std::vector<double> sorted(temperatures.begin(), temperatures.end());
-  std::ranges::sort(sorted);
-  sorted.erase(std::unique(sorted.begin(), sorted.end()), sorted.end());
-
-  std::vector<IdealGasReference> references(sorted.size());
-  if (!sorted.empty())
-  {
-    // a copy: the temperature, the growth plans and the reservoirs of 'system' are left as they are
-    System scratch = system;
-    std::size_t seed = 1500uz;
-    IdealGasGrows previous = growIdealGas(scratch, componentId, sorted.front(), seed++);
-    references.front() = {.temperature = sorted.front(), .logRosenbluthWeight = previous.logMeanWeight()};
-    for (std::size_t i = 1; i < sorted.size(); ++i)
-    {
-      IdealGasGrows current = growIdealGas(scratch, componentId, sorted[i], seed++);
-      const auto [logRatio, disagreement] =
-          logPartitionFunctionRatio(scratch, componentId, previous, current, seed, 0uz);
-      references[i] = {.temperature = sorted[i],
-                       .logPartitionFunction = references[i - 1].logPartitionFunction + logRatio,
-                       .logRosenbluthWeight = current.logMeanWeight(),
-                       .logPartitionFunctionError = references[i - 1].logPartitionFunctionError + disagreement};
-      previous = std::move(current);
-    }
-  }
-
-  std::vector<IdealGasReference> result;
-  result.reserve(temperatures.size());
-  for (const double temperature : temperatures)
-  {
-    result.push_back(references[static_cast<std::size_t>(
-        std::distance(sorted.begin(), std::ranges::lower_bound(sorted, temperature)))]);
-  }
-  return result;
-}
-
-std::vector<std::vector<double>> MC_Moves::prepareIdealGasReferences(std::span<System> systems,
-                                                                    std::span<const double> ladderTemperatures,
-                                                                    std::span<const double> otherTemperatures)
-{
-  const std::size_t numberOfComponents = systems.empty() ? 0uz : systems.front().components.size();
-  std::vector<std::vector<double>> others(numberOfComponents, std::vector<double>(otherTemperatures.size(), 0.0));
-  if (systems.empty()) return others;
-
-  // the weight of each replica, from the list that was given for the ladder
-  for (System& system : systems)
-  {
-    for (Component& component : system.components)
-    {
-      if (component.idealGasRosenbluthWeightLadder.empty()) continue;
-      if (component.idealGasRosenbluthWeightLadder.size() != ladderTemperatures.size())
-      {
-        throw std::runtime_error(std::format(
-            "[Ideal-gas reference]: component '{}' has {} values of 'IdealGasRosenbluthWeight' for a ladder of {} "
-            "temperatures; give one per temperature (or a single number for a rigid molecule)\n",
-            component.name, component.idealGasRosenbluthWeightLadder.size(), ladderTemperatures.size()));
-      }
-      const auto it = std::ranges::find(ladderTemperatures, system.temperature);
-      if (it == ladderTemperatures.end()) continue;
-      const double weight = component.idealGasRosenbluthWeightLadder[static_cast<std::size_t>(
-          std::distance(ladderTemperatures.begin(), it))];
-      if (!(weight > 0.0))
-      {
-        throw std::runtime_error(std::format(
-            "[Ideal-gas reference]: the 'IdealGasRosenbluthWeight' of component '{}' at {} K must be positive\n",
-            component.name, system.temperature));
-      }
-      component.idealGasRosenbluthWeight = weight;
-    }
-  }
-
-  std::vector<double> temperatures;
-  for (const System& system : systems) temperatures.push_back(system.temperature);
-  const std::size_t numberOfSystems = temperatures.size();
-  temperatures.insert(temperatures.end(), otherTemperatures.begin(), otherTemperatures.end());
-  if (std::ranges::all_of(temperatures, [&](double T) { return T == temperatures.front(); })) return others;
-
-  for (std::size_t componentId = 0; componentId < numberOfComponents; ++componentId)
-  {
-    const Component& reference = systems.front().components[componentId];
-    if (!isFlexibleOpenComponent(reference)) continue;
-    // one number, copied to every replica of the ladder, is the weight of one temperature
-    if (!ladderTemperatures.empty() && reference.idealGasRosenbluthWeightLadder.empty() &&
-        reference.idealGasRosenbluthWeight.has_value() &&
-        std::ranges::any_of(systems, [&](const System& system) { return system.temperature != temperatures.front(); }))
-    {
-      throw std::runtime_error(std::format(
-          "[Ideal-gas reference]: the 'IdealGasRosenbluthWeight' of the flexible component '{}' is one number for "
-          "a ladder of temperatures; it depends on the temperature: give a list with one value per temperature, or "
-          "leave it out to have it computed\n",
-          reference.name));
-    }
-
-    const std::vector<IdealGasReference> references = idealGasReferences(systems.front(), componentId, temperatures);
-    for (std::size_t i = 0; i < numberOfSystems; ++i)
-    {
-      Component& component = systems[i].components[componentId];
-      if (!component.idealGasRosenbluthWeight.has_value())
-      {
-        component.idealGasRosenbluthWeight = std::exp(references[i].logRosenbluthWeight);
-      }
-      // ln(W_used Z_b) with Z_b = q / <W>: what the insertions of this replica divide beta f by
-      component.logInsertionNormalization = std::log(component.idealGasRosenbluthWeight.value()) +
-                                            references[i].logPartitionFunction - references[i].logRosenbluthWeight;
-    }
-    for (std::size_t i = 0; i < otherTemperatures.size(); ++i)
-    {
-      others[componentId][i] = references[numberOfSystems + i].logPartitionFunction;
-    }
-  }
-  return others;
 }

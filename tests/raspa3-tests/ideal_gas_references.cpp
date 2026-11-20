@@ -13,8 +13,11 @@ import system;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 import mc_moves_parallel_tempering_swap;
+import system_preparation;
 import mc_moves;
 import randomnumbers;
+import threadpool;
+import archive;
 import running_energy;
 import reweighted_histogram;
 
@@ -87,7 +90,7 @@ TEST(IDEAL_GAS_REFERENCES, harmonic_dimer_has_unit_weight_and_the_integral_of_it
   const ForceField forceField = makeForceField();
   const System system = makeSystem(forceField, "dimer", kHarmonicDimerJson, 300.0);
   const std::vector<double> temperatures{600.0, 300.0, 400.0};
-  const std::vector<MC_Moves::IdealGasReference> references = MC_Moves::idealGasReferences(system, 0, temperatures);
+  const std::vector<Preparation::IdealGasReference> references = Preparation::idealGasReferences(system, 0, temperatures);
 
   auto exact = [](double T)
   {
@@ -112,7 +115,7 @@ TEST(IDEAL_GAS_REFERENCES, propane_has_the_integral_of_its_bend)
   const ForceField forceField = makeForceField();
   const System system = makeSystem(forceField, "propane", molecule_fixtures::kPropaneJson, 300.0);
   const std::vector<double> temperatures{300.0, 500.0};
-  const std::vector<MC_Moves::IdealGasReference> references = MC_Moves::idealGasReferences(system, 0, temperatures);
+  const std::vector<Preparation::IdealGasReference> references = Preparation::idealGasReferences(system, 0, temperatures);
 
   auto exact = [](double T)
   {
@@ -141,9 +144,9 @@ TEST(IDEAL_GAS_REFERENCES, replicas_of_a_ladder_exchange_a_flexible_molecule)
   EXPECT_FALSE(MC_Moves::ParallelTemperingLogAcceptance(systems[0], systems[1]).has_value());
 
   const std::vector<double> other{350.0};
-  const std::vector<std::vector<double>> others = MC_Moves::prepareIdealGasReferences(systems, temperatures, other);
+  const std::vector<std::vector<double>> others = Preparation::prepareIdealGasReferences(systems, temperatures, other);
   const std::vector<double> all{300.0, 400.0, 350.0};
-  const std::vector<MC_Moves::IdealGasReference> references = MC_Moves::idealGasReferences(systems[0], 0, all);
+  const std::vector<Preparation::IdealGasReference> references = Preparation::idealGasReferences(systems[0], 0, all);
 
   for (std::size_t i = 0; i < 2; ++i)
   {
@@ -191,12 +194,12 @@ TEST(IDEAL_GAS_REFERENCES, weights_of_a_ladder_are_given_per_temperature)
   {
     std::vector<System> systems = makeLadder();
     for (System& system : systems) system.components[0].idealGasRosenbluthWeightLadder = {0.11, 0.22};
-    MC_Moves::prepareIdealGasReferences(systems, temperatures);
+    Preparation::prepareIdealGasReferences(systems, temperatures);
     EXPECT_EQ(systems[0].components[0].idealGasRosenbluthWeight.value(), 0.11);
     EXPECT_EQ(systems[1].components[0].idealGasRosenbluthWeight.value(), 0.22);
     // ln(W_used Z_b): the normalization follows the weight the replica is run with
     std::vector<System> computed = makeLadder();
-    MC_Moves::prepareIdealGasReferences(computed, temperatures);
+    Preparation::prepareIdealGasReferences(computed, temperatures);
     for (std::size_t i = 0; i < 2; ++i)
     {
       EXPECT_NEAR(systems[i].components[0].logInsertionNormalization.value() -
@@ -209,23 +212,25 @@ TEST(IDEAL_GAS_REFERENCES, weights_of_a_ladder_are_given_per_temperature)
   {
     std::vector<System> systems = makeLadder();
     for (System& system : systems) system.components[0].idealGasRosenbluthWeightLadder = {0.11, 0.22, 0.33};
-    EXPECT_THROW(MC_Moves::prepareIdealGasReferences(systems, temperatures), std::runtime_error);
+    EXPECT_THROW(Preparation::prepareIdealGasReferences(systems, temperatures), std::runtime_error);
   }
   {
     std::vector<System> systems = makeLadder();
     for (System& system : systems) system.components[0].idealGasRosenbluthWeight = 0.11;
-    EXPECT_THROW(MC_Moves::prepareIdealGasReferences(systems, temperatures), std::runtime_error);
+    EXPECT_THROW(Preparation::prepareIdealGasReferences(systems, temperatures), std::runtime_error);
     // systems that were declared one by one have a weight each
-    EXPECT_NO_THROW(MC_Moves::prepareIdealGasReferences(systems));
+    EXPECT_NO_THROW(Preparation::prepareIdealGasReferences(systems));
   }
   {
-    // at one temperature nothing is computed
+    // at one temperature there is no configuration integral to compare; the replicas share the computed weight
     std::vector<System> systems;
     systems.push_back(makeSystem(forceField, "butane", molecule_fixtures::kButaneJson, 300.0));
     systems.push_back(makeSystem(forceField, "butane", molecule_fixtures::kButaneJson, 300.0));
     const std::vector<double> one{300.0};
-    MC_Moves::prepareIdealGasReferences(systems, one);
-    EXPECT_FALSE(systems[0].components[0].idealGasRosenbluthWeight.has_value());
+    Preparation::prepareIdealGasReferences(systems, one);
+    ASSERT_TRUE(systems[0].components[0].idealGasRosenbluthWeight.has_value());
+    EXPECT_EQ(systems[0].components[0].idealGasRosenbluthWeight.value(),
+              systems[1].components[0].idealGasRosenbluthWeight.value());
     EXPECT_FALSE(systems[0].components[0].logInsertionNormalization.has_value());
   }
 }
@@ -250,7 +255,7 @@ TEST(IDEAL_GAS_REFERENCES, exchanges_between_temperatures_leave_the_loadings_as_
       systems.back().precomputeTotalRigidEnergy();
       systems.back().runningEnergies = systems.back().computeTotalEnergies();
     }
-    MC_Moves::prepareIdealGasReferences(systems, temperatures);
+    Preparation::prepareIdealGasReferences(systems, temperatures);
     if (exchange == Exchange::WithoutTheIntegrals)
     {
       // the weights alone (both are one): what the acceptance had before
@@ -311,4 +316,179 @@ TEST(IDEAL_GAS_REFERENCES, reweighted_histogram_takes_a_flexible_adsorbate_acros
   EXPECT_THROW(ReweightedHistogram(system, {300.0, 600.0}, {1e4}, parameters), std::runtime_error);
   system.components[0].idealGasRosenbluthWeightLadder = {0.5, 0.25};
   EXPECT_NO_THROW(ReweightedHistogram(system, {300.0, 600.0}, {1e4}, parameters));
+}
+
+// A system on its own: the weight of a flexible molecule that is inserted with configurational bias and was given
+// none is computed at the temperature of the system, to the tolerance, and a second estimate from other grows
+// agrees with it.
+TEST(IDEAL_GAS_REFERENCES, weight_of_a_single_system_is_computed_when_not_given)
+{
+  const ForceField forceField = makeForceField();
+  std::vector<System> systems;
+  systems.push_back(makeSystem(forceField, "butane", molecule_fixtures::kButaneJson, 300.0));
+  Preparation::prepareSystems(systems);
+
+  const Component& component = systems[0].components[0];
+  ASSERT_TRUE(component.idealGasRosenbluthWeight.has_value());
+  ASSERT_TRUE(component.idealGasRosenbluthWeightEstimate.has_value());
+  EXPECT_EQ(component.idealGasRosenbluthWeightEstimate->temperature, 300.0);
+  EXPECT_TRUE(component.idealGasRosenbluthWeightEstimate->converged);
+  EXPECT_LE(component.idealGasRosenbluthWeightEstimate->relativeError, 5.0e-3);
+  EXPECT_GE(component.idealGasRosenbluthWeightEstimate->numberOfGrows, 20000uz);
+  // nothing is compared across temperatures
+  EXPECT_FALSE(component.logInsertionNormalization.has_value());
+  // said in the status of the component
+  EXPECT_NE(systems[0].writeComponentStatus().find("grows of the isolated molecule"), std::string::npos);
+
+  // other chunks are other grows: an independent estimate
+  const Preparation::IdealGasReference other = Preparation::idealGasRosenbluthWeight(
+      systems[0], 0, {.growsPerChunk = 1999, .minimumNumberOfGrows = 80000, .maximumNumberOfGrows = 80000});
+  const double error = std::hypot(component.idealGasRosenbluthWeightEstimate->relativeError, other.relativeError);
+  EXPECT_NEAR(std::log(component.idealGasRosenbluthWeight.value()), other.logRosenbluthWeight, 5.0 * error);
+  EXPECT_NE(std::log(component.idealGasRosenbluthWeight.value()), other.logRosenbluthWeight);
+
+  // prepared again, it is left as it is
+  const double weight = component.idealGasRosenbluthWeight.value();
+  Preparation::prepareSystems(systems);
+  EXPECT_EQ(systems[0].components[0].idealGasRosenbluthWeight.value(), weight);
+}
+
+// What is not computed: a weight that was given, a molecule without conformations, and a flexible molecule that no
+// move grows against its ideal gas.
+TEST(IDEAL_GAS_REFERENCES, weight_is_not_computed_where_it_is_given_or_not_needed)
+{
+  const ForceField forceField = makeForceField();
+  {
+    std::vector<System> systems;
+    systems.push_back(makeSystem(forceField, "butane", molecule_fixtures::kButaneJson, 300.0));
+    systems[0].components[0].idealGasRosenbluthWeight = 0.25;
+    Preparation::prepareSystems(systems);
+    EXPECT_EQ(systems[0].components[0].idealGasRosenbluthWeight.value(), 0.25);
+    EXPECT_FALSE(systems[0].components[0].idealGasRosenbluthWeightEstimate.has_value());
+  }
+  {
+    std::vector<System> systems;
+    systems.push_back(makeSystem(forceField, "butane", molecule_fixtures::kButaneJson, 300.0));
+    systems[0].components[0].mc_moves_probabilities.setProbability(Move::Types::SwapCBMC, 0.0);
+    EXPECT_FALSE(Preparation::needsIdealGasRosenbluthWeight(systems[0], 0));
+    Preparation::prepareSystems(systems);
+    EXPECT_FALSE(systems[0].components[0].idealGasRosenbluthWeight.has_value());
+
+    // a Widom probe divides by the weight as an insertion does
+    systems[0].components[0].mc_moves_probabilities.setProbability(Move::Types::Widom, 1.0);
+    EXPECT_TRUE(Preparation::needsIdealGasRosenbluthWeight(systems[0], 0));
+  }
+  {
+    std::vector<System> systems;
+    systems.push_back(makeSystem(forceField, "butane", molecule_fixtures::kButaneJson, 300.0));
+    systems[0].components[0].rigid = true;
+    EXPECT_FALSE(Preparation::needsIdealGasRosenbluthWeight(systems[0], 0));
+  }
+}
+
+// A computed weight belongs to its temperature: at another state point it is computed again, where a given one is
+// kept.
+TEST(IDEAL_GAS_REFERENCES, computed_weight_follows_the_temperature)
+{
+  const ForceField forceField = makeForceField();
+  std::vector<System> systems;
+  systems.push_back(makeSystem(forceField, "butane", molecule_fixtures::kButaneJson, 300.0));
+  Preparation::prepareSystems(systems);
+  const double cold = systems[0].components[0].idealGasRosenbluthWeight.value();
+
+  systems[0].temperature = 500.0;
+  systems[0].beta = 1.0 / (Units::KB * 500.0);
+  Preparation::prepareStatePoint(systems[0]);
+  ASSERT_TRUE(systems[0].components[0].idealGasRosenbluthWeightEstimate.has_value());
+  EXPECT_EQ(systems[0].components[0].idealGasRosenbluthWeightEstimate->temperature, 500.0);
+  const double hot = systems[0].components[0].idealGasRosenbluthWeight.value();
+  // the torsion and the 1-4 pair are less of a hindrance at the higher temperature
+  EXPECT_GT(hot, cold * 1.05);
+
+  // the same as that of a system made at 500 K
+  std::vector<System> made;
+  made.push_back(makeSystem(forceField, "butane", molecule_fixtures::kButaneJson, 500.0));
+  Preparation::prepareSystems(made);
+  EXPECT_EQ(made[0].components[0].idealGasRosenbluthWeight.value(), hot);
+}
+
+// The chunks of grows are independent of the thread that makes them: the weight is the same number on one thread
+// and on four.
+TEST(IDEAL_GAS_REFERENCES, weight_does_not_depend_on_the_number_of_threads)
+{
+  const ForceField forceField = makeForceField();
+  const System system = makeSystem(forceField, "butane", molecule_fixtures::kButaneJson, 300.0);
+  const Preparation::IdealGasSettings settings{.minimumNumberOfGrows = 40000, .maximumNumberOfGrows = 40000};
+
+  auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+  const ThreadPool::ThreadingType before = pool.getThreadingType();
+  pool.init(1uz, ThreadPool::ThreadingType::Serial);
+  const Preparation::IdealGasReference serial = Preparation::idealGasRosenbluthWeight(system, 0, settings);
+  pool.init(4uz, ThreadPool::ThreadingType::ThreadPool);
+  const Preparation::IdealGasReference threaded = Preparation::idealGasRosenbluthWeight(system, 0, settings);
+  pool.init(1uz, before);
+
+  EXPECT_EQ(serial.logRosenbluthWeight, threaded.logRosenbluthWeight);
+  EXPECT_EQ(serial.relativeError, threaded.relativeError);
+  EXPECT_EQ(serial.numberOfGrows, threaded.numberOfGrows);
+}
+
+// How a weight was computed is kept in a restart: the resumed run does not compute it again.
+TEST(IDEAL_GAS_REFERENCES, computed_weight_is_kept_in_the_archive)
+{
+  const ForceField forceField = makeForceField();
+  std::vector<System> systems;
+  systems.push_back(makeSystem(forceField, "butane", molecule_fixtures::kButaneJson, 300.0));
+  Preparation::prepareSystems(systems);
+  const Component& component = systems[0].components[0];
+
+  const std::filesystem::path path = std::filesystem::temp_directory_path() / "ideal-gas-weight-component.bin";
+  {
+    std::ofstream file(path, std::ios::binary);
+    Archive<std::ofstream> archive(file);
+    archive << component;
+  }
+  Component read;
+  {
+    std::ifstream file(path, std::ios::binary);
+    Archive<std::ifstream> archive(file);
+    archive >> read;
+  }
+  std::filesystem::remove(path);
+
+  ASSERT_TRUE(read.idealGasRosenbluthWeight.has_value());
+  ASSERT_TRUE(read.idealGasRosenbluthWeightEstimate.has_value());
+  EXPECT_EQ(read.idealGasRosenbluthWeight.value(), component.idealGasRosenbluthWeight.value());
+  EXPECT_EQ(read.idealGasRosenbluthWeightEstimate->temperature, 300.0);
+  EXPECT_EQ(read.idealGasRosenbluthWeightEstimate->numberOfGrows,
+            component.idealGasRosenbluthWeightEstimate->numberOfGrows);
+  EXPECT_EQ(read.idealGasRosenbluthWeightEstimate->relativeError,
+            component.idealGasRosenbluthWeightEstimate->relativeError);
+  EXPECT_EQ(read.idealGasRosenbluthWeightEstimate->converged, component.idealGasRosenbluthWeightEstimate->converged);
+}
+
+// The tolerance of a component ('IdealGasRosenbluthWeightTolerance') comes before the default: a tighter one takes
+// more grows, and one that the maximum number of grows does not reach is told.
+TEST(IDEAL_GAS_REFERENCES, tolerance_of_the_component_sets_the_number_of_grows)
+{
+  const ForceField forceField = makeForceField();
+  auto prepared = [&](std::optional<double> tolerance, const Preparation::IdealGasSettings& settings)
+  {
+    std::vector<System> systems;
+    systems.push_back(makeSystem(forceField, "butane", molecule_fixtures::kButaneJson, 300.0));
+    systems[0].components[0].idealGasRosenbluthWeightTolerance = tolerance;
+    Preparation::prepareSystems(systems, settings);
+    return systems[0].components[0].idealGasRosenbluthWeightEstimate.value();
+  };
+
+  const Component::IdealGasRosenbluthWeightEstimate loose = prepared(std::nullopt, {});
+  const Component::IdealGasRosenbluthWeightEstimate tight = prepared(1.0e-3, {});
+  EXPECT_TRUE(loose.converged);
+  EXPECT_TRUE(tight.converged);
+  EXPECT_LE(tight.relativeError, 1.0e-3);
+  EXPECT_GT(tight.numberOfGrows, loose.numberOfGrows);
+
+  const Component::IdealGasRosenbluthWeightEstimate capped = prepared(1.0e-6, {.maximumNumberOfGrows = 40000});
+  EXPECT_FALSE(capped.converged);
+  EXPECT_EQ(capped.numberOfGrows, 40000uz);
 }

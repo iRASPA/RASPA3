@@ -68,7 +68,7 @@ void inTemporaryDirectory(F&& body)
 }  // namespace
 
 // The insertions of a flexible molecule sample the activity beta f / Z_intra(beta). Across temperatures the ratio of
-// the two Z_intra is computed when the replicas are made ('MC_Moves::prepareIdealGasReferences'); for the scaled
+// the two Z_intra is computed when the replicas are made ('Preparation::prepareIdealGasReferences'); for the scaled
 // Hamiltonians of solute tempering it is not known, and an open ensemble with a flexible molecule is refused there
 // (a rigid one is not).
 TEST(driver_property_fixes, solute_tempering_refuses_an_open_ensemble_of_flexible_molecules)

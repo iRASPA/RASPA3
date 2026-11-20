@@ -865,6 +865,9 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, pentane_muvt_geometry_molecular_dynamics)
   // coefficient so that beta*f*V*<W> ~ N at N~16: the molecule count then fluctuates around its
   // initial value with both insertions and deletions accepted at O(10%).
   pentane.fugacityCoefficient = 300.0;
+  // The fugacity above is tuned for the weight one: given, so that the driver does not compute the ideal-gas
+  // Rosenbluth weight of the chain and divide the fugacity by it (the box then fills and no deletion is accepted).
+  pentane.idealGasRosenbluthWeight = 1.0;
 
   System system =
       System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e6, 1.0, {}, {pentane}, {}, {16}, 5);
@@ -924,6 +927,8 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, pentane_mupt_geometry_molecular_dynamics)
   // accepted at O(10%) instead of the box emptying out during initialization. The barostat still
   // operates on the unmodified system pressure.
   pentane.fugacityCoefficient = 300.0;
+  // tuned for the weight one, as above
+  pentane.idealGasRosenbluthWeight = 1.0;
 
   System system =
       System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e6, 1.0, {}, {pentane}, {}, {16}, 5);

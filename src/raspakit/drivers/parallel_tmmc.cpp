@@ -32,6 +32,7 @@ import mc_moves;
 import mc_moves_move_types;
 import mc_moves_widom;
 import mc_moves_parallel_tempering_swap;
+import system_preparation;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import cbmc;
@@ -570,7 +571,7 @@ void ParallelTMMC::initializeWalkers(System templateSystem)
     }
   }
   // (An ideal-gas Rosenbluth weight belongs to one temperature: the walkers of a ladder get the one of their own
-  // temperature, see 'MC_Moves::prepareIdealGasReferences' below, which refuses one number for a flexible molecule.)
+  // temperature, see 'Preparation::prepareIdealGasReferences' below, which refuses one number for a flexible molecule.)
   {
     const Component& component = templateSystem.components[templateSystem.tmmcComponent()];
     const bool usesCFCMCSwap =
@@ -653,10 +654,8 @@ void ParallelTMMC::initializeWalkers(System templateSystem)
       // and the species partition functions follow the temperature, as in the (hyper) parallel-tempering drivers
       for (Component& component : system.components) component.updateLnPartitionFunction(T);
 
-      // the CBMC ideal-gas conformation reservoirs are Boltzmann samples at the system temperature
-      system.buildConformationReservoirs();
-      // so is the recoil-growth openness reference (a no-op when recoil growth is off)
-      system.buildRecoilReferenceConformations();
+      // the conformations of the isolated molecules are Boltzmann samples at the system temperature
+      Preparation::prepareConformations(system);
 
       // the walker is confined to its (overlapped) window; the collection matrix is kept across
       // the stages, see pinWalkerWindow
@@ -674,7 +673,7 @@ void ParallelTMMC::initializeWalkers(System templateSystem)
 
   // the ideal-gas Rosenbluth weight of a flexible molecule at the temperature of each walker: the entry of the
   // list that was given for the ladder, or the computed one
-  MC_Moves::prepareIdealGasReferences(systems, temperatures);
+  Preparation::prepareIdealGasReferences(systems, temperatures);
 
   blockCollectionMatrices.resize(numberOfWalkers);
   blockWidomWeightSums.resize(numberOfWalkers);

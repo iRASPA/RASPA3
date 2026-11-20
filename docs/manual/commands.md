@@ -3017,6 +3017,19 @@ not improved by it.
     potential follows directly from the fugacity). For equimolar mixtures this is
     essential.
 
+    The key is optional. A rigid molecule and a single atom have the weight 1.
+    For a flexible molecule that is inserted, deleted, probed (`Widom`) or
+    converted with configurational bias and has no weight given, the weight is
+    computed at the start of the run, at the temperature of the system and
+    with the growth settings and force field of the run: at least 20,000
+    grows of the isolated molecule, doubled up to 1,280,000 until the standard
+    error of the mean weight is below 0.5%. The grows are divided over the
+    threads of `NumberOfThreads`; the result does not depend on their number.
+    The component section of the output gives the computed weight, the number
+    of grows and the error, and warns when the tolerance was not reached. A
+    binary restart keeps the weight. A given value is used as it is (also
+    `1.0`, to run a flexible molecule without the correction).
+
     A list gives one value per system, `[w1, w2, ...]`. With the drivers that
     replicate the one declared system over a ladder of temperatures
     (`ParallelTempering`, `HyperParallelTempering`, `ReweightedHistogram`,
@@ -3029,6 +3042,15 @@ not improved by it.
     temperatures, which the exchange of configurations with different numbers
     of molecules between two temperatures, and the reweighting between them,
     need next to the weights.
+
+-   `"IdealGasRosenbluthWeightTolerance" : floating-point-number`\
+    The relative standard error to which an ideal-gas Rosenbluth weight that
+    is not given is computed. Default: `0.005` (0.5%). The error is a
+    systematic shift of the chemical potential of the component for the whole
+    run. Halving the tolerance takes four times the grows; the number of
+    grows stops at 1,280,000, where the output warns when the tolerance was
+    not reached. Without effect for a component whose weight is given or
+    needs none.
 
 -   `"IdealGasEnergy" : floating-point-number`\
     The mean intramolecular energy of a single molecule in the ideal gas at the

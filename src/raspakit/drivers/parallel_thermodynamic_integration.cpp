@@ -25,6 +25,7 @@ import double3;
 import double3x3;
 import property_lambda_probability_histogram;
 import mc_moves;
+import system_preparation;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import mc_moves_lambda_exchange;
@@ -104,6 +105,11 @@ void ParallelThermodynamicIntegration::setup()
     // every replica carries its own fractional molecule(s), pinned at its lambda
     system.setContainsTheFractionalMolecules(true);
   }
+
+  // what the moves need worked out before the first cycle: the ideal-gas Rosenbluth weight of the flexible molecules
+  // that are inserted, deleted or probed with configurational bias and were given none
+  // (a resumed run has them in its restart file)
+  if (simulationStage == SimulationStage::Uninitialized) Preparation::prepareSystems(systems);
 
   std::filesystem::create_directories("output");
 

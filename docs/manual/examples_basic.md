@@ -1233,6 +1233,8 @@ Component 0 [methane]
 }
 ```
 
+Butane is flexible: the imposed fugacity belongs to the chemical potential only when the acceptance of its insertions and deletions is divided by the ideal-gas Rosenbluth weight of the chain. Here it is given as `"IdealGasRosenbluthWeight"` (from the auxiliary run of a single chain in an empty box). The key can be left out: the weight is then computed at the start of the run and reported in the component section of the output.
+
 ```
 Component 0 (butane)
     Block[  0]  4.897422e+01

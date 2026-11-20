@@ -12,6 +12,8 @@
 #### Monte Carlo: Ideal gas Rosenbluth weight butane at 300K<a name="Example_auxillary_1"></a>
 
 To compare simulation values to experiments a reference state should be chosen. A convenient reference state is the ideal gas. The reference Rosenbluth value can be computed from a simulation of a single chain in an empty box at the desired temperature. 
+
+A separate run is no longer needed for this. When `"IdealGasRosenbluthWeight"` is left out for a flexible molecule that is inserted, deleted or probed with configurational bias, the weight is computed at the start of the run, at the temperature and with the force field of that run, to a relative error of 0.5% (`"IdealGasRosenbluthWeightTolerance"`), and reported in the component section of the output. The run below remains the way to obtain a value to more digits, which can then be entered as `"IdealGasRosenbluthWeight"`; a value that is given is used as it is.
 ```json
 {
   "SimulationType" : "MonteCarlo",
@@ -67,7 +69,7 @@ Note that the ideal-gas Rosenbluth weight depends on the temperatures _and_ on t
   ]
 }
 ```
-For this butane-model, we obtain at 300K an ideal-gas Rosenbluth weight of \f$1.304441\times10^{-1} \pm 1.109380\times10^{-5}\f$.
+For this butane-model, we obtain at 300K an ideal-gas Rosenbluth weight of \f$1.304441\times10^{-1} \pm 1.109380\times10^{-5}\f$. (The value computed at the start of a run that leaves the key out is \f$1.303\times10^{-1}\f$ with a relative error of 0.12%, from 20,000 grows.)
 
 #### Monte Carlo: Ideal gas Rosenbluth weight C5-C9 at 573K<a name="Example_auxillary_2"></a>
 

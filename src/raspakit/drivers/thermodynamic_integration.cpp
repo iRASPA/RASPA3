@@ -23,6 +23,7 @@ import double3;
 import double3x3;
 import property_lambda_probability_histogram;
 import mc_moves;
+import system_preparation;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import json;
@@ -61,6 +62,10 @@ void ThermodynamicIntegration::setup()
     // every system carries its own fractional molecule, pinned at the fixed lambda
     system.setContainsTheFractionalMolecules(true);
   }
+
+  // what the moves need worked out before the first cycle: the ideal-gas Rosenbluth weight of the flexible molecules
+  // that are inserted, deleted or probed with configurational bias and were given none
+  Preparation::prepareSystems(systems);
 
   std::filesystem::create_directories("output");
   for (std::size_t system_id{0}; System& system : systems)

@@ -27,6 +27,7 @@ import double3x3;
 import simd_quatd;
 import cbmc;
 import mc_moves;
+import system_preparation;
 import mc_moves_move_types;
 import move_statistics;
 import mc_moves_statistics;
@@ -543,6 +544,10 @@ void DynamicallyCorrectedTSTFreeEnergy::setup()
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
   }
+
+  // what the moves need worked out before the first cycle: the ideal-gas Rosenbluth weight of the flexible molecules
+  // that are inserted, deleted or probed with configurational bias and were given none
+  Preparation::prepareSystems(systems);
 
   std::filesystem::create_directories("output");
   std::filesystem::create_directories("dctst");
