@@ -31,6 +31,7 @@ import transition_matrix;
 import mc_moves;
 import mc_moves_move_types;
 import mc_moves_widom;
+import mc_moves_parallel_tempering_swap;
 import mc_moves_cputime;
 import mc_moves_statistics;
 import cbmc;
@@ -546,21 +547,8 @@ void ParallelTMMC::initializeWalkers(System templateSystem)
           reweightingPressureRange.first, reweightingPressureRange.second));
     }
   }
-  // A given ideal-gas Rosenbluth weight is the intramolecular partition function at one temperature. The walkers
-  // of another temperature divided their CBMC swaps by it all the same, which shifts the fugacity of that isotherm
-  // by W_IG(T) / W_IG(T_0) (ReweightedHistogram refuses the same).
-  if (std::ranges::any_of(temperatures, [&](double T) { return T != temperatures.front(); }))
-  {
-    const Component& component = templateSystem.components[templateSystem.tmmcComponent()];
-    if (component.idealGasRosenbluthWeight.has_value() && component.idealGasRosenbluthWeight.value() != 1.0)
-    {
-      throw std::runtime_error(std::format(
-          "[ParallelTMMC]: an 'IdealGasRosenbluthWeight' on '{}' is the intramolecular partition function at one "
-          "temperature; it can not be used across a temperature ladder (run the temperatures one at a time, each "
-          "with its own weight)\n",
-          component.name));
-    }
-  }
+  // (An ideal-gas Rosenbluth weight belongs to one temperature: the walkers of a ladder get the one of their own
+  // temperature, see 'MC_Moves::prepareIdealGasReferences' below, which refuses one number for a flexible molecule.)
   {
     const Component& component = templateSystem.components[templateSystem.tmmcComponent()];
     const bool usesCFCMCSwap =
@@ -661,6 +649,10 @@ void ParallelTMMC::initializeWalkers(System templateSystem)
       randoms.emplace_back(random.seed + walkerId + 1);
     }
   }
+
+  // the ideal-gas Rosenbluth weight of a flexible molecule at the temperature of each walker: the entry of the
+  // list that was given for the ladder, or the computed one
+  MC_Moves::prepareIdealGasReferences(systems, temperatures);
 
   blockCollectionMatrices.resize(numberOfWalkers);
   blockWidomWeightSums.resize(numberOfWalkers);

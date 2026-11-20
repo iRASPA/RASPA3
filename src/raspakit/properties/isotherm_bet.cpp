@@ -856,17 +856,6 @@ double sipsFisherCoordinate(double coverage)
   return std::asin(std::sqrt(theta));
 }
 
-double tothIntegrand(double coverage, double exponent)
-{
-  const double theta = std::max(coverage, 1.0e-18);
-  const double inner = theta * (1.0 - std::pow(theta, exponent));
-  if (!(inner > 0.0))
-  {
-    return 0.0;
-  }
-  return 1.0 / std::sqrt(inner);
-}
-
 struct FisherTable
 {
   std::vector<double> coverage{};
@@ -882,15 +871,33 @@ FisherTable makeTothFisherTable(double thetaLo, double thetaHi, double exponent)
   table.coordinate.resize(tothFisherTableSize);
   table.coverage.front() = lo;
   table.coordinate.front() = 0.0;
-  const double step = (hi - lo) / static_cast<double>(tothFisherTableSize - 1);
+  // The integrand 1 / sqrt(theta (1 - theta^t)) goes as theta^(-1/2) at low coverage: on a grid uniform in theta
+  // the first trapezoid, from a theta_lo of 1e-8 to 1e-3, was step / (2 sqrt(theta_lo)), hundreds against the pi
+  // of the whole interval, and decades of pressure fell into that one interval of the table. With
+  // theta = sin^2(u) the integral is that of 2 sqrt((1 - theta) / (1 - theta^t)) du, which is bounded (2 for
+  // t = 1, and 2 / sqrt(t) at theta = 1).
+  auto transformedIntegrand = [&](double u)
+  {
+    const double sine = std::sin(u);
+    const double cosine = std::cos(u);
+    const double complement = -std::expm1(exponent * std::log(sine * sine));  // 1 - theta^t
+    if (!(complement > 0.0) || !(cosine > 0.0))
+    {
+      return 2.0 / std::sqrt(exponent);
+    }
+    return 2.0 * cosine / std::sqrt(complement);
+  };
+  const double uLo = std::asin(std::sqrt(lo));
+  const double uHi = std::asin(std::sqrt(hi));
+  const double step = (uHi - uLo) / static_cast<double>(tothFisherTableSize - 1);
   for (std::size_t i = 1; i < tothFisherTableSize; ++i)
   {
-    const double previous = lo + static_cast<double>(i - 1) * step;
-    const double current = (i + 1 == tothFisherTableSize) ? hi : lo + static_cast<double>(i) * step;
-    table.coverage[i] = current;
-    table.coordinate[i] =
-        table.coordinate[i - 1] + 0.5 * (tothIntegrand(previous, exponent) + tothIntegrand(current, exponent)) *
-                                      (current - previous);
+    const double previous = uLo + static_cast<double>(i - 1) * step;
+    const double current = uLo + static_cast<double>(i) * step;
+    const double sine = std::sin(current);
+    table.coverage[i] = (i + 1 == tothFisherTableSize) ? hi : std::max(table.coverage[i - 1], sine * sine);
+    table.coordinate[i] = table.coordinate[i - 1] +
+                          0.5 * (transformedIntegrand(previous) + transformedIntegrand(current)) * step;
   }
   return table;
 }
@@ -1489,6 +1496,8 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
   point.gurvichCap = gurvichCapForSystem(system, probe.liquidVolume);
 
   double previousBlockMean = 0.0;
+  double previousBlockSumOfSquares = 0.0;
+  bool hasPreviousBlock = false;
   std::size_t stableBlocks = 0uz;
   double plateauSum = 0.0;
   double plateauSumOfSquares = 0.0;
@@ -1569,7 +1578,10 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
     blockSum *= toCycles;
     blockSumOfSquares *= toCycles;
     const double blockMean = blockSum / static_cast<double>(scoutBlockCycles);
-    const bool isFirstBlock = point.cycles == 0uz;
+    // the first block with a sample, which blocks without a decoupled one may precede: counted by the cycles,
+    // such a block was compared with a 'previous mean' of zero
+    const bool isFirstBlock = !hasPreviousBlock;
+    hasPreviousBlock = true;
     point.cycles += scoutBlockCycles;
     // the peak counts every block: a scout of a single block would otherwise report none
     point.peakOccupancy = std::max(point.peakOccupancy, blockPeak);
@@ -1595,6 +1607,7 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
       }
     }
     previousBlockMean = blockMean;
+    previousBlockSumOfSquares = blockSumOfSquares;
     std::print("    {} cycles, mean loading {:.1f}, peak {}\n", point.cycles, blockMean, point.peakOccupancy);
     std::cout << std::flush;
 
@@ -1614,7 +1627,11 @@ NitrogenBETScoutPoint scoutNitrogenBETOccupancy(System system, double pressurePa
   }
   else
   {
+    // no plateau (a single block, or block means that kept moving): the last block, with its own fluctuations
+    // (left at zero they took the sigma margin out of the filling ceiling)
     point.meanOccupancy = previousBlockMean;
+    point.standardDeviation = std::sqrt(std::max(
+        0.0, previousBlockSumOfSquares / static_cast<double>(scoutBlockCycles) - previousBlockMean * previousBlockMean));
   }
   return point;
 }

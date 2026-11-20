@@ -149,7 +149,7 @@ export struct Component
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization.
+  std::uint64_t versionNumber{3};  ///< Version number for serialization.
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 
@@ -176,6 +176,18 @@ export struct Component
   double compressibility{0.0};                  ///< Compressibility of the component [-].
 
   std::optional<double> idealGasRosenbluthWeight{};  ///< Optional ideal gas Rosenbluth weight [-].
+  /// The ideal-gas Rosenbluth weights of a temperature ladder, one per temperature of the ladder (in its order):
+  /// the weight is the average over the intramolecular Boltzmann distribution and depends on the temperature. A
+  /// driver that replicates one system over a ladder gives each replica its own
+  /// ('MC_Moves::prepareIdealGasReferences').
+  std::vector<double> idealGasRosenbluthWeightLadder{};
+  /// The logarithm of what divides beta f in the activity the insertions of a flexible molecule sample in
+  /// configuration space, pi ~ (beta f e^{-L})^N e^{-beta U}: the ideal-gas Rosenbluth weight times the
+  /// normalization of the bonded distributions the growth draws from, which is the intramolecular configuration
+  /// integral of the molecule when the weight is the right one. Known up to a constant that the temperatures of
+  /// one ladder share; it is what an exchange of configurations with different molecule counts, and a reweighting,
+  /// between two temperatures need. Set by 'MC_Moves::prepareIdealGasReferences'.
+  std::optional<double> logInsertionNormalization{};
   std::optional<double> idealGasEnergy{};            ///< Optional ideal gas energy [J].
 
   /// Probe cross-section for BET surface area [Å²]. Required with 'ComputeBET'.

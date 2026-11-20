@@ -696,6 +696,27 @@ TEST(INPUT_READER, compute_bet_omitted_pressures_imply_auto_for_wham)
   EXPECT_EQ(reader.parallelTemperingTemperatures.size(), 1uz);
 }
 
+// The ideal-gas Rosenbluth weight depends on the temperature: for a driver that replicates the one declared system
+// over 'ExternalTemperatures' a list is one value per temperature of that ladder (it was one per declared system,
+// of which there is one: the first value went to every replica).
+TEST(INPUT_READER, ideal_gas_rosenbluth_weights_of_a_ladder_are_kept_per_temperature)
+{
+  TemporaryDirectory workspace = makeTmmcWorkspace();
+  nlohmann::json input = nlohmann::json::parse(input_reader_fixtures::kTmmcSimulationJson);
+  input["SimulationType"] = "ReweightedHistogram";
+  input["Systems"][0]["ExternalTemperatures"] = nlohmann::json::array({111.58, 120.0});
+  input["Systems"][0]["ExternalPressures"] = nlohmann::json::array({1e4, 1e5});
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  input["Components"][0]["IdealGasRosenbluthWeight"] = nlohmann::json::array({0.5, 0.25});
+  TemporaryInput temporary(std::move(input), "weight_ladder", workspace.path());
+  ScopedCurrentPath currentPath(workspace.path());
+
+  InputReader reader(temporary.path().filename().string());
+  const Component& component = reader.systems.front().components[0];
+  EXPECT_EQ(component.idealGasRosenbluthWeightLadder, (std::vector<double>{0.5, 0.25}));
+  EXPECT_FALSE(component.idealGasRosenbluthWeight.has_value());
+}
+
 TEST(INPUT_READER, auto_pressures_rejected_without_compute_bet)
 {
   TemporaryDirectory workspace = makeTmmcWorkspace();

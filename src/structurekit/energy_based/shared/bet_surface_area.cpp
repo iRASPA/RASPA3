@@ -449,7 +449,11 @@ void applyWindowFit(BETSurfaceArea &result, double mass, double cellVolume, doub
     if (fit.ok && fit.intercept > 0.0 && std::fabs(fit.slope + fit.intercept) > 0.0)
     {
       const double c = 1.0 + fit.slope / fit.intercept;
-      if (c > 0.0 && 1.0 / (fit.slope + fit.intercept) > 0.0)
+      const double monolayer = 1.0 / (fit.slope + fit.intercept);
+      // the bound of the candidate windows (and of 'fromIsothermFixedWindow', which refused every block refit of
+      // a window accepted here without it): a monolayer above the full pore is left to the plateau reading below
+      if (c > 0.0 && monolayer > 0.0 &&
+          !(result.saturationLoading > 0.0 && monolayer > result.saturationLoading))
       {
         result.monolayerCapacity = 1.0 / (fit.slope + fit.intercept);
         result.cConstant = c;

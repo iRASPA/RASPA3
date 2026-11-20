@@ -1849,6 +1849,11 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
   if (idealGasRosenbluthWeight.has_value())
   {
     std::print(stream, "    Ideal gas Rosenbluth weight:  {:10.8f}\n", idealGasRosenbluthWeight.value());
+    if (logInsertionNormalization.has_value())
+    {
+      std::print(stream, "    ln ideal-gas normalization:   {:10.8f} (relative to the other temperatures)\n",
+                 logInsertionNormalization.value());
+    }
   }
   else if (!rigid && atoms.size() > 1uz &&
            std::ranges::any_of(std::array{Move::Types::SwapCBMC, Move::Types::SwapMultiTrialCBMC,
@@ -4018,6 +4023,9 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.moleculeBackboneSettings;
   archive << c.endToEndACFSettings;
 
+  archive << c.idealGasRosenbluthWeightLadder;  // version 3
+  archive << c.logInsertionNormalization;
+
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -4151,6 +4159,17 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.moleculeShapeSettings;
   archive >> c.moleculeBackboneSettings;
   archive >> c.endToEndACFSettings;
+
+  if (versionNumber >= 3)
+  {
+    archive >> c.idealGasRosenbluthWeightLadder;
+    archive >> c.logInsertionNormalization;
+  }
+  else
+  {
+    c.idealGasRosenbluthWeightLadder.clear();
+    c.logInsertionNormalization.reset();
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

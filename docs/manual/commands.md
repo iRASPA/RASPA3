@@ -3017,6 +3017,19 @@ not improved by it.
     potential follows directly from the fugacity). For equimolar mixtures this is
     essential.
 
+    A list gives one value per system, `[w1, w2, ...]`. With the drivers that
+    replicate the one declared system over a ladder of temperatures
+    (`ParallelTempering`, `HyperParallelTempering`, `ReweightedHistogram`,
+    `ParallelTMMC`) the list has one value per temperature of
+    `ExternalTemperatures`, in its order. For a flexible molecule on such a
+    ladder a single number is refused (it is the weight of one temperature);
+    when the key is left out the weights are computed at the start of the run,
+    from grows of the isolated molecule at each temperature. The same grows
+    give the ratio of the intramolecular configuration integrals of the
+    temperatures, which the exchange of configurations with different numbers
+    of molecules between two temperatures, and the reweighting between them,
+    need next to the weights.
+
 -   `"IdealGasEnergy" : floating-point-number`\
     The mean intramolecular energy of a single molecule in the ideal gas at the
     temperature of the system [K], from a run of one molecule in an empty box.

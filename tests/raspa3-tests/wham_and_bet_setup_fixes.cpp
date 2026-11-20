@@ -113,8 +113,9 @@ TEST(WHAM_AND_BET_SETUP_FIXES, dctst_wham_reports_disconnected_states)
   EXPECT_TRUE(connected.converged);
 }
 
-// A flexible molecule samples beta f / Z_intra(beta): across temperatures Z_intra does not cancel and the swap is
-// refused, at one temperature (a pressure ladder) it does and the swap goes ahead.
+// A flexible molecule samples beta f / Z_intra(beta): at one temperature (a pressure ladder) Z_intra cancels and
+// the swap goes ahead; across temperatures the ratio is needed, and a pair of replicas that was not given it
+// ('MC_Moves::prepareIdealGasReferences') is refused. Under solute tempering it is refused up front.
 TEST(WHAM_AND_BET_SETUP_FIXES, flexible_molecules_swap_only_at_equal_temperature)
 {
   System cold = makeCO2InFAU(300.0);
@@ -124,21 +125,14 @@ TEST(WHAM_AND_BET_SETUP_FIXES, flexible_molecules_swap_only_at_equal_temperature
   {
     system->components[0].rigid = false;
   }
-  EXPECT_TRUE(MC_Moves::parallelTemperingUnsupportedReason(cold, false).has_value());
+  EXPECT_FALSE(MC_Moves::parallelTemperingUnsupportedReason(cold, false).has_value());
+  EXPECT_TRUE(MC_Moves::parallelTemperingUnsupportedReason(cold, true).has_value());
   EXPECT_TRUE(MC_Moves::ParallelTemperingLogAcceptance(cold, coldOther).has_value());
   EXPECT_FALSE(MC_Moves::ParallelTemperingLogAcceptance(cold, hot).has_value());
 }
 
 TEST(WHAM_AND_BET_SETUP_FIXES, reweighted_histogram_refuses_what_it_can_not_reweight)
 {
-  // a flexible adsorbate across temperatures
-  {
-    System system = makeCO2InBox(300.0);
-    system.components[0].rigid = false;
-    EXPECT_THROW(ReweightedHistogram(system, {300.0, 350.0}, {1e4}, quietParameters()), std::runtime_error);
-    // at one temperature it is fine
-    EXPECT_NO_THROW(ReweightedHistogram(system, {300.0}, {1e4, 1e5}, quietParameters()));
-  }
   // volume moves
   {
     System system = makeCO2InBox(300.0);
@@ -347,4 +341,45 @@ TEST(WHAM_AND_BET_SETUP_FIXES, equal_weight_point_is_found_inside_a_window_narro
   auto flat = [](double) -> MacrostateScanPoint { return {std::nullopt, 50.0}; };
   EXPECT_FALSE(locateEqualWeightPoint(-5.0, 5.0, 200, flat).has_value());
   EXPECT_FALSE(locateEqualWeightPoint(1.0, 1.0, 200, evaluate).has_value());
+}
+
+// The swap divides the activity of each replica by its own ideal-gas Rosenbluth weight, as its insertions do: a
+// weight was refused outright, and a pressure ladder of ReweightedHistogram with one ran without an accepted swap.
+// A flexible molecule is still refused across temperatures, with or without a weight.
+TEST(WHAM_AND_BET_SETUP_FIXES, an_ideal_gas_rosenbluth_weight_enters_the_swap_through_the_activity)
+{
+  System cold = makeCO2InFAU(300.0, 2);
+  System coldOther = makeCO2InFAU(300.0, 5);
+  System hot = makeCO2InFAU(350.0, 5);
+  const double reference = MC_Moves::ParallelTemperingLogAcceptance(cold, coldOther).value();
+  cold.components[0].idealGasRosenbluthWeight = 0.5;
+  coldOther.components[0].idealGasRosenbluthWeight = 0.25;
+  hot.components[0].idealGasRosenbluthWeight = 0.25;
+  // (N_B - N_A) ln(a_A / a_B) with a = beta f / W_IG
+  const std::optional<double> weighted = MC_Moves::ParallelTemperingLogAcceptance(cold, coldOther);
+  ASSERT_TRUE(weighted.has_value());
+  EXPECT_NEAR(weighted.value() - reference, 3.0 * std::log(0.25 / 0.5), 1e-9);
+  EXPECT_TRUE(MC_Moves::ParallelTemperingLogAcceptance(cold, hot).has_value());
+
+  for (System* system : {&cold, &coldOther, &hot}) system->components[0].rigid = false;
+  EXPECT_TRUE(MC_Moves::ParallelTemperingLogAcceptance(cold, coldOther).has_value());
+  EXPECT_FALSE(MC_Moves::ParallelTemperingLogAcceptance(cold, hot).has_value());
+}
+
+// A state that takes no part stays at zero: the gauge shift moved it along with the others, by the shift of the
+// last iteration (visible in a solve that is stopped before it converged).
+TEST(WHAM_AND_BET_SETUP_FIXES, dctst_wham_does_not_gauge_a_state_that_takes_no_part)
+{
+  const DcTSTWham::Result result = DcTSTWham::solve({{0.0, 0.0}, {100.0, 50.0}, {40.0, 110.0}},
+                                                    {{1e30, 1e30}, {0.0, 0.0}, {0.5, -0.5}}, 1e-10, 1);
+  EXPECT_FALSE(result.converged);
+  EXPECT_EQ(result.freeEnergies[0], 0.0);
+}
+
+// A fractional molecule pinned at a lambda is never decoupled, and the samples are taken at lambda = 0 only.
+TEST(WHAM_AND_BET_SETUP_FIXES, reweighted_histogram_refuses_a_fixed_lambda)
+{
+  System system = makeCO2InBox(300.0);
+  system.components[0].fixedLambdaBin = 5uz;
+  EXPECT_THROW(ReweightedHistogram(system, {300.0}, {1e4, 1e5}, quietParameters()), std::runtime_error);
 }

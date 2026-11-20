@@ -3235,11 +3235,33 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
       if (item.contains("IdealGasRosenbluthWeight") && item["IdealGasRosenbluthWeight"].is_array())
       {
-        std::vector<double> ideal_gas_rosenbluth_weight =
-            parseList<double>(jsonNumberOfSystems, "IdealGasRosenbluthWeight", item["IdealGasRosenbluthWeight"]);
-        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        // The weight depends on the temperature. The drivers that replicate the one declared system over a ladder
+        // of temperatures take the list as one value per temperature of the ladder (checked against it, and
+        // handed to the replicas, by 'MC_Moves::prepareIdealGasReferences'); for systems that are declared one by
+        // one it is one value per system.
+        const bool replicatedOverALadder = simulationType == SimulationType::ParallelTempering ||
+                                           simulationType == SimulationType::ParallelTemperingMolecularDynamics ||
+                                           simulationType == SimulationType::HyperParallelTempering ||
+                                           simulationType == SimulationType::ReweightedHistogram ||
+                                           simulationType == SimulationType::ParallelTMMC;
+        if (replicatedOverALadder)
         {
-          jsonComponents[i][componentId].idealGasRosenbluthWeight = ideal_gas_rosenbluth_weight[i];
+          const std::vector<double> ladder =
+              parseList<double>(item["IdealGasRosenbluthWeight"].size(), "IdealGasRosenbluthWeight",
+                                item["IdealGasRosenbluthWeight"]);
+          for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+          {
+            jsonComponents[i][componentId].idealGasRosenbluthWeightLadder = ladder;
+          }
+        }
+        else
+        {
+          std::vector<double> ideal_gas_rosenbluth_weight =
+              parseList<double>(jsonNumberOfSystems, "IdealGasRosenbluthWeight", item["IdealGasRosenbluthWeight"]);
+          for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+          {
+            jsonComponents[i][componentId].idealGasRosenbluthWeight = ideal_gas_rosenbluth_weight[i];
+          }
         }
       }
 

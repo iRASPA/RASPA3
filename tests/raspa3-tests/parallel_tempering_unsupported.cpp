@@ -122,16 +122,14 @@ TEST(PARALLEL_TEMPERING_UNSUPPORTED, an_exchanged_box_reinitializes_the_automati
   EXPECT_NEAR(b.forceField.cutOffCoulomb, 11.0, 1e-9);
 }
 
-// An ideal-gas Rosenbluth weight belongs to one temperature: copied to every replica of a ladder it normalises the
-// insertions of the other temperatures with the wrong intramolecular partition function.
-TEST(PARALLEL_TEMPERING_UNSUPPORTED, an_ideal_gas_rosenbluth_weight_is_refused)
+// An ideal-gas Rosenbluth weight is part of the activity a replica samples, and the acceptance of the swap divides
+// by the weight of each replica: it is no ground to refuse a ladder (a rigid molecule with a weight was refused).
+TEST(PARALLEL_TEMPERING_UNSUPPORTED, an_ideal_gas_rosenbluth_weight_is_not_refused)
 {
   System system = makeCO2InFAU(300.0);
   system.components[0].idealGasRosenbluthWeight = 0.37;
-  EXPECT_TRUE(MC_Moves::parallelTemperingUnsupportedReason(system, false).has_value());
-  EXPECT_TRUE(MC_Moves::parallelTemperingUnsupportedReason(system, true).has_value());
-  system.components[0].idealGasRosenbluthWeight = 1.0;
   EXPECT_FALSE(MC_Moves::parallelTemperingUnsupportedReason(system, false).has_value());
+  EXPECT_FALSE(MC_Moves::parallelTemperingUnsupportedReason(system, true).has_value());
 }
 
 // A time-correlation property belongs to the trajectory it samples: a replica-exchange swap carries its time

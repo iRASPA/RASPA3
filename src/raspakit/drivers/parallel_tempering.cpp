@@ -237,6 +237,11 @@ ParallelTempering::ParallelTempering(InputReader& reader)
     randoms.emplace_back(random.seed + replicaId + 1);
   }
 
+  // what belongs to the temperature of each replica: the ideal-gas Rosenbluth weight of a flexible molecule and
+  // the normalization that lets configurations with different molecule counts be exchanged between temperatures
+  // (not for the scaled Hamiltonians of solute tempering, where such a molecule is refused)
+  if (!soluteComponentId.has_value()) MC_Moves::prepareIdealGasReferences(systems, temperatures);
+
   stepsPerReplica.assign(numberOfReplicas, 0uz);
   swapAttemptsPerPair.assign(numberOfReplicas - 1uz, 0uz);
   swapAcceptedPerPair.assign(numberOfReplicas - 1uz, 0uz);

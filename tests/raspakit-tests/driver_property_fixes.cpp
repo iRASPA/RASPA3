@@ -67,9 +67,11 @@ void inTemporaryDirectory(F&& body)
 }
 }  // namespace
 
-// The insertions of a flexible molecule sample the activity beta f / Z_intra(beta): the swap of configurations between
-// temperatures does not know Z_intra, so an open ensemble with a flexible molecule is refused (a rigid one is not).
-TEST(driver_property_fixes, parallel_tempering_refuses_an_open_ensemble_of_flexible_molecules)
+// The insertions of a flexible molecule sample the activity beta f / Z_intra(beta). Across temperatures the ratio of
+// the two Z_intra is computed when the replicas are made ('MC_Moves::prepareIdealGasReferences'); for the scaled
+// Hamiltonians of solute tempering it is not known, and an open ensemble with a flexible molecule is refused there
+// (a rigid one is not).
+TEST(driver_property_fixes, solute_tempering_refuses_an_open_ensemble_of_flexible_molecules)
 {
   const ForceField forceField = makeZeroForceField();
   for (const bool flexible : {false, true})
@@ -79,7 +81,8 @@ TEST(driver_property_fixes, parallel_tempering_refuses_an_open_ensemble_of_flexi
     component.mc_moves_probabilities.setProbability(Move::Types::Swap, 1.0);
     const System system(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {component}, {}, {0},
                         5);
-    EXPECT_EQ(MC_Moves::parallelTemperingUnsupportedReason(system, false).has_value(), flexible);
+    EXPECT_FALSE(MC_Moves::parallelTemperingUnsupportedReason(system, false).has_value());
+    EXPECT_EQ(MC_Moves::parallelTemperingUnsupportedReason(system, true).has_value(), flexible);
   }
 }
 

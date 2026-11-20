@@ -142,7 +142,8 @@ export struct ReweightedHistogram
   ReweightedHistogram(System templateSystem, std::vector<double> temperatures, std::vector<double> pressures,
                       ReweightedHistogramParameters parameters = {});
 
-  std::uint64_t versionNumber{3};  ///< Version number for serialization (2: BET auto-setup state, 3: output JSON).
+  /// Version number for serialization (2: BET auto-setup state, 3: output JSON, 4: ideal-gas references).
+  std::uint64_t versionNumber{4};
 
   RandomNumber random;  ///< Random number generator (seeding + swap acceptance).
 
@@ -161,6 +162,9 @@ export struct ReweightedHistogram
 
   std::size_t sampleReweightingEvery;  ///< Record an (N, U) sample every this many production cycles.
   std::vector<double> reweightingTemperatures;  ///< Temperatures the reweighted isotherms are written at [K].
+  /// ln of the intramolecular configuration integral of a flexible adsorbate at each reweighting temperature, on the
+  /// scale of 'Component::logInsertionNormalization' of the replicas (zeros when no such reference is needed).
+  std::vector<double> reweightingLogNormalization;
   std::pair<double, double> reweightingPressureRange;  ///< Pressure range of the reweighted isotherms [Pa].
   std::size_t reweightingNumberOfPressures;  ///< Number of log-spaced pressures of the reweighted isotherms.
   /// Max |Δg_i| between successive WHAM free-energy iterates for convergence.

@@ -2050,6 +2050,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     std::vector<double> density;  ///< P per fine bin (normalized over the cage), 0 where undefined.
     std::vector<double> logDensity;  ///< ln P per fine bin (finite where defined, also where P underflows).
     std::vector<bool> defined;
+    std::vector<bool> reachable;  ///< A state with samples allows the bin: without a sample its density is zero.
     double barrierProbabilityBin{0.0};
     double logBarrierProbabilityBin{0.0};
     double logBarrierProbability{0.0};  ///< ln P(q*), finite also when P(q*) underflows
@@ -2081,6 +2082,15 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     solution.density.assign(numberOfBins, 0.0);
     solution.logDensity.assign(numberOfBins, DcTSTWham::logZero);
     solution.defined.assign(numberOfBins, false);
+    solution.reachable.assign(numberOfBins, false);
+    for (std::size_t k = 0; k < counts.size(); ++k)
+    {
+      if (!(std::accumulate(counts[k].begin(), counts[k].end(), 0.0) > 0.0)) continue;
+      for (std::size_t b = 0; b < numberOfBins; ++b)
+      {
+        if (-reducedPotential[k][b] > DcTSTWham::forbiddenLogWeight) solution.reachable[b] = true;
+      }
+    }
     double largest = DcTSTWham::logZero;
     for (std::size_t b = 0; b < numberOfBins; ++b)
     {
@@ -2145,6 +2155,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
     // the parabolic fit of ln P over |x - x*| <= fit range
     {
       std::vector<double> t, y, w;
+      bool below{false}, above{false};
       for (std::size_t b = 0; b < numberOfBins; ++b)
       {
         const double dx = grid.center(b) - grid.barrier;
@@ -2152,8 +2163,14 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
         t.push_back(dx);
         y.push_back(solution.logDensity[b]);
         w.push_back(fitWeights.empty() ? 1.0 : fitWeights[b]);
+        below = below || dx <= 0.0;
+        above = above || dx >= 0.0;
       }
       solution.fit = fitQuadratic(t, y, w);
+      // The value at the plane is read off the parabola where the points are on both sides of it, or next to it
+      // (the bin estimate above). With three bins at one edge of the fit range and none at the plane, the fit was
+      // an extrapolation over the unsampled top of the barrier, reported as a defined ln P(q*).
+      if (solution.fit.valid && !solution.barrierDefined && !(below && above)) solution.fit.valid = false;
       if (solution.fit.valid)
       {
         solution.barrierProbability = std::exp(solution.fit.a);
@@ -2190,6 +2207,7 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
   // the normalization is common)
   std::vector<double> fineError(numberOfBins, 0.0);
   std::vector<double> fitWeights(numberOfBins, 1.0);
+  std::vector<bool> hasError(numberOfBins, false);
   for (std::size_t b = 0; b < numberOfBins; ++b)
   {
     std::vector<double> values;
@@ -2198,7 +2216,32 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
       if (s.defined[b]) values.push_back(-s.logDensity[b]);
     }
     fineError[b] = meanAndError(values).second;
-    if (values.size() >= 2 && fineError[b] > 0.0) fitWeights[b] = 1.0 / (fineError[b] * fineError[b]);
+    hasError[b] = values.size() >= 2 && fineError[b] > 0.0;
+  }
+  // The error of a few blocks is itself uncertain: two blocks that agree on a bin by chance (an error of 1e-12)
+  // gave it a weight of 1e24, which made the normal equations of the fit singular to double precision. The
+  // errors are bounded from below by a tenth of the median error of the bins of the fit.
+  {
+    std::vector<double> errors;
+    for (std::size_t b = 0; b < numberOfBins; ++b)
+    {
+      if (hasError[b] && std::abs(grid.center(b) - grid.barrier) <= settings.barrierFitRange)
+      {
+        errors.push_back(fineError[b]);
+      }
+    }
+    double floor = 0.0;
+    if (!errors.empty())
+    {
+      std::ranges::nth_element(errors, errors.begin() + static_cast<std::ptrdiff_t>(errors.size() / 2uz));
+      floor = 0.1 * errors[errors.size() / 2uz];
+    }
+    for (std::size_t b = 0; b < numberOfBins; ++b)
+    {
+      if (!hasError[b]) continue;
+      const double error = std::max(fineError[b], floor);
+      fitWeights[b] = 1.0 / (error * error);
+    }
   }
   full = solveFor(allCounts, full.freeEnergies, fitWeights);
   // re-solve the blocks with the same weights for the fit
@@ -2315,9 +2358,12 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
                                 : barrier.binCenter(i, numberOfReportBins);
   }
   {
-    // ln of the mean density over the defined fine bins of each report bin (divided by the width they cover,
-    // not by the report width: when the fine bins do not divide evenly, report bins hold 11 or 12 of them and a
-    // constant width put a ln(12/11) sawtooth into the profile), from the log densities (no underflow)
+    // ln of the mean density over the fine bins of each report bin (divided by the width they cover, not by the
+    // report width: when the fine bins do not divide evenly, report bins hold 11 or 12 of them and a constant
+    // width put a ln(12/11) sawtooth into the profile), from the log densities (no underflow). A fine bin without
+    // a sample that the sampled states can reach has the density zero and counts in the width, as it does in the
+    // profile of the pilot below: the mean over the occupied bins alone was too high by the ratio of the two
+    // numbers, up to ln(12) in beta F where a block has a single hit in a report bin at the barrier.
     auto coarseFreeEnergies = [&](const Solution& solution) -> std::vector<std::optional<double>>
     {
       std::vector<double> largest(numberOfReportBins, DcTSTWham::logZero);
@@ -2334,12 +2380,15 @@ DynamicallyCorrectedTSTFreeEnergy::ProfileResult DynamicallyCorrectedTSTFreeEner
         if (!solution.defined[b]) continue;
         const std::size_t i = reportBin(grid.center(b));
         sum[i] += std::exp(solution.logDensity[b] - largest[i]);
-        ++count[i];
+      }
+      for (std::size_t b = 0; b < numberOfBins; ++b)
+      {
+        if (solution.defined[b] || solution.reachable[b]) ++count[reportBin(grid.center(b))];
       }
       std::vector<std::optional<double>> freeEnergy(numberOfReportBins);
       for (std::size_t i = 0; i < numberOfReportBins; ++i)
       {
-        if (count[i] > 0uz) freeEnergy[i] = -(largest[i] + std::log(sum[i] / static_cast<double>(count[i])));
+        if (sum[i] > 0.0) freeEnergy[i] = -(largest[i] + std::log(sum[i] / static_cast<double>(count[i])));
       }
       return freeEnergy;
     };
@@ -2549,21 +2598,23 @@ DynamicallyCorrectedTSTFreeEnergy::OccupancyDistribution DynamicallyCorrectedTST
       occupancyMode ? std::optional<std::size_t>(DcTSTPilotAccumulator::occupancyIndex(
                           settings.cageOccupancies->first, settings.cageOccupancies->second))
                     : std::nullopt;
-  for (const DcTSTPilotAccumulator& accumulator : pilot)
+  // a block is the pool of the replicas, as for the histograms ('pooledPilotHistogram'): one entry per replica
+  // and block made the error too small by the square root of the number of replicas
+  for (std::size_t b = 0; b < numberOfBlocks; ++b)
   {
-    for (std::size_t b = 0; b < accumulator.numberOfBlocks; ++b)
+    double blockTotal{0.0};
+    double blockCount{0.0};
+    for (const DcTSTPilotAccumulator& accumulator : pilot)
     {
-      double blockTotal{0.0};
+      if (b >= accumulator.numberOfBlocks) continue;
       for (std::size_t i = 0; i < result.joint.size(); ++i)
       {
         result.joint[i] += accumulator.occupancyPairs[b][i];
         blockTotal += accumulator.occupancyPairs[b][i];
       }
-      if (blockTotal > 0.0 && requestedIndex.has_value())
-      {
-        blockRequested.push_back(accumulator.occupancyPairs[b][requestedIndex.value()] / blockTotal);
-      }
+      if (requestedIndex.has_value()) blockCount += accumulator.occupancyPairs[b][requestedIndex.value()];
     }
+    if (blockTotal > 0.0 && requestedIndex.has_value()) blockRequested.push_back(blockCount / blockTotal);
   }
   result.total = std::accumulate(result.joint.begin(), result.joint.end(), 0.0);
   if (result.total <= 0.0) return result;

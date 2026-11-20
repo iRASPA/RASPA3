@@ -89,9 +89,7 @@ static void writeReplicaAnalysisOutputs(System& system, std::size_t replicaId, s
 // 'reweightsBeyondTheSample': a single state point that is reweighted to another temperature or pressure. Only a
 // single state point whose results are written at that very state point needs no reduced potential at all.
 static void validateReweightingTemplate(const System& system, std::span<const double> temperatures,
-                                        std::size_t numberOfPressures,
-                                        std::span<const double> reweightingTemperatures,
-                                        bool reweightsBeyondTheSample = false)
+                                        std::size_t numberOfPressures, bool reweightsBeyondTheSample = false)
 {
   if (system.components.empty())
   {
@@ -186,6 +184,18 @@ static void validateReweightingTemplate(const System& system, std::span<const do
       }
     }
   }
+  // A fractional molecule pinned at a lambda (thermodynamic integration) is never decoupled, and a sample is
+  // taken at lambda = 0 only: the run ended without one.
+  for (const Component& component : system.components)
+  {
+    if (component.fixedLambdaBin.has_value())
+    {
+      throw std::runtime_error(std::format(
+          "[ReweightedHistogram]: component '{}' has a fixed lambda ('LambdaBinIndex', 'ThermodynamicIntegration'); "
+          "the (N, U) samples are taken with the fractional molecules decoupled, which a pinned one never is\n",
+          component.name));
+    }
+  }
   for (const VDWParameters& parameter : system.forceField.data)
   {
     if (parameter.type == VDWParameters::Type::FeynmannHibbs)
@@ -232,36 +242,9 @@ static void validateReweightingTemplate(const System& system, std::span<const do
         component.name));
   }
 
-  // One temperature throughout (the sampled ones and the reweighted ones) leaves the intramolecular partition
-  // function a constant factor of the activity. Across temperatures it is not: a flexible molecule is inserted
-  // with its conformation from the intramolecular Boltzmann distribution, so a replica samples the activity
-  // beta f / Z_intra(beta), and the reduced potential, which has beta f only, is wrong by N ln Z_intra(beta)
-  // between temperatures (the temperature swaps are refused for the same reason). A given ideal-gas Rosenbluth
-  // weight is that partition function at one temperature.
-  std::vector<double> allTemperatures(temperatures.begin(), temperatures.end());
-  allTemperatures.insert(allTemperatures.end(), reweightingTemperatures.begin(), reweightingTemperatures.end());
-  const bool severalTemperatures =
-      std::ranges::any_of(allTemperatures, [&](double T) { return T != allTemperatures.front(); });
-  if (severalTemperatures)
-  {
-    const bool flexible = !component.rigid && component.atoms.size() > 1uz;
-    if (flexible)
-    {
-      throw std::runtime_error(std::format(
-          "[ReweightedHistogram]: the flexible molecule '{}' can only be reweighted at a single temperature: the "
-          "activity it is sampled at contains its intramolecular partition function Z_intra(beta), which the "
-          "reweighting between temperatures does not know; use one temperature in 'ExternalTemperatures' and "
-          "'ReweightingTemperatures'\n",
-          component.name));
-    }
-    if (component.idealGasRosenbluthWeight.has_value() && component.idealGasRosenbluthWeight.value() != 1.0)
-    {
-      throw std::runtime_error(std::format(
-          "[ReweightedHistogram]: an 'IdealGasRosenbluthWeight' on '{}' is the intramolecular partition function "
-          "at one temperature; it can not be reweighted across a temperature ladder\n",
-          component.name));
-    }
-  }
+  // (A flexible adsorbate across temperatures: the activity it is sampled at contains its intramolecular
+  // configuration integral q(beta), which 'MC_Moves::prepareIdealGasReferences' computes for the sampled and the
+  // reweighted temperatures when the replicas are made.)
 }
 
 // The numbers of the run itself, for the input reader and the programmatic constructor alike: the block count
@@ -364,9 +347,7 @@ ReweightedHistogram::ReweightedHistogram(InputReader& reader)
     temperatures.push_back(templateSystem.temperature);
   }
   // an automatic pressure ladder ('ExternalPressures': 'auto') is a ladder of several pressures
-  validateReweightingTemplate(templateSystem, temperatures, autoExternalPressures ? 2uz : pressures.size(),
-                              reweightingTemperatures.empty() ? std::span<const double>(temperatures)
-                                                              : std::span<const double>(reweightingTemperatures));
+  validateReweightingTemplate(templateSystem, temperatures, autoExternalPressures ? 2uz : pressures.size());
 
   if (autoExternalPressures || autoReweightingPressureRange || autoMacroStateMaximum)
   {
@@ -462,8 +443,7 @@ ReweightedHistogram::ReweightedHistogram(System templateSystem, std::vector<doub
   const bool reweightsBeyondTheSample =
       std::ranges::any_of(reweightingTemperatures, [&](double T) { return T != temperatures.front(); }) ||
       reweightingPressureRange.first != pressures.front() || reweightingPressureRange.second != pressures.front();
-  validateReweightingTemplate(templateSystem, temperatures, pressures.size(), reweightingTemperatures,
-                              reweightsBeyondTheSample);
+  validateReweightingTemplate(templateSystem, temperatures, pressures.size(), reweightsBeyondTheSample);
 
   validateReweightingRun(numberOfBlocks, temperatures, pressures, reweightingTemperatures, reweightingPressureRange);
 
@@ -513,6 +493,12 @@ void ReweightedHistogram::initializeReplicas(System templateSystem)
       randoms.emplace_back(random.seed + replicaId + 1);
     }
   }
+
+  // What belongs to the temperature of each replica, and of each temperature that is reweighted to: a flexible
+  // molecule is sampled at the activity beta f / q(beta), with q its intramolecular configuration integral (see
+  // 'MC_Moves::idealGasReferences'). The reduced potentials and the configuration swaps need it across temperatures.
+  reweightingLogNormalization = MC_Moves::prepareIdealGasReferences(
+      systems, temperatures, reweightingTemperatures)[systems.front().tmmcComponent()];
 
   reweightingSamples.resize(numberOfReplicas);
   for (std::vector<Sample>& samples : reweightingSamples)
@@ -1460,6 +1446,26 @@ void ReweightedHistogram::performReweightingAnalysis()
     stateBeta[stateId] = system.beta;
     stateLogBetaFugacity[stateId] = std::log(system.beta * fugacity);
   }
+  // A flexible adsorbate on a temperature ladder is sampled at the activity beta f e^{-L(beta)}, with L the ln of
+  // what its insertions divide beta f by ('Component::logInsertionNormalization'): the sample (N, U) has the
+  // weight -N L(beta) next to N ln(beta f), at a replica and at a state point that is reweighted to (there L is
+  // the ln of the intramolecular configuration integral). At the temperature of a replica it is the normalization
+  // of that replica, which holds the weight the replica was run with. Zero where no reference is needed.
+  std::map<double, double> logNormalizationOfBeta;
+  for (std::size_t i = 0; i < reweightingTemperatures.size() && i < reweightingLogNormalization.size(); ++i)
+  {
+    logNormalizationOfBeta[1.0 / (Units::KB * reweightingTemperatures[i])] = reweightingLogNormalization[i];
+  }
+  for (const System& system : systems)
+  {
+    logNormalizationOfBeta[system.beta] =
+        system.components[system.tmmcComponent()].logInsertionNormalization.value_or(0.0);
+  }
+  auto logNormalizationAt = [&](double beta)
+  {
+    const auto it = logNormalizationOfBeta.find(beta);
+    return it == logNormalizationOfBeta.end() ? 0.0 : it->second;
+  };
 
   // bin the pooled samples over (N, energy bin); the mean energy of the samples inside a bin is
   // used in the reduced potentials, which removes the leading-order binning error
@@ -1527,7 +1533,8 @@ void ReweightedHistogram::performReweightingAnalysis()
     {
       reducedPotential[binId * numberOfReplicas + stateId] =
           stateBeta[stateId] * binMeanEnergy[binId] -
-          static_cast<double>(binMoleculeCount[binId]) * stateLogBetaFugacity[stateId];
+          static_cast<double>(binMoleculeCount[binId]) *
+              (stateLogBetaFugacity[stateId] - logNormalizationAt(stateBeta[stateId]));
     }
   }
 
@@ -1544,6 +1551,12 @@ void ReweightedHistogram::performReweightingAnalysis()
   // barrier neither crosses, converge on g_1 = -(N_1 / 2) ln(f_1 / f_0), each credited with a share of the
   // samples of the other that is far above any threshold: a condensation step at sqrt(f_0 f_1) was reported as
   // converged, whatever the free energy of the condensed phase.
+  //
+  // Two states at one temperature are linked by a molecule count both of them sampled, whatever the energies: their
+  // reduced potentials differ by -N ln(f_i / f_j) only, the energy drops out of the WHAM equations of the pair, and
+  // both draw U at that N from one conditional distribution. Asked for a shared energy bin as well (512 of them,
+  // against the few samples of a count in the tail where two pressures overlap), the neighbours of an isothermal
+  // pressure ladder were reported as disconnected, and with them the blocks, which have 1/B of the samples each.
   auto statesAreConnected = [&](const std::vector<double>& logStateCounts,
                                 const std::vector<double>& logDensityOfStates,
                                 std::optional<std::size_t> block) -> bool
@@ -1584,6 +1597,18 @@ void ReweightedHistogram::performReweightingAnalysis()
         parent[find(stateId)] = find(first.value());
       }
     }
+    std::map<std::pair<std::uint32_t, double>, std::size_t> firstOfMoleculeCount;  // by (N, beta)
+    for (std::size_t binId = 0; binId < numberOfBins; ++binId)
+    {
+      if (logDensityOfStates[binId] <= logZeroThreshold) continue;
+      for (std::size_t stateId = 0; stateId < numberOfReplicas; ++stateId)
+      {
+        if (logStateCounts[stateId] <= logZeroThreshold || !sampled(binId, stateId)) continue;
+        const auto [it, inserted] =
+            firstOfMoleculeCount.try_emplace(std::make_pair(binMoleculeCount[binId], stateBeta[stateId]), stateId);
+        if (!inserted) parent[find(stateId)] = find(it->second);
+      }
+    }
     std::optional<std::size_t> root;
     for (std::size_t stateId = 0; stateId < numberOfReplicas; ++stateId)
     {
@@ -1618,6 +1643,7 @@ void ReweightedHistogram::performReweightingAnalysis()
   {
     const double tolerance = whamTolerance;
     std::vector<double> updatedFreeEnergies(numberOfReplicas);
+    std::vector<bool> takesPart(numberOfReplicas, true);
     logDensityOfStates.assign(numberOfBins, logZero);
     std::size_t referenceState = 0uz;
     while (referenceState < numberOfReplicas && logStateCounts[referenceState] <= logZeroThreshold) ++referenceState;
@@ -1679,7 +1705,8 @@ void ReweightedHistogram::performReweightingAnalysis()
           largest = std::max(largest,
                              logDensityOfStates[binId] - reducedPotential[binId * numberOfReplicas + stateId]);
         }
-        if (largest <= logZeroThreshold)
+        takesPart[stateId] = largest > logZeroThreshold;
+        if (!takesPart[stateId])
         {
           updatedFreeEnergies[stateId] = 0.0;
           continue;
@@ -1697,7 +1724,7 @@ void ReweightedHistogram::performReweightingAnalysis()
       residual = 0.0;
       for (std::size_t stateId = 0; stateId < numberOfReplicas; ++stateId)
       {
-        updatedFreeEnergies[stateId] -= gauge;
+        if (takesPart[stateId]) updatedFreeEnergies[stateId] -= gauge;  // the others stay at zero
         if (logStateCounts[stateId] <= logZeroThreshold) continue;  // an unsampled state does not take part
         residual = std::max(residual, std::abs(updatedFreeEnergies[stateId] - freeEnergies[stateId]));
       }
@@ -1732,13 +1759,14 @@ void ReweightedHistogram::performReweightingAnalysis()
   auto reweightIsostericHeat = [&](const std::vector<double>& logDensityOfStates, double beta,
                                    double logBetaFugacity) -> std::optional<double>
   {
+    const double logActivity = logBetaFugacity - logNormalizationAt(beta);
     double largest = logZero;
     std::vector<double> logWeights(numberOfBins, logZero);
     for (std::size_t binId = 0; binId < numberOfBins; ++binId)
     {
       if (logDensityOfStates[binId] <= logZeroThreshold) continue;
       logWeights[binId] = logDensityOfStates[binId] - beta * binMeanEnergy[binId] +
-                          static_cast<double>(binMoleculeCount[binId]) * logBetaFugacity;
+                          static_cast<double>(binMoleculeCount[binId]) * logActivity;
       largest = std::max(largest, logWeights[binId]);
     }
     if (largest <= logZeroThreshold) return std::nullopt;
@@ -1778,13 +1806,14 @@ void ReweightedHistogram::performReweightingAnalysis()
   auto reweight = [&](const std::vector<double>& logDensityOfStates, double beta,
                       double logBetaFugacity) -> std::pair<double, double>
   {
+    const double logActivity = logBetaFugacity - logNormalizationAt(beta);
     double largest = logZero;
     std::vector<double> logWeights(numberOfBins, logZero);
     for (std::size_t binId = 0; binId < numberOfBins; ++binId)
     {
       if (logDensityOfStates[binId] <= logZeroThreshold) continue;
       logWeights[binId] = logDensityOfStates[binId] - beta * binMeanEnergy[binId] +
-                          static_cast<double>(binMoleculeCount[binId]) * logBetaFugacity;
+                          static_cast<double>(binMoleculeCount[binId]) * logActivity;
       largest = std::max(largest, logWeights[binId]);
     }
     if (largest <= logZeroThreshold)
@@ -1839,6 +1868,23 @@ void ReweightedHistogram::performReweightingAnalysis()
              numberOfEnergyBins, Units::EnergyToKelvin * deltaEnergy);
   std::print(stream, "    WHAM iterations:         {} (residual {:.3e}, tolerance {:.3e}, max {})\n\n", iterations,
              residual, whamTolerance, whamMaximumIterations);
+  // A state point without a sample takes no part in the solution and is skipped by the overlap test: with a
+  // fractional molecule that is never decoupled at the higher pressures, the whole ladder was reweighted from the
+  // replicas that were left (from a single one the solve 'converges' in one iteration) without a word.
+  {
+    std::string unsampled;
+    for (std::size_t stateId = 0; stateId < numberOfReplicas; ++stateId)
+    {
+      if (logStateCounts[stateId] > logZeroThreshold) continue;
+      unsampled += std::format("{}{}", unsampled.empty() ? "" : ", ", stateId);
+    }
+    if (!unsampled.empty())
+    {
+      std::print(stream, "    WARNING: no (N, U) sample was collected at state point(s) {}; the results there are\n",
+                 unsampled);
+      std::print(stream, "             extrapolated from the other state points (see the effective sample sizes).\n\n");
+    }
+  }
   if (!convergence.connected)
   {
     std::print(stream, "    WARNING: the sampled state points fall apart into groups whose (N, U) histograms share no bin;\n");
@@ -2348,6 +2394,7 @@ void ReweightedHistogram::performReweightingAnalysis()
     auto moleculeDistribution = [&](const std::vector<double>& logDOS, double beta,
                                     double logBetaFugacity) -> std::vector<double>
     {
+      const double logActivity = logBetaFugacity - logNormalizationAt(beta);
       std::vector<double> logProbability(maximumMoleculeCount + 1uz, logZero);
       for (std::size_t n = 0; n <= maximumMoleculeCount; ++n)
       {
@@ -2356,7 +2403,7 @@ void ReweightedHistogram::performReweightingAnalysis()
         {
           if (logDOS[binId] <= logZeroThreshold) continue;
           largest = std::max(largest, logDOS[binId] - beta * binMeanEnergy[binId] +
-                                          static_cast<double>(n) * logBetaFugacity);
+                                          static_cast<double>(n) * logActivity);
         }
         if (largest <= logZeroThreshold) continue;
         double sum = 0.0;
@@ -2364,7 +2411,7 @@ void ReweightedHistogram::performReweightingAnalysis()
         {
           if (logDOS[binId] <= logZeroThreshold) continue;
           sum += std::exp(logDOS[binId] - beta * binMeanEnergy[binId] +
-                          static_cast<double>(n) * logBetaFugacity - largest);
+                          static_cast<double>(n) * logActivity - largest);
         }
         logProbability[n] = largest + std::log(sum);
       }
@@ -2912,6 +2959,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Reweig
     for (const nlohmann::json& json : rh.replicaJsons) jsons.push_back(json.dump());
     archive << jsons;
   }
+  archive << rh.reweightingLogNormalization;  // version 4
 
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
@@ -3002,6 +3050,14 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ReweightedHi
     archive >> jsons;
     rh.replicaJsons.clear();
     for (const std::string& replicaJson : jsons) rh.replicaJsons.push_back(nlohmann::json::parse(replicaJson));
+  }
+  if (versionNumber >= 4)
+  {
+    archive >> rh.reweightingLogNormalization;
+  }
+  else
+  {
+    rh.reweightingLogNormalization.clear();
   }
 
   std::uint64_t magicNumber;

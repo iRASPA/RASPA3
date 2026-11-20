@@ -29,6 +29,7 @@ add_executable(unit_tests_raspa3
   mc_cross_links.cpp
   md_parallel_tempering.cpp
   cbmc_api.cpp
+  ideal_gas_references.cpp
   cbmc_base_sampler.cpp
   cbmc_fixed_endpoint.cpp
   cbmc_recoil_growth.cpp

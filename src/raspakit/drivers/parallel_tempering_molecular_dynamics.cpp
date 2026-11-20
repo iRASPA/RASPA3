@@ -189,6 +189,10 @@ ParallelTemperingMolecularDynamics::ParallelTemperingMolecularDynamics(InputRead
     randoms.emplace_back(random.seed + replicaId + 1);
   }
 
+  // what belongs to the temperature of each replica: the ideal-gas Rosenbluth weight of a flexible molecule and
+  // the normalization that lets configurations with different molecule counts be exchanged between temperatures
+  MC_Moves::prepareIdealGasReferences(systems, temperatures);
+
   stepsPerReplica.assign(numberOfReplicas, 0uz);
   integratorsCPUTimePerReplica.assign(numberOfReplicas, IntegratorsCPUTime{});
   swapAttemptsPerPair.assign(numberOfReplicas - 1uz, 0uz);

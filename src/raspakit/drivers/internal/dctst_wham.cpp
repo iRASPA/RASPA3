@@ -75,6 +75,7 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
   }
   result.logDensity.assign(numberOfBins, logZero);
   std::vector<double> updated(numberOfStates, 0.0);
+  std::vector<bool> takesPart(numberOfStates, true);
 
   // The gauge is fixed on the first state with samples. A state without samples does not enter Omega, and its
   // g can be anything (a forbidden bias over every sampled bin puts it at ~ +1e30): fixed on such a state the
@@ -146,7 +147,8 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
       // A state that forbids every bin with a density (a pilot without samples in occupancy mode) has a largest
       // term of about -1e30, far above the 'log of zero': its g became +1e30 instead of the 0 of a state that
       // takes no part.
-      if (largest <= forbiddenLogWeight)
+      takesPart[k] = largest > forbiddenLogWeight;
+      if (!takesPart[k])
       {
         updated[k] = 0.0;
         continue;
@@ -164,7 +166,7 @@ DcTSTWham::Result DcTSTWham::solve(const std::vector<std::vector<double>>& count
     residual = 0.0;
     for (std::size_t k = 0; k < numberOfStates; ++k)
     {
-      updated[k] -= gauge;
+      if (takesPart[k]) updated[k] -= gauge;  // the others stay at zero
       if (logStateCounts[k] <= logZeroThreshold) continue;  // an unsampled state does not take part
       residual = std::max(residual, std::abs(updated[k] - result.freeEnergies[k]));
     }

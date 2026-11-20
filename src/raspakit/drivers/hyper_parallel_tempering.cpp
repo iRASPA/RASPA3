@@ -167,6 +167,10 @@ HyperParallelTempering::HyperParallelTempering(InputReader& reader)
     }
   }
 
+  // what belongs to the temperature of each replica: the ideal-gas Rosenbluth weight of a flexible molecule and
+  // the normalization that lets configurations with different molecule counts be exchanged between temperatures
+  MC_Moves::prepareIdealGasReferences(systems, temperatures);
+
   stepsPerReplica.assign(numberOfReplicas, 0uz);
   swapAttemptsPerTemperaturePair.assign(numberOfTemperatures > 0uz ? numberOfTemperatures - 1uz : 0uz, 0uz);
   swapAcceptedPerTemperaturePair.assign(numberOfTemperatures > 0uz ? numberOfTemperatures - 1uz : 0uz, 0uz);

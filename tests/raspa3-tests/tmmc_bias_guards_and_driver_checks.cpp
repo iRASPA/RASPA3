@@ -242,6 +242,10 @@ TEST(PARALLEL_TMMC_CHECKS, refuses_a_run_it_can_not_sample)
   System weighted = makeMethaneBox(0, 1e5);
   weighted.components[0].idealGasRosenbluthWeight = 0.5;
   EXPECT_EQ(refusalOfParallelTMMC(weighted, {300.0}, parameters), "");
+  // the weight of a molecule without conformations does not depend on the temperature; a list is one value per
+  // temperature of the ladder
+  EXPECT_EQ(refusalOfParallelTMMC(weighted, {300.0, 350.0}, parameters), "");
+  weighted.components[0].idealGasRosenbluthWeightLadder = {0.5, 0.4, 0.3};
   const std::string ladder = refusalOfParallelTMMC(weighted, {300.0, 350.0}, parameters);
   EXPECT_NE(ladder.find("IdealGasRosenbluthWeight"), std::string::npos) << ladder;
 }
