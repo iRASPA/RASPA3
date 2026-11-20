@@ -1170,6 +1170,20 @@ TEST(MC_CYCLIC_CBMC, a_ring_closed_onto_a_rigid_unit_is_seeded_with_either_mirro
   system.runningEnergies = system.computeTotalEnergies();
   system.trialEik = system.storedEik;
 
+  // Every trial direction of this step is a walk of its own, and the isolated molecule the reservoir is built from
+  // has no surroundings for the directions to choose among: the reservoir of such a component is built with one
+  // direction. Its 256 members of 21 regrowths walk the ring once each (twice as long while the reservoir is
+  // empty); with the ten directions of the growth and the nine of the retrace it was nineteen times that.
+  double ringMoves = 0.0;
+  for (const auto& statistics : system.components[0].cbmcMoveStatistics)
+  {
+    ringMoves += statistics.ringDisplacementChange.totalCounts + statistics.ringRotationChange.totalCounts +
+                 statistics.ringCrankshaftMove.totalCounts;
+  }
+  const double oneWalkEach = 256.0 * 21.0 * 2.0 * (2.0 * 50.0 * 3.0);
+  EXPECT_GT(ringMoves, 0.25 * oneWalkEach);
+  EXPECT_LT(ringMoves, 1.5 * oneWalkEach);
+
   RandomNumber random(3);
   const std::size_t steps = 3000;
   std::size_t diaxial = 0;

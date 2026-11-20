@@ -1539,9 +1539,12 @@ export struct System
    *
    * \param random A random number generator instance.
    * \param selectedComponent The component to sample an internal conformation for.
+   * \param singleTrialDirection Grow with one trial direction per step (the same distribution, see
+   *        buildConformationReservoirs).
    * \return The sampled, mass-centered internal conformation.
    */
-  std::vector<Atom> equilibratedIdealGasConformation(RandomNumber& random, std::size_t selectedComponent);
+  std::vector<Atom> equilibratedIdealGasConformation(RandomNumber& random, std::size_t selectedComponent,
+                                                     bool singleTrialDirection = false);
 
   /**
    * \brief Fills each flexible/semi-flexible component's ideal-gas conformation reservoir.

@@ -1162,7 +1162,8 @@ std::vector<Atom> System::randomConfiguration(RandomNumber& random, std::size_t 
   return copied_atoms;
 }
 
-std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random, std::size_t selectedComponent)
+std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random, std::size_t selectedComponent,
+                                                          bool singleTrialDirection)
 {
   Component& component = components[selectedComponent];
 
@@ -1184,7 +1185,10 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
   // out and the chain samples the molecule's own (bare Coulomb) ideal-gas distribution. Always configurational bias (see 'makeIdealGasGrowContext'): these
   // conformations seed the conformation reservoir and define the recoil-growth openness reference, and
   // recoil growth can not run before its own reference exists.
-  const CBMC::GrowContext context = makeIdealGasGrowContext();
+  CBMC::GrowContext context = makeIdealGasGrowContext();
+  // The reinsertion moves below are exact for any number of trial directions (the acceptance rule takes the
+  // Rosenbluth weights as they come), so one direction samples the same distribution as ten.
+  if (singleTrialDirection) context.settings.numberOfTrialDirections = 1;
 
   // The reference geometry is a topology with placeholder coordinates (its atoms may coincide), not a
   // conformation: a retrace of it has no weight. The chain starts from a grown conformation instead; the
@@ -1306,11 +1310,21 @@ void System::buildConformationReservoirs()
     // The reservoir is only a warm start for the bond/bend Monte Carlo. It carries no Rosenbluth
     // weight; 'equilibratedIdealGasConformation' grows it with configurational bias even when the
     // production moves use recoil growth.
+    // A ring closed onto a placed rigid unit has no orientation and no spin: its trial directions are independent
+    // conformations of the ring, each a walk of its own, and with the retrace a regrowth of ten directions walks
+    // the ring nineteen times. The isolated molecule has no surroundings for the directions to choose among, and
+    // the build of the reservoir (256 members of 21 regrowths) took most of a minute for a molecule of eight
+    // atoms. Such a component is built with one direction: the same distribution, a sixteenth of the time. (Other
+    // components keep the directions they had, and with them the members of their reservoir.)
+    const std::vector<CBMC::GrowStep>& plan = component.growthPlan({component.startingBead});
+    const bool anchoredRing =
+        std::ranges::any_of(plan, [](const CBMC::GrowStep& step) { return step.ring.anchored(); });
+
     std::vector<std::vector<Atom>> reservoir{};
     reservoir.reserve(reservoirSize);
     for (std::size_t i = 0; i != reservoirSize; ++i)
     {
-      reservoir.push_back(equilibratedIdealGasConformation(random, componentId));
+      reservoir.push_back(equilibratedIdealGasConformation(random, componentId, anchoredRing));
     }
     component.conformationReservoir = std::move(reservoir);
   }
