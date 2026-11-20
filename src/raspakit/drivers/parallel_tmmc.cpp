@@ -263,11 +263,9 @@ std::vector<double> tmmcReconstructLogPi(const std::vector<double3>& collectionM
 
   // the detailed-balance increment of every chain link, ln P(i -> i+1) - ln P(i+1 -> i); a link
   // without an accepted transition in one of its directions, or out of an unvisited row, has none
-  std::size_t firstVisited = nChain;
   std::vector<double> chainIncrement(nChain > 0uz ? nChain - 1uz : 0uz, logZero);
   for (std::size_t index = 0; index < nChain; ++index)
   {
-    if (rowTotal(index) > 0.0) firstVisited = std::min(firstVisited, index);
     if (index + 1uz >= nChain) continue;
     const double forwardTotal = rowTotal(index);
     const double reverseTotal = rowTotal(index + 1uz);
@@ -312,14 +310,22 @@ std::vector<double> tmmcReconstructLogPi(const std::vector<double3>& collectionM
   }
 
   // ln Pi is one estimate only over a run of supported increments: nothing ties the gauge across an increment
-  // that nothing supports. The recursion runs over the longest such run (the first of the longest ones), as
+  // that nothing supports. The recursion runs over the longest such run (of several of one length the one with
+  // the most moves out of its integer states: the first one was taken, and a single visit of N = 0 on the way into
+  // a basin that was then sampled for the whole run won from that basin), as
   // TransitionMatrix::supportedMoleculeRange does, gauged to zero at its lowest macrostate; the states outside
   // it stay at the 'log of zero' sentinel. It started at the lowest visited macrostate and stopped at the first
   // unsupported increment: a lowest state that was visited without a transition back into it (one visit in the
   // collection matrix of a block, or a visit of (N, k > 0) without (N, 0) on an (N, lambda) chain) then left
   // the whole chain above it at the sentinel, and the isotherm collapsed onto that state.
+  auto integerStateTotal = [&](std::size_t n) -> double
+  {
+    const std::size_t index = n * nLambda;
+    return index < nChain ? rowTotal(index) : 0.0;
+  };
   std::size_t runStart = numberOfMacrostates;
   std::size_t runLength = 0uz;
+  double runTotal = 0.0;
   for (std::size_t n = 0; n < increment.size();)
   {
     if (increment[n] <= logZeroThreshold)
@@ -329,15 +335,31 @@ std::vector<double> tmmcReconstructLogPi(const std::vector<double3>& collectionM
     }
     std::size_t end = n;
     while (end < increment.size() && increment[end] > logZeroThreshold) ++end;
-    if (end - n > runLength)
+    double total = 0.0;
+    for (std::size_t state = n; state <= end; ++state) total += integerStateTotal(state);
+    if (end - n > runLength || (end - n == runLength && total > runTotal))
     {
       runStart = n;
       runLength = end - n;
+      runTotal = total;
     }
     n = end;
   }
-  // without a supported increment the lowest visited macrostate is all there is
-  if (runLength == 0uz && firstVisited < nChain) runStart = firstVisited / nLambda;
+  // Without a supported increment a single macrostate is all there is: the one whose integer state (N, 0) has
+  // the most moves out of it. (The lowest visited one was taken, also when only its fractional states (N, k > 0)
+  // of an (N, lambda) chain were visited: a loading was then reported at a molecule count that was never sampled.)
+  if (runLength == 0uz)
+  {
+    double largest = 0.0;
+    for (std::size_t n = 0; n < numberOfMacrostates; ++n)
+    {
+      if (integerStateTotal(n) > largest)
+      {
+        largest = integerStateTotal(n);
+        runStart = n;
+      }
+    }
+  }
   if (runStart >= numberOfMacrostates) return logPi;
 
   logPi[runStart] = 0.0;
@@ -1943,8 +1965,12 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
     // Every block is anchored over the same range (the anchor end of the whole production) with its own
     // test-insertion increments, the differences of the cumulative Widom snapshots of the block: the
     // whole-production increments made all blocks identical there and the error bars of ln Pi, of the loading
-    // and of the BET area zero. A macrostate without an insertion in the block takes its collection-matrix
-    // increment in that block.
+    // and of the BET area zero. A macrostate with fewer insertions in the block than the share of the block in
+    // the minimum of the anchor takes the increment of the whole production there. It took whatever the block
+    // had: one insertion replaced the increment of the block, and with none (or with a mean of zero) the block was
+    // left with its collection-matrix increment, which at low N in a strongly binding adsorbent has no accepted
+    // deletion, the very case the anchor is for: the chain of the block was cut there and the macrostates on the
+    // shorter side dropped out of its ln Pi.
     // (a restart file of an older version has no Widom snapshots: its blocks keep the whole-production anchor)
     bool haveBlockWidomSnapshots = true;
     for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
@@ -1956,10 +1982,12 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
     auto blockWidomIncrements = [&](std::size_t block) -> std::pair<std::vector<double>, std::vector<bool>>
     {
       if (!haveBlockWidomSnapshots) return {widomLogIncrement, widomHasIncrement};
-      std::vector<double> logIncrement(numberOfMacrostates, 0.0);
-      std::vector<bool> hasIncrement(numberOfMacrostates, false);
+      std::vector<double> logIncrement = widomLogIncrement;
+      const std::vector<bool>& hasIncrement = widomHasIncrement;
+      const std::size_t minimumInsertionsOfBlock = std::max(1uz, minimumWidomInsertions / std::max(1uz, availableBlocks));
       for (std::size_t index = 0; index + 1uz < numberOfMacrostates && index < widomAnchorEnd; ++index)
       {
+        if (!widomHasIncrement[index]) continue;
         double weightSum = 0.0;
         std::size_t count = 0uz;
         for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
@@ -1978,12 +2006,11 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
             if (index < previousCounts.size()) count -= previousCounts[index];
           }
         }
-        if (count == 0uz) continue;
+        if (count < minimumInsertionsOfBlock) continue;
         const double mean = weightSum / static_cast<double>(count);
         if (!(mean > 0.0)) continue;
         const double moleculesAfter = static_cast<double>(minMacrostate + index + 1uz);
         logIncrement[index] = std::log(beta * referenceFugacity * volume * mean / moleculesAfter);
-        hasIncrement[index] = widomHasIncrement[index];
       }
       return {logIncrement, hasIncrement};
     };

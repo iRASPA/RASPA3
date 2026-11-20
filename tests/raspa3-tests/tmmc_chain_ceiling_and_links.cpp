@@ -169,6 +169,28 @@ TEST(TMMC_CHAIN_CEILING_AND_LINKS, supported_range_of_a_lambda_chain_needs_every
   EXPECT_EQ(matrix.supportedMoleculeRange().value(), (std::pair<std::size_t, std::size_t>{0uz, 1uz}));
 }
 
+// Of several supported runs of one length the one whose integer states were visited most is taken (the first
+// one was: a single visit of N = 0 on the way into a basin won from the basin), and a run of one molecule count
+// needs a visit of its integer state (N, 0).
+TEST(TMMC_CHAIN_CEILING_AND_LINKS, supported_range_is_decided_by_visits_of_integer_states)
+{
+  TransitionMatrix plain = makeLambdaChain(0, 5, 1);
+  plain.histogram = {1, 0, 0, 1000000, 0, 0};
+  std::fill(plain.cmatrix.begin(), plain.cmatrix.end(), double3(0.0, 1.0, 0.0));
+  EXPECT_EQ(plain.supportedMoleculeRange().value(), (std::pair<std::size_t, std::size_t>{3uz, 3uz}));
+
+  // (N, lambda) with three bins: only the fractional state (1, 1) was visited
+  TransitionMatrix chain = makeLambdaChain(0, 2, 3);
+  std::fill(chain.histogram.begin(), chain.histogram.end(), 0uz);
+  std::fill(chain.cmatrix.begin(), chain.cmatrix.end(), double3(0.0, 1.0, 0.0));
+  chain.histogram[chain.chainIndex(1, 1)] = 10uz;
+  EXPECT_TRUE(chain.visitedMoleculeRange().has_value());
+  EXPECT_FALSE(chain.supportedMoleculeRange().has_value());
+  EXPECT_FALSE(chain.reweightedMoleculeCountMeanAndVariance().has_value());
+  chain.histogram[chain.chainIndex(1, 0)] = 1uz;
+  EXPECT_EQ(chain.supportedMoleculeRange().value(), (std::pair<std::size_t, std::size_t>{1uz, 1uz}));
+}
+
 // The switched-off placeholder of the serial Gibbs CFCMC swap is scaled with its box but carries no volume
 // factor: the move that brings the fractional molecule into a box draws its position anew and weighs the boxes
 // V_B / V_A, one factor for the box that holds it.

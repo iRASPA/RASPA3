@@ -283,6 +283,19 @@ TEST(driver_property_fixes, energy_histogram_prints_its_range_in_kelvin)
   EXPECT_NEAR(std::stod(settings.substr(position + 13)), -1000.0, 1e-9);
 }
 
+// The bins are returned in the unit the range was given in (they were in internal energy units), and a histogram
+// without bins is refused.
+TEST(driver_property_fixes, energy_histogram_returns_its_bins_in_kelvin)
+{
+  const PropertyEnergyHistogram histogram(1, 10, {-1000.0, 500.0}, 1, std::nullopt);
+  const std::vector<double> bins = histogram.bins();
+  ASSERT_EQ(bins.size(), 10uz);
+  EXPECT_NEAR(bins.front(), -1000.0, 1e-9);
+  EXPECT_NEAR(bins[1] - bins[0], 150.0, 1e-9);
+  EXPECT_NEAR(std::get<0>(histogram.result()).back(), 350.0, 1e-9);
+  EXPECT_THROW(PropertyEnergyHistogram(1, 0, {-1000.0, 500.0}, 1, std::nullopt), std::invalid_argument);
+}
+
 // Out-of-range indices are refused (they aliased the next row of channels or read past the averages).
 TEST(driver_property_fixes, property_accessors_refuse_out_of_range_indices)
 {

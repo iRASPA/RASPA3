@@ -328,6 +328,18 @@ void MonteCarloTransitionMatrix::checkpointIfDue(std::size_t currentCycle)
   }
 }
 
+// (The time-evolution properties were not sampled by this driver: asked for in the input, their files were never
+// written.)
+void MonteCarloTransitionMatrix::sampleEvolution(std::size_t absoluteCycle)
+{
+  for (std::size_t system_id{0}; System& system : systems)
+  {
+    system.samplePropertiesEvolution(absoluteCycle);
+    system.writePropertiesEvolution(system_id, absoluteCycle);
+    ++system_id;
+  }
+}
+
 void MonteCarloTransitionMatrix::performCycle()
 {
   std::size_t totalNumberOfMolecules{0uz};
@@ -506,7 +518,7 @@ void MonteCarloTransitionMatrix::preInitialize()
     ++system_id;
   };
 
-  for (currentCycle = 0uz; currentCycle != numberOfPreInitializationCycles; currentCycle++)
+  for (currentCycle = 0uz; currentCycle < numberOfPreInitializationCycles; currentCycle++)
   {
     t1 = std::chrono::steady_clock::now();
 
@@ -535,6 +547,8 @@ void MonteCarloTransitionMatrix::preInitialize()
         system.optimizeMCMoves();
       }
     }
+
+    sampleEvolution(currentCycle);
 
     checkpointIfDue(currentCycle);
 
@@ -570,7 +584,7 @@ void MonteCarloTransitionMatrix::initialize()
     ++system_id;
   };
 
-  for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
+  for (currentCycle = 0uz; currentCycle < numberOfInitializationCycles; currentCycle++)
   {
     t1 = std::chrono::steady_clock::now();
 
@@ -598,6 +612,8 @@ void MonteCarloTransitionMatrix::initialize()
         system.optimizeMCMoves();
       }
     }
+
+    sampleEvolution(numberOfPreInitializationCycles + currentCycle);
 
     checkpointIfDue(currentCycle);
 
@@ -647,7 +663,7 @@ void MonteCarloTransitionMatrix::equilibrate()
     ++system_id;
   };
 
-  for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle)
+  for (currentCycle = 0uz; currentCycle < numberOfEquilibrationCycles; ++currentCycle)
   {
     t1 = std::chrono::steady_clock::now();
 
@@ -711,6 +727,8 @@ void MonteCarloTransitionMatrix::equilibrate()
             PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
       }
     }
+
+    sampleEvolution(numberOfPreInitializationCycles + numberOfInitializationCycles + currentCycle);
 
     checkpointIfDue(currentCycle);
 
@@ -791,7 +809,10 @@ void MonteCarloTransitionMatrix::production()
   }
 
   numberOfSteps = 0uz;
-  for (currentCycle = 0uz; currentCycle != numberOfProductionCycles; ++currentCycle)
+  // (The stage loops end at 'currentCycle < n': a stage that is entered again from a restart file comes in at the
+  // bottom of the body, where the counter is advanced before it is tested. With '!=', a restart file that was
+  // already at or past the number of cycles of the input, lowered since, counted on until the counter wrapped.)
+  for (currentCycle = 0uz; currentCycle < numberOfProductionCycles; ++currentCycle)
   {
     t1 = std::chrono::steady_clock::now();
 
@@ -851,6 +872,9 @@ void MonteCarloTransitionMatrix::production()
       }
     }
 
+    sampleEvolution(numberOfPreInitializationCycles + numberOfInitializationCycles +
+                    numberOfEquilibrationCycles + currentCycle);
+
     checkpointIfDue(currentCycle);
 
     t2 = std::chrono::steady_clock::now();
@@ -869,7 +893,14 @@ void MonteCarloTransitionMatrix::production()
     // production for a shorter run, next to the final collection matrix
     if (system.tmmc.doTMMC) system.tmmc.recomputeLnPiAndBias();
     system.tmmc.writeStatistics();
-    system.writeSampledPropertiesMC(system_id, currentCycle);
+    // cycle 0 passes the 'writeEvery' gate of every writer: with the number of the last cycle the final state was
+    // written only when the number of production cycles was a multiple of each 'writeEvery' (with the default of
+    // 5000 a run of 1000 cycles left the file of its first cycle, of one sample)
+    system.writeSampledPropertiesMC(system_id, 0uz);
+    system.writePropertiesEvolution(system_id,
+                                    numberOfPreInitializationCycles + numberOfInitializationCycles +
+                                        numberOfEquilibrationCycles + numberOfProductionCycles,
+                                    true);
     ++system_id;
   }
 }

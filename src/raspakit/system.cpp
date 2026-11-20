@@ -1791,6 +1791,8 @@ void System::setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogr
   {
     if (averageEnergyHistogram->sampleEvery == 0uz)
       throw std::invalid_argument("PropertyEnergyHistogram: sample_every must be positive");
+    if (averageEnergyHistogram->numberOfBins == 0uz)
+      throw std::invalid_argument("PropertyEnergyHistogram: the number of bins must be positive");
     averageEnergyHistogram->histogram =
         BlockHistogram<AverageEnergyType>(averageEnergies.numberOfBlocks, 1, averageEnergyHistogram->numberOfBins);
   }

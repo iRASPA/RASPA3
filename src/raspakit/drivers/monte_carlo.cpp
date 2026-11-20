@@ -1089,7 +1089,9 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
       std::flush(stream);
 
-      system.writeSampledPropertiesMC(system_id, currentCycle);
+      // (cycle 0 passes the 'writeEvery' gate of every writer: with the number of the last cycle the final state
+      // was written only when the number of production cycles was a multiple of each 'writeEvery')
+      system.writeSampledPropertiesMC(system_id, 0uz);
       system.writePropertiesEvolution(system_id, absoluteCurrentCycle, true);
 
       ++system_id;

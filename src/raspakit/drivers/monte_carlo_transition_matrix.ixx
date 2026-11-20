@@ -129,6 +129,9 @@ export struct MonteCarloTransitionMatrix
    * \brief Writes the periodic binary restart file and services a pending shutdown signal.
    */
   void checkpointIfDue(std::size_t currentCycle);
+  /// Samples and writes the time-evolution properties (number of molecules, volume) of every system at the cycle
+  /// 'absoluteCycle' counted over all stages; the writers gate on their own 'writeEvery'.
+  void sampleEvolution(std::size_t absoluteCycle);
 
 
   /**

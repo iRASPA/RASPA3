@@ -198,3 +198,43 @@ TEST(TMMC_LOGPI_RECONSTRUCTION, nothing_sampled_leaves_every_state_at_the_sentin
       tmmcReconstructLogPi(matrix, 4, 1, noIncrements(4), noFlags(4), 0, logZero, logZeroThreshold);
   for (double value : logPi) EXPECT_FALSE(sampled(value));
 }
+
+// Of several runs of one length the one with the most moves out of its integer states is taken: a single visit
+// of N = 0 on the way into a basin that was then sampled for the whole run won from that basin (the first run
+// was taken), and the loading was reported as zero.
+TEST(TMMC_LOGPI_RECONSTRUCTION, equal_runs_are_decided_by_their_visits)
+{
+  // no supported link at all: one move out of N = 0, a thousand out of N = 3
+  std::vector<double3> matrix(5, double3(0.0, 0.0, 0.0));
+  matrix[0] = double3(0.0, 0.0, 1.0);
+  matrix[3] = double3(0.0, 1000.0, 0.0);
+  const std::vector<double> single =
+      tmmcReconstructLogPi(matrix, 5, 1, noIncrements(5), noFlags(5), 0, logZero, logZeroThreshold);
+  EXPECT_FALSE(sampled(single[0]));
+  EXPECT_DOUBLE_EQ(single[3], 0.0);
+
+  // two runs of one link each, 0-1 with few moves and 3-4 with many
+  std::vector<double3> runs = {row(0.0, 1.0, 1.0), row(1.0, 0.0, 1.0), double3(0.0, 0.0, 0.0), row(0.0, 5.0, 500.0),
+                               row(5.0, 0.0, 500.0)};
+  const std::vector<double> logPi =
+      tmmcReconstructLogPi(runs, 5, 1, noIncrements(5), noFlags(5), 0, logZero, logZeroThreshold);
+  EXPECT_FALSE(sampled(logPi[0]));
+  EXPECT_FALSE(sampled(logPi[1]));
+  EXPECT_DOUBLE_EQ(logPi[3], 0.0);
+  EXPECT_NEAR(logPi[4], linkIncrement(runs, 3), 1e-12);
+}
+
+// On an (N, lambda) chain a macrostate is its integer state (N, 0): with only fractional states (N, k > 0)
+// visited and no supported step, no loading is reported at that N (it was, at a count that was never sampled).
+TEST(TMMC_LOGPI_RECONSTRUCTION, a_macrostate_without_its_integer_state_is_not_reported)
+{
+  // nLambda = 2: chain states (0,0) (0,1) (1,0) (1,1) (2,0); only (0,1) and (1,0) have moves, without a link
+  std::vector<double3> matrix(5, double3(0.0, 0.0, 0.0));
+  matrix[1] = double3(0.0, 50.0, 0.0);
+  matrix[2] = double3(0.0, 3.0, 0.0);
+  const std::vector<double> logPi =
+      tmmcReconstructLogPi(matrix, 3, 2, noIncrements(3), noFlags(3), 0, logZero, logZeroThreshold);
+  EXPECT_FALSE(sampled(logPi[0]));
+  EXPECT_DOUBLE_EQ(logPi[1], 0.0);
+  EXPECT_FALSE(sampled(logPi[2]));
+}

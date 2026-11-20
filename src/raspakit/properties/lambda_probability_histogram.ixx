@@ -182,8 +182,10 @@ export struct PropertyLambdaProbabilityHistogram
       double weightOfTheOthers = w;
       if (ownBiasInWeight)
       {
+        // bounds rather than std::isfinite, which -ffast-math compiles away: an overflow of either weight gave
+        // inf / inf, a NaN that stayed in the histogram and in dU/dlambda for the rest of the run
         const double own = weight();
-        weightOfTheOthers = (own > 0.0 && std::isfinite(own) && std::isfinite(w)) ? w / own : 1.0;
+        weightOfTheOthers = (own > 0.0 && own < 1.0e300 && w >= 0.0 && w < 1.0e300) ? w / own : 1.0;
       }
       bookKeepingLambda[blockIndex][currentBin] += weightOfTheOthers;
 

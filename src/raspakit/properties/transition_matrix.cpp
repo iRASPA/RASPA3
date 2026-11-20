@@ -380,12 +380,31 @@ std::optional<std::pair<std::size_t, std::size_t>> TransitionMatrix::supportedMo
     }
     return true;
   };
-  std::pair<std::size_t, std::size_t> longest{visited->first, visited->first};
+  // The longest run of supported steps, and of several of one length the one whose integer states were visited
+  // most. (The first of them was taken: one visit of N = 0 on the way into a basin that was then sampled for the
+  // whole run, without a two-way step out of it, won from that basin.) A run of a single molecule count needs a
+  // visit of its integer state: with the fractional states (N, k > 0) of an (N, lambda) chain alone, a loading
+  // was reported at a count that was never sampled.
+  auto integerVisits = [&](std::size_t N) -> std::size_t
+  {
+    const std::size_t index = chainIndex(N, 0uz);
+    return index < histogram.size() ? histogram[index] : 0uz;
+  };
+  std::optional<std::pair<std::size_t, std::size_t>> longest{};
+  std::size_t longestVisits = 0uz;
   std::size_t runStart = visited->first;
   for (std::size_t N = visited->first; N <= visited->second; ++N)
   {
-    if (N - runStart > longest.second - longest.first) longest = {runStart, N};
-    if (N < visited->second && !stepSupported(N)) runStart = N + 1uz;
+    if (N < visited->second && stepSupported(N)) continue;
+    std::size_t visits = 0uz;
+    for (std::size_t state = runStart; state <= N; ++state) visits += integerVisits(state);
+    if (visits > 0uz && (!longest.has_value() || N - runStart > longest->second - longest->first ||
+                         (N - runStart == longest->second - longest->first && visits > longestVisits)))
+    {
+      longest = {runStart, N};
+      longestVisits = visits;
+    }
+    runStart = N + 1uz;
   }
   return longest;
 }

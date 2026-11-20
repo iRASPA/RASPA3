@@ -26,9 +26,15 @@ export struct PropertyEnergyHistogram
     return range;
   }
 
+  static std::size_t checkedNumberOfBins(std::size_t numberOfBins)
+  {
+    if (numberOfBins == 0uz) throw std::invalid_argument("PropertyEnergyHistogram: the number of bins must be positive");
+    return numberOfBins;
+  }
+
   PropertyEnergyHistogram(std::size_t numberOfBlocks, std::size_t numberOfBins, std::pair<double, double> valueRange,
                           std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
-      : numberOfBins(numberOfBins),
+      : numberOfBins(checkedNumberOfBins(numberOfBins)),
         valueRange(Units::KelvinToEnergy * checkedValueRange(valueRange).first,
                    Units::KelvinToEnergy * valueRange.second),
         sampleEvery(sampleEvery),
@@ -53,7 +59,9 @@ export struct PropertyEnergyHistogram
   }
   std::vector<AverageEnergyType> averagedProbabilityHistogram() const { return histogram.averaged(0); }
 
+  /// The lower edges of the bins in the unit the range was given in [K], with the averaged histogram and its error.
   std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<AverageEnergyType>> result() const;
+  /// The lower edges of the bins in the unit the range was given in [K].
   std::vector<double> bins() const;
 
   void writeOutput(std::size_t systemId, std::size_t currentCycle);

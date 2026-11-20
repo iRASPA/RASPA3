@@ -68,7 +68,7 @@ void PropertyEnergyHistogram::writeOutput(std::size_t systemId, std::size_t curr
     if (average[bin].totalEnergy > 0.0 || average[bin].VanDerWaalsEnergy > 0.0 || average[bin].CoulombEnergy > 0.0 ||
         average[bin].polarizationEnergy > 0.0)
     {
-      stream_output << std::format("{} {} {} {} {} {} {} {} {}\n", energies[bin] * Units::EnergyToKelvin, 
+      stream_output << std::format("{} {} {} {} {} {} {} {} {}\n", energies[bin],
           average[bin].totalEnergy, error[bin].totalEnergy, average[bin].VanDerWaalsEnergy, error[bin].VanDerWaalsEnergy,
           average[bin].CoulombEnergy, error[bin].CoulombEnergy, average[bin].polarizationEnergy, error[bin].polarizationEnergy);
     }
@@ -78,11 +78,14 @@ void PropertyEnergyHistogram::writeOutput(std::size_t systemId, std::size_t curr
 
 std::vector<double> PropertyEnergyHistogram::bins() const
 {
+  // in Kelvin, as the range was given: the range is held in internal energy units, and the bins were returned in
+  // those (to the Python bindings as well), off by the conversion factor from the range of the constructor
   std::vector<double> bins(numberOfBins);
   for (std::size_t bin = 0; bin != numberOfBins; ++bin)
   {
-    bins[bin] = static_cast<double>(bin) * std::fabs(valueRange.second - valueRange.first) / static_cast<double>(numberOfBins) +
-        valueRange.first;
+    bins[bin] = Units::EnergyToKelvin * (static_cast<double>(bin) * std::fabs(valueRange.second - valueRange.first) /
+                                             static_cast<double>(numberOfBins) +
+                                         valueRange.first);
   }
   return bins;
 }

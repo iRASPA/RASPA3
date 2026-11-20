@@ -897,9 +897,10 @@ export struct System
   /// N -> N +/- 1 transition: refused and not recorded (the input reader refuses the mix up front). True when
   /// the matrix does not track the component.
   /// On an (N, lambda) chain such a swap is an integer jump (N, k) -> (N +/- 1, k), which that matrix cannot hold.
+  /// (A histogram without bins, as a default-constructed one, is no single bin: it has no bias to read.)
   [[nodiscard]] bool cfcmcSwapFitsTMMC(std::size_t componentId, const PropertyLambdaProbabilityHistogram& lambda) const
   {
-    return !tmmcTracks(componentId) || (lambda.numberOfSamplePoints <= 1uz && !tmmc.lambdaChain());
+    return !tmmcTracks(componentId) || (lambda.numberOfSamplePoints == 1uz && !tmmc.lambdaChain());
   }
   /// Whether the serial Gibbs CFCMC swaps (GibbsSwapCFCMC, GibbsSwapCBCFCMC) of 'componentId' fit the matrix: only
   /// when it does not track the component. One fractional molecule is shared by the two boxes, and the box that
