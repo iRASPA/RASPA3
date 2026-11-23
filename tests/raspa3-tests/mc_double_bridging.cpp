@@ -1023,6 +1023,52 @@ ForceField makeHeteropolymerForceField()
                     12.0, 12.0, 12.0, true, false, false);
 }
 
+// The reversed segment of the rebridging gives every slot the positions of its mirror unit, and no energy holds a
+// rigid body to its reference geometry: a pair is proposed only when the rigid bodies of its segment lie inside
+// one unit each and map onto congruent rigid bodies. (The sites alone do not tell: a body inside the segment is
+// cut by neither trimer.)
+TEST(MC_DOUBLE_BRIDGING, idr_is_not_proposed_where_the_reversal_would_deform_a_rigid_body)
+{
+  auto withRigidBodies = [](std::string json, std::string_view bodies)
+  {
+    const std::string_view anchor = "\"VanDerWaals\" : \"auto\"";
+    const std::size_t at = json.find(anchor);
+    EXPECT_NE(at, std::string::npos);
+    json.insert(at, std::format("\"RigidBodies\" : {},\n  ", bodies));
+    return json;
+  };
+  auto hasPair = [](const Component::BridgingTopology& topology, std::array<std::size_t, 2> pair)
+  { return std::ranges::find(topology.sitePairs, pair) != topology.sitePairs.end(); };
+
+  {
+    // a rigid body over the backbone beads 6, 7, 8 of a chain of 22 with harmonic bends: the sites whose trimer
+    // would cut it are gone, and of the pairs of the others those with the body inside the segment
+    const ForceField forceField = makeZeroForceField();
+    std::string json = chainJson(22, "0.0, 0.0, 0.0, 0.0");
+    const std::string_view fixedBend = "\"FIXED\", [114.0]";
+    const std::size_t at = json.find(fixedBend);
+    ASSERT_NE(at, std::string::npos);
+    json.replace(at, fixedBend.size(), "\"HARMONIC\", [62500.0, 114.0]");
+    const Component chain = makeComponent(forceField, "idr-rigid-backbone", withRigidBodies(json, "[[6, 7, 8]]"));
+    const Component::BridgingTopology& topology = chain.bridgingTopology();
+    EXPECT_EQ(topology.sites, (std::vector<std::size_t>{1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16}));
+    EXPECT_EQ(topology.sitePairs.size(), 10uz);
+    for (const std::array<std::size_t, 2>& pair : topology.sitePairs) EXPECT_GE(pair[0], 8uz);
+  }
+  {
+    // the methyls on the two C beads of the palindrome C B B B C are mirror images of each other in the pair
+    // (1, 9): rigid on one of them only, the reversal would put a flexible methyl in the place of a rigid one
+    const ForceField forceField = makeHeteropolymerForceField();
+    const std::string json = heteropolymerJson("HARMONIC", false);
+    const Component flexible = makeComponent(forceField, "idr-rigid-none", json);
+    EXPECT_TRUE(hasPair(flexible.bridgingTopology(), {1, 9}));
+    const Component one = makeComponent(forceField, "idr-rigid-one", withRigidBodies(json, "[[5, 15]]"));
+    EXPECT_FALSE(hasPair(one.bridgingTopology(), {1, 9}));
+    const Component both = makeComponent(forceField, "idr-rigid-both", withRigidBodies(json, "[[5, 15], [9, 16]]"));
+    EXPECT_TRUE(hasPair(both.bridgingTopology(), {1, 9}));
+  }
+}
+
 // A re-projected side group keeps its bend to the neighbour its local frame is built on and its bend to the
 // other neighbour only when the backbone bend at the slot is what it was at the source unit. At the boundary
 // slot a + 4 the side group arrives from unit b, so a FIXED bend to a + 5 holds only when the backbone bends at

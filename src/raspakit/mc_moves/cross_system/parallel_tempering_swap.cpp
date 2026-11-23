@@ -630,11 +630,15 @@ std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& sys
     const double fugacityB = componentB.molFraction * componentB.fugacityCoefficient.value_or(1.0) * systemB.pressure;
     // the activity the insertions sample: beta f over the ideal-gas Rosenbluth weight <W_IG>(beta) of the
     // component, with which the insertions and deletions normalise, and for a flexible molecule on a temperature
-    // ladder over the normalization of its growth as well ('Component::logInsertionNormalization' holds both)
-    auto logNormalization = [](const Component& component)
+    // ladder over the normalization of its growth as well ('Component::logInsertionNormalization' holds both).
+    // Insertions that do not grow the molecule do not divide by the weight: one that was given for such a
+    // component is in neither distribution, and in the acceptance it shifted the loadings of the two replicas.
+    auto logNormalization = [componentId](const System& system)
     {
-      return component.logInsertionNormalization.value_or(
-          std::log(component.idealGasRosenbluthWeight.value_or(1.0)));
+      const Component& component = system.components[componentId];
+      if (component.logInsertionNormalization.has_value()) return component.logInsertionNormalization.value();
+      if (!Preparation::insertionsDivideByIdealGasRosenbluthWeight(system, componentId)) return 0.0;
+      return std::log(component.idealGasRosenbluthWeight.value_or(1.0));
     };
     const double betaFugacityA = systemA.beta * fugacityA;
     const double betaFugacityB = systemB.beta * fugacityB;
@@ -643,8 +647,8 @@ std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& sys
     {
       return std::nullopt;
     }
-    logR += static_cast<double>(moleculeDifference) * (std::log(betaFugacityA) - logNormalization(componentA) -
-                                                       std::log(betaFugacityB) + logNormalization(componentB));
+    logR += static_cast<double>(moleculeDifference) * (std::log(betaFugacityA) - logNormalization(systemA) -
+                                                       std::log(betaFugacityB) + logNormalization(systemB));
   }
 
   // Volume travels with the configuration only when there is no framework. The PV term

@@ -309,11 +309,37 @@ bool hasMove(const MCMoveProbabilities& probabilities, std::initializer_list<Mov
   return std::ranges::any_of(moves, [&](Move::Types move) { return probabilities.getProbability(move) > 0.0; });
 }
 
+// The moves that take other components along, whichever component (or the system) they were asked for. The pair
+// and the group swap grow their molecules without the name saying so, and divide by the weight as well.
+bool hasSharedGrowingMove(const System& system)
+{
+  const std::initializer_list<Move::Types> shared = {
+      Move::Types::IdentityChangeCBMC, Move::Types::PairSwap,         Move::Types::PairSwapCBMC,
+      Move::Types::PairSwapCBCFCMC,    Move::Types::GroupSwap,        Move::Types::GroupSwapCBMC,
+      Move::Types::GroupSwapCBCFCMC,   Move::Types::ReactionCBMC,     Move::Types::ReactionConventionalCBCFCMC,
+      Move::Types::ReactionCBCFCMC};
+  return hasMove(system.mc_moves_probabilities, shared) ||
+         std::ranges::any_of(system.components,
+                             [&](const Component& other) { return hasMove(other.mc_moves_probabilities, shared); });
+}
+
 }  // namespace
 
 bool Preparation::isFlexibleOpenComponent(const Component& component)
 {
   return component.swappable && !component.rigid && component.atoms.size() > 1uz;
+}
+
+bool Preparation::insertionsDivideByIdealGasRosenbluthWeight(const System& system, std::size_t componentId)
+{
+  // the moves of the component itself
+  if (hasMove(system.components[componentId].mc_moves_probabilities,
+              {Move::Types::SwapCBMC, Move::Types::SwapMultiTrialCBMC, Move::Types::SwapCBCFCMC}))
+  {
+    return true;
+  }
+
+  return hasSharedGrowingMove(system);
 }
 
 bool Preparation::needsIdealGasRosenbluthWeight(const System& system, std::size_t componentId)
@@ -328,14 +354,7 @@ bool Preparation::needsIdealGasRosenbluthWeight(const System& system, std::size_
     return true;
   }
 
-  // the moves that take other components along, whichever component (or the system) they were asked for
-  const std::initializer_list<Move::Types> shared = {
-      Move::Types::IdentityChangeCBMC,          Move::Types::PairSwapCBMC,    Move::Types::PairSwapCBCFCMC,
-      Move::Types::GroupSwapCBMC,               Move::Types::GroupSwapCBCFCMC, Move::Types::ReactionCBMC,
-      Move::Types::ReactionConventionalCBCFCMC, Move::Types::ReactionCBCFCMC};
-  return hasMove(system.mc_moves_probabilities, shared) ||
-         std::ranges::any_of(system.components,
-                             [&](const Component& other) { return hasMove(other.mc_moves_probabilities, shared); });
+  return hasSharedGrowingMove(system);
 }
 
 Preparation::IdealGasReference Preparation::idealGasRosenbluthWeight(const System& system, std::size_t componentId,
@@ -471,9 +490,15 @@ std::vector<std::vector<double>> Preparation::prepareIdealGasReferences(std::spa
       {
         setComputedWeight(component, references[i]);
       }
-      // ln(W_used Z_b) with Z_b = q / <W>: what the insertions of this replica divide beta f by
-      component.logInsertionNormalization = std::log(component.idealGasRosenbluthWeight.value()) +
-                                            references[i].logPartitionFunction - references[i].logRosenbluthWeight;
+      // ln(W_used Z_b) with Z_b = q / <W>: what the insertions of this replica divide beta f by. The insertions
+      // that draw the conformation instead of growing it do not divide by the weight and sample beta f / q,
+      // whatever weight was given.
+      component.logInsertionNormalization = references[i].logPartitionFunction;
+      if (insertionsDivideByIdealGasRosenbluthWeight(systems[i], componentId))
+      {
+        component.logInsertionNormalization.value() +=
+            std::log(component.idealGasRosenbluthWeight.value()) - references[i].logRosenbluthWeight;
+      }
     }
     for (std::size_t i = 0; i < otherTemperatures.size(); ++i)
     {

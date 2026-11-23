@@ -1383,6 +1383,57 @@ const Component::BridgingTopology &Component::bridgingTopology() const
     }
     return true;
   };
+  // The rigid fragments of the reversed segment a+4 ... b: slot k takes the positions of unit a+4+b-k, atom by
+  // atom, and nothing in the energy holds a rigid fragment to its reference geometry. A fragment of the segment
+  // must lie inside one unit (the units are placed one by one), map onto a rigid fragment of the mirrored unit,
+  // and have the pairwise distances of that fragment: the relabelled body must fit the slot's rigid reference
+  // geometry exactly, as for the repeat units of the reptation. (A site only tells that a fragment is not cut by
+  // its trimer: every fragment inside the segment is in the tail of 'a' and in the head of 'b'.)
+  auto rigidFragmentsCongruent = [&](std::size_t a, std::size_t b) -> bool
+  {
+    for (std::size_t k = a + 4; k <= b; ++k)
+    {
+      const std::vector<std::size_t> atomsK = unitAtoms(k), atomsS = unitAtoms(a + 4 + b - k);
+      auto image = [&](std::size_t atom) -> std::optional<std::size_t>
+      {
+        const auto found = std::ranges::find(atomsK, atom);
+        if (found == atomsK.end()) return std::nullopt;
+        return atomsS[static_cast<std::size_t>(found - atomsK.begin())];
+      };
+      for (std::size_t atom : atomsK)
+      {
+        const auto &fragment = fragmentGraph.fragments[fragmentGraph.atomFragmentIds[atom]];
+        if (!fragment.isRigidBody()) continue;
+        std::vector<std::size_t> mapped{};
+        for (std::size_t fragmentAtom : fragment.atoms)
+        {
+          const std::optional<std::size_t> mappedAtom = image(fragmentAtom);
+          if (!mappedAtom.has_value()) return false;
+          mapped.push_back(mappedAtom.value());
+        }
+        const auto &mappedFragment = fragmentGraph.fragments[fragmentGraph.atomFragmentIds[mapped.front()]];
+        if (!mappedFragment.isRigidBody() ||
+            std::set<std::size_t>(mappedFragment.atoms.begin(), mappedFragment.atoms.end()) !=
+                std::set<std::size_t>(mapped.begin(), mapped.end()))
+        {
+          return false;
+        }
+        for (std::size_t p = 0; p != mapped.size(); ++p)
+        {
+          for (std::size_t q = p + 1; q != mapped.size(); ++q)
+          {
+            const double distance =
+                (definedAtoms[fragment.atoms[p]].first.position - definedAtoms[fragment.atoms[q]].first.position)
+                    .length();
+            const double mappedDistance =
+                (definedAtoms[mapped[p]].first.position - definedAtoms[mapped[q]].first.position).length();
+            if (std::abs(distance - mappedDistance) > 1e-6) return false;
+          }
+        }
+      }
+    }
+    return true;
+  };
   // The side groups of the reversed segment: slot k takes the atoms of unit s = a+4+b-k with the chain running
   // through it in the opposite direction. Carrying the side atoms rigidly from the local frame (s; s-1, s+1) to
   // the frame (k; k-1, k+1) keeps the handedness of the unit with respect to the chain direction, copying them
@@ -1504,6 +1555,7 @@ const Component::BridgingTopology &Component::bridgingTopology() const
         congruent = unitsCongruent(k, a + 4 + b - k);
       }
       if (!congruent) continue;
+      if (!rigidFragmentsCongruent(a, b)) continue;
       bool decided = false;
       const std::optional<bool> decision = sideGroupReprojection(a, b, decided);
       if (!decision.has_value()) continue;

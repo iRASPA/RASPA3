@@ -235,6 +235,101 @@ TEST(IDEAL_GAS_REFERENCES, weights_of_a_ladder_are_given_per_temperature)
   }
 }
 
+// A weight that was given is in the activity of a replica only where the insertions divide by it: a molecule that
+// is inserted without growth samples beta f over its configuration integral (beta f when it is rigid), whatever
+// the weight, and the exchange compares the replicas with that.
+TEST(IDEAL_GAS_REFERENCES, given_weight_is_in_the_exchange_only_where_the_insertions_divide_by_it)
+{
+  const ForceField forceField = makeForceField();
+  const std::vector<double> temperatures{300.0, 400.0};
+  {
+    auto makeLadder = [&](bool grown)
+    {
+      std::vector<System> systems;
+      for (const double temperature : temperatures)
+      {
+        systems.push_back(makeSystem(forceField, "butane", molecule_fixtures::kButaneJson, temperature));
+        systems.back().buildConformationReservoirs();
+        if (!grown)
+        {
+          systems.back().components[0].mc_moves_probabilities.setProbability(Move::Types::SwapCBMC, 0.0);
+          systems.back().components[0].mc_moves_probabilities.setProbability(Move::Types::Swap, 1.0);
+        }
+      }
+      return systems;
+    };
+    std::vector<System> computed = makeLadder(false);
+    Preparation::prepareIdealGasReferences(computed, temperatures);
+    std::vector<System> given = makeLadder(false);
+    for (System& system : given) system.components[0].idealGasRosenbluthWeightLadder = {0.11, 0.22};
+    Preparation::prepareIdealGasReferences(given, temperatures);
+    std::vector<System> grown = makeLadder(true);
+    for (System& system : grown) system.components[0].idealGasRosenbluthWeightLadder = {0.11, 0.22};
+    Preparation::prepareIdealGasReferences(grown, temperatures);
+    for (std::size_t i = 0; i < 2; ++i)
+    {
+      EXPECT_FALSE(Preparation::insertionsDivideByIdealGasRosenbluthWeight(given[i], 0));
+      EXPECT_TRUE(Preparation::insertionsDivideByIdealGasRosenbluthWeight(grown[i], 0));
+      // without growth: the ln of the configuration integral, as when no weight is given
+      EXPECT_NEAR(given[i].components[0].logInsertionNormalization.value(),
+                  computed[i].components[0].logInsertionNormalization.value(), 1e-12);
+      // with growth: the weight that was given in the place of the computed one
+      EXPECT_NEAR(grown[i].components[0].logInsertionNormalization.value() -
+                      std::log(grown[i].components[0].idealGasRosenbluthWeight.value()),
+                  computed[i].components[0].logInsertionNormalization.value() -
+                      std::log(computed[i].components[0].idealGasRosenbluthWeight.value()),
+                  1e-12);
+    }
+  }
+  {
+    // a rigid molecule: no normalization is prepared, and the weight divides beta f in the grown insertions only
+    constexpr std::string_view rigidDimerJson =
+        R"({
+  "CriticalTemperature" : 305.32,
+  "CriticalPressure" : 4872000.0,
+  "AcentricFactor" : 0.099,
+  "pseudoAtoms" :
+    [
+      ["CH3", [0.0, 0.0, 0.0]],
+      ["CH3", [1.54, 0.0, 0.0]]
+    ]
+}
+)";
+    std::vector<System> systems;
+    systems.push_back(makeSystem(forceField, "rigid-dimer", rigidDimerJson, 300.0, 2));
+    systems.push_back(makeSystem(forceField, "rigid-dimer", rigidDimerJson, 400.0, 5));
+    ASSERT_TRUE(systems[0].components[0].rigid);
+    systems[0].components[0].idealGasRosenbluthWeight = 0.5;
+    systems[1].components[0].idealGasRosenbluthWeight = 0.25;
+    Preparation::prepareIdealGasReferences(systems);
+    EXPECT_FALSE(systems[0].components[0].logInsertionNormalization.has_value());
+
+    auto logBetaFugacity = [](const System& system)
+    {
+      const Component& component = system.components[0];
+      return std::log(system.beta * component.molFraction * component.fugacityCoefficient.value_or(1.0) *
+                      system.pressure);
+    };
+    const double withoutWeights =
+        (systems[1].beta - systems[0].beta) *
+            (systems[1].runningEnergies.potentialEnergy() - systems[0].runningEnergies.potentialEnergy()) +
+        3.0 * (logBetaFugacity(systems[0]) - logBetaFugacity(systems[1]));
+
+    const std::optional<double> grown = MC_Moves::ParallelTemperingLogAcceptance(systems[0], systems[1]);
+    ASSERT_TRUE(grown.has_value());
+    EXPECT_NEAR(grown.value(), withoutWeights - 3.0 * (std::log(0.5) - std::log(0.25)), 1e-9);
+
+    for (System& system : systems)
+    {
+      system.components[0].mc_moves_probabilities.setProbability(Move::Types::SwapCBMC, 0.0);
+      system.components[0].mc_moves_probabilities.setProbability(Move::Types::Swap, 1.0);
+    }
+    const std::optional<double> placed = MC_Moves::ParallelTemperingLogAcceptance(systems[0], systems[1]);
+    ASSERT_TRUE(placed.has_value());
+    EXPECT_NEAR(placed.value(), withoutWeights, 1e-9);
+  }
+}
+
 // The exchange itself: two replicas of harmonic dimers at 300 and 600 K, each sampling its own grand-canonical
 // distribution with insertions and deletions. Exchanges of their configurations leave both distributions as they
 // are when the acceptance has the ratio of the configuration integrals, here sqrt(T_B / T_A) per molecule of
@@ -377,6 +472,16 @@ TEST(IDEAL_GAS_REFERENCES, weight_is_not_computed_where_it_is_given_or_not_neede
     // a Widom probe divides by the weight as an insertion does
     systems[0].components[0].mc_moves_probabilities.setProbability(Move::Types::Widom, 1.0);
     EXPECT_TRUE(Preparation::needsIdealGasRosenbluthWeight(systems[0], 0));
+
+    // the pair and the group swap grow their molecules (the plain ones too)
+    for (const Move::Types move : {Move::Types::GroupSwap, Move::Types::PairSwap})
+    {
+      systems[0].components[0].mc_moves_probabilities.setProbability(Move::Types::Widom, 0.0);
+      EXPECT_FALSE(Preparation::needsIdealGasRosenbluthWeight(systems[0], 0));
+      systems[0].components[0].mc_moves_probabilities.setProbability(move, 1.0);
+      EXPECT_TRUE(Preparation::needsIdealGasRosenbluthWeight(systems[0], 0));
+      systems[0].components[0].mc_moves_probabilities.setProbability(move, 0.0);
+    }
   }
   {
     std::vector<System> systems;

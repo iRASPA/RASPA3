@@ -50,6 +50,13 @@ struct IdealGasReference
 /// from the intramolecular Boltzmann distribution, so that a replica samples the activity beta f / q(beta).
 bool isFlexibleOpenComponent(const Component& component);
 
+/// Whether the insertions and deletions of component 'componentId' of 'system' divide beta f by its ideal-gas
+/// Rosenbluth weight: those that grow the molecule do, with the weight that was given also for a rigid molecule,
+/// those that place a drawn conformation do not. (A move that takes other components along counts for every
+/// component: which ones it takes is not looked at.) Where they do not, a weight that was given is in no sampled
+/// distribution, and is not in the activity that two replicas are compared with.
+bool insertionsDivideByIdealGasRosenbluthWeight(const System& system, std::size_t componentId);
+
 /// Whether a move of 'system' divides by the ideal-gas Rosenbluth weight of component 'componentId': a molecule
 /// with conformations that is inserted, deleted, probed or converted with configurational bias. (A rigid molecule
 /// and a single bead have the weight one.)
@@ -88,7 +95,8 @@ void prepareIdealGasRosenbluthWeights(std::span<System> systems, const IdealGasS
 /// Gives the swappable flexible components of the replicas of a ladder what belongs to the temperature of each:
 /// the ideal-gas Rosenbluth weight (the entry of 'Component::idealGasRosenbluthWeightLadder' for the temperature of
 /// the replica in 'ladderTemperatures', or the computed one when no weight was given) and, when the replicas are
-/// not all at one temperature, 'Component::logInsertionNormalization' (see 'idealGasReferences'). What is then
+/// not all at one temperature, 'Component::logInsertionNormalization' (see 'idealGasReferences'; without the weight
+/// where the insertions do not divide by it, 'insertionsDivideByIdealGasRosenbluthWeight'). What is then
 /// still without a weight is given one by 'prepareIdealGasRosenbluthWeights'.
 ///
 /// The systems are replicas of one system (the same components). 'ladderTemperatures' is the ladder of a driver
