@@ -720,3 +720,36 @@ TEST(energy_bet_area, the_ewald_split_refuses_a_precision_or_cutoff_it_cannot_us
   EXPECT_NO_THROW(ewaldSplit(12.0, 1.0e-6));
   EXPECT_EQ(neutralisingBackground(0.0, 0.0, 0.0), 0.0);
 }
+
+
+// A site bound deeply enough has a C at the edge of the range of a double. The occupancy has a limit there,
+// the one the form approaches as C grows, and that is what has to come back: 1/(1 - x) of a monolayer without
+// a limit on the layers, and with one the finite sum the limit of the form is. Above C x = 1 the quotient is
+// taken with C x divided out of it, and the two ways of writing it have to meet where the one hands over to
+// the other.
+TEST(energy_bet_area, a_c_constant_at_the_edge_of_the_range_of_a_double_leaves_the_limiting_occupancy)
+{
+  const double beyond = std::numeric_limits<double>::max();
+  for (double x : {1.0e-6, 1.0e-3, 0.1, 0.5, 0.9})
+  {
+    for (double C : {1.0e300, 0.5 * beyond, beyond})
+    {
+      const double unlimited = finiteLayerBETOccupancy(x, C, 0.0);
+      EXPECT_NEAR(unlimited, 1.0 / (1.0 - x), 1.0e-9 / (1.0 - x)) << "x = " << x << ", C = " << C;
+
+      const double layers = 4.0;
+      const double xN = std::pow(x, layers);
+      const double limit = (1.0 - (layers + 1.0) * xN + layers * xN * x) / ((1.0 - x) * (1.0 - xN));
+      EXPECT_NEAR(finiteLayerBETOccupancy(x, C, layers), limit, 1.0e-9 * limit) << "x = " << x << ", C = " << C;
+    }
+  }
+
+  // either side of C x = 1, where the one form hands over to the other
+  for (double layers : {0.0, 1.0, 3.5})
+  {
+    const double x = 0.25;
+    const double below = finiteLayerBETOccupancy(x, 4.0 * (1.0 - 1.0e-12), layers);
+    const double above = finiteLayerBETOccupancy(x, 4.0 * (1.0 + 1.0e-12), layers);
+    EXPECT_NEAR(below, above, 1.0e-9) << "layers = " << layers;
+  }
+}

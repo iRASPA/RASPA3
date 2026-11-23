@@ -322,9 +322,13 @@ export struct SKApolloniusDiagram
     // Two vertices at one point would be a cotangent set that failed to be gathered into the single
     // vertex it is, and a branch of undecided direction is an edge that may have been sent the wrong way,
     // so both are disqualifying.
+    // The spheres cover the whole of the crystal, so there is no free space for a diagram of it to describe.
+    // Read off the radical cells, which is exact, and it is what makes a diagram with no vertex a complete one.
+    bool solidThroughout{false};
+
     bool isComplete() const
     {
-      return vertexCount > 0 && coincidentVertices == 0 && ambiguousBranches == 0 && unpairedTriples == 0 &&
+      return (vertexCount > 0 || solidThroughout) && coincidentVertices == 0 && ambiguousBranches == 0 && unpairedTriples == 0 &&
              unsampledArcs == 0 && branchesWithoutEdge <= truncatedTriples &&
              unclosedFaces <= truncatedSheets;
     }

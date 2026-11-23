@@ -57,11 +57,33 @@ export std::vector<BlockingSphere> bareBlockingSpheres(const ExactVoidSplit& spl
 // blocking spheres of the pockets sealed to the probe of `probeAccessibility` -- measured from `split` where
 // that can be, sampled on `numberOfSamples` points where it is refused -- with the balls hidden inside another
 // dropped, as the diagram would refuse them.
+//
+// With `bare`, the network of the same atoms at a vanishing probe, the rooms the probe cannot touch are filled
+// as well; see `untouchedRoomSpheres`.
 export std::vector<BlockingSphere> hybridBlockedBalls(const PoreAccessibility& probeAccessibility,
                                                       const ExactVoidSplit& split,
                                                       const std::vector<double3>& fractionalPositions,
                                                       const std::vector<double>& radii, double probeRadius,
-                                                      std::size_t numberOfSamples);
+                                                      std::size_t numberOfSamples,
+                                                      const PoreAccessibility* bare = nullptr);
+
+// Spheres over the rooms of the bare void that the probe cannot touch, among the bare atoms.
+//
+// The pockets above are places the probe's centre can stand in and not leave. A cavity narrower than the probe
+// holds no position of its centre, so it is no pocket and has no sphere: the double four-ring of LTA, the
+// hexagonal prism of FAU. Swept bare, such a cavity is joined to the channels through rings no probe passes
+// and is counted with the corrugation of their walls, which it is not. What tells the two apart is whether
+// the probe touches the room: a room is a peak of the bare clearance, with the sphere of that clearance about
+// it, and it is corrugation where some position the probe reaches from a channel puts the probe's own sphere
+// across that one, as a probe resting over a dimple of the wall does. A room no reachable position comes that
+// near is behind a wall, and it is filled, by the sphere about its peak that stops a probe radius short of the
+// nearest reachable position: every point inside is further than the probe's radius from anywhere the probe
+// can be, so nothing the probe touches is blocked whatever the sphere swallows.
+//
+// The nearest reachable position is looked for on shells about the peak, so the radius is that of the
+// structure to within the spacing of the shells, which is held off it.
+export std::vector<BlockingSphere> untouchedRoomSpheres(const PoreAccessibility& probeAccessibility,
+                                                        const PoreAccessibility& bare, double probeRadius);
 
 // Why the measured spheres cannot be written for a structure, and empty where they can. It is the split's own
 // rejection, plus the one thing that is a reason here and nowhere else: a pocket whose centroid the classifier

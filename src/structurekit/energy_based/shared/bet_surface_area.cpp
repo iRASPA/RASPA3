@@ -1041,6 +1041,22 @@ double finiteLayerBETOccupancy(double relativePressure, double cConstant, double
   const double C = cConstant;
   const double layers = numberOfLayers;
   if (!(x > 0.0) || x >= 1.0) return 0.0;
+
+  // Where C x is above one, both forms are taken with C x divided out of the numerator and the denominator, as
+  // the Langmuir site above takes its own. C is a raw constant times the factor that anchors the model to the
+  // Henry coefficient, the raw constant is held at the edge of the range of a double, and their product can
+  // leave it: the quotient as written is then an infinity over an infinity. Divided through, C appears only
+  // as (1 - x)/(C x), which goes quietly to nought.
+  if (C * x > 1.0)
+  {
+    const double vacancy = (1.0 - x) / (C * x);
+    if (!(layers > 0.0)) return 1.0 / ((1.0 - x) * (1.0 + vacancy));
+    const double xN = std::pow(x, layers);
+    const double denominator = (1.0 - x) * (vacancy + 1.0 - xN);
+    if (!(denominator > 0.0)) return 0.0;
+    return (1.0 - (layers + 1.0) * xN + layers * xN * x) / denominator;
+  }
+
   if (!(layers > 0.0))
   {
     const double denom = (1.0 - x) * (1.0 - x + C * x);

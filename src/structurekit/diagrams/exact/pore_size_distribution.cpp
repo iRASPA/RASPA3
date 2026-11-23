@@ -109,11 +109,12 @@ double collect(Collector& into, const Sample& left, const Sample& right, Series 
 struct Sampler
 {
   Sampler(const std::function<PoreAccessibility(double)>& build, std::size_t subdivisions,
-          double accessibilityRadius, double floorRadius)
+          double accessibilityRadius, double floorRadius, bool openNetwork)
       : build(build),
         subdivisions(subdivisions),
         accessibilityRadius(std::max(0.0, accessibilityRadius)),
-        floorRadius(std::max(0.0, floorRadius))
+        floorRadius(std::max(0.0, floorRadius)),
+        openNetwork(openNetwork)
   {
   }
 
@@ -121,6 +122,18 @@ struct Sampler
   std::size_t subdivisions{1};
   double accessibilityRadius{0.0};
   double floorRadius{0.0};
+
+  // Whether the void is taken to be the open network alone: what a point can leave through the crystal, the
+  // void shut in at a vanishing probe being left out of every volume here, the one that normalises included.
+  // The hybrid asks for it. Its sealed pockets are filled before the sweep, but only the ones the probe's
+  // centre can stand in: a cavity narrower than the probe holds no position of it, is no pocket of its
+  // network and is given no sphere, and swept bare it came back as void the probe reaches.
+  bool openNetwork{false};
+
+  // The network at a vanishing probe, kept when the open network is asked for: it is what says, at every
+  // diameter, whether the void a surface faces runs away through the crystal or is shut in. It is at a probe
+  // no larger than any row's, which is all a reference has to be.
+  PoreAccessibility bare;
 
   // The network of the accessibility probe. It is built once and kept: every diameter above the floor asks
   // the same network which of its pores each surface faces.
@@ -130,6 +143,10 @@ struct Sampler
   // report past that diameter hold no volume, and evaluating them would rebuild the whole geometry for nothing
   // but a signed zero: they are left at the zeros they start as.
   double largestIncludedDiameter{0.0};
+
+  // The largest sphere that fits where the primary curve's void is, from the network that decides which void
+  // that is. It is what the curve's largest pore is reported as when the range ends before it.
+  double largestReachableDiameter{0.0};
 
   // Distinct maximal-sphere diameters from that same vanishing-probe network (peaks-only route).
   std::vector<double> candidateDiameters;
@@ -145,11 +162,25 @@ struct Sampler
 
   double reachableScale() const { return (probeAccessibleVolume > 0.0) ? 1.0 / probeAccessibleVolume : 0.0; }
 
-  // Volume behind components sealed or unplaced relative to `reference`, and the reentrant derivative on the
-  // reachable side. Shared by the normalisation sample and every diameter of the sweep.
+  // The two diameters a candidate's cliff lies between: from below the smallest member of its family to above
+  // the largest, by a half width that is kept clear of the families either side. Nothing where the candidate
+  // is past the largest sphere in the void.
+  std::optional<std::pair<double, double>> candidateBracket(std::size_t index) const;
+
+  // Volume behind components sealed or unplaced relative to the network `against`, and the reentrant
+  // derivative on the reachable side. Shared by the normalisation sample and every diameter of the sweep.
   void splitByReference(const PoreAccessibility& accessibility, const BoundaryComponents& components,
-                        const SolventExcludedGeometry& geometry, double& sealed, double& unplaced,
-                        double& reachableDerivative) const;
+                        const SolventExcludedGeometry& geometry, const PoreAccessibility& against, double& sealed,
+                        double& unplaced, double& reachableDerivative) const;
+
+  // The pore volume and its derivative that the sweep is over: all of it, or the open network's share.
+  struct Swept
+  {
+    double poreVolume{0.0};
+    double distribution{0.0};
+  };
+  Swept swept(const PoreAccessibility& accessibility, const BoundaryComponents& components,
+              const SolventExcludedGeometry& geometry) const;
 
   double measureVoidVolume(double cellVolume);
   Sample measureProbe(double voidVolume);
@@ -158,6 +189,25 @@ struct Sampler
 
 // Symmetry-equivalent network maxima can differ by a few 1e-3 Å; those are one room, not many.
 constexpr double peaksDiameterMergeTol = 1.0e-2;
+
+// Tight brackets: the network already supplies the diameter, so the two samples only need to sit on
+// opposite sides of the cliff. Continuous loss over a few 1e-3 Å is below the spike floor; a true room
+// loses a finite fraction at once and is kept. One family after merging → one bracket, so no double count.
+constexpr double candidateHalfWidth = 5.0e-3;
+
+std::optional<std::pair<double, double>> Sampler::candidateBracket(std::size_t index) const
+{
+  const double diameter = candidateDiameters[index];
+  if (diameter <= 0.0 || diameter > largestIncludedDiameter + candidateHalfWidth) return std::nullopt;
+
+  const double lowest = candidateLowestDiameters[index];
+  double half = candidateHalfWidth;
+  if (index > 0) half = std::min(half, 0.25 * (lowest - candidateDiameters[index - 1]));
+  if (index + 1 < candidateDiameters.size())
+    half = std::min(half, 0.25 * (candidateLowestDiameters[index + 1] - diameter));
+  half = std::max(half, 1.0e-4);
+  return std::pair{lowest - half, diameter + half};
+}
 
 // Below the probe's diameter the surfaces cannot divide the void by that probe: a pocket whose windows are
 // still open at the row's radius is one surface with the channel outside it, kept whole until the inflated
@@ -177,8 +227,8 @@ void requireFloorAtProbe(const char* route, double probeRadius, double floorRadi
 }
 
 void Sampler::splitByReference(const PoreAccessibility& accessibility, const BoundaryComponents& components,
-                               const SolventExcludedGeometry& geometry, double& sealed, double& unplaced,
-                               double& reachableDerivative) const
+                               const SolventExcludedGeometry& geometry, const PoreAccessibility& against,
+                               double& sealed, double& unplaced, double& reachableDerivative) const
 {
   sealed = 0.0;
   unplaced = 0.0;
@@ -196,7 +246,7 @@ void Sampler::splitByReference(const PoreAccessibility& accessibility, const Bou
   // running away through the crystal walls a channel at this radius, so it walls one at the accessibility
   // probe's radius too, and there is nothing to ask.
   const std::vector<ComponentVerdict> referenceVerdicts =
-      boundaryComponentVerdicts(accessibility, components, &reference);
+      boundaryComponentVerdicts(accessibility, components, &against);
   for (std::size_t component = 0; component < components.numberOfComponents; ++component)
   {
     const bool percolates = components.componentPercolates[component] != 0;
@@ -217,13 +267,44 @@ void Sampler::splitByReference(const PoreAccessibility& accessibility, const Bou
   }
 }
 
+Sampler::Swept Sampler::swept(const PoreAccessibility& accessibility, const BoundaryComponents& components,
+                              const SolventExcludedGeometry& geometry) const
+{
+  if (!openNetwork) return {geometry.poreVolume, geometry.distribution};
+
+  // Put to the bare network as the probe's curve puts its surfaces to the probe's: a surface running away
+  // through the crystal walls a channel, and any other is asked which pore of that network it faces. What
+  // faces a pore that runs nowhere at a vanishing probe is void nothing reaches at any, and is taken out.
+  double sealed = 0.0;
+  double unplaced = 0.0;
+  double openDerivative = 0.0;
+  splitByReference(accessibility, components, geometry, bare, sealed, unplaced, openDerivative);
+  return {std::clamp(geometry.poreVolume - sealed - unplaced, 0.0, std::max(0.0, geometry.poreVolume)),
+          openDerivative};
+}
+
 // The void volume, which the whole curve is normalised by. It is the pore volume at zero probe radius, where
 // the excluded surface is the surface of the bare atoms and the sweep is the void fraction's own.
 double Sampler::measureVoidVolume(double cellVolume)
 {
-  PoreAccessibility bare = build(0.0);
-  const double voidVolume = cellVolume - unionOfBallsVolume(bare, subdivisions);
+  bare = build(0.0);
+  double voidVolume = cellVolume - unionOfBallsVolume(bare, subdivisions);
   ++evaluations;
+
+  // Of the open network, the void less what is shut in at this same vanishing probe. A remainder that is the
+  // round-off of that subtraction is no void, as below for the probe's.
+  if (openNetwork)
+  {
+    BoundaryComponents components = boundaryComponents(bare);
+    std::vector<ComponentVerdict> verdicts = boundaryComponentVerdicts(bare, components);
+    SolventExcludedGeometry geometry = solventExcludedGeometry(bare, 0.0, components, verdicts, subdivisions);
+    double sealed = 0.0;
+    double unplaced = 0.0;
+    double openDerivative = 0.0;
+    splitByReference(bare, components, geometry, bare, sealed, unplaced, openDerivative);
+    const double open = voidVolume - sealed - unplaced;
+    voidVolume = (open > 1.0e-6 * std::max(voidVolume, 1.0)) ? open : 0.0;
+  }
 
   // The largest sphere in the void, which is where the cumulative hits zero and past which a row of the report
   // would be a full analysis spent on nothing. Taken here, where the network is already in hand, rather than
@@ -233,9 +314,23 @@ double Sampler::measureVoidVolume(double cellVolume)
 
   candidateDiameters.clear();
   candidateDiameters.reserve(bare.network.nodes.size());
-  for (const VoronoiNode& node : bare.network.nodes)
+  // A room is where the clearance peaks, and a node the clearance still rises from is not one: it stands in
+  // a window or on a ridge, where the volume is continuous and its derivative is not, and the excess the
+  // trapezium leaves across a bracket about such a point was reported as a room of that size. The passage
+  // the clearance rises along is as wide at its narrowest as the node it leaves, which is how it is known.
+  std::vector<char> risesFrom(bare.network.nodes.size(), 0);
+  for (const VoronoiEdge& edge : bare.network.edges)
   {
-    if (node.maximalRadius > 0.0) candidateDiameters.push_back(2.0 * node.maximalRadius);
+    for (std::size_t end : {edge.from, edge.to})
+    {
+      const double peak = bare.network.nodes[end].maximalRadius;
+      if (edge.from != edge.to && edge.radius >= peak - 1.0e-9 * std::max(1.0, peak)) risesFrom[end] = 1;
+    }
+  }
+  for (std::size_t index = 0; index < bare.network.nodes.size(); ++index)
+  {
+    const VoronoiNode& node = bare.network.nodes[index];
+    if (node.maximalRadius > 0.0 && risesFrom[index] == 0) candidateDiameters.push_back(2.0 * node.maximalRadius);
   }
   std::sort(candidateDiameters.begin(), candidateDiameters.end());
   // The family keeps its smallest diameter beside its largest. The tolerance is twice the half width of the
@@ -285,21 +380,40 @@ Sample Sampler::measureProbe(double voidVolume)
       solventExcludedGeometry(accessibility, radius, components, verdicts, subdivisions);
   ++evaluations;
 
+  const Swept all = swept(accessibility, components, geometry);
+
   double sealed = 0.0;
   double unplaced = 0.0;
   double reachableDerivative = 0.0;
+  double reachableVolume = all.poreVolume;
   if (accessibilityRadius > 0.0)
   {
-    splitByReference(accessibility, components, geometry, sealed, unplaced, reachableDerivative);
+    splitByReference(accessibility, components, geometry, reference, sealed, unplaced, reachableDerivative);
+    reachableVolume = std::clamp(geometry.poreVolume - sealed - unplaced, 0.0, std::max(0.0, geometry.poreVolume));
   }
   else
   {
-    // No blocking probe: the primary curve is the whole void.
-    reachableDerivative = geometry.distribution;
+    // No blocking probe: the primary curve is the whole of what is swept.
+    reachableDerivative = all.distribution;
   }
 
-  const double reachableVolume =
-      std::clamp(geometry.poreVolume - sealed - unplaced, 0.0, std::max(0.0, geometry.poreVolume));
+  // The largest sphere where that curve's void is: among the pores the probe's network runs through the
+  // crystal, each of whose nodes has the probe's radius less room in that network than in the bare one.
+  const PoreAccessibility& decides = (accessibilityRadius > 0.0) ? reference : bare;
+  largestReachableDiameter = 0.0;
+  if (accessibilityRadius > 0.0 || openNetwork)
+  {
+    for (std::size_t node = 0; node < decides.network.nodes.size(); ++node)
+    {
+      if (decides.nodeAccessible[node] == 0) continue;
+      largestReachableDiameter = std::max(
+          largestReachableDiameter, 2.0 * (decides.network.nodes[node].maximalRadius + decides.probeRadius));
+    }
+  }
+  else
+  {
+    largestReachableDiameter = largestIncludedDiameter;
+  }
 
   // A volume this small is the round-off left by subtracting the sealed pores from a total they make up the
   // whole of, and not a pore anything could be in: a framework whose void is nothing but sealed cages ends
@@ -310,8 +424,8 @@ Sample Sampler::measureProbe(double voidVolume)
 
   Sample sample;
   sample.diameter = 2.0 * radius;
-  sample.whole.cumulative = geometry.poreVolume * scale;
-  sample.whole.distribution = 0.5 * geometry.distribution * scale;
+  sample.whole.cumulative = all.poreVolume * scale;
+  sample.whole.distribution = 0.5 * all.distribution * scale;
   sample.reachable.cumulative = probeAccessibleVolume * reachableScale();
 
   // At a positive floor the derivative from above is the side of the corner the primary curve has. At a zero
@@ -334,39 +448,42 @@ Sample Sampler::at(double diameter, PoreSizeDistributionPoint* row)
   // Below the floor the primary region is treated as a union of balls of that floor radius, so every point of
   // it has a pore size of at least the floor diameter and none of it has gone anywhere yet. The hybrid uses a
   // zero floor and asks the accessibility network at every diameter, including the wall-corrugation range.
+  const Swept all = swept(accessibility, components, geometry);
+
   double sealed = 0.0;
   double unplaced = 0.0;
   double reachableDerivative = 0.0;
   const bool divide = radius >= floorRadius;
+
+  // The reachable volume is what the sealed pores leave of the total, which is a difference of volumes of the
+  // cell and so can end up a rounding either side of its bounds where one of the two is the whole of it.
+  double reachableVolume = probeAccessibleVolume;
   if (divide)
   {
     if (accessibilityRadius > 0.0)
     {
-      splitByReference(accessibility, components, geometry, sealed, unplaced, reachableDerivative);
+      splitByReference(accessibility, components, geometry, reference, sealed, unplaced, reachableDerivative);
+      reachableVolume =
+          std::clamp(geometry.poreVolume - sealed - unplaced, 0.0, std::max(0.0, geometry.poreVolume));
     }
     else
     {
-      reachableDerivative = geometry.distribution;
+      reachableDerivative = all.distribution;
+      reachableVolume = all.poreVolume;
     }
   }
 
-  // The reachable volume is what the sealed pores leave of the total, which is a difference of volumes of the
-  // cell and so can end up a rounding either side of its bounds where one of the two is the whole of it.
-  const double reachableVolume =
-      divide ? std::clamp(geometry.poreVolume - sealed - unplaced, 0.0, std::max(0.0, geometry.poreVolume))
-             : probeAccessibleVolume;
-
   Sample sample;
   sample.diameter = diameter;
-  sample.whole.cumulative = geometry.poreVolume * scale;
-  sample.whole.distribution = 0.5 * geometry.distribution * scale;
+  sample.whole.cumulative = all.poreVolume * scale;
+  sample.whole.distribution = 0.5 * all.distribution * scale;
   sample.reachable.cumulative = reachableVolume * reachableScale();
   sample.reachable.distribution = 0.5 * reachableDerivative * reachableScale();
 
   if (row != nullptr)
   {
     row->diameter = diameter;
-    row->poreVolume = geometry.poreVolume;
+    row->poreVolume = all.poreVolume;
     row->cumulative = sample.whole.cumulative;
     row->distribution = sample.whole.distribution;
     row->accessible = 0.5 * geometry.accessibleDistribution * scale;
@@ -465,15 +582,76 @@ std::vector<Sample> sweepGrid(const Sample& origin, const std::vector<Sample>& r
   return grid;
 }
 
+// Whether the trapezium across an interval is to be believed, or the interval has to be narrowed.
+//
+// `bothSigns` asks it of a shortfall as of an excess. A cliff leaves an excess, and so does a window: where a
+// neck pinches off the derivative runs up as one over the root of the distance to it, on the one side, and a
+// trapezium with an end just above such a point overstates the integral across it by many times the floor. Left
+// alone that put the curve's total over one by a per cent, and it did worse to the interval's own account,
+// taking the weight of any room inside the same step off against the overstatement so that the room showed no
+// excess and was never looked for. The peaks-only route looks for excesses alone, having no integral to keep.
+//
+// Both series are asked. A cliff of the primary curve is one of the whole void too, but the two are measured
+// against different volumes and the floor is the same number for both: where the probe reaches a small part of
+// the void, a room that is most of that part is under the floor of the whole and was not narrowed on its account.
+bool wantsNarrowing(const Sample& left, const Sample& right, double floorDiameter, bool bothSigns)
+{
+  auto beyond = [&](Series Sample::* of)
+  {
+    const double gap = unaccounted(left, right, of);
+    return (bothSigns ? std::abs(gap) : gap) > spikeFloor;
+  };
+  return beyond(&Sample::whole) || (left.diameter >= floorDiameter && beyond(&Sample::reachable));
+}
+
+// The ends of the bracket about every room the network knows of, put among the samples of the grid.
+//
+// The search below finds a cliff by what the trapezium across a step fails to account for, and a step of the
+// table is wide enough for that to fail the other way. Past a room the derivative is not what it was before
+// it, the surface the room's going leaves exposed being reentrant surface that was not there, and a trapezium
+// laid from the one value to the other across the cliff overstates the continuous part by the rise times the
+// distance of the cliff from the middle of the step. In FAU that overstatement came to within three parts in a
+// thousand of the weight of the room beside the twelve-ring, 9 Å³ at 6.589 Å, and the step showed no excess at
+// all. The network says where the rooms are, so each is given a step of its own, a hundredth of an Angstrom
+// wide, in which nothing of that size can hide it.
+void bracketRooms(Sampler& sampler, std::vector<Sample>& grid)
+{
+  if (grid.size() < 2) return;
+  const double first = grid.front().diameter;
+  const double last = grid.back().diameter;
+
+  std::vector<double> wanted;
+  for (std::size_t index = 0; index < sampler.candidateDiameters.size(); ++index)
+  {
+    const std::optional<std::pair<double, double>> ends = sampler.candidateBracket(index);
+    // a room past the end of the range is truncated with everything else there
+    if (!ends.has_value() || ends->second >= last) continue;
+    if (ends->first > first) wanted.push_back(ends->first);
+    wanted.push_back(ends->second);
+  }
+  // not where the grid has a sample already
+  std::erase_if(wanted, [&](double diameter)
+                {
+                  return std::ranges::any_of(
+                      grid, [&](const Sample& sample) { return std::abs(sample.diameter - diameter) < 1.0e-9; });
+                });
+  if (wanted.empty()) return;
+
+  std::vector<Sample> extra(wanted.size());
+  forEachIndex(wanted.size(), workersAvailable(),
+               [&](std::size_t, std::size_t i) { extra[i] = sampler.at(wanted[i], nullptr); });
+
+  grid.insert(grid.end(), extra.begin(), extra.end());
+  std::ranges::stable_sort(grid, [](const Sample& a, const Sample& b) { return a.diameter < b.diameter; });
+}
+
 // One interval of the grid, bisected towards whatever cliff it holds.
 std::vector<Sample> narrowInterval(Sampler& sampler, const Sample& left, const Sample& right,
-                                   std::size_t refinements)
+                                   std::size_t refinements, bool bothSigns)
 {
-  // The refinement follows the whole void. It does not need following twice: volume that goes over a cliff in
-  // a pore the primary curve can reach goes over the same cliff in the total, so every interval holding a spike
-  // of the primary curve holds one of this curve as well and is narrowed on its account.
+  const double floorDiameter = 2.0 * sampler.floorRadius;
   std::vector<Sample> pending = {left, right};
-  if (unaccounted(pending[0], pending[1], &Sample::whole) <= spikeFloor) return pending;
+  if (!wantsNarrowing(pending[0], pending[1], floorDiameter, bothSigns)) return pending;
 
   // Bisect towards it. The half that keeps an excess holds the cliff; a half that loses it was a corner of the
   // continuous part, and its own trapezium is then good enough to add and be done with.
@@ -484,9 +662,8 @@ std::vector<Sample> narrowInterval(Sampler& sampler, const Sample& left, const S
     bool refined = false;
     for (std::size_t k = 0; k + 1 < pending.size(); ++k)
     {
-      double gap = unaccounted(pending[k], pending[k + 1], &Sample::whole);
       next.push_back(pending[k]);
-      if (gap > spikeFloor)
+      if (wantsNarrowing(pending[k], pending[k + 1], floorDiameter, bothSigns))
       {
         next.push_back(sampler.at(0.5 * (pending[k].diameter + pending[k + 1].diameter), nullptr));
         refined = true;
@@ -510,7 +687,7 @@ std::vector<std::vector<Sample>> narrowIntervals(Sampler& sampler, const std::ve
 {
   std::vector<std::vector<Sample>> narrowed(grid.size() - 1);
   forEachIndex(narrowed.size(), workersAvailable(), [&](std::size_t, std::size_t i)
-               { narrowed[i] = narrowInterval(sampler, grid[i], grid[i + 1], refinements); });
+               { narrowed[i] = narrowInterval(sampler, grid[i], grid[i + 1], refinements, true); });
   return narrowed;
 }
 
@@ -526,7 +703,11 @@ void collectSeries(const std::vector<std::vector<Sample>>& narrowed, double floo
   {
     for (std::size_t k = 0; k + 1 < pending.size(); ++k)
     {
-      const double cliff = collect(whole, pending[k], pending[k + 1], &Sample::whole, unbounded);
+      collect(whole, pending[k], pending[k + 1], &Sample::whole, unbounded);
+
+      // (what the whole void lost beyond its derivative's account, whether or not that came to a spike of its
+      // own: held to the spike, a room of a region that is a small part of the void was held to nothing)
+      const double cliff = std::max(0.0, unaccounted(pending[k], pending[k + 1], &Sample::whole));
 
       // With a positive floor the primary curve is flat below that diameter and starts there. Since that
       // diameter is a point of the sweep, every interval lies on one side of it, and the ones below hold
@@ -549,7 +730,7 @@ void collectSeries(const std::vector<std::vector<Sample>>& narrowed, double floo
 PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<PoreAccessibility(double)>& build,
                                                     double cellVolume, double maximumDiameter, std::size_t numberOfBins,
                                                     std::size_t subdivisions, double probeRadius, double floorRadius,
-                                                    std::size_t refinements)
+                                                    std::size_t refinements, bool openNetwork)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
@@ -562,7 +743,7 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<PoreAcce
   const std::size_t bins = std::max<std::size_t>(1, numberOfBins);
   const double step = maximumDiameter / static_cast<double>(bins);
 
-  Sampler sampler{build, subdivisions, curve.probeRadius, curve.floorRadius};
+  Sampler sampler{build, subdivisions, curve.probeRadius, curve.floorRadius, openNetwork};
 
   curve.voidVolume = sampler.measureVoidVolume(cellVolume);
   const Sample probeSample = sampler.measureProbe(curve.voidVolume);
@@ -584,7 +765,8 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<PoreAcce
 
   curve.points.assign(bins, PoreSizeDistributionPoint{});
   const std::vector<Sample> rows = evaluateRows(sampler, curve.points, step);
-  const std::vector<Sample> grid = sweepGrid(origin, rows, probeSample, maximumDiameter);
+  std::vector<Sample> grid = sweepGrid(origin, rows, probeSample, maximumDiameter);
+  bracketRooms(sampler, grid);
   const std::vector<std::vector<Sample>> narrowed = narrowIntervals(sampler, grid, refinements);
 
   // What a weight of the whole void is worth to the primary curve, the two being normalised by different
@@ -602,11 +784,22 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<PoreAcce
   curve.probeAccessibleSingularWeight = reachable.singularWeight;
   curve.probeAccessibleSpikes = std::move(reachable.spikes);
 
+  // The largest pore is the last spike where the range reached it. Where volume is left beyond the end of the
+  // range it did not: the last spike found is then some smaller room, or there is none, and the largest sphere
+  // is the network's, which is where the sweep would have found the cliff had it been taken that far.
   curve.truncatedWeight = std::max(0.0, grid.back().whole.cumulative);
   curve.largestDiameter = curve.spikes.empty() ? 0.0 : curve.spikes.back().diameter;
+  if (curve.truncatedWeight > spikeFloor)
+  {
+    curve.largestDiameter = openNetwork ? sampler.largestReachableDiameter : sampler.largestIncludedDiameter;
+  }
   curve.probeAccessibleTruncatedWeight = std::max(0.0, grid.back().reachable.cumulative);
   curve.probeAccessibleLargestDiameter =
       curve.probeAccessibleSpikes.empty() ? 0.0 : curve.probeAccessibleSpikes.back().diameter;
+  if (curve.probeAccessibleTruncatedWeight > spikeFloor)
+  {
+    curve.probeAccessibleLargestDiameter = sampler.largestReachableDiameter;
+  }
 
   curve.numberOfEvaluations = sampler.evaluations;
 
@@ -617,7 +810,7 @@ PoreSizeDistributionCurve exactPoreSizeDistribution(const std::function<PoreAcce
 
 PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibility(double)>& build,
                                              double cellVolume, std::size_t subdivisions, double probeRadius,
-                                             double floorRadius, std::size_t refinements)
+                                             double floorRadius, std::size_t refinements, bool openNetwork)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
@@ -627,7 +820,7 @@ PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibili
   curve.floorRadius = std::max(0.0, floorRadius);
   requireFloorAtProbe("exactPoreSizePeaks", curve.probeRadius, curve.floorRadius);
 
-  Sampler sampler{build, subdivisions, curve.probeRadius, curve.floorRadius};
+  Sampler sampler{build, subdivisions, curve.probeRadius, curve.floorRadius, openNetwork};
 
   curve.voidVolume = sampler.measureVoidVolume(cellVolume);
   const Sample probeSample = sampler.measureProbe(curve.voidVolume);
@@ -642,34 +835,22 @@ PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibili
   origin.reachable.cumulative = (curve.probeAccessibleVolume > 0.0) ? 1.0 : 0.0;
   origin.reachable.distribution = 0.0;
 
-  // Tight brackets: the network already supplies the diameter, so the two samples only need to sit on
-  // opposite sides of the cliff. Continuous loss over a few 1e-3 Å is below the spike floor; a true room
-  // loses a finite fraction at once and is kept. One family after merging → one bracket, so no double count.
-  constexpr double defaultHalfWidth = 5.0e-3;
-
   const std::vector<double>& candidates = sampler.candidateDiameters;
   std::vector<std::vector<Sample>> brackets(candidates.size());
 
   forEachIndex(candidates.size(), workersAvailable(),
                [&](std::size_t, std::size_t index)
                {
-                 const double diameter = candidates[index];
-                 if (diameter <= 0.0 || diameter > sampler.largestIncludedDiameter + defaultHalfWidth) return;
-
                  // the bracket spans the family, from below its smallest member to above its largest
-                 const double lowest = sampler.candidateLowestDiameters[index];
-                 double half = defaultHalfWidth;
-                 if (index > 0) half = std::min(half, 0.25 * (lowest - candidates[index - 1]));
-                 if (index + 1 < candidates.size())
-                   half = std::min(half, 0.25 * (sampler.candidateLowestDiameters[index + 1] - diameter));
-                 half = std::max(half, 1.0e-4);
+                 const std::optional<std::pair<double, double>> ends = sampler.candidateBracket(index);
+                 if (!ends.has_value()) return;
 
-                 Sample left = (lowest - half <= 0.0) ? origin : sampler.at(lowest - half, nullptr);
-                 Sample right = sampler.at(diameter + half, nullptr);
+                 Sample left = (ends->first <= 0.0) ? origin : sampler.at(ends->first, nullptr);
+                 Sample right = sampler.at(ends->second, nullptr);
                  if (refinements == 0)
                    brackets[index] = {left, right};
                  else
-                   brackets[index] = narrowInterval(sampler, left, right, refinements);
+                   brackets[index] = narrowInterval(sampler, left, right, refinements, false);
                });
 
   const double allowance = (curve.probeAccessibleVolume > 0.0) ? curve.voidVolume / curve.probeAccessibleVolume : 0.0;
@@ -712,8 +893,7 @@ PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibili
       const Sample& left = pending[k];
       const Sample& right = pending[k + 1];
       const double wholeGap = unaccounted(left, right, &Sample::whole);
-      if (wholeGap <= spikeFloor) continue;
-      addInterval(wholeSpike, left, right, wholeGap);
+      if (wholeGap > spikeFloor) addInterval(wholeSpike, left, right, wholeGap);
 
       // The primary curve turns a corner at the floor diameter: flat below it, losing volume above. An interval
       // wholly below the floor holds nothing of it. One that reaches across the floor holds what is lost from
@@ -722,7 +902,9 @@ PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibili
       // floor, lost the spike of a room only just wider than the floor, whose bracket starts under it.
       if (right.diameter <= probeSample.diameter) continue;
       const Sample& from = (left.diameter < probeSample.diameter) ? probeSample : left;
-      const double reachableGap = std::min(unaccounted(from, right, &Sample::reachable), wholeGap * allowance);
+      // (held to what the whole void lost there beyond its derivative's account, a spike of its own or not)
+      const double reachableGap =
+          std::min(unaccounted(from, right, &Sample::reachable), std::max(0.0, wholeGap) * allowance);
       if (reachableGap <= spikeFloor) continue;
       addInterval(reachableSpike, from, right, reachableGap);
     }

@@ -274,7 +274,8 @@ export MeasuredPatches exactAccessibleSurfaceAreaByComponent(const PoreAccessibi
 // `network`: skip the geometric seal. Percolating surfaces are reachable; every other surface follows the
 // network verdict alone. Use this when the verdicts come from a smaller probe than the surface (helium
 // labeling nitrogen walls): a cage N₂ cannot leave may still sit in a channel He moves along, and the
-// geometric rule would mark that wall sealed regardless of He.
+// geometric rule would mark that wall sealed regardless of He. What the surface closes around is still read
+// off the enclosed volume, so its `closure` is the same under both policies and only its `side` differs.
 //
 // The area, the excluded volume and the void split all divide their totals by this when they share a probe,
 // and they have to divide them the same way or the three disagree about the same structure.

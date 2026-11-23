@@ -87,6 +87,11 @@ export struct PoreSizeDistributionCurve
   double cellVolume{0.0};  // Å³
   double voidVolume{0.0};  // Å³, the pore volume at zero diameter, which normalises the distribution
 
+  // Å³, the void of the framework as it was given, where that is not the volume above: the hybrid is swept
+  // over the open network that its blocking leaves, and normalised by that, and the drivers put the bare void
+  // of the framework itself here for the report to state beside it. Zero where the two are the same thing.
+  double frameworkVoidVolume{0.0};
+
   // The probe that decides which pockets are blocked from the primary curve, and the volume left after that
   // blocking. By default the floor is zero (hybrid): the blocked pockets are excluded, but the remaining void
   // is given its bare pore-size distribution, including wall corrugation below the probe diameter. When
@@ -157,6 +162,13 @@ export struct PoreSizeDistributionCurve
 // leaving there by what a probe of that same diameter can reach, which moves along the curve; the second holds
 // the blocking probe still. So a cage that probe cannot enter is outside the primary curve at every diameter.
 //
+// `openNetwork` takes the void to be what runs away through the crystal at a vanishing probe, and leaves the
+// void shut in at that probe out of both curves and out of the volume that normalises them. It is how the
+// hybrid is swept: the spheres carried into the bare structure fill the pockets the probe's centre can stand
+// in, and a sealed cavity narrower than the probe is no such pocket, has no sphere, and would otherwise be
+// counted as void the probe reaches. With the spheres in place, the cavities their filling cuts off from the
+// channels are shut in as well.
+//
 // `build` makes the accessibility for a given probe radius: it is a callback because which diagram the pores
 // are taken from is the caller's business and the geometry here is the same either way. It is called at
 // `probeRadius` for the blocking network, at `floorRadius` for the normalisation volume when a floor is set,
@@ -166,12 +178,12 @@ export struct PoreSizeDistributionCurve
 export PoreSizeDistributionCurve exactPoreSizeDistribution(
     const std::function<PoreAccessibility(double)>& build, double cellVolume, double maximumDiameter,
     std::size_t numberOfBins, std::size_t subdivisions, double probeRadius = 0.0, double floorRadius = 0.0,
-    std::size_t refinements = 12);
+    std::size_t refinements = 12, bool openNetwork = false);
 
 // Room sizes and how much void sits at each, without the continuous curve between them.
 //
-// Peak diameters are the clearances of the pore-network maxima (Apollonius vertices, or radical nodes
-// after ascent). Each distinct diameter is sampled once just below and once just above, so the cost is
+// Peak diameters are the clearances of the pore-network maxima (Apollonius vertices the clearance rises to
+// along every passage that meets there, or radical nodes after ascent). Each distinct diameter is sampled once just below and once just above, so the cost is
 // two surface evaluations per room size rather than a dense diameter sweep plus a dozen bisections per
 // cliff. Wall corrugation is omitted on purpose. Accessibility / floor conventions match
 // `exactPoreSizeDistribution`.
@@ -181,4 +193,4 @@ export PoreSizeDistributionCurve exactPoreSizeDistribution(
 export PoreSizeDistributionCurve exactPoreSizePeaks(const std::function<PoreAccessibility(double)>& build,
                                                     double cellVolume, std::size_t subdivisions,
                                                     double probeRadius = 0.0, double floorRadius = 0.0,
-                                                    std::size_t refinements = 0);
+                                                    std::size_t refinements = 0, bool openNetwork = false);

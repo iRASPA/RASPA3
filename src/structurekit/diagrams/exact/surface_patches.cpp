@@ -467,15 +467,23 @@ std::vector<SurfaceSide> surfaceSides(const BoundaryComponents& components, cons
     {
       sides[component] = {SurfaceClosure::runaway, 1};
     }
-    else if (policy == SurfaceSidePolicy::geometric &&
-             -(moments.radiusWeightedArea + moments.originWeighted) > 0.0)
-    {
-      sides[component] = {SurfaceClosure::sealed, -1};
-    }
     else
     {
+      // What the surface closes around is geometry's to say under either policy: the sign of the volume it
+      // encloses. The policy decides only who is asked which side the reachable void is on. Named a cluster
+      // because the network was the one asked, a cage shut to the surface's own probe was counted among the
+      // clusters of atoms in every report of the hybrid, which then had no sealed surface in any framework.
+      const bool enclosesVoid = -(moments.radiusWeightedArea + moments.originWeighted) > 0.0;
       const ComponentVerdict& verdict = verdicts[component];
-      sides[component] = {SurfaceClosure::cluster, !verdict.decided ? 0 : (verdict.accessible ? 1 : -1)};
+      const int asked = !verdict.decided ? 0 : (verdict.accessible ? 1 : -1);
+      if (enclosesVoid)
+      {
+        sides[component] = {SurfaceClosure::sealed, policy == SurfaceSidePolicy::geometric ? -1 : asked};
+      }
+      else
+      {
+        sides[component] = {SurfaceClosure::cluster, asked};
+      }
     }
   }
   return sides;

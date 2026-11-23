@@ -13,7 +13,9 @@ import voronoi_network;
 
 bool ApolloniusPoreNetwork::networkIsComplete() const
 {
-  return verification.vertexCount > 0 && verification.coincidentVertices == 0 && verification.unpairedTriples == 0 &&
+  // (a structure that is solid throughout to this probe has no vertex and is missing none)
+  return (verification.vertexCount > 0 || verification.solidThroughout) && verification.coincidentVertices == 0 &&
+         verification.unpairedTriples == 0 &&
          verification.unsampledArcs == 0 &&
          verification.branchesWithoutEdge <= verification.truncatedTriples;
 }

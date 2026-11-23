@@ -8,8 +8,10 @@ import double3;
 import crystal;
 import pair_interactions;
 import apollonius_accessibility;
+import pore_accessibility;
 import exact_pore_size_distribution;
 import exact_void_split;
+import exact_union_volume;
 import voronoi_blocking_spheres;
 import voronoi_pore_size_distribution;
 
@@ -61,9 +63,10 @@ void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, c
     ApolloniusAccessibility classifier =
         ApolloniusAccessibility::create(framework.unitCell, fractionalPositions, radii, probeRadius);
     ExactVoidSplit split = exactVoidSplitByComponents(classifier.accessibility, cellVolume, subdivisions);
+    const PoreAccessibility bare = build(0.0);
     std::vector<BlockingSphere> blockedBalls =
         hybridBlockedBalls(classifier.accessibility, split, fractionalPositions, radii, probeRadius,
-                           static_cast<std::size_t>(200.0 * cellVolume));
+                           static_cast<std::size_t>(200.0 * cellVolume), &bare);
 
     this->sweptSpheres = blockedBalls;
 
@@ -107,10 +110,11 @@ void ApolloniusPoreSizeDistribution::run(const PairInteractions& interactions, c
     };
 
     PoreSizeDistributionCurve blocked =
-        peaksOnly ? exactPoreSizePeaks(buildBlocked, cellVolume, subdivisions, 0.0, floorRadius)
+        peaksOnly ? exactPoreSizePeaks(buildBlocked, cellVolume, subdivisions, 0.0, floorRadius, 0, true)
                   : exactPoreSizeDistribution(buildBlocked, cellVolume, maxDiameter, bins, subdivisions, 0.0,
-                                              floorRadius);
-    curve = hybridFromBlockedCurve(std::move(blocked), probeRadius, floorRadius);
+                                              floorRadius, 12, true);
+    curve = hybridFromBlockedCurve(std::move(blocked), probeRadius, floorRadius,
+                                   cellVolume - unionOfBallsVolume(bare, subdivisions));
   }
 
   if (peaksOnly)

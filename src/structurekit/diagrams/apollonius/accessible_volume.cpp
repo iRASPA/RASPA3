@@ -79,6 +79,9 @@ void ApolloniusAccessibleVolume::run(const PairInteractions& interactions, const
       // to divide the void, so the division falls back on the sampling it was to have replaced. The total
       // stands either way, belonging to the union of the atoms rather than to the diagram.
       sampled = true;
+
+      // (and the pockets are the rejected division's own, so the table of them goes with it)
+      pockets.clear();
     }
   }
 
@@ -94,6 +97,19 @@ void ApolloniusAccessibleVolume::run(const PairInteractions& interactions, const
     {
       voidFraction = accessibleVolumeFraction + inaccessibleVolumeFraction;
       voidVolume = voidFraction * volume;
+    }
+    else
+    {
+      // The total is the measured one, and what the sampling is asked for is how it divides. Reported as the
+      // sample's own two volumes, the parts did not add to the whole they are parts of, and by the scatter of
+      // the sample the accessible one could come out the larger of the two. So the sample's proportion is
+      // applied to the measured void.
+      const double sampledVoid = accessibleVolumeFraction + inaccessibleVolumeFraction;
+      const double accessibleShare = (sampledVoid > 0.0) ? accessibleVolumeFraction / sampledVoid : 0.0;
+      accessibleVolume = accessibleShare * voidVolume;
+      inaccessibleVolume = (sampledVoid > 0.0) ? voidVolume - accessibleVolume : 0.0;
+      accessibleVolumeFraction = accessibleVolume / volume;
+      inaccessibleVolumeFraction = inaccessibleVolume / volume;
     }
   }
 

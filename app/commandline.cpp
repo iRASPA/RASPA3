@@ -588,9 +588,15 @@ void CommandLine::run(int argc, char *argv[])
     return analysis_blocking;
   };
 
+  // The field as the force field gives it, with nothing written onto it. The energy route to the blocking
+  // spheres reads this one: what it is asked for is every region too deep to leave, and on a field that already
+  // has the geometric spheres written onto it the cages those cover are solid, hold no cavity, and were left
+  // out of the file the route wrote.
+  auto unblockedEnergyBackend = [&] { return use_gpu ? openCLEnergyBackend() : cpuEnergyBackend(); };
+
   auto energyBackend = [&]
   {
-    EnergyBackend backend = use_gpu ? openCLEnergyBackend() : cpuEnergyBackend();
+    EnergyBackend backend = unblockedEnergyBackend();
     if (apply_blocking && !analysis_blocking.empty())
     {
       backend = withBlockedPockets(backend, analysis_blocking, blocking_ramp, blocking_ceiling);
@@ -751,9 +757,25 @@ void CommandLine::run(int argc, char *argv[])
       double epsilonKelvin = probe_strength.value_or(0.0);
       if (!probe_size.has_value() || !probe_strength.has_value())
       {
-        std::optional<std::pair<double, double>> alias = probe_atom_name.has_value()
-                                                             ? probeAlias(probe_atom_name.value())
-                                                             : std::nullopt;
+        // The probe of that name in the force field in hand comes before the table: the force fields do not
+        // agree on every probe (nitrogen is 36 K and 3.31 A for the zeolites, 91.5 K and 3.681 A for the
+        // others), and a size given for the probe of one of them was paired with the strength of another's.
+        std::optional<std::pair<double, double>> alias{};
+        if (probe_atom_name.has_value())
+        {
+          const std::string given = probe_atom_name.value();
+          std::optional<std::size_t> known = interactions.findType(given);
+          if (!known.has_value() && !given.starts_with("probe-")) known = interactions.findType("probe-" + given);
+          if (known.has_value())
+          {
+            const PairParameters &self = interactions[known.value()];
+            alias = std::pair{self.strengthParameter * Units::EnergyToKelvin, self.sizeParameter};
+          }
+          else
+          {
+            alias = probeAlias(given);
+          }
+        }
         if (!alias.has_value())
         {
           throw std::runtime_error(
@@ -802,6 +824,23 @@ void CommandLine::run(int argc, char *argv[])
       }
       if (forceField->findPseudoAtom(preferred).has_value()) return preferred;
       return "probe-N2";
+    };
+
+    // The probe that labels a surface reachable or sealed, which is helium whatever the surface is measured
+    // with: `geometricProbe` hands back the probe asked for, and asked for helium's place it handed that one
+    // back as well, so naming a surface probe took the helium labelling away with it. A surface probe smaller
+    // than helium reaches everything helium does and more, and is then its own label; so is any probe of a
+    // force field that has no helium.
+    auto reachabilityProbe = [&](const std::string &surfaceProbe) -> std::string
+    {
+      std::optional<std::size_t> helium = interactions.findType("probe-He");
+      std::optional<std::size_t> surface = interactions.findType(surfaceProbe);
+      if (!helium.has_value() || !surface.has_value()) return surfaceProbe;
+      if (interactions[helium.value()].sizeParameter > interactions[surface.value()].sizeParameter)
+      {
+        return surfaceProbe;
+      }
+      return "probe-He";
     };
 
     // The molecule the energy routes answer for. A name given with --molecule is looked for among the ones
@@ -853,8 +892,13 @@ void CommandLine::run(int argc, char *argv[])
         apply_blocking && (use_energy_methods || state.test(State::WellSurface) || state.test(State::BET));
     if (wants_energy_blocking)
     {
-      std::string blockingProbe = geometricProbe("probe-He");
-      analysis_blocking = analysisBlockingSpheres(interactions, crystal, blockingProbe);
+      // helium, as the surface-area route labels with it: a cage a hard sphere the size of the adsorbate cannot
+      // enter is not thereby one the adsorbate cannot enter at this temperature
+      std::string blockingProbe = reachabilityProbe(geometricProbe("probe-N2"));
+      // (from the sizes the geometric routes read: the spheres are the surface-area route's, and with
+      // --use-well-depth-as-size that route measures the atoms at the well depth, so spheres taken from the
+      // force field's own sizes blocked other pockets than the ones the area beside them called sealed)
+      analysis_blocking = analysisBlockingSpheres(geometry, crystal, blockingProbe);
       blocking_ramp = blockedEnergyPerAngstromInKelvin * Units::KelvinToEnergy;
       blocking_ceiling = probeEnergyCeilingInKelvin * Units::KelvinToEnergy;
       if (!analysis_blocking.empty())
@@ -877,6 +921,19 @@ void CommandLine::run(int argc, char *argv[])
                               .mass = crystal.mass};
     };
 
+    // The distance at which a probe is in contact with an atom, for the routes that sample hard spheres. It is
+    // the mixed size of the pair; but an ephemeral probe is entered with no size against a type it has no
+    // strength with (the energy routes read a size there as a wall), which is every type for a probe given
+    // no strength at all and any site of no strength for the others. As a hard sphere such a pair is still
+    // the two radii apart, which is what the diagram routes make of it, and without this the sampled routes
+    // took the atom for a point and reported no surface and a cell that was all void.
+    auto contactDistance = [&](std::size_t probeType, std::size_t atomType) -> double
+    {
+      const double mixed = interactions(probeType, atomType).sizeParameter;
+      if (mixed > 0.0) return mixed;
+      return 0.5 * (interactions[probeType].sizeParameter + interactions[atomType].sizeParameter);
+    };
+
     // For the routines that measure the wall: a point is in contact when the probe's centre is a mixed
     // diameter from the atom's, so that is the radius of each atom's sphere. An unknown probe is refused
     // here rather than after the structure has been assembled.
@@ -892,7 +949,7 @@ void CommandLine::run(int argc, char *argv[])
       radii.reserve(crystal.size());
       for (const CrystalAtom &atom : crystal.atoms)
       {
-        radii.push_back(well_depth_factor * interactions(probeType.value(), atom.type).sizeParameter);
+        radii.push_back(well_depth_factor * contactDistance(probeType.value(), atom.type));
       }
 
       SampledProbe probe{.name = probeName,
@@ -932,7 +989,7 @@ void CommandLine::run(int argc, char *argv[])
       radii.reserve(crystal.size());
       for (const CrystalAtom &atom : crystal.atoms)
       {
-        radii.push_back(well_depth_factor * interactions(probeType.value(), atom.type).sizeParameter);
+        radii.push_back(well_depth_factor * contactDistance(probeType.value(), atom.type));
       }
 
       return sampledStructure(std::move(radii));
@@ -1016,7 +1073,7 @@ void CommandLine::run(int argc, char *argv[])
         sa.run(geometry, crystal, geometricProbe("probe-N2"),
                use_monte_carlo_methods ? ApolloniusSurfaceArea::Method::Sampled
                                        : ApolloniusSurfaceArea::Method::Exact,
-               number_of_iterations, number_of_slices, geometricProbe("probe-He"));
+               number_of_iterations, number_of_slices, reachabilityProbe(geometricProbe("probe-N2")));
       }
       else if (use_voronoi)
       {
@@ -1026,7 +1083,7 @@ void CommandLine::run(int argc, char *argv[])
         sa.run(geometry, crystal, geometricProbe("probe-N2"),
                use_monte_carlo_methods ? VoronoiSurfaceArea::Method::Sampled
                                        : VoronoiSurfaceArea::Method::Exact,
-               number_of_iterations, number_of_slices, geometricProbe("probe-He"));
+               number_of_iterations, number_of_slices, reachabilityProbe(geometricProbe("probe-N2")));
       }
 
       // the sampled and the sliced areas, also when asked for by name without --geometric (they ran only with it)
@@ -1303,9 +1360,14 @@ void CommandLine::run(int argc, char *argv[])
       double psdFloorRadius = 0.0;
       if (psd_floor_probe.has_value())
       {
+        // the name as given first, a force field of one's own not having to call its probes 'probe-'
         std::string floorName = psd_floor_probe.value();
-        if (!floorName.starts_with("probe-")) floorName = "probe-" + floorName;
         std::optional<std::size_t> floorType = geometry.findType(floorName);
+        if (!floorType.has_value() && !floorName.starts_with("probe-"))
+        {
+          floorName = "probe-" + floorName;
+          floorType = geometry.findType(floorName);
+        }
         if (!floorType.has_value())
         {
           throw std::runtime_error(
@@ -1566,7 +1628,7 @@ void CommandLine::run(int argc, char *argv[])
         std::cout << "Compute blocking spheres from the energy landscape for " << molecule.name << std::endl;
 
         EnergyBlockingSpheres blocks;
-        blocks.run(energyBackend(), interactions, crystal, molecule, iso_value, gridSize,
+        blocks.run(unblockedEnergyBackend(), interactions, crystal, molecule, iso_value, gridSize,
                    energyOrientations(), temperature, blocking_threshold);
 
         std::cout << blocks.spheres.size() << " spheres over " << blocks.numberOfBlockedCavities
@@ -1632,8 +1694,8 @@ void CommandLine::run(int argc, char *argv[])
       // reachable from outside (N₂ walls He can reach), and also defines the excluded surface, the blocking
       // spheres, and the void — so sealed for blocking matches the accessible void.
       BruteForceValidation validation;
-      validation.run(geometry, crystal, geometricProbe("probe-N2"), geometricProbe("probe-He"),
-                     settings);
+      validation.run(geometry, crystal, geometricProbe("probe-N2"),
+                     reachabilityProbe(geometricProbe("probe-N2")), settings);
 
       std::size_t disagreements = validation.numberOfDisagreements();
       std::cout << validation.checks.size() - disagreements << " of " << validation.checks.size()

@@ -192,17 +192,21 @@ TEST(exact_regression, itq29_pore_size_distribution)
 
   ASSERT_EQ(curve.points.size(), numberOfBins);
 
+  // (the integral, the weights and the diameters were recorded again when the sweep began to narrow an interval
+  // on a shortfall as on an excess and to give every room of the network a bracket of its own: the two parts
+  // now come to 1.0007 where they came to 1.0039, and the reachable curve ends at 10.3175 where the framework's
+  // largest sphere is, 10.3176; the rows below did not move)
   expectRecorded({
       {"void volume", 926.80710761972296, curve.voidVolume},
       {"probe accessible volume", 703.88411171993005, curve.probeAccessibleVolume},
 
-      {"integral", 0.26938068862486148, curve.integral},
-      {"singular weight", 0.73451983718933156, curve.singularWeight},
-      {"largest diameter", 9.536321810724246, curve.largestDiameter},
+      {"integral", 0.26694968713482953, curve.integral},
+      {"singular weight", 0.73378343827867365, curve.singularWeight},
+      {"largest diameter", 9.5315220620776024, curve.largestDiameter},
 
-      {"probe accessible integral", 0.18349738844711069, curve.probeAccessibleIntegral},
-      {"probe accessible singular weight", 0.81836703708498715, curve.probeAccessibleSingularWeight},
-      {"probe accessible largest diameter", 10.312302665106525, curve.probeAccessibleLargestDiameter},
+      {"probe accessible integral", 0.18360142390607134, curve.probeAccessibleIntegral},
+      {"probe accessible singular weight", 0.81704219034130199, curve.probeAccessibleSingularWeight},
+      {"probe accessible largest diameter", 10.317499816416699, curve.probeAccessibleLargestDiameter},
   });
 
   // The whole of the void has some pore size, so the continuous part and the spikes come to one between them.

@@ -65,7 +65,7 @@ AreaCurve areaAgainstLevel(uint3 gridSize, const UnitCell &unitCell, std::span<c
   const double guard = highestLevel - lowestLevel;
 
   std::vector<double> gathered(bins, 0.0);
-  std::vector<double> occupied(bins, 0.0);
+  std::vector<double> centred(bins, 0.0);
   double underRange = 0.0;
   double overRange = 0.0;
   double totalSpan = 0.0;
@@ -77,7 +77,7 @@ AreaCurve areaAgainstLevel(uint3 gridSize, const UnitCell &unitCell, std::span<c
   // threads --- to the bit for the counts, and to the last digits for the sums.
   const std::size_t workers = workersAvailable();
   std::vector<std::vector<double>> gatheredOfWorker(workers, std::vector<double>(bins, 0.0));
-  std::vector<std::vector<double>> occupiedOfWorker(workers, std::vector<double>(bins, 0.0));
+  std::vector<std::vector<double>> centredOfWorker(workers, std::vector<double>(bins, 0.0));
   std::vector<double> underOfWorker(workers, 0.0);
   std::vector<double> overOfWorker(workers, 0.0);
   std::vector<double> spanOfWorker(workers, 0.0);
@@ -88,7 +88,7 @@ AreaCurve areaAgainstLevel(uint3 gridSize, const UnitCell &unitCell, std::span<c
       [&](std::size_t worker, std::size_t begin, std::size_t end)
       {
         std::vector<double> &localGathered = gatheredOfWorker[worker];
-        std::vector<double> &localOccupied = occupiedOfWorker[worker];
+        std::vector<double> &localCentred = centredOfWorker[worker];
         double localUnder = 0.0;
         double localOver = 0.0;
         double localSpan = 0.0;
@@ -98,16 +98,27 @@ AreaCurve areaAgainstLevel(uint3 gridSize, const UnitCell &unitCell, std::span<c
         {
           const double here = static_cast<double>(field[static_cast<std::size_t>(voxel)]);
 
-          if (here < lowestLevel - guard)
+          // How much of the cell lies below a level is a count of the voxels whose own value does, and it is
+          // taken from the value and not from the band below. The band spreads a voxel's weight evenly over
+          // every level the field passes through on the way to its neighbours, which is what the area wants
+          // and is not where the voxel's volume is: beside a wall that way is nearly all above the range, and
+          // a voxel deep in a pore, for standing next to an atom, was counted as lying above every level.
+          if (here < lowestLevel)
           {
             localUnder += 1.0;
-            continue;
           }
-          if (here >= highestLevel + guard)
+          else if (here >= highestLevel)
           {
             localOver += 1.0;
-            continue;
           }
+          else
+          {
+            std::size_t bin = static_cast<std::size_t>((here - lowestLevel) / step);
+            if (bin >= bins) bin = bins - 1;
+            localCentred[bin] += 1.0;
+          }
+
+          if (here < lowestLevel - guard || here >= highestLevel + guard) continue;
 
           const std::int64_t k = voxel / (nx * ny);
           const std::int64_t j = (voxel / nx) % ny;
@@ -174,27 +185,14 @@ AreaCurve areaAgainstLevel(uint3 gridSize, const UnitCell &unitCell, std::span<c
 
           if (span <= 0.0)
           {
-            if (here < lowestLevel)
-            {
-              localUnder += 1.0;
-            }
-            else if (here >= highestLevel)
-            {
-              localOver += 1.0;
-            }
-            else
+            if (here >= lowestLevel && here < highestLevel)
             {
               std::size_t bin = static_cast<std::size_t>((here - lowestLevel) / step);
               if (bin >= bins) bin = bins - 1;
               localGathered[bin] += magnitude;
-              localOccupied[bin] += 1.0;
             }
             continue;
           }
-
-          // Whatever of the band falls outside the range is not lost, it is counted as lying below or above.
-          localUnder += std::clamp(lowestLevel - lowest, 0.0, span) / span;
-          localOver += std::clamp(highest - highestLevel, 0.0, span) / span;
 
           // The bins the band reaches. Where it runs out of the range the answer is the end bin, and it is
           // given as that and not worked out: a band beside a wall reaches as far as the wall is high, and
@@ -220,7 +218,6 @@ AreaCurve areaAgainstLevel(uint3 gridSize, const UnitCell &unitCell, std::span<c
 
             const double share = overlap / span;
             localGathered[bin] += magnitude * share;
-            localOccupied[bin] += share;
           }
         }
 
@@ -238,7 +235,7 @@ AreaCurve areaAgainstLevel(uint3 gridSize, const UnitCell &unitCell, std::span<c
     for (std::size_t bin = 0; bin < bins; ++bin)
     {
       gathered[bin] += gatheredOfWorker[worker][bin];
-      occupied[bin] += occupiedOfWorker[worker][bin];
+      centred[bin] += centredOfWorker[worker][bin];
     }
     underRange += underOfWorker[worker];
     overRange += overOfWorker[worker];
@@ -258,7 +255,7 @@ AreaCurve areaAgainstLevel(uint3 gridSize, const UnitCell &unitCell, std::span<c
   curve.points.resize(bins);
   for (std::size_t bin = 0; bin < bins; ++bin)
   {
-    running += occupied[bin];
+    running += centred[bin];
     curve.points[bin].level = lowestLevel + (static_cast<double>(bin) + 0.5) * step;
     curve.points[bin].area = gathered[bin] * voxelVolume / step;
     curve.points[bin].fractionBelow = running / total;

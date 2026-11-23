@@ -10,6 +10,8 @@ import randomnumbers;
 import crystal;
 import pair_interactions;
 import pore_accessibility;
+import voronoi_network;
+import structure_parallel;
 import exact_void_split;
 
 std::vector<BlockingSphere> exactBlockingSpheres(const ExactVoidSplit& split)
@@ -39,15 +41,98 @@ std::vector<BlockingSphere> bareBlockingSpheres(const ExactVoidSplit& split, dou
   return spheres;
 }
 
+std::vector<BlockingSphere> untouchedRoomSpheres(const PoreAccessibility& probeAccessibility,
+                                                 const PoreAccessibility& bare, double probeRadius)
+{
+  const VoronoiNetwork& network = bare.network;
+
+  // The rooms of the bare void: the nodes the clearance does not rise from along any passage that meets there
+  // (the passage it rises along is as wide at its narrowest as the node it leaves).
+  std::vector<char> risesFrom(network.nodes.size(), 0);
+  for (const VoronoiEdge& edge : network.edges)
+  {
+    if (edge.from == edge.to) continue;
+    for (std::size_t end : {edge.from, edge.to})
+    {
+      const double peak = network.nodes[end].maximalRadius;
+      if (edge.radius >= peak - 1.0e-9 * std::max(1.0, peak)) risesFrom[end] = 1;
+    }
+  }
+  std::vector<std::size_t> rooms;
+  for (std::size_t node = 0; node < network.nodes.size(); ++node)
+  {
+    if (network.nodes[node].maximalRadius > 0.0 && risesFrom[node] == 0) rooms.push_back(node);
+  }
+
+  // Directions spread evenly over the sphere, and the shells they are tried on. How far the nearest position
+  // of the probe is from a room is looked for outwards from the room, a shell at a time, so what is found is
+  // that distance to within the spacing of the shells, and the spacing is then held off the radius.
+  constexpr std::size_t numberOfDirections = 128;
+  constexpr double shellSpacing = 0.05;
+  constexpr double furthest = 12.0;
+  std::vector<double3> directions(numberOfDirections);
+  const double goldenAngle = std::numbers::pi * (3.0 - std::sqrt(5.0));
+  for (std::size_t k = 0; k < numberOfDirections; ++k)
+  {
+    const double z = 1.0 - 2.0 * (static_cast<double>(k) + 0.5) / static_cast<double>(numberOfDirections);
+    const double rho = std::sqrt(std::max(0.0, 1.0 - z * z));
+    const double angle = goldenAngle * static_cast<double>(k);
+    directions[k] = double3(rho * std::cos(angle), rho * std::sin(angle), z);
+  }
+
+  auto reachable = [&](const double3& point)
+  {
+    const PointClassification classification = probeAccessibility.classify(point);
+    return !classification.inside && !classification.resample && classification.accessible;
+  };
+
+  std::vector<double> blockingRadius(rooms.size(), 0.0);
+  forEachIndex(rooms.size(), workersAvailable(),
+               [&](std::size_t, std::size_t index)
+               {
+                 const VoronoiNode& node = network.nodes[rooms[index]];
+                 const double3 centre = node.maximalPosition;
+                 const double touching = node.maximalRadius + probeRadius;
+
+                 if (reachable(centre)) return;
+                 for (double shell = shellSpacing; shell <= furthest; shell += shellSpacing)
+                 {
+                   for (const double3& direction : directions)
+                   {
+                     if (!reachable(centre + direction * shell)) continue;
+                     // within reach of the room's own sphere: the probe touches it, and it is corrugation
+                     if (shell < touching) return;
+                     blockingRadius[index] = shell - shellSpacing - probeRadius;
+                     return;
+                   }
+                 }
+               });
+
+  std::vector<BlockingSphere> spheres;
+  for (std::size_t index = 0; index < rooms.size(); ++index)
+  {
+    if (!(blockingRadius[index] > 0.0)) continue;
+    const double3 centre = network.nodes[rooms[index]].maximalPosition;
+    spheres.push_back(BlockingSphere{double3::fract(bare.unitCell.inverseCell * centre), blockingRadius[index]});
+  }
+  return spheres;
+}
+
 std::vector<BlockingSphere> hybridBlockedBalls(const PoreAccessibility& probeAccessibility,
                                                const ExactVoidSplit& split,
                                                const std::vector<double3>& fractionalPositions,
                                                const std::vector<double>& radii, double probeRadius,
-                                               std::size_t numberOfSamples)
+                                               std::size_t numberOfSamples, const PoreAccessibility* bare)
 {
   std::vector<BlockingSphere> spheres = measuredSpheresRefused(split).empty()
                                             ? bareBlockingSpheres(split, probeRadius)
                                             : computeBlockingSpheres(probeAccessibility, numberOfSamples, probeRadius);
+
+  if (bare != nullptr)
+  {
+    std::vector<BlockingSphere> rooms = untouchedRoomSpheres(probeAccessibility, *bare, probeRadius);
+    spheres.insert(spheres.end(), rooms.begin(), rooms.end());
+  }
 
   // A ball wholly inside another adds nothing to the union the blocked diagram measures, and its centre can
   // coincide exactly with the centre of the ball holding it: sealed symmetric structures put pocket centroids

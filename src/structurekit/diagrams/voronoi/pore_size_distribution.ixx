@@ -42,8 +42,10 @@ export void writePoreSizePeaks(const Crystal& framework, const std::string& diag
 // adsorption. `accessibilityRadius` is recorded as the blocking probe and `floorRadius`, below it, as the
 // floor the blocked sweep was flattened under. Without a floor the bare curve is mirrored into the primary
 // columns; with one, the primary columns already hold the flattened curve and are kept.
+// `frameworkVoidVolume` is the bare void of the framework before anything was blocked, for the report.
 export PoreSizeDistributionCurve hybridFromBlockedCurve(PoreSizeDistributionCurve blocked,
-                                                        double accessibilityRadius, double floorRadius = 0.0);
+                                                        double accessibilityRadius, double floorRadius = 0.0,
+                                                        double frameworkVoidVolume = 0.0);
 
 // Whether a curve is the hybrid: a blocking probe, and a floor short of it.
 export bool hybridCurve(const PoreSizeDistributionCurve& curve);

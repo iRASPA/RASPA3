@@ -1048,6 +1048,26 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
     for (std::size_t i = 0; i < siteCount; ++i)
       for (const SKVoronoiFace& face : radicalCells[i].faces)
         adjacency[i].push_back({face.neighborIndex, face.neighborImage});
+
+    // Whether the spheres leave any free space at all, which the radical cells say exactly. A point is outside
+    // every sphere when its power to the nearest site is positive; within a cell that power is the cell's own
+    // site's, |x - c|^2 - r^2, a convex function, so over the cell it is greatest at a corner. Where no corner
+    // of any cell is outside its own sphere the spheres cover the crystal, and a diagram of the free space
+    // then has no vertex because there is none to have, not because one was missed.
+    bool anyFreeCorner = false;
+    for (std::size_t i = 0; i < siteCount && !anyFreeCorner; ++i)
+    {
+      // (the corners of a cell are given from its site)
+      for (const double3& corner : radicalCells[i].verticesCartesian)
+      {
+        if (corner.length_squared() > radii[i] * radii[i] * (1.0 + 1.0e-12))
+        {
+          anyFreeCorner = true;
+          break;
+        }
+      }
+    }
+    diagram.verification.solidThroughout = !anyFreeCorner;
   }
 
   // Widening by extra rings composes the image shifts, so a neighbour of a neighbour is recorded at

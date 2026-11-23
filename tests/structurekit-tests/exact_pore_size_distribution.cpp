@@ -629,9 +629,12 @@ TEST(exact_pore_size_distribution, a_short_estimate_of_the_largest_sphere_does_n
     EXPECT_GT(std::abs(spike.diameter - (corner - 2.0)), 0.5) << "no spike at the short estimate";
   }
 
-  // And it is the same curve, row for row, as the one taken from the sound estimate.
+  // And it is the same curve, row for row, as the one taken from the sound estimate. The spike is the same
+  // to what the two corner it within: the sound estimate gives the room a bracket of its own, a hundredth of
+  // an Angstrom wide before it is bisected, and the short one leaves the cliff to be found in a step of the
+  // table, so the two end in intervals a factor of ten apart and the trapezium across each differs by that.
   ASSERT_EQ(curve.spikes.size(), reference.spikes.size());
-  EXPECT_NEAR(curve.spikes.back().weight, reference.spikes.back().weight, 1.0e-9);
+  EXPECT_NEAR(curve.spikes.back().weight, reference.spikes.back().weight, 1.0e-6);
   ASSERT_EQ(curve.points.size(), reference.points.size());
   for (std::size_t row = 0; row < curve.points.size(); ++row)
   {
@@ -697,4 +700,142 @@ TEST(exact_pore_size_distribution, peaks_only_keeps_a_room_that_is_only_just_wid
   EXPECT_TRUE(below.probeAccessibleSpikes.empty());
   ASSERT_EQ(below.spikes.size(), 1uz);
   EXPECT_NEAR(below.spikes.back().weight, unfloored.spikes.back().weight, 1.0e-6);
+}
+
+
+// The open network is the void that runs away through the crystal at a vanishing probe, and what is shut in at
+// that probe is left out of it: out of the volume it is normalised by, out of every row, and out of its
+// spikes. The cage here is shut by its twelve atoms at any probe, so it is void of the cell and no part of the
+// open network, and it is narrower than a probe that would have to have had a pocket of it to block: the case
+// the hybrid route swept as void that probe reaches.
+TEST(exact_pore_size_distribution, the_open_network_leaves_out_what_is_shut_in_at_a_vanishing_probe)
+{
+  // (atoms wide enough to close the faces of the icosahedron as well as its edges: a face is open while the
+  // atoms are narrower than the circle through its three corners, 1.82 for a shell of 3)
+  const double shellRadius = 3.0;
+  const double atomRadius = 1.95;
+  const double cageDiameter = 2.0 * (shellRadius - atomRadius);
+  Lattice cage = cageInAnOpenCell(10.0, shellRadius, atomRadius);
+
+  auto build = [&](double probeRadius)
+  { return PoreAccessibility::create(cage.box, cage.fractionalPositions, cage.radii, probeRadius); };
+
+  const PoreSizeDistributionCurve whole = exactPoreSizeDistribution(build, cage.box.volume, 14.0, 140, 1);
+  const PoreSizeDistributionCurve open =
+      exactPoreSizeDistribution(build, cage.box.volume, 14.0, 140, 1, 0.0, 0.0, 12, true);
+
+  auto spikeAtTheCage = [&](const PoreSizeDistributionCurve& curve)
+  {
+    return std::ranges::any_of(curve.spikes, [&](const PoreSizeSpike& spike)
+                               { return std::abs(spike.diameter - cageDiameter) < 0.05; });
+  };
+  ASSERT_TRUE(spikeAtTheCage(whole)) << "the cage is a room of the whole void";
+  EXPECT_FALSE(spikeAtTheCage(open)) << "and no room of the open network";
+
+  // What is left out is the cage: a ball of its inscribed sphere at the least, and no more than the ball
+  // that reaches the centres of the atoms round it.
+  const double leftOut = whole.voidVolume - open.voidVolume;
+  EXPECT_GT(leftOut, 4.0 / 3.0 * std::numbers::pi * std::pow(0.5 * cageDiameter, 3));
+  EXPECT_LT(leftOut, 4.0 / 3.0 * std::numbers::pi * std::pow(shellRadius, 3));
+
+  // The open network's own account still closes, and above the cage's size the two are the same void.
+  EXPECT_NEAR(open.integral + open.singularWeight, 1.0, 0.02);
+  EXPECT_LT(open.truncatedWeight, 1.0e-9);
+  ASSERT_EQ(open.points.size(), whole.points.size());
+  for (std::size_t row = 0; row < open.points.size(); ++row)
+  {
+    EXPECT_LE(open.points[row].poreVolume, whole.points[row].poreVolume + 1.0e-9) << "row " << row;
+    if (open.points[row].diameter > cageDiameter + 0.02)
+    {
+      EXPECT_NEAR(open.points[row].poreVolume, whole.points[row].poreVolume, 1.0e-6) << "row " << row;
+    }
+  }
+
+  // The peaks-only route by the same rule.
+  const PoreSizeDistributionCurve wholePeaks = exactPoreSizePeaks(build, cage.box.volume, 1, 0.0, 0.0);
+  const PoreSizeDistributionCurve openPeaks = exactPoreSizePeaks(build, cage.box.volume, 1, 0.0, 0.0, 0, true);
+  EXPECT_TRUE(spikeAtTheCage(wholePeaks));
+  EXPECT_FALSE(spikeAtTheCage(openPeaks));
+  EXPECT_NEAR(openPeaks.voidVolume, open.voidVolume, 1.0e-9);
+}
+
+
+// A cell with nothing in it but sealed cages has no open network at all, and the curve of it is empty rather
+// than the cages' own under another name.
+TEST(exact_pore_size_distribution, a_void_that_runs_nowhere_has_no_open_network)
+{
+  // close-packed atoms overlapping their neighbours, the octahedral hole left open between them
+  Lattice lattice;
+  lattice.box = UnitCell(3.96, 3.96, 3.96);
+  lattice.fractionalPositions = {double3(0.0, 0.0, 0.0), double3(0.5, 0.5, 0.0), double3(0.5, 0.0, 0.5),
+                                 double3(0.0, 0.5, 0.5)};
+  lattice.radii.assign(4, 1.65);
+
+  auto build = [&](double probeRadius)
+  { return PoreAccessibility::create(lattice.box, lattice.fractionalPositions, lattice.radii, probeRadius); };
+
+  const PoreSizeDistributionCurve whole = exactPoreSizeDistribution(build, lattice.box.volume, 2.0, 20, 1);
+  const PoreSizeDistributionCurve open =
+      exactPoreSizeDistribution(build, lattice.box.volume, 2.0, 20, 1, 0.0, 0.0, 12, true);
+
+  EXPECT_GT(whole.voidVolume, 1.0);
+  EXPECT_EQ(open.voidVolume, 0.0);
+  EXPECT_EQ(open.probeAccessibleVolume, 0.0);
+  EXPECT_TRUE(open.spikes.empty());
+  for (const PoreSizeDistributionPoint& point : open.points) EXPECT_EQ(point.cumulative, 0.0);
+}
+
+
+// A cage too narrow to hold the probe's centre is no pocket of the probe's network, and with its faces open by
+// a hair at a vanishing probe it is not shut in there either: the double four-ring of a zeolite in miniature.
+// What marks it is that no position the probe reaches brings the probe's sphere across the cage's own, and it
+// is filled on that account, while the room of the open cell round it, which the probe stands in, is left.
+TEST(exact_pore_size_distribution, a_room_the_probe_cannot_touch_is_filled_and_the_one_it_stands_in_is_not)
+{
+  const double shellRadius = 3.0;
+  const double atomRadius = 1.8;  // the faces of the icosahedron stay open by 0.02 at a vanishing probe
+  const double probe = 1.32;
+  const double cageRadius = shellRadius - atomRadius;
+  ASSERT_LT(cageRadius, probe);
+  Lattice cage = cageInAnOpenCell(14.0, shellRadius, atomRadius);
+
+  auto build = [&](double probeRadius)
+  { return PoreAccessibility::create(cage.box, cage.fractionalPositions, cage.radii, probeRadius); };
+  const PoreAccessibility bare = build(0.0);
+  const PoreAccessibility reached = build(probe);
+
+  const std::vector<BlockingSphere> spheres = untouchedRoomSpheres(reached, bare, probe);
+  ASSERT_FALSE(spheres.empty());
+
+  const double3 middle = cage.box.cell * double3(0.5, 0.5, 0.5);
+  bool cageFilled = false;
+  for (const BlockingSphere& sphere : spheres)
+  {
+    const double fromMiddle = (cage.box.cell * sphere.centerFractional - middle).length();
+    // every sphere is inside the shell of atoms, and stops short of where the probe's own sphere can be: the
+    // probe outside stands no nearer the middle than the shell and the two radii
+    EXPECT_LT(fromMiddle + sphere.radius, shellRadius + atomRadius + 1.0e-9);
+    if (fromMiddle < 1.0e-3 && sphere.radius >= cageRadius - 0.1) cageFilled = true;
+  }
+  EXPECT_TRUE(cageFilled) << "the cage's own room has a sphere that holds it";
+
+  // And in the curve: the hybrid's sites with those spheres among them have no room of the cage's size.
+  const ExactVoidSplit split = exactVoidSplitByComponents(reached, cage.box.volume, 1);
+  const std::vector<BlockingSphere> balls =
+      hybridBlockedBalls(reached, split, cage.fractionalPositions, cage.radii, probe, 1000, &bare);
+  std::vector<double3> positions;
+  std::vector<double> radii;
+  for (const BlockingSphere& ball : balls)
+  {
+    positions.push_back(ball.centerFractional);
+    radii.push_back(ball.radius);
+  }
+  auto blocked = [&](double probeRadius)
+  { return PoreAccessibility::create(cage.box, positions, radii, probeRadius); };
+  const PoreSizeDistributionCurve peaks = exactPoreSizePeaks(blocked, cage.box.volume, 1, 0.0, 0.0, 0, true);
+  ASSERT_FALSE(peaks.spikes.empty());
+  for (const PoreSizeSpike& spike : peaks.spikes)
+  {
+    EXPECT_GT(std::abs(spike.diameter - 2.0 * cageRadius), 0.05) << "no room of the cage's size is left";
+  }
 }

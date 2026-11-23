@@ -66,8 +66,10 @@ void GridVoidFraction::run(const PairInteractions &interactions, const Crystal &
 
   double densityCrystal = framework.mass / (volume * Units::Angstrom * Units::Angstrom * Units::Angstrom *
                                                     1.0e6 * Units::AvogadroConstant);
-  double toGravimetric = (Units::Angstrom * Units::Angstrom * Units::Angstrom * 1.0e6) * Units::AvogadroConstant /
-                         framework.mass;
+  // (per gram of a framework that has a mass, as the other routes have it: one without gave a division by zero)
+  double toGravimetric = framework.mass > 0.0 ? (Units::Angstrom * Units::Angstrom * Units::Angstrom * 1.0e6) *
+                                                    Units::AvogadroConstant / framework.mass
+                                              : 0.0;
 
   double3 spacing = grid.spacing();
 
