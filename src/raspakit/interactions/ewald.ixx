@@ -92,6 +92,21 @@ void precomputeEwaldFourierRigid(std::vector<std::complex<double>>& eik_x, std::
  *                  computeEwaldFourierGradient.
  * \return The running energy containing the Ewald Fourier energy contributions.
  */
+/**
+ * \brief The energy a finite-cutoff charge method (Wolf, damped shifted force, ...) gives the molecules in 'atoms'
+ * whatever surrounds them: the self term of their charges and the completion of their excluded pairs.
+ *
+ * It is what 'energyDifferenceEwaldFourier' adds for these molecules when they are put in a box, and it is there
+ * in an empty box as well: with the Fourier sum of an Ewald summation these terms are cancelled by the sum of the
+ * isolated molecule, and a method without the sum leaves them standing. So it is part of the energy of the isolated
+ * molecule, and the ideal-gas reference of an open ensemble has to carry it (see
+ * 'System::isolatedChargeCorrectionEnergy'). Zero for the Ewald summation, without charges, and under
+ * 'omitInterInteractions' (where the box does not add it either). Taken at the Coulomb scaling of the atoms.
+ */
+RunningEnergy isolatedRealSpaceChargeCorrectionEnergy(const ForceField& forceField, const SimulationBox& simulationBox,
+                                                      const std::vector<Component>& components,
+                                                      std::span<const Atom> atoms);
+
 RunningEnergy computeEwaldFourierEnergy(std::vector<std::complex<double>>& eik_x,
                                         std::vector<std::complex<double>>& eik_y,
                                         std::vector<std::complex<double>>& eik_z,

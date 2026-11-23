@@ -1073,8 +1073,12 @@ TEST(MC_DOUBLE_BRIDGING, idr_is_not_proposed_where_the_reversal_would_deform_a_r
 // other neighbour only when the backbone bend at the slot is what it was at the source unit. At the boundary
 // slot a + 4 the side group arrives from unit b, so a FIXED bend to a + 5 holds only when the backbone bends at
 // a + 4 and at b are holonomic with the same value: on flexible backbone bends the pair (1, 9) copies its side
-// groups in place when nothing asks for the re-projection, and is dropped when its declared centres do; on
-// FIXED backbone bends it re-projects as asked.
+// groups in place when nothing asks for the re-projection, and is dropped when its declared centres do.
+//
+// FIXED backbone bends settle the slot a + 4 and not the other boundary slot, b, whose side group arrives from
+// unit a + 4. Its frame is built on b - 1 and its source's on a + 3, so its angle to b - 1 becomes what the
+// source's was to a + 3: here the HARMONIC bend A-C-CH3 at unit 5, put in the place of the FIXED bend B-C-CH3 at
+// unit 9. The pair is dropped there too when its centres ask for the re-projection.
 TEST(MC_DOUBLE_BRIDGING, idr_reprojection_that_would_break_a_fixed_side_bend_is_not_proposed)
 {
   const ForceField forceField = makeHeteropolymerForceField();
@@ -1096,7 +1100,11 @@ TEST(MC_DOUBLE_BRIDGING, idr_reprojection_that_would_break_a_fixed_side_bend_is_
   EXPECT_EQ(reprojectionOf(decided.bridgingTopology()), std::nullopt);
 
   const Component holonomic = makeComponent(forceField, "idr-hetero-holonomic", heteropolymerJson("FIXED", true));
-  EXPECT_EQ(reprojectionOf(holonomic.bridgingTopology()), std::optional<bool>(true));
+  EXPECT_EQ(reprojectionOf(holonomic.bridgingTopology()), std::nullopt);
+
+  const Component holonomicUndecided =
+      makeComponent(forceField, "idr-hetero-holonomic-undecided", heteropolymerJson("FIXED", false));
+  EXPECT_EQ(reprojectionOf(holonomicUndecided.bridgingTopology()), std::optional<bool>(false));
 }
 
 // Rebridging of chains with side groups and declared chiral centres in a Lennard-Jones melt: every accepted

@@ -384,7 +384,17 @@ double CBMC::oldConfigurationLogTorsionWeight(RandomNumber& random, const Growth
                                               const Component& component, std::vector<Atom>& oldAtoms,
                                               const GrowStep& step)
 {
-  return generateRetraceTrials(random, settings, beta, forceField, simulationBox, component, oldAtoms, step, 1)
-      .front()
-      .logTorsionWeight;
+  const std::vector<StepTrial> trials =
+      generateRetraceTrials(random, settings, beta, forceField, simulationBox, component, oldAtoms, step, 1);
+  // An existing configuration behind the wall of a chiral junction has no weight to retrace with (the chain
+  // scheme refuses it as a first trial that did not survive); taken at the weight of one it was retraced as
+  // if it had the declared parity. An accepted configuration can not be there: it was read in so.
+  if (trials.front().dead)
+  {
+    throw std::runtime_error(std::format(
+        "CBMC: the existing configuration of a molecule of component '{}' does not have the chirality declared "
+        "for it, so it has no weight to retrace with\n",
+        component.name));
+  }
+  return trials.front().logTorsionWeight;
 }

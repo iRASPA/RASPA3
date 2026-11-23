@@ -1543,6 +1543,16 @@ const Component::BridgingTopology &Component::bridgingTopology() const
     }
     return false;
   };
+  // The other boundary slot, b, whose side group comes from unit a + 4. Its frame is built on b - 1, and the
+  // frame of the source on a + 3: so the side group's angle to b - 1 becomes what its source's was to a + 3, an
+  // atom of the trimer of 'a' that is under no constraint to it (a holonomic bend there refuses the site). In a
+  // chain whose units carry the same bends the bend from a side atom of b to b - 1 is then not holonomic either;
+  // where the two units differ in that, it is, and the re-projection would break it.
+  auto reprojectionBreaksBendAtFarSlot = [&](std::size_t b)
+  {
+    return std::ranges::any_of(result.units[b].sideAtoms, [&](std::size_t side)
+                               { return holonomicBendBetween(side, backboneAtom(b), backboneAtom(b - 1)) != nullptr; });
+  };
 
   for (std::size_t a : result.sites)
   {
@@ -1560,7 +1570,7 @@ const Component::BridgingTopology &Component::bridgingTopology() const
       const std::optional<bool> decision = sideGroupReprojection(a, b, decided);
       if (!decision.has_value()) continue;
       bool reproject = decision.value();
-      if (reproject && reprojectionBreaksBend(a, b))
+      if (reproject && (reprojectionBreaksBend(a, b) || reprojectionBreaksBendAtFarSlot(b)))
       {
         if (decided) continue;
         reproject = false;

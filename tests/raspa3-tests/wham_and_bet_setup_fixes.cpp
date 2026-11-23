@@ -346,11 +346,24 @@ TEST(WHAM_AND_BET_SETUP_FIXES, equal_weight_point_is_found_inside_a_window_narro
 // The swap divides the activity of each replica by its own ideal-gas Rosenbluth weight, as its insertions do: a
 // weight was refused outright, and a pressure ladder of ReweightedHistogram with one ran without an accepted swap.
 // A flexible molecule is still refused across temperatures, with or without a weight.
+//
+// The weight enters where the insertions divide by it and nowhere else: the swaps that grow the molecule do, and
+// the conventional swap, which draws the conformation, samples beta f whatever weight was given. So the replicas
+// here insert with the growing swap, and the same weights on replicas with the conventional one change nothing.
 TEST(WHAM_AND_BET_SETUP_FIXES, an_ideal_gas_rosenbluth_weight_enters_the_swap_through_the_activity)
 {
   System cold = makeCO2InFAU(300.0, 2);
   System coldOther = makeCO2InFAU(300.0, 5);
   System hot = makeCO2InFAU(350.0, 5);
+  auto insertWith = [&](Move::Types wanted, Move::Types other)
+  {
+    for (System* system : {&cold, &coldOther, &hot})
+    {
+      system->components[0].mc_moves_probabilities.setProbability(wanted, 1.0);
+      system->components[0].mc_moves_probabilities.setProbability(other, 0.0);
+    }
+  };
+  insertWith(Move::Types::SwapCBMC, Move::Types::Swap);
   const double reference = MC_Moves::ParallelTemperingLogAcceptance(cold, coldOther).value();
   cold.components[0].idealGasRosenbluthWeight = 0.5;
   coldOther.components[0].idealGasRosenbluthWeight = 0.25;
@@ -360,6 +373,12 @@ TEST(WHAM_AND_BET_SETUP_FIXES, an_ideal_gas_rosenbluth_weight_enters_the_swap_th
   ASSERT_TRUE(weighted.has_value());
   EXPECT_NEAR(weighted.value() - reference, 3.0 * std::log(0.25 / 0.5), 1e-9);
   EXPECT_TRUE(MC_Moves::ParallelTemperingLogAcceptance(cold, hot).has_value());
+
+  // with the conventional swap the weights are not what the insertions divide by, and the exchange leaves them out
+  insertWith(Move::Types::Swap, Move::Types::SwapCBMC);
+  const std::optional<double> conventional = MC_Moves::ParallelTemperingLogAcceptance(cold, coldOther);
+  ASSERT_TRUE(conventional.has_value());
+  EXPECT_NEAR(conventional.value(), reference, 1e-9);
 
   for (System* system : {&cold, &coldOther, &hot}) system->components[0].rigid = false;
   EXPECT_TRUE(MC_Moves::ParallelTemperingLogAcceptance(cold, coldOther).has_value());

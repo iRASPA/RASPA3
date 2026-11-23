@@ -838,6 +838,21 @@ void Interactions::precomputeEwaldFourierRigid(std::vector<std::complex<double>>
   }
 }
 
+RunningEnergy Interactions::isolatedRealSpaceChargeCorrectionEnergy(const ForceField& forceField,
+                                                                    const SimulationBox& simulationBox,
+                                                                    const std::vector<Component>& components,
+                                                                    std::span<const Atom> atoms)
+{
+  RunningEnergy energy{};
+  if (!forceField.useCharge || !forceField.usesRealSpaceChargeCorrections() || forceField.omitInterInteractions)
+  {
+    return energy;
+  }
+  addRealSpaceSelfEnergy(energy, forceField, atoms);
+  addChargeExclusionEnergy(energy, forceField, simulationBox, components, atoms);
+  return energy;
+}
+
 // Energy, called with 'storedEik'
 // Volume-move, called with 'trialEik' for 'storedEik'
 RunningEnergy Interactions::computeEwaldFourierEnergy(

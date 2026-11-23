@@ -608,14 +608,30 @@ export struct System
   /// own energy of the isolated molecule (there is no Fourier sum that adds to it), and with the methods without
   /// corrections the kernel does not depend on the scaling: the reference is the kernel at full coupling.
   /// Zero without charges and for rigid molecules.
+  ///
+  /// The finite-cutoff methods give a molecule a second energy of its own, the self term of its charges and the
+  /// completion of its excluded pairs ('isolatedChargeCorrectionEnergy'), which is there for a rigid molecule as
+  /// for a flexible one. The box adds it with the Fourier difference of the move, at the scaling of the atoms; the
+  /// isolated molecule has it at full coupling, and the conformations are drawn with it. So it is taken off here
+  /// at full coupling: left in the acceptance, every insertion against a fugacity was favoured by its Boltzmann
+  /// factor, and a rigid dipolar molecule in an empty box came to more than its ideal-gas density (water under
+  /// the Wolf method by 4 per cent at 500 K with the default damping, and by the cube of the damping beyond).
   [[nodiscard]] double intraCoulombScalingEnergy(std::span<const Atom> atoms) const
   {
     if (!forceField.useCharge) return 0.0;
     const double referenceScaling = forceField.usesEwaldFourier() ? 0.0 : 1.0;
     std::vector<Atom> reference(atoms.begin(), atoms.end());
     for (Atom& atom : reference) atom.scalingCoulomb = referenceScaling;
-    return intraCoulombRescaleDifference(atoms, reference).potentialEnergy();
+    return intraCoulombRescaleDifference(atoms, reference).potentialEnergy() - isolatedChargeCorrectionEnergy(atoms);
   }
+
+  /// The energy a finite-cutoff charge method gives the molecules in 'atoms' in isolation, at full coupling: the
+  /// self term of their charges and the completion of their excluded pairs
+  /// ('Interactions::isolatedRealSpaceChargeCorrectionEnergy'). It belongs to the ideal-gas molecule the fugacity
+  /// of an open ensemble refers to: the growth of the isolated molecule weighs it, the conformations of the
+  /// conventional moves are drawn with it, and a rigid molecule has its Boltzmann factor for an ideal-gas
+  /// Rosenbluth weight. Zero with the Ewald summation and without charges.
+  [[nodiscard]] double isolatedChargeCorrectionEnergy(std::span<const Atom> atoms) const;
 
   /// The intramolecular Coulomb kernel energy of a conformation of component 'componentId' at full coupling minus
   /// its ideal-gas (bare) intramolecular Coulomb energy: the Ewald compensation -C q_A q_B erf(alpha r)/r summed over

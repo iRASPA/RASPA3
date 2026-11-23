@@ -36,12 +36,15 @@ struct BiasedAcceptance
  * their sum is of order one. Formed as exp(ln P) * exp(bias) the product is 0 * exp(bias) = 0 (a move that
  * is never accepted) or inf * 0 (not a number, which fails the comparison too). The sum is exponentiated
  * instead, and both exponents are held to the range of a double.
+ *
+ * Held by 'boundedExp', so that what is below the range is zero and not exp(-700). The physical probability
+ * goes into the collection matrix of a transition-matrix run, which takes a link for supported once anything
+ * above zero has been recorded on both sides of it: a move that can not happen then counted as one that had,
+ * and ln Pi took a step of 700 across the link where it is to be carried flat.
  */
 inline BiasedAcceptance biasedAcceptance(double logPhysical, double biasTerm)
 {
-  constexpr double limit = 700.0;
-  return {std::exp(std::clamp(logPhysical, -limit, limit)),
-          std::exp(std::clamp(logPhysical + biasTerm, -limit, limit))};
+  return {boundedExp(logPhysical), boundedExp(logPhysical + biasTerm)};
 }
 
 /// The same for a probability preFactor * exp(logRest); a prefactor of zero is a move that can not be accepted.

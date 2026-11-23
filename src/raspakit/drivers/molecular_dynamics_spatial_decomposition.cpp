@@ -1422,13 +1422,9 @@ void MolecularDynamicsSpatialDecomposition::production()
       }
     }
 
-    if (currentCycle % optimizeMCMovesEvery == 0uz)
-    {
-      for (System& system : systems)
-      {
-        system.optimizeMCMoves();
-      }
-    }
+    // The parameters of the Monte Carlo moves are not adapted in production, as in the Monte Carlo drivers: a
+    // run with particle exchange grows its molecules with them, and a kernel that changes while it is sampled
+    // is not the kernel of one chain (the counts the adaptation reads were reset under the statistics as well).
 
     for (std::size_t system_id{0}; System& system : systems)
     {

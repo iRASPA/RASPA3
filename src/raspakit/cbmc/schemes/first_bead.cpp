@@ -172,14 +172,11 @@ std::optional<FirstBeadData> growPinnedFirstBead(const GrowContext &context, con
       computeExternalNonOverlappingEnergy(context, component, std::span<const Atom>(&atom, 1));
   if (!energy) return std::nullopt;
 
-  // A single trial: the weight is the Boltzmann factor itself, already available as its logarithm.
+  // A single trial: the weight is the Boltzmann factor itself, already available as its logarithm. It is not
+  // held to 'minimumRosenbluthFactor', as the fixed bead below is not: the retrace has no such limit, so a
+  // molecule another move had brought to a first bead below it could be changed away from that bead by a move
+  // whose reverse was refused here.
   const double logBoltzmannFactor = -context.beta * energy->potentialEnergy();
-  if (context.settings.minimumRosenbluthFactor > 0.0 &&
-      logBoltzmannFactor < std::log(context.settings.minimumRosenbluthFactor))
-  {
-    return std::nullopt;
-  }
-
   return FirstBeadData(atom, energy.value(), logBoltzmannFactor);
 }
 

@@ -13,6 +13,7 @@ import double3x3;
 import double4;
 import atom;
 import atom_dynamics;
+import interactions_ewald;
 import component;
 import blocking_pockets;
 import molecule;
@@ -1162,6 +1163,22 @@ std::vector<Atom> System::randomConfiguration(RandomNumber& random, std::size_t 
   return copied_atoms;
 }
 
+double System::isolatedChargeCorrectionEnergy(std::span<const Atom> atoms) const
+{
+  if (!forceField.useCharge || !forceField.usesRealSpaceChargeCorrections() || forceField.omitInterInteractions)
+  {
+    return 0.0;
+  }
+  std::vector<Atom> fullCoupling(atoms.begin(), atoms.end());
+  for (Atom& atom : fullCoupling)
+  {
+    atom.scalingCoulomb = 1.0;
+    atom.groupId = 0;
+  }
+  return Interactions::isolatedRealSpaceChargeCorrectionEnergy(forceField, simulationBox, components, fullCoupling)
+      .potentialEnergy();
+}
+
 std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random, std::size_t selectedComponent,
                                                           bool singleTrialDirection)
 {
@@ -1227,8 +1244,12 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
     const double compensationDifference =
         ewaldIntraCoulombCompensationEnergy(selectedComponent, growData->atoms) -
         ewaldIntraCoulombCompensationEnergy(selectedComponent, scratchAtoms);
+    // And the other way about for a finite-cutoff charge method: the self term and the completion of the excluded
+    // pairs are energy the isolated molecule has and the growth does not weigh ('isolatedChargeCorrectionEnergy').
+    const double correctionDifference =
+        isolatedChargeCorrectionEnergy(growData->atoms) - isolatedChargeCorrectionEnergy(scratchAtoms);
     if (random.uniform() < MC_Moves::boundedExp(growData->logRosenbluthWeight - retraceData.logRosenbluthWeight +
-                                                beta * compensationDifference))
+                                                beta * (compensationDifference - correctionDifference)))
     {
       std::copy(growData->atoms.begin(), growData->atoms.end(), scratchAtoms.begin());
       scratchMolecule = growData->molecule;

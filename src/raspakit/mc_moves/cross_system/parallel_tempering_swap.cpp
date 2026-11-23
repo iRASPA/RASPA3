@@ -637,7 +637,20 @@ std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& sys
     {
       const Component& component = system.components[componentId];
       if (component.logInsertionNormalization.has_value()) return component.logInsertionNormalization.value();
-      if (!Preparation::insertionsDivideByIdealGasRosenbluthWeight(system, componentId)) return 0.0;
+      if (!Preparation::insertionsDivideByIdealGasRosenbluthWeight(system, componentId))
+      {
+        // The insertions that do not grow the molecule take the energy a finite-cutoff charge method gives it in
+        // isolation off their acceptance ('System::intraCoulombScalingEnergy'), which for a molecule of one
+        // conformation is a division by the same Boltzmann factor the growing ones divide by as a weight.
+        if (!(component.rigid || component.atoms.size() <= 1uz) || component.atoms.empty()) return 0.0;
+        std::vector<Atom> atoms(component.atoms.begin(), component.atoms.end());
+        for (Atom& atom : atoms)
+        {
+          atom.componentId = static_cast<decltype(atom.componentId)>(componentId);
+          atom.moleculeId = 0;
+        }
+        return -system.beta * system.isolatedChargeCorrectionEnergy(atoms);
+      }
       return std::log(component.idealGasRosenbluthWeight.value_or(1.0));
     };
     const double betaFugacityA = systemA.beta * fugacityA;
@@ -663,9 +676,13 @@ std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& sys
   {
     auto pressureWork = [](const System& system, const SimulationBox& oldBox, const SimulationBox& newBox)
     {
-      return system.mc_moves_probabilities.getProbability(Move::Types::AnisotropicVolumeChange) > 0.0
-                 ? MC_Moves::anisotropicPressureWork(system, oldBox, newBox)
-                 : system.pressure * (newBox.volume - oldBox.volume);
+      // by the tensor, as the volume move chooses its work, and not by whether the anisotropic move is on:
+      // under 'ExternalPressureX/Y/Z' the isotropic move weighs its boxes with the tensor too, and a replica
+      // with that move alone was exchanged by p dV, another distribution than the one it samples
+      const double3& tensor = system.pressureTensorDiagonal;
+      const bool hydrostatic = tensor.x == tensor.y && tensor.y == tensor.z;
+      return hydrostatic ? system.pressure * (newBox.volume - oldBox.volume)
+                         : MC_Moves::anisotropicPressureWork(system, oldBox, newBox);
     };
     logR -= systemA.beta * pressureWork(systemA, systemA.simulationBox, systemB.simulationBox) +
             systemB.beta * pressureWork(systemB, systemB.simulationBox, systemA.simulationBox);

@@ -204,11 +204,14 @@ IdealGasGrows growIdealGas(const System& system, std::size_t componentId, std::s
             CBMC::growNewMolecule(random, context, component, {.componentId = componentId, .moleculeId = 0uz});
         if (!growData.has_value()) continue;
         const double compensation = system.ewaldIntraCoulombCompensationEnergy(componentId, growData->atoms);
-        chunk.logWeight.push_back(growData->logRosenbluthWeight + system.beta * compensation);
+        // the self term and the excluded pairs of a finite-cutoff charge method: energy of the isolated molecule
+        // that the growth does not weigh and the box adds ('System::isolatedChargeCorrectionEnergy')
+        const double correction = system.isolatedChargeCorrectionEnergy(growData->atoms);
+        chunk.logWeight.push_back(growData->logRosenbluthWeight + system.beta * (compensation - correction));
         chunk.energy.push_back(component.intraMolecularPotentials
                                    .computeInternalEnergies(system.forceField, system.simulationBox, growData->atoms)
                                    .potentialEnergy() -
-                               compensation);
+                               compensation + correction);
       }
     });
     for (const Chunk& chunk : chunks)
@@ -325,6 +328,45 @@ bool hasSharedGrowingMove(const System& system)
 
 }  // namespace
 
+namespace
+{
+// The atoms of a molecule that has one conformation, as the box holds them.
+std::vector<Atom> referenceAtoms(const Component& component, std::size_t componentId)
+{
+  std::vector<Atom> atoms(component.atoms.begin(), component.atoms.end());
+  for (Atom& atom : atoms)
+  {
+    atom.componentId = static_cast<decltype(atom.componentId)>(componentId);
+    atom.moleculeId = 0;
+    atom.scalingCoulomb = 1.0;
+    atom.groupId = 0;
+  }
+  return atoms;
+}
+
+// A molecule of one conformation has nothing to grow and its ideal-gas Rosenbluth weight is one, but for the energy
+// a finite-cutoff charge method gives it in isolation ('System::isolatedChargeCorrectionEnergy'): the box adds
+// that energy to every insertion, so the weight the insertions divide by is its Boltzmann factor. Nothing where
+// there is no such energy (the Ewald summation, no charges), and a weight that was given is kept.
+void setRigidChargeCorrectionWeights(System& system)
+{
+  for (std::size_t componentId = 0; componentId < system.components.size(); ++componentId)
+  {
+    Component& component = system.components[componentId];
+    if (component.idealGasRosenbluthWeight.has_value()) continue;
+    if (!(component.rigid || component.atoms.size() <= 1uz) || component.atoms.empty()) continue;
+    const double correction = system.isolatedChargeCorrectionEnergy(referenceAtoms(component, componentId));
+    if (correction == 0.0) continue;
+    setComputedWeight(component, Preparation::IdealGasReference{.temperature = system.temperature,
+                                                                .logRosenbluthWeight = -system.beta * correction,
+                                                                .relativeError = 0.0,
+                                                                .numberOfGrows = 0uz,
+                                                                .converged = true});
+  }
+}
+
+}  // namespace
+
 bool Preparation::isFlexibleOpenComponent(const Component& component)
 {
   return component.swappable && !component.rigid && component.atoms.size() > 1uz;
@@ -416,6 +458,7 @@ void Preparation::prepareIdealGasRosenbluthWeights(std::span<System> systems, co
       if (!needsIdealGasRosenbluthWeight(system, componentId)) continue;
       setComputedWeight(component, idealGasRosenbluthWeight(system, componentId, settings));
     }
+    setRigidChargeCorrectionWeights(system);
   }
 }
 
@@ -525,5 +568,6 @@ std::vector<std::vector<double>> Preparation::prepareIdealGasReferences(std::spa
       setComputedWeight(component, it->second);
     }
   }
+  for (System& system : systems) setRigidChargeCorrectionWeights(system);
   return others;
 }

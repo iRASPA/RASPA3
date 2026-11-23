@@ -2172,14 +2172,27 @@ TEST(MC_GIBBS_DRIFT, parallel_tempering_exchange_carries_the_deviatoric_work_of_
   ASSERT_TRUE(logR.has_value());
   EXPECT_NEAR(*logR, energyTerm + stressTerm, 1.0e-9 * std::max(1.0, std::abs(energyTerm + stressTerm)));
 
-  // without the anisotropic move a replica samples p V with its scalar pressure
+  // Without the anisotropic move the work is the same: the isotropic volume move weighs its boxes with the
+  // tensor too once the tensor is not hydrostatic ('MC_Moves::volumeMove'), so that is what the replica samples
+  // and what the exchange has to carry. (It was p V with the scalar pressure here, another distribution than
+  // the volume move's.)
   for (System* system : {&systemA, &systemB})
   {
     system->mc_moves_probabilities.setProbability(Move::Types::AnisotropicVolumeChange, 0.0);
   }
   const std::optional<double> isotropic = MC_Moves::ParallelTemperingLogAcceptance(systemA, systemB);
   ASSERT_TRUE(isotropic.has_value());
-  EXPECT_NEAR(*isotropic, energyTerm + hydrostaticOnly, 1.0e-9 * std::max(1.0, std::abs(energyTerm + hydrostaticOnly)));
+  EXPECT_NEAR(*isotropic, energyTerm + stressTerm, 1.0e-9 * std::max(1.0, std::abs(energyTerm + stressTerm)));
+
+  // and a hydrostatic tensor is the scalar pressure, whichever moves are on
+  for (System* system : {&systemA, &systemB})
+  {
+    system->pressureTensorDiagonal = double3(system->pressure, system->pressure, system->pressure);
+  }
+  const std::optional<double> hydrostatic = MC_Moves::ParallelTemperingLogAcceptance(systemA, systemB);
+  ASSERT_TRUE(hydrostatic.has_value());
+  EXPECT_NEAR(*hydrostatic, energyTerm + hydrostaticOnly,
+              1.0e-9 * std::max(1.0, std::abs(energyTerm + hydrostaticOnly)));
 }
 
 TEST(MC_GIBBS_DRIFT, parallel_tempering_cfcmc_swaps_lambda_and_preserves_bias)
