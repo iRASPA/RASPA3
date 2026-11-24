@@ -362,6 +362,120 @@ public:
 } // namespace nanobind
 
 
+// A driver works on its own copy of the systems it is given: the kits are value-based and keep no references to the
+// objects of the caller. To let those objects hold the results nevertheless, the systems of the driver are assigned
+// back to the Python objects they were copied from whenever a phase returns (copy in, copy out). Inside a call-back
+// the phase has not returned yet, and the systems of the driver itself ('systems') are the ones to read.
+template <typename Driver>
+struct DriverOfGivenSystems : Driver
+{
+  using Driver::Driver;
+
+  std::vector<nanobind::object> givenSystems;
+
+  void copyOut()
+  {
+    if (givenSystems.size() != this->systems.size()) return;
+    for (std::size_t i = 0; i < givenSystems.size(); ++i)
+    {
+      // an object that was given more than once has no single system to take
+      if (std::ranges::count_if(givenSystems,
+                                [&](const nanobind::object& given) { return given.is(givenSystems[i]); }) != 1)
+      {
+        continue;
+      }
+      nanobind::cast<System&>(givenSystems[i]) = this->systems[i];
+    }
+  }
+};
+
+template <typename Driver>
+void bindDriver(nanobind::module_& m, const char* name)
+{
+  using Bound = DriverOfGivenSystems<Driver>;
+  using CallBack = std::function<void()>;
+
+  auto construct =
+      [](Bound* driver, std::size_t number_of_production_cycles, std::size_t number_of_pre_initialization_cycles,
+         std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
+         std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
+         std::size_t optimize_mc_moves_every, nanobind::typed<nanobind::sequence, System> systems,
+         std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
+  {
+    std::vector<nanobind::object> given;
+    std::vector<System> copies;
+    for (nanobind::handle item : systems)
+    {
+      if (!nanobind::isinstance<System>(item)) throw nanobind::type_error("systems: a sequence of System is expected");
+      given.push_back(nanobind::borrow(item));
+      copies.push_back(nanobind::cast<const System&>(item));
+    }
+    new (driver) Bound(
+        SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
+                           number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
+                           write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
+        copies, random_seed, number_of_blocks, output_to_files);
+    driver->givenSystems = std::move(given);
+  };
+
+  nanobind::class_<Bound> driver(m, name);
+
+  // the production cycles also go by the keyword 'number_of_cycles' of the 3.1.0 release
+  for (const char* cycles : {"number_of_production_cycles", "number_of_cycles"})
+  {
+    driver.def("__init__", construct, nanobind::arg(cycles), nanobind::arg("number_of_pre_initialization_cycles") = 0,
+               nanobind::arg("number_of_initialization_cycles") = 0,
+               nanobind::arg("number_of_equilibration_cycles") = 0, nanobind::arg("print_every") = 5000,
+               nanobind::arg("write_binary_restart_every") = 5000, nanobind::arg("rescale_wang_landau_every") = 1000,
+               nanobind::arg("optimize_mc_moves_every") = 100, nanobind::arg("systems") = nanobind::list(),
+               nanobind::arg("random_seed") = nanobind::none(), nanobind::arg("number_of_blocks") = 5,
+               nanobind::arg("output_to_files") = false);
+  }
+
+  auto step = [&driver](const char* pythonName, void (Driver::*function)())
+  {
+    driver.def(pythonName, [function](Bound& d)
+               {
+                 (d.*function)();
+                 d.copyOut();
+               });
+  };
+  auto phase = [&driver](const char* pythonName, void (Driver::*function)(CallBack, std::size_t))
+  {
+    driver.def(
+        pythonName, [function](Bound& d, CallBack call_back_function, std::size_t call_back_every)
+        {
+          (d.*function)(std::move(call_back_function), call_back_every);
+          d.copyOut();
+        },
+        nanobind::arg("call_back_function") = CallBack([]() {}), nanobind::arg("call_back_every") = 100);
+  };
+
+  step("run", &Driver::run);
+  step("setup", &Driver::setup);
+  step("tear_down", &Driver::tearDown);
+  phase("pre_initialize", &Driver::preInitialize);
+  phase("initialize", &Driver::initialize);
+  phase("equilibrate", &Driver::equilibrate);
+  phase("production", &Driver::production);
+
+  // a single cycle does not copy out: the phases and 'tear_down' do
+  if constexpr (requires(Driver d) { d.performCycle(); })
+  {
+    driver.def("cycle", [](Bound& d) { d.performCycle(); });
+  }
+
+  driver.def_prop_ro("systems",
+                     [](nanobind::handle self)
+                     {
+                       // the live objects, each held by the parent: a copied vector lost every change made through it
+                       nanobind::list list;
+                       for (System& item : nanobind::cast<Bound&>(self).systems)
+                         list.append(nanobind::cast(&item, nanobind::rv_policy::reference_internal, self));
+                       return list;
+                     });
+}
+
 #define EXPAND_MODULE(name) NB_MODULE(name, m)
 EXPAND_MODULE(MODULE_NAME)
 {
@@ -924,11 +1038,22 @@ EXPAND_MODULE(MODULE_NAME)
             nanobind::arg("number_of_components"),
             nanobind::arg("sample_every"), 
             nanobind::arg("write_every") = nanobind::none())
+      // the keyword 'number_of_cycles' of the 3.1.0 release
+      .def(nanobind::init<std::size_t, std::size_t, std::size_t, std::optional<std::size_t>>(),
+            nanobind::arg("number_of_cycles"), 
+            nanobind::arg("number_of_components"),
+            nanobind::arg("sample_every"), 
+            nanobind::arg("write_every") = nanobind::none())
       .def_ro("result", &PropertyNumberOfMoleculesEvolution::result);
 
   nanobind::class_<PropertyVolumeEvolution>(m, "PropertyVolumeEvolution")
     .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
             nanobind::arg("number_of_production_cycles"), 
+            nanobind::arg("sample_every"), 
+            nanobind::arg("write_every") = nanobind::none())
+    // the keyword 'number_of_cycles' of the 3.1.0 release
+    .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
+            nanobind::arg("number_of_cycles"), 
             nanobind::arg("sample_every"), 
             nanobind::arg("write_every") = nanobind::none())
       .def_ro("result", &PropertyVolumeEvolution::result);
@@ -1017,99 +1142,16 @@ EXPAND_MODULE(MODULE_NAME)
       .def("write_mc_move_statistics", &System::writeMCMoveStatistics)
       .def("__repr__", &System::repr);
 
-  nanobind::class_<MonteCarlo>(m, "MonteCarlo")
-      .def(
-          "__init__",
-          [](MonteCarlo* mc, std::size_t number_of_production_cycles, std::size_t number_of_pre_initialization_cycles,
-             std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
-             std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
-             std::size_t optimize_mc_moves_every, const std::vector<System>& systems,
-             std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
-          {
-            new (mc) MonteCarlo(
-                SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
-                                   number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
-                                   write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
-                systems, random_seed, number_of_blocks, output_to_files);
-          },
-          nanobind::arg("number_of_production_cycles"), nanobind::arg("number_of_pre_initialization_cycles") = 0,
-          nanobind::arg("number_of_initialization_cycles") = 0, nanobind::arg("number_of_equilibration_cycles") = 0,
-          nanobind::arg("print_every") = 5000, nanobind::arg("write_binary_restart_every") = 5000,
-          nanobind::arg("rescale_wang_landau_every") = 1000, nanobind::arg("optimize_mc_moves_every") = 100,
-          nanobind::arg("systems") = std::vector<System>(), nanobind::arg("random_seed") = nanobind::none(),
-          nanobind::arg("number_of_blocks") = 5, nanobind::arg("output_to_files") = false)
-      .def("run", &MonteCarlo::run)
-      .def("setup", &MonteCarlo::setup)
-      .def("tear_down", &MonteCarlo::tearDown)
-      .def("pre_initialize", &MonteCarlo::preInitialize,
-           nanobind::arg("call_back_function") = std::function<void()>([]() {}), nanobind::arg("call_back_every") = 100)
-      .def("initialize", &MonteCarlo::initialize, nanobind::arg("call_back_function") = std::function<void()>([]() {}),
-           nanobind::arg("call_back_every") = 100)
-      .def("equilibrate", &MonteCarlo::equilibrate,
-           nanobind::arg("call_back_function") = std::function<void()>([]() {}), nanobind::arg("call_back_every") = 100)
-      .def("production", &MonteCarlo::production, nanobind::arg("call_back_function") = std::function<void()>([]() {}),
-           nanobind::arg("call_back_every") = 100)
-      .def("cycle", &MonteCarlo::performCycle)
-      .def_prop_ro("systems",
-                   [](nanobind::handle self)
-                   {
-                     // the live objects, each held by the parent: a copied vector lost every change made through it
-                     nanobind::list list;
-                     for (System& item : nanobind::cast<MonteCarlo&>(self).systems)
-                       list.append(nanobind::cast(&item, nanobind::rv_policy::reference_internal, self));
-                     return list;
-                   });
-
-  nanobind::class_<MolecularDynamics>(m, "MolecularDynamics")
-      .def(
-          "__init__",
-          [](MolecularDynamics* md, std::size_t number_of_production_cycles,
-             std::size_t number_of_pre_initialization_cycles, std::size_t number_of_initialization_cycles,
-             std::size_t number_of_equilibration_cycles, std::size_t print_every,
-             std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
-             std::size_t optimize_mc_moves_every, const std::vector<System>& systems,
-             std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
-          {
-            new (md) MolecularDynamics(
-                SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
-                                   number_of_initialization_cycles, number_of_equilibration_cycles, print_every,
-                                   write_binary_restart_every, rescale_wang_landau_every, optimize_mc_moves_every},
-                systems, random_seed, number_of_blocks, output_to_files);
-          },
-          nanobind::arg("number_of_production_cycles"), nanobind::arg("number_of_pre_initialization_cycles") = 0,
-          nanobind::arg("number_of_initialization_cycles") = 0, nanobind::arg("number_of_equilibration_cycles") = 0,
-          nanobind::arg("print_every") = 5000, nanobind::arg("write_binary_restart_every") = 5000,
-          nanobind::arg("rescale_wang_landau_every") = 1000, nanobind::arg("optimize_mc_moves_every") = 100,
-          nanobind::arg("systems") = std::vector<System>(), nanobind::arg("random_seed") = nanobind::none(),
-          nanobind::arg("number_of_blocks") = 5, nanobind::arg("output_to_files") = false)
-      .def("run", &MolecularDynamics::run)
-      .def("setup", &MolecularDynamics::setup)
-      .def("tear_down", &MolecularDynamics::tearDown)
-      .def("pre_initialize", &MolecularDynamics::preInitialize,
-           nanobind::arg("call_back_function") = nanobind::cpp_function([](void) {}),
-           nanobind::arg("call_back_every") = 100)
-      .def("initialize", &MolecularDynamics::initialize,
-           nanobind::arg("call_back_function") = nanobind::cpp_function([](void) {}),
-           nanobind::arg("call_back_every") = 100)
-      .def("equilibrate", &MolecularDynamics::equilibrate,
-           nanobind::arg("call_back_function") = nanobind::cpp_function([](void) {}),
-           nanobind::arg("call_back_every") = 100)
-      .def("production", &MolecularDynamics::production,
-           nanobind::arg("call_back_function") = nanobind::cpp_function([](void) {}),
-           nanobind::arg("call_back_every") = 100)
-      .def_prop_ro("systems",
-                   [](nanobind::handle self)
-                   {
-                     // the live objects, each held by the parent: a copied vector lost every change made through it
-                     nanobind::list list;
-                     for (System& item : nanobind::cast<MolecularDynamics&>(self).systems)
-                       list.append(nanobind::cast(&item, nanobind::rv_policy::reference_internal, self));
-                     return list;
-                   });
+  bindDriver<MonteCarlo>(m, "MonteCarlo");
+  bindDriver<MolecularDynamics>(m, "MolecularDynamics");
 
   nanobind::class_<PropertyConservedEnergyEvolution>(m, "PropertyConservedEnergyEvolution")
       .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
            nanobind::arg("number_of_production_cycles"), nanobind::arg("sample_every"),
+           nanobind::arg("write_every") = nanobind::none())
+      // the keyword 'number_of_cycles' of the 3.1.0 release
+      .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
+           nanobind::arg("number_of_cycles"), nanobind::arg("sample_every"),
            nanobind::arg("write_every") = nanobind::none())
       // the running energies as they are, in internal units like every RunningEnergy (System.compute_total_energies);
       // their __repr__ prints Kelvin (multiplying here as well printed EnergyToKelvin squared)

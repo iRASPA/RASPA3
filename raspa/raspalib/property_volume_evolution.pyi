@@ -1,3 +1,4 @@
+import typing
 import collections.abc
 
 class PropertyVolumeEvolution():
@@ -7,6 +8,16 @@ class PropertyVolumeEvolution():
     This property tracks simulation-box volume as a function of cycle.
     """
 
+    @typing.overload
+    def __init__(
+        self,
+        number_of_cycles: int,
+        sample_every: int,
+        write_every: int | None = None
+    ) -> None:
+        ...
+
+    @typing.overload
     def __init__(
         self,
         number_of_production_cycles: int,
@@ -18,6 +29,8 @@ class PropertyVolumeEvolution():
         Initialize a :class:`PropertyVolumeEvolution`.
 
         Args:
+            number_of_cycles: The keyword of the 3.1.0 release for
+                ``number_of_production_cycles``.
             number_of_production_cycles: Number of simulation cycles to monitor.
             sample_every: Sampling interval in cycles.
             write_every: Optional output-write interval in cycles.

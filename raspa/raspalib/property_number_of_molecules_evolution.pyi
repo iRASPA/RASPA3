@@ -1,3 +1,4 @@
+import typing
 import collections.abc
 
 class PropertyNumberOfMoleculesEvolution():
@@ -7,6 +8,17 @@ class PropertyNumberOfMoleculesEvolution():
     This property tracks per-component molecule counts over simulation cycles.
     """
 
+    @typing.overload
+    def __init__(
+        self,
+        number_of_cycles: int,
+        number_of_components: int,
+        sample_every: int,
+        write_every: int | None = None
+    ) -> None:
+        ...
+
+    @typing.overload
     def __init__(
         self,
         number_of_production_cycles: int,
@@ -19,6 +31,8 @@ class PropertyNumberOfMoleculesEvolution():
         Initialize a :class:`PropertyNumberOfMoleculesEvolution`.
 
         Args:
+            number_of_cycles: The keyword of the 3.1.0 release for
+                ``number_of_production_cycles``.
             number_of_production_cycles: Number of simulation cycles to monitor.
             number_of_components: Number of components in the system.
             sample_every: Sampling interval in cycles.

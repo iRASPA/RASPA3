@@ -1,3 +1,4 @@
+import typing
 import collections.abc
 from raspalib.running_energy import *
 
@@ -9,6 +10,16 @@ class PropertyConservedEnergyEvolution():
     exposes the sampled time-series as :class:`RunningEnergy` entries.
     """
 
+    @typing.overload
+    def __init__(
+        self,
+        number_of_cycles: int,
+        sample_every: int,
+        write_every: int | None = None
+    ) -> None:
+        ...
+
+    @typing.overload
     def __init__(
         self,
         number_of_production_cycles: int,
@@ -20,6 +31,8 @@ class PropertyConservedEnergyEvolution():
         Initialize a :class:`PropertyConservedEnergyEvolution`.
 
         Args:
+            number_of_cycles: The keyword of the 3.1.0 release for
+                ``number_of_production_cycles``.
             number_of_production_cycles: Number of simulation cycles to monitor.
             sample_every: Sampling interval in cycles.
             write_every: Optional output-write interval in cycles.
