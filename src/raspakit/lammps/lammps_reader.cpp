@@ -164,6 +164,21 @@ struct InputScript
     std::vector<double> masses{};
   };
   std::optional<Shake> shake{};
+
+  /// The run the script asks for: 'timestep', 'run' and the fixes that integrate, thermostat and barostat. Times,
+  /// temperatures and pressures are in the units of the script, converted when the simulation is written.
+  struct Dynamics
+  {
+    std::optional<double> timeStep{};
+    std::vector<std::size_t> runs{};  ///< the steps of every 'run' with at least one step, in order
+    std::string integrator{};         ///< "nve", "nvt" or "npt": the fix that moves the atoms; empty without one
+    std::optional<double> temperature{}, temperatureDamping{};
+    std::optional<double> pressure{}, pressureDamping{};
+    bool flexibleCell{false};  ///< 'aniso', 'tri' or separate 'x', 'y', 'z' of fix npt
+    std::optional<std::size_t> thermostatChain{}, barostatChain{};
+    std::optional<double> langevinTemperature{}, langevinDamping{};
+  };
+  Dynamics dynamics{};
 };
 
 CoefficientLine parseCoefficientLine(const std::vector<std::string> &words, std::size_t firstValue)
@@ -198,11 +213,103 @@ StyleSpec parseStyle(const std::vector<std::string> &words)
   return spec;
 }
 
+// The fixes that integrate the equations of motion and hold the temperature and the pressure: 'fix nve', 'fix nvt',
+// 'fix npt' and 'fix langevin' (with an accelerator suffix or without). Returns whether 'words' is such a fix (or one
+// of their kind that is not converted, which is reported).
+bool readDynamicsFix(const std::vector<std::string> &words, InputScript::Dynamics &dynamics,
+                     std::vector<std::string> &warnings)
+{
+  std::string style = words[3];
+  for (const std::string_view suffix : {"/omp", "/kk", "/gpu", "/intel", "/opt"})
+  {
+    if (style.ends_with(suffix)) style.erase(style.size() - suffix.size());
+  }
+  const auto number = [&](std::size_t i) -> std::optional<double>
+  {
+    if (i < words.size() && isNumber(words[i])) return toDouble(words[i]);
+    return std::nullopt;
+  };
+  // three numbers after a keyword: the start and stop values (a ramp is not converted) and the damping time
+  const auto triple = [&](std::size_t i, std::string_view what, std::optional<double> &value,
+                          std::optional<double> &damping)
+  {
+    const std::optional<double> start = number(i), stop = number(i + 1), damp = number(i + 2);
+    if (!start || !stop || !damp)
+    {
+      warnings.push_back(std::format("[LAMMPS reader] fix {}: the {} is not given by numbers and is not converted",
+                                     words[3], what));
+      return;
+    }
+    if (*start != *stop)
+    {
+      warnings.push_back(std::format("[LAMMPS reader] fix {}: the {} ramp from {} to {} is not converted, {} is used",
+                                     words[3], what, *start, *stop, *stop));
+    }
+    value = *stop;
+    damping = *damp;
+  };
+
+  if (style != "nve" && style != "nvt" && style != "npt" && style != "langevin")
+  {
+    const bool ofTheirKind = style.starts_with("nve/") || style.starts_with("nvt/") || style.starts_with("npt/") ||
+                             style.starts_with("nph") || style.starts_with("temp/") ||
+                             style.starts_with("press/") || style == "gld" || style == "nvk";
+    if (ofTheirKind)
+    {
+      warnings.push_back(std::format(
+          "[LAMMPS reader] fix {} is not converted (the integrators read are nve, nvt and npt, the thermostat next "
+          "to them langevin)",
+          words[3]));
+    }
+    return ofTheirKind;
+  }
+  if (words[2] != "all")
+  {
+    warnings.push_back(std::format(
+        "[LAMMPS reader] fix {} acts on group '{}': it is converted as acting on all atoms", words[3], words[2]));
+  }
+
+  if (style == "langevin")
+  {
+    triple(4, "temperature", dynamics.langevinTemperature, dynamics.langevinDamping);
+    return true;
+  }
+  if (!dynamics.integrator.empty() && dynamics.integrator != style)
+  {
+    warnings.push_back(std::format("[LAMMPS reader] fix {} after fix {}: the last one is converted", words[3],
+                                   dynamics.integrator));
+  }
+  dynamics.integrator = style;
+  for (std::size_t i = 4; i < words.size(); ++i)
+  {
+    if (words[i] == "temp")
+    {
+      triple(i + 1, "temperature", dynamics.temperature, dynamics.temperatureDamping);
+    }
+    else if (words[i] == "iso" || words[i] == "aniso" || words[i] == "tri" || words[i] == "x" || words[i] == "y" ||
+             words[i] == "z")
+    {
+      if (words[i] != "iso") dynamics.flexibleCell = true;
+      triple(i + 1, "pressure", dynamics.pressure, dynamics.pressureDamping);
+    }
+    else if (words[i] == "tchain" && number(i + 1))
+    {
+      dynamics.thermostatChain = static_cast<std::size_t>(*number(i + 1));
+    }
+    else if (words[i] == "pchain" && number(i + 1))
+    {
+      dynamics.barostatChain = static_cast<std::size_t>(*number(i + 1));
+    }
+  }
+  return true;
+}
+
 InputScript readInputScript(const std::filesystem::path &path, std::vector<std::string> &warnings)
 {
   InputScript script;
   std::ifstream file(path);
   if (!file) throw std::runtime_error(std::format("[LAMMPS reader] cannot open input script '{}'", path.string()));
+  std::map<std::string, std::string> variables;
 
   std::string raw;
   std::string logical;
@@ -218,7 +325,38 @@ InputScript readInputScript(const std::filesystem::path &path, std::vector<std::
     std::vector<std::string> words = tokens(logical);
     logical.clear();
     if (words.empty()) continue;
+    // 'variable name equal|index|string value' with one value, used as ${name} or v_name further on
+    for (std::size_t i = 1; i < words.size(); ++i)
+    {
+      for (const auto &[name, value] : variables)
+      {
+        if (words[i] == "v_" + name) words[i] = value;
+        const std::string reference = "${" + name + "}";
+        for (std::size_t at = words[i].find(reference); at != std::string::npos; at = words[i].find(reference))
+        {
+          words[i].replace(at, reference.size(), value);
+        }
+      }
+    }
     const std::string &command = words[0];
+    if (command == "variable" && words.size() == 4 &&
+        (words[2] == "equal" || words[2] == "index" || words[2] == "string"))
+    {
+      variables[words[1]] = words[3];
+      continue;
+    }
+    if (command == "timestep" && words.size() > 1 && isNumber(words[1]))
+    {
+      script.dynamics.timeStep = toDouble(words[1]);
+      continue;
+    }
+    if (command == "run" && words.size() > 1 && isNumber(words[1]))
+    {
+      // 'run 0' evaluates the energy of the configuration: no step of a run
+      if (toDouble(words[1]) >= 1.0) script.dynamics.runs.push_back(static_cast<std::size_t>(toDouble(words[1])));
+      continue;
+    }
+    if (command == "fix" && words.size() > 3 && readDynamicsFix(words, script.dynamics, warnings)) continue;
 
     if (command == "units" && words.size() > 1)
     {
@@ -1420,6 +1558,72 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
     result.forceField["EwaldParameters"] = nlohmann::json::array({*dampingAlpha, 1, 1, 1});
   }
   if (script.kspaceAccuracy && coulomb && anyCharge) result.forceField["EwaldPrecision"] = *script.kspaceAccuracy;
+  // The run of the script: molecular dynamics in the ensemble of its integrating fix. LAMMPS 'real' units have
+  // femtoseconds and atmospheres, 'metal' units picoseconds and bar; RASPA takes picoseconds and Pascal.
+  const InputScript::Dynamics &dynamics = script.dynamics;
+  if (!dynamics.integrator.empty())
+  {
+    const bool metal = script.units == "metal";
+    const double picoseconds = metal ? 1.0 : 1.0e-3;
+    const double pascal = metal ? 1.0e5 : 101325.0;
+    const bool langevin = dynamics.langevinTemperature.has_value();
+
+    simulation["SimulationType"] = "MolecularDynamics";
+    simulation["PrintEvery"] = 1000;
+    if (!dynamics.runs.empty())
+    {
+      // the last run is the production, those before it the equilibration
+      simulation["NumberOfProductionCycles"] = dynamics.runs.back();
+      simulation["NumberOfEquilibrationCycles"] =
+          std::accumulate(dynamics.runs.begin(), dynamics.runs.end() - 1, std::size_t{0});
+    }
+    system["TimeStep"] = dynamics.timeStep.value_or(metal ? 0.001 : 1.0) * picoseconds;
+
+    if (dynamics.integrator == "nve")
+    {
+      system["Ensemble"] = langevin ? "NVT" : "NVE";
+    }
+    else
+    {
+      system["Ensemble"] = dynamics.integrator == "nvt" ? "NVT" : dynamics.flexibleCell ? "NPTPR" : "NPT";
+      if (dynamics.temperature) system["ExternalTemperature"] = *dynamics.temperature;
+      if (dynamics.temperatureDamping)
+        system["TimeScaleParameterThermostat"] = *dynamics.temperatureDamping * picoseconds;
+      if (dynamics.thermostatChain) system["ThermostatChainLength"] = *dynamics.thermostatChain;
+      if (dynamics.integrator == "npt")
+      {
+        if (dynamics.pressure) system["ExternalPressure"] = *dynamics.pressure * pascal;
+        if (dynamics.pressureDamping) system["TimeScaleParameterBarostat"] = *dynamics.pressureDamping * picoseconds;
+        if (dynamics.barostatChain) system["BarostatChainLength"] = *dynamics.barostatChain;
+        if (dynamics.flexibleCell)
+        {
+          result.warnings.push_back(
+              "[LAMMPS reader] fix npt with aniso, tri or separate x, y, z is converted to the flexible cell of "
+              "'NPTPR': check the cell degrees of freedom it should have");
+        }
+      }
+      if (langevin)
+      {
+        result.warnings.push_back(std::format(
+            "[LAMMPS reader] fix langevin next to fix {}: the Langevin thermostat replaces the Nose-Hoover chain "
+            "of the particles",
+            dynamics.integrator));
+      }
+    }
+    if (langevin)
+    {
+      // the 'damp' of fix langevin is the time over which a velocity is forgotten: the inverse of the friction
+      system["Thermostat"] = "Langevin";
+      system["ExternalTemperature"] = *dynamics.langevinTemperature;
+      if (*dynamics.langevinDamping > 0.0)
+        system["LangevinFriction"] = 1.0 / (*dynamics.langevinDamping * picoseconds);
+    }
+  }
+  else if (dynamics.langevinTemperature.has_value())
+  {
+    result.warnings.push_back(
+        "[LAMMPS reader] fix langevin without a fix that integrates (nve, nvt, npt): no dynamics is converted");
+  }
   simulation["Systems"] = nlohmann::json::array({system});
   simulation["Components"] = nlohmann::json::array();
   for (const ReadComponent &component : result.components)

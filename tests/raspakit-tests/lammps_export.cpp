@@ -1782,3 +1782,106 @@ Angles
   // without the fix nothing is constrained
   EXPECT_EQ(fixedBonds(read("").components[0].definition), 0u);
 }
+
+// The run of a LAMMPS script is read with its force field: 'timestep', 'run' and the fixes that integrate and hold
+// the temperature and the pressure become the molecular-dynamics keys of the simulation, in the units of RASPA
+// (picoseconds and Pascal from the femtoseconds and atmospheres of 'real', the picoseconds and bar of 'metal').
+TEST(lammps_export, reader_turns_the_integrating_fixes_into_the_ensemble_of_the_simulation)
+{
+  const std::string data = R"(LAMMPS data file
+
+2 atoms
+1 atom types
+
+0.0 30.0 xlo xhi
+0.0 30.0 ylo yhi
+0.0 30.0 zlo zhi
+
+Masses
+
+1 39.948
+
+Pair Coeffs # lj/cut
+
+1 0.238 3.405
+
+Atoms # molecular
+
+1 1 1 5.0 5.0 5.0
+2 2 1 15.0 15.0 15.0
+)";
+  const auto read = [&](const std::string& units, const std::string& commands)
+  {
+    TemporaryDirectory directory;
+    const std::filesystem::path dataPath = directory.path / "run.data";
+    const std::filesystem::path inputPath = directory.path / "run.in";
+    std::ofstream(dataPath) << data;
+    std::ofstream(inputPath) << "units " << units << "\natom_style molecular\npair_style lj/cut 9.0\n"
+                             << "read_data run.data\n"
+                             << commands << "\n";
+    return LAMMPS::readDataFile(dataPath, inputPath);
+  };
+
+  // Nose-Hoover NVT, the temperature through a variable, an equilibration run before the production
+  {
+    const LAMMPS::ReadResult result = read(
+        "real", "variable T equal 350.0\ntimestep 2.0\nfix 1 all nvt temp ${T} v_T 100.0 tchain 3\nrun 5000\nrun 20000");
+    const nlohmann::json& system = result.simulation["Systems"][0];
+    EXPECT_EQ(result.simulation["SimulationType"], "MolecularDynamics");
+    EXPECT_EQ(result.simulation["NumberOfEquilibrationCycles"].get<std::size_t>(), 5000u);
+    EXPECT_EQ(result.simulation["NumberOfProductionCycles"].get<std::size_t>(), 20000u);
+    EXPECT_EQ(system["Ensemble"], "NVT");
+    EXPECT_DOUBLE_EQ(system["ExternalTemperature"].get<double>(), 350.0);
+    EXPECT_NEAR(system["TimeStep"].get<double>(), 0.002, 1e-15);
+    EXPECT_NEAR(system["TimeScaleParameterThermostat"].get<double>(), 0.1, 1e-15);
+    EXPECT_EQ(system["ThermostatChainLength"].get<std::size_t>(), 3u);
+    EXPECT_FALSE(system.contains("Thermostat"));
+  }
+  // fix nve with fix langevin: the 'damp' time is the inverse of the friction
+  {
+    const LAMMPS::ReadResult result =
+        read("real", "fix integrate all nve\nfix bath all langevin 300.0 300.0 500.0 48279\nrun 1000");
+    const nlohmann::json& system = result.simulation["Systems"][0];
+    EXPECT_EQ(system["Ensemble"], "NVT");
+    EXPECT_EQ(system["Thermostat"], "Langevin");
+    EXPECT_NEAR(system["LangevinFriction"].get<double>(), 2.0, 1e-12);
+    EXPECT_DOUBLE_EQ(system["ExternalTemperature"].get<double>(), 300.0);
+    // the default time step of 'real' units is one femtosecond
+    EXPECT_NEAR(system["TimeStep"].get<double>(), 0.001, 1e-15);
+  }
+  // fix nve alone is the microcanonical ensemble; 'run 0' is no run
+  {
+    const LAMMPS::ReadResult result = read("real", "fix 1 all nve\nrun 0");
+    EXPECT_EQ(result.simulation["Systems"][0]["Ensemble"], "NVE");
+    EXPECT_FALSE(result.simulation.contains("NumberOfEquilibrationCycles"));
+  }
+  // fix npt in 'metal' units: bar and picoseconds
+  {
+    const LAMMPS::ReadResult result = read("metal", "fix 1 all npt temp 300 300 0.1 iso 1.0 1.0 1.0 pchain 2\nrun 100");
+    const nlohmann::json& system = result.simulation["Systems"][0];
+    EXPECT_EQ(system["Ensemble"], "NPT");
+    EXPECT_NEAR(system["ExternalPressure"].get<double>(), 1.0e5, 1e-6);
+    EXPECT_NEAR(system["TimeScaleParameterBarostat"].get<double>(), 1.0, 1e-15);
+    EXPECT_EQ(system["BarostatChainLength"].get<std::size_t>(), 2u);
+    EXPECT_NEAR(system["TimeStep"].get<double>(), 0.001, 1e-15);
+  }
+  // what is not converted is said: a temperature ramp, a group, another thermostat
+  {
+    const LAMMPS::ReadResult result =
+        read("real", "fix 1 mobile nvt temp 100.0 300.0 100.0\nfix 2 all temp/berendsen 300 300 100\nrun 10");
+    EXPECT_DOUBLE_EQ(result.simulation["Systems"][0]["ExternalTemperature"].get<double>(), 300.0);
+    const auto warned = [&](std::string_view text)
+    {
+      return std::ranges::any_of(result.warnings, [&](const std::string& warning) { return warning.contains(text); });
+    };
+    EXPECT_TRUE(warned("ramp"));
+    EXPECT_TRUE(warned("group 'mobile'"));
+    EXPECT_TRUE(warned("temp/berendsen is not converted"));
+  }
+  // a script without an integrating fix stays the Monte Carlo input it was
+  {
+    const LAMMPS::ReadResult result = read("real", "timestep 2.0\nrun 100");
+    EXPECT_EQ(result.simulation["SimulationType"], "MonteCarlo");
+    EXPECT_FALSE(result.simulation["Systems"][0].contains("Ensemble"));
+  }
+}

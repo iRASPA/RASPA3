@@ -123,6 +123,16 @@ bonds are constrained. Its tolerance and iteration count are written as `"Constr
 `"ConstraintMaximumIterations"` of the component. RASPA holds these terms with SHAKE/RATTLE in molecular
 dynamics and through its moves in Monte Carlo.
 
+The run the script asks for is converted as well. With a `fix nve`, `fix nvt` or `fix npt` the simulation is
+written as molecular dynamics in that ensemble (`fix npt` with `iso` as `"NPT"`, otherwise as `"NPTPR"`), with the
+temperature, the pressure, their damping times and chain lengths, the `timestep`, and the steps of the `run`
+commands (the last one is the production, those before it the equilibration). A `fix langevin` next to the
+integrating fix selects the Langevin thermostat, its `damp` time becoming the inverse of `"LangevinFriction"`.
+Times and pressures are converted to picoseconds and Pascal. Variables with a single value (`variable T equal
+300.0`) are substituted where they are used as `${T}` or `v_T`. Not converted, and reported: temperature and
+pressure ramps (the final value is used), fixes on a group other than `all` (they are taken to act on all atoms),
+and other thermostats and barostats. Without an integrating fix the simulation stays a Monte Carlo input.
+
 ----------------------------------------------------------------------------------
 
 ## RASPA_DIR
