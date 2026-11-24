@@ -42,6 +42,9 @@ class ForceField():
         shifted: bool = True,
         tail_corrections: bool = False,
         use_charge=True,
+        binary_interactions: collections.abc.Sequence[tuple[str, str, VDWParameters]] = [],
+        parameters_14: collections.abc.Sequence[VDWParameters | None] = [],
+        binary_interactions_14: collections.abc.Sequence[tuple[str, str, VDWParameters]] = [],
     ) -> None:
         """
         Initialize a :class:`ForceField`.
@@ -65,6 +68,13 @@ class ForceField():
                 Defaults to ``False``.
             use_charge: Whether electrostatic interactions are enabled.
                 Defaults to ``True``.
+            binary_interactions: Pairs of pseudo-atoms whose potential is given
+                instead of mixed: the two names and the potential of the pair.
+            parameters_14: Separate parameters for the intramolecular 1-4
+                pairs, one entry for every pseudo-atom; ``None`` where the 1-4
+                pairs have the regular parameters.
+            binary_interactions_14: Pairs of pseudo-atoms whose 1-4 potential
+                is given.
         """
 
     @property

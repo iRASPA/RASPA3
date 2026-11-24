@@ -115,7 +115,8 @@ Component::Component(const ForceField &forceField, std::string componentName, do
                      const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::size_t numberOfBlocks,
                      std::size_t numberOfLambdaBins, const MCMoveProbabilities &particleProbabilities,
                      std::optional<double> fugacityCoefficient, bool thermodynamicIntegration,
-                     std::vector<double4> blockingPockets) noexcept(false)
+                     std::vector<double4> blockingPockets, std::vector<std::vector<std::size_t>> rigidBodies,
+                     double intra14VanDerWaalsScaling, double intra14ChargeChargeScaling) noexcept(false)
     : type(Type::Adsorbate),
       name(componentName),
       criticalTemperature(T_c),
@@ -124,6 +125,8 @@ Component::Component(const ForceField &forceField, std::string componentName, do
       fugacityCoefficient(fugacityCoefficient),
       connectivityTable(connectivityTable),
       intraMolecularPotentials(intraMolecularPotentials),
+      intra14VanDerWaalsScaling(intra14VanDerWaalsScaling),
+      intra14ChargeChargeScaling(intra14ChargeChargeScaling),
       lambdaGC(numberOfBlocks, numberOfLambdaBins),
       lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
       lambdaPairSwap(numberOfBlocks, numberOfLambdaBins),
@@ -155,20 +158,27 @@ Component::Component(const ForceField &forceField, std::string componentName, do
     this->connectivityTable = ConnectivityTable(definedAtoms.size());
   }
 
-  // A programmatic component is flexible when it carries bonded interactions; otherwise it is a
-  // single rigid body covering all atoms. No rigid sub-bodies are defined through this path.
-  rigid = intraMolecularPotentials.bonds.empty();
+  // Without rigid bodies a programmatic component is flexible when it carries bonded interactions; otherwise it is
+  // a single rigid body covering all atoms. With rigid bodies it is partitioned as a molecule file partitions it:
+  // the listed atoms move as one unit and every other atom is a flexible fragment of its own.
+  if (rigidBodies.empty())
+  {
+    rigid = intraMolecularPotentials.bonds.empty();
+    if (rigid)
+    {
+      std::vector<std::size_t> wholeMolecule(definedAtoms.size());
+      std::iota(wholeMolecule.begin(), wholeMolecule.end(), std::size_t{0});
+      rigidBodies.push_back(std::move(wholeMolecule));
+    }
+  }
+  else
+  {
+    rigid = FragmentGraph::partitionAtoms(definedAtoms.size(), rigidBodies).size() == 1;
+  }
 
   computeRigidProperties();
   lambdaGC.computeDUdlambda = thermodynamicIntegration;
 
-  std::vector<std::vector<std::size_t>> rigidBodies{};
-  if (rigid)
-  {
-    std::vector<std::size_t> wholeMolecule(definedAtoms.size());
-    std::iota(wholeMolecule.begin(), wholeMolecule.end(), std::size_t{0});
-    rigidBodies.push_back(std::move(wholeMolecule));
-  }
   buildFragmentGraph(rigidBodies);
 
   // The non-bonded pairs: the supplied pair lists fix the scaling of the pairs they name (a 1-4 pair they omit is

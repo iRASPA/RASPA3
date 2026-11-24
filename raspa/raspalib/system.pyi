@@ -1,3 +1,4 @@
+from raspalib.running_energy import *
 from raspalib.thermobarostat import *
 from raspalib.property_temperature import *
 from raspalib.property_simulation_box import *
@@ -287,4 +288,9 @@ class System():
         temperature, the pressure and the time step the system has at this
         moment; ``None`` removes it. The ensembles with a barostat are
         thermostatted as well: see ``set_thermostat``."""
+        ...
+
+    def compute_total_energies(self) -> RunningEnergy:
+        """Return the energies of the configuration as it is, in internal
+        units of 10 J/mol."""
         ...

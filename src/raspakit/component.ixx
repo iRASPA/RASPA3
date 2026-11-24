@@ -139,6 +139,12 @@ export struct Component
    * \param systemProbabilities Move probabilities for the Monte Carlo simulation.
    * \param fugacityCoefficient Optional fugacity coefficient.
    * \param thermodynamicIntegration Flag indicating if thermodynamic integration is used.
+   * \param blockingPockets Blocking pockets of the component.
+   * \param rigidBodies The atoms that move as one rigid unit, as 'RigidBodies' of a molecule file: every atom that
+   *        is not listed is a flexible fragment of its own. Without rigid bodies a component without bond
+   *        potentials is a single rigid body, and one with bond potentials is fully flexible.
+   * \param intra14VanDerWaalsScaling Scaling of the van der Waals interaction of the 1-4 pairs.
+   * \param intra14ChargeChargeScaling Scaling of the Coulomb interaction of the 1-4 pairs.
    *
    * \throws std::runtime_error If pseudo-atoms are not recognized or data is invalid.
    */
@@ -147,7 +153,9 @@ export struct Component
             const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::size_t numberOfBlocks,
             std::size_t numberOfLambdaBins, const MCMoveProbabilities &particleProbabilities = MCMoveProbabilities(),
             std::optional<double> fugacityCoefficient = std::nullopt,
-            bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
+            bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {},
+            std::vector<std::vector<std::size_t>> rigidBodies = {}, double intra14VanDerWaalsScaling = 0.0,
+            double intra14ChargeChargeScaling = 0.0) noexcept(false);
 
   std::uint64_t versionNumber{4};  ///< Version number for serialization.
 

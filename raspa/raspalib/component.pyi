@@ -35,7 +35,17 @@ class Component():
         intra_molecular_potentials: IntraMolecularPotentials = IntraMolecularPotentials(),
         number_of_blocks: int = 5,
         number_of_lambda_bins: int = 41,
-        particle_probabilities: MCMoveProbabilities = MCMoveProbabilities()
+        particle_probabilities: MCMoveProbabilities = MCMoveProbabilities(),
+        fugacity_coefficient: float | None = None,
+        thermodynamic_integration: bool = False,
+        blocking_pockets: collections.abc.Sequence[collections.abc.Sequence[float]] = [],
+        rigid_bodies: collections.abc.Sequence[collections.abc.Sequence[int]] = [],
+        chiral_centers: collections.abc.Sequence[collections.abc.Sequence[int]] = [],
+        intra_14_van_der_waals_scaling: float = 0.0,
+        intra_14_charge_charge_scaling: float = 0.0,
+        partial_reinsertion_fixed_atoms: collections.abc.Sequence[collections.abc.Sequence[int]] = [],
+        repeat_units: collections.abc.Sequence[collections.abc.Sequence[int]] = [],
+        end_to_end_atoms: collections.abc.Sequence[int] | None = None,
     ) -> None:
         ...
         """
@@ -362,4 +372,75 @@ class Component():
     @property
     def lambda_group_swap_histogram(self) -> PropertyLambdaProbabilityHistogram:
         """(self) -> raspalib._raspalib.PropertyLambdaProbabilityHistogram"""
+        ...
+
+    @property
+    def rigid(self) -> bool:
+        """Whether the molecule is a single rigid body."""
+        ...
+
+    @property
+    def connectivity_table(self) -> ConnectivityTable:
+        """The connectivity of the molecule, made from its bonds."""
+        ...
+
+    @property
+    def intra_molecular_potentials(self) -> IntraMolecularPotentials:
+        """The bonded terms of the molecule."""
+        ...
+
+    # A molecule without bonds is one rigid body. With bond potentials it is
+    # flexible: the bonds are its connectivity, and every bond, bend and torsion
+    # they form needs a potential. With ``rigid_bodies`` the listed groups of
+    # atoms move as one unit and the other atoms are flexible; the
+    # ``connectivity_table`` is then given, and the terms inside one rigid body
+    # need no potential. ``chiral_centers`` are tuples of a center atom and
+    # three of its bonded neighbors. The 1-4 pairs do not interact unless they
+    # are given a scaling. ``partial_reinsertion_fixed_atoms`` are the sets of
+    # atoms a partial reinsertion keeps in place (without them the move has
+    # nothing to do); ``repeat_units`` are the monomers of a chain, for the
+    # reptation move; ``end_to_end_atoms`` are the two atoms of the end-to-end
+    # distance, by default the two furthest apart along the bonds.
+
+    @property
+    def rigid_bodies(self) -> collections.abc.Sequence[collections.abc.Sequence[int]]:
+        """The groups of atoms that move as one rigid unit."""
+        ...
+
+    @property
+    def chiral_centers(self) -> collections.abc.Sequence[ChiralCenter]:
+        """The chiral centers, with the handedness they have in the positions
+        of the atoms."""
+        ...
+
+    @property
+    def intra_14_van_der_waals_scaling(self) -> float:
+        """The scaling of the Van der Waals interaction of the 1-4 pairs."""
+        ...
+
+    @property
+    def intra_14_charge_charge_scaling(self) -> float:
+        """The scaling of the Coulomb interaction of the 1-4 pairs."""
+        ...
+
+    @property
+    def partial_reinsertion_fixed_atoms(self) -> collections.abc.Sequence[collections.abc.Sequence[int]]:
+        """The sets of atoms that stay where they are in a partial
+        reinsertion; the others are grown again."""
+        ...
+
+    @property
+    def repeat_units(self) -> collections.abc.Sequence[collections.abc.Sequence[int]]:
+        """The repeat units of a chain molecule, for the reptation move."""
+        ...
+
+    @property
+    def end_to_end_atoms(self) -> collections.abc.Sequence[int] | None:
+        """The two atoms whose distance is the end-to-end distance of the
+        molecule."""
+        ...
+
+    def backbone_atoms(self) -> collections.abc.Sequence[int]:
+        """Return the atoms on the shortest path of bonds between the
+        end-to-end atoms."""
         ...

@@ -74,6 +74,23 @@ import minimization_cell_layout;
 import archive;
 import threadpool;
 import spatial_decomposition_settings;
+import bond_potential;
+import urey_bradley_potential;
+import bend_potential;
+import inversion_bend_potential;
+import torsion_potential;
+import bond_bond_potential;
+import bond_bend_potential;
+import bond_torsion_potential;
+import bend_bend_potential;
+import bend_torsion_potential;
+import van_der_waals_potential;
+import coulomb_potential;
+import cmap_potential;
+import chiral_center;
+import fragment_graph;
+import fragment;
+import json;
 
 template <typename T>
 std::pair<T, T>& operator*=(std::pair<T, T>& p, const double& s)
@@ -511,6 +528,288 @@ void defineCount(nanobind::class_<Class>& bound, const char* name, std::size_t C
       doc);
 }
 
+// The parameters of every type of a bonded potential, as the potential itself prints them (with their units): a
+// term of each type is constructed and its description is kept without the atoms and the values.
+template <typename Potential, typename Type, typename NumberOfParameters>
+std::string describeParameters(const std::vector<std::pair<const char*, Type>>& types,
+                               const NumberOfParameters& numberOfParameters)
+{
+  using Identifiers = decltype(Potential::identifiers);
+  Identifiers identifiers{};
+  std::iota(identifiers.begin(), identifiers.end(), std::size_t{0});
+
+  std::string description = "The types and their parameters:\n";
+  for (const auto& [name, type] : types)
+  {
+    const std::size_t count = numberOfParameters[static_cast<std::size_t>(std::to_underlying(type))];
+    std::string parameters = count == 0 ? "no parameters" : std::format("{} parameters", count);
+    try
+    {
+      std::string printed = Potential(identifiers, type, std::vector<double>(count, 1.0)).print();
+      // "0 - 1 : HARMONIC p_0/k_B=1 [K/A^2], p_1=1 [A]": what follows the name of the type, without the values
+      const std::size_t first = printed.find("p_0");
+      if (first != std::string::npos)
+      {
+        printed = printed.substr(first);
+        while (!printed.empty() && (printed.back() == '\n' || printed.back() == ' ')) printed.pop_back();
+        parameters = std::regex_replace(printed, std::regex("=[-+0-9.eE]+"), "");
+      }
+    }
+    catch (const std::exception&)
+    {
+    }
+    description += std::format("  {}: {}\n", name, parameters);
+  }
+  return description;
+}
+
+// The bonded potentials have one shape: the atoms of the term, a type, and the parameters of that type in the units
+// of the molecule files (energies in Kelvin, lengths in Angstrom, angles in degrees). 'numberOfParameters' holds the
+// number of parameters of each type, in the order of the enumeration.
+template <typename Potential, typename Type, typename NumberOfParameters>
+void bindIntraMolecularPotential(nanobind::module_& m, const char* className, const char* typeName,
+                                 const std::vector<std::pair<const char*, Type>>& types,
+                                 const NumberOfParameters& numberOfParameters)
+{
+  using Identifiers = decltype(Potential::identifiers);
+
+  // (the documentation of a class is kept by its address)
+  static std::deque<std::string> documentation;
+  const std::string& parametersOfTypes =
+      documentation.emplace_back(describeParameters<Potential, Type>(types, numberOfParameters));
+
+  nanobind::enum_<Type> boundTypes(m, typeName, nanobind::is_arithmetic());
+  for (const auto& [name, type] : types) boundTypes.value(name, type);
+
+  const std::string name(className);
+  nanobind::class_<Potential>(m, className, parametersOfTypes.c_str())
+      .def(
+          "__init__",
+          [name, numberOfParameters](Potential* potential, Identifiers identifiers, Type type,
+                                     std::vector<double> parameters)
+          {
+            for (std::size_t i = 0; i < identifiers.size(); ++i)
+            {
+              for (std::size_t j = i + 1; j < identifiers.size(); ++j)
+              {
+                if (identifiers[i] == identifiers[j])
+                {
+                  throw std::invalid_argument(std::format("{}: atom {} is named twice", name, identifiers[i]));
+                }
+              }
+            }
+            const std::size_t index = static_cast<std::size_t>(std::to_underlying(type));
+            if (index >= numberOfParameters.size())
+            {
+              throw std::invalid_argument(std::format("{}: unknown type", name));
+            }
+            if (parameters.size() != numberOfParameters[index])
+            {
+              throw std::invalid_argument(std::format("{}: the type takes {} parameters, {} were given", name,
+                                                      numberOfParameters[index], parameters.size()));
+            }
+            try
+            {
+              new (potential) Potential(identifiers, type, parameters);
+            }
+            catch (const std::runtime_error& error)
+            {
+              // (a type the potential does not support, for instance)
+              throw std::invalid_argument(error.what());
+            }
+          },
+          nanobind::arg("identifiers"), nanobind::arg("type"), nanobind::arg("parameters") = std::vector<double>{})
+      .def_ro("identifiers", &Potential::identifiers, "The atoms of the term, as indices into the atoms of the component.")
+      .def_ro("type", &Potential::type)
+      .def_static(
+          "describe_parameters", [&parametersOfTypes]() { return parametersOfTypes; },
+          "The parameters of every type, with their units.")
+      .def("__repr__", &Potential::print);
+}
+
+// The connectivity of a component. Without rigid bodies the bonds are the connections, and a table that is given has
+// to be that of the bonds. With rigid bodies the table is given: the connections inside a rigid body have no bond
+// potential, since the geometry of the body is fixed. As in a molecule file, every bond, bend and torsion of the
+// connectivity that is not inside one rigid body needs a potential; a term that names an atom the component does
+// not have is refused.
+ConnectivityTable connectivityOfComponent(std::size_t numberOfAtoms, const ConnectivityTable& given,
+                                          const Potentials::IntraMolecularPotentials& potentials,
+                                          const std::vector<std::vector<std::size_t>>& rigidBodies)
+{
+  auto checkAtoms = [numberOfAtoms](const char* kind, const auto& terms)
+  {
+    for (const auto& term : terms)
+    {
+      for (std::size_t atom : term.identifiers)
+      {
+        if (atom >= numberOfAtoms)
+        {
+          throw std::invalid_argument(
+              std::format("Component: a {} names atom {}, but the component has {} atoms", kind, atom, numberOfAtoms));
+        }
+      }
+    }
+  };
+  checkAtoms("bond", potentials.bonds);
+  checkAtoms("Urey-Bradley term", potentials.ureyBradleys);
+  checkAtoms("bend", potentials.bends);
+  checkAtoms("inversion bend", potentials.inversionBends);
+  checkAtoms("torsion", potentials.torsions);
+  checkAtoms("improper torsion", potentials.improperTorsions);
+  checkAtoms("bond-bond term", potentials.bondBonds);
+  checkAtoms("bond-bend term", potentials.bondBends);
+  checkAtoms("bond-torsion term", potentials.bondTorsions);
+  checkAtoms("bend-bend term", potentials.bendBends);
+  checkAtoms("bend-torsion term", potentials.bendTorsions);
+  checkAtoms("CMAP term", potentials.cmaps);
+  checkAtoms("Van der Waals pair", potentials.vanDerWaals);
+  checkAtoms("Coulomb pair", potentials.coulombs);
+  for (const CMAPPotential& term : potentials.cmaps)
+  {
+    if (term.mapIndex >= potentials.cmapMaps.size())
+    {
+      throw std::invalid_argument(std::format("Component: a CMAP term names map {}, but there are {} maps",
+                                              term.mapIndex, potentials.cmapMaps.size()));
+    }
+  }
+
+  // the rigid body an atom is part of, if any (a body of one atom is a flexible atom)
+  std::vector<std::optional<std::size_t>> bodyOfAtom(numberOfAtoms);
+  try
+  {
+    FragmentGraph::partitionAtoms(numberOfAtoms, rigidBodies);
+  }
+  catch (const std::exception& error)
+  {
+    throw std::invalid_argument(std::format("Component: rigid_bodies: {}", error.what()));
+  }
+  for (std::size_t body = 0; body < rigidBodies.size(); ++body)
+  {
+    if (rigidBodies[body].size() < 2) continue;
+    for (std::size_t atom : rigidBodies[body]) bodyOfAtom[atom] = body;
+  }
+  auto insideOneRigidBody = [&](const auto& atoms)
+  {
+    const std::optional<std::size_t> body = bodyOfAtom[atoms[0]];
+    return body.has_value() && std::ranges::all_of(atoms, [&](std::size_t atom) { return bodyOfAtom[atom] == body; });
+  };
+  auto sameAtoms = [](const auto& a, const auto& b)
+  { return std::ranges::equal(a, b) || std::ranges::equal(a, b | std::views::reverse); };
+
+  ConnectivityTable bonds(numberOfAtoms);
+  for (const BondPotential& bond : potentials.bonds)
+  {
+    bonds[bond.identifiers[0], bond.identifiers[1]] = true;
+    bonds[bond.identifiers[1], bond.identifiers[0]] = true;
+  }
+
+  // (an empty table is one that was not given)
+  const bool tableGiven = given.numberOfBeads != 0;
+  if (tableGiven && given.numberOfBeads != numberOfAtoms)
+  {
+    throw std::invalid_argument(std::format("Component: connectivity_table is of {} atoms, the component has {}",
+                                            given.numberOfBeads, numberOfAtoms));
+  }
+  const bool hasRigidBodies = std::ranges::any_of(bodyOfAtom, [](const auto& body) { return body.has_value(); });
+  if (!hasRigidBodies)
+  {
+    if (tableGiven && given.table != bonds.table)
+    {
+      throw std::invalid_argument(
+          "Component: connectivity_table differs from the bonds of intra_molecular_potentials; it can be left out");
+    }
+  }
+  else if (!tableGiven)
+  {
+    throw std::invalid_argument("Component: with rigid_bodies the connectivity_table is given: the connections inside "
+                                "a rigid body have no bond potential to take them from");
+  }
+  const ConnectivityTable table = hasRigidBodies ? given : bonds;
+
+  for (const std::array<std::size_t, 2>& bond : table.findAllBonds())
+  {
+    if (insideOneRigidBody(bond)) continue;
+    if (!bonds[bond[0], bond[1]])
+    {
+      throw std::invalid_argument(std::format("Component: the bond {}-{} has no bond potential", bond[0], bond[1]));
+    }
+  }
+  for (const BondPotential& bond : potentials.bonds)
+  {
+    if (!table[bond.identifiers[0], bond.identifiers[1]])
+    {
+      throw std::invalid_argument(std::format("Component: the bond potential {}-{} is not a connection of "
+                                              "connectivity_table",
+                                              bond.identifiers[0], bond.identifiers[1]));
+    }
+  }
+  for (const std::array<std::size_t, 3>& bend : table.findAllBends())
+  {
+    if (insideOneRigidBody(bend)) continue;
+    if (std::ranges::none_of(potentials.bends,
+                             [&](const BendPotential& potential) { return sameAtoms(potential.identifiers, bend); }))
+    {
+      throw std::invalid_argument(
+          std::format("Component: the bend {}-{}-{} has no bend potential", bend[0], bend[1], bend[2]));
+    }
+  }
+  for (const std::array<std::size_t, 4>& torsion : table.findAllTorsions())
+  {
+    if (insideOneRigidBody(torsion)) continue;
+    if (std::ranges::none_of(potentials.torsions, [&](const TorsionPotential& potential)
+                             { return sameAtoms(potential.identifiers, torsion); }))
+    {
+      throw std::invalid_argument(std::format("Component: the torsion {}-{}-{}-{} has no torsion potential",
+                                              torsion[0], torsion[1], torsion[2], torsion[3]));
+    }
+  }
+  return table;
+}
+
+// What a molecule file says of a flexible molecule besides its potentials: the chiral centres, the fixed atoms of the
+// partial reinsertions, the repeat units of a chain, and the two atoms of the end-to-end distance. These are read
+// and checked by the reader of the molecule files itself, from a description with the keys of such a file.
+void describeFlexibleComponent(Component& component, const std::vector<std::array<std::size_t, 4>>& chiralCenters,
+                               const std::vector<std::vector<std::size_t>>& partialReinsertionFixedAtoms,
+                               const std::vector<std::vector<std::size_t>>& repeatUnits,
+                               const std::optional<std::array<std::size_t, 2>>& endToEndAtoms)
+{
+  if (component.rigid)
+  {
+    if (!chiralCenters.empty() || !partialReinsertionFixedAtoms.empty() || !repeatUnits.empty() ||
+        endToEndAtoms.has_value())
+    {
+      throw std::invalid_argument("Component: chiral_centers, partial_reinsertion_fixed_atoms, repeat_units and "
+                                  "end_to_end_atoms are of a flexible molecule; this one is a single rigid body");
+    }
+    return;
+  }
+
+  using Description = nlohmann::basic_json<nlohmann::raspa_map>;
+  Description description = Description::object();
+  if (!chiralCenters.empty()) description["ChiralCenters"] = chiralCenters;
+  if (!partialReinsertionFixedAtoms.empty()) description["Partial-reinsertion"] = partialReinsertionFixedAtoms;
+  if (!repeatUnits.empty()) description["RepeatUnits"] = repeatUnits;
+  if (endToEndAtoms.has_value()) description["EndToEndAtoms"] = *endToEndAtoms;
+
+  try
+  {
+    component.intraMolecularPotentials.chiralCenters = component.readChiralCenters(description);
+    component.partialReinsertionFixedAtoms = component.readPartialReinsertionFixedAtoms(description);
+    component.repeatUnits = component.readRepeatUnits(description);
+    component.endToEndAtoms = component.determineEndToEndAtoms(description);
+    // whether the part that is not fixed can be grown is found when its growth plan is made
+    for (const std::vector<std::size_t>& fixedAtoms : component.partialReinsertionFixedAtoms)
+    {
+      component.growthPlan(fixedAtoms);
+    }
+  }
+  catch (const std::runtime_error& error)
+  {
+    throw std::invalid_argument(std::format("Component: {}", error.what()));
+  }
+}
+
 // A driver works on its own copy of the systems it is given: the kits are value-based and keep no references to the
 // objects of the caller. To let those objects hold the results nevertheless, the systems of the driver are assigned
 // back to the Python objects they were copied from whenever a phase returns (copy in, copy out). Inside a call-back
@@ -755,8 +1054,52 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("length_c", &SimulationBox::lengthC)
       .def_ro("volume", &SimulationBox::volume);
 
-  nanobind::class_<VDWParameters>(m, "VDWParameters")
-      .def(nanobind::init<double, double>(), nanobind::arg("epsilon"), nanobind::arg("sigma"));
+  nanobind::class_<VDWParameters> vdwParameters(m, "VDWParameters");
+  nanobind::enum_<VDWParameters::Type>(vdwParameters, "Type", nanobind::is_arithmetic())
+      .value("NONE", VDWParameters::Type::None)
+      .value("LENNARD_JONES", VDWParameters::Type::LennardJones)
+      .value("BUCKINGHAM", VDWParameters::Type::BuckingHam)
+      .value("MORSE", VDWParameters::Type::Morse)
+      .value("FEYNMAN_HIBBS", VDWParameters::Type::FeynmannHibbs)
+      .value("MM3", VDWParameters::Type::MM3)
+      .value("BORN_HUGGINS_MEYER", VDWParameters::Type::BornHugginsMeyer)
+      .value("LENNARD_JONES_SHIFTED_FORCE", VDWParameters::Type::LennardJonesShiftedForce)
+      .value("POTENTIAL_12_6", VDWParameters::Type::Potential12_6)
+      .value("POTENTIAL_12_6_2_0", VDWParameters::Type::Potential12_6_2_0)
+      .value("CFF_9_6", VDWParameters::Type::CFF9_6)
+      .value("CFF_EPSILON_SIGMA", VDWParameters::Type::CFFEpsilonSigma)
+      .value("MATSUOKA_CLEMENTI_YOSHIMINE", VDWParameters::Type::MatsuokaClementiYoshimine)
+      .value("GENERIC", VDWParameters::Type::Generic)
+      .value("PELLENQ_NICHOLSON", VDWParameters::Type::PellenqNicholson)
+      .value("HYDRATED_ION_WATER", VDWParameters::Type::HydratedIonWater)
+      .value("MIE", VDWParameters::Type::Mie)
+      .value("WEEKS_CHANDLER_ANDERSEN", VDWParameters::Type::WeeksChandlerAndersen)
+      .value("LENNARD_JONES_SECOND_ORDER_TAYLOR_SHIFTED", VDWParameters::Type::LennardJonesSecondOrderTaylorShifted)
+      .value("LENNARD_JONES_SWITCHED", VDWParameters::Type::LennardJonesSwitched)
+      .value("LENNARD_JONES_FORCE_SWITCHED", VDWParameters::Type::LennardJonesForceSwitched)
+      .value("REPULSIVE_HARMONIC", VDWParameters::Type::RepulsiveHarmonic);
+  vdwParameters
+      .def(nanobind::init<double, double>(), nanobind::arg("epsilon"), nanobind::arg("sigma"),
+           "A Lennard-Jones potential: epsilon [K] and sigma [Angstrom].")
+      .def(
+          "__init__",
+          [](VDWParameters* parameters, VDWParameters::Type type, const std::vector<double>& values)
+          {
+            try
+            {
+              new (parameters) VDWParameters(type, values);
+            }
+            catch (const std::runtime_error& error)
+            {
+              throw std::invalid_argument(std::format("VDWParameters: {}", error.what()));
+            }
+          },
+          nanobind::arg("type"), nanobind::arg("parameters"),
+          "A potential of the given type, with its parameters as in a force-field file (energies in Kelvin, lengths "
+          "in Angstrom).")
+      .def_ro("type", &VDWParameters::type)
+      .def("__repr__", [](const VDWParameters& parameters)
+           { return std::format("VDWParameters({})", VDWParameters::nameOfType(parameters.type)); });
 
   nanobind::class_<PseudoAtom>(m, "PseudoAtom")
       .def(nanobind::init<std::string, bool, double, double, double, std::size_t, bool, std::string>(),
@@ -782,17 +1125,103 @@ EXPAND_MODULE(MODULE_NAME)
       .value("MODIFIED_SHIFTED_FORCE", ForceField::ChargeMethod::ModifiedShiftedForce)
       .value("ZERO_DIPOLE", ForceField::ChargeMethod::ZeroDipole);
 
-  forceField.def(nanobind::init<std::vector<PseudoAtom>, std::vector<VDWParameters>, ForceField::MixingRule, 
-                 double, double, double, bool, bool, bool>(),
-           nanobind::arg("pseudo_atoms"), 
-           nanobind::arg("parameters"), 
-           nanobind::arg("mixing_rule") = ForceField::MixingRule::Lorentz_Berthelot,
-           nanobind::arg("cutoff_framework_vdw") = 12.0, 
-           nanobind::arg("cutoff_molecule_vdw") = 12.0,
-           nanobind::arg("cutoff_coulomb") = 12.0, 
-           nanobind::arg("shifted") = true,
-           nanobind::arg("tail_corrections") = false, 
-           nanobind::arg("use_charge") = true)
+  using BinaryInteraction = std::tuple<std::string, std::string, VDWParameters>;
+  forceField
+      .def(
+          "__init__",
+          [](ForceField* forceField, std::vector<PseudoAtom> pseudo_atoms, std::vector<VDWParameters> parameters,
+             ForceField::MixingRule mixing_rule, double cutoff_framework_vdw, double cutoff_molecule_vdw,
+             double cutoff_coulomb, bool shifted, bool tail_corrections, bool use_charge,
+             const std::vector<BinaryInteraction>& binary_interactions,
+             const std::vector<std::optional<VDWParameters>>& parameters_14,
+             const std::vector<BinaryInteraction>& binary_interactions_14)
+          {
+            if (parameters.size() != pseudo_atoms.size())
+            {
+              throw std::invalid_argument(
+                  std::format("ForceField: {} pseudo-atoms, but {} parameters (one for every pseudo-atom, in the same "
+                              "order)",
+                              pseudo_atoms.size(), parameters.size()));
+            }
+            if (!parameters_14.empty() && parameters_14.size() != pseudo_atoms.size())
+            {
+              throw std::invalid_argument(
+                  std::format("ForceField: {} pseudo-atoms, but {} entries in parameters_14 (one for every "
+                              "pseudo-atom, None where the 1-4 pairs have the regular parameters)",
+                              pseudo_atoms.size(), parameters_14.size()));
+            }
+            new (forceField) ForceField(pseudo_atoms, parameters, mixing_rule, cutoff_framework_vdw,
+                                        cutoff_molecule_vdw, cutoff_coulomb, shifted, tail_corrections, use_charge);
+
+            const bool hasParameters14 =
+                std::ranges::any_of(parameters_14, [](const auto& given) { return given.has_value(); });
+            if (binary_interactions.empty() && !hasParameters14 && binary_interactions_14.empty()) return;
+
+            const std::size_t numberOfPseudoAtoms = forceField->numberOfPseudoAtoms;
+            auto pairOf = [&](const std::string& nameA, const std::string& nameB)
+            {
+              const std::optional<std::size_t> indexA = forceField->findPseudoAtom(nameA);
+              const std::optional<std::size_t> indexB = forceField->findPseudoAtom(nameB);
+              if (!indexA.has_value() || !indexB.has_value())
+              {
+                throw std::invalid_argument(std::format("ForceField: binary interaction of unknown pseudo-atom '{}'",
+                                                        indexA.has_value() ? nameB : nameA));
+              }
+              return std::pair{*indexA, *indexB};
+            };
+
+            // The separate parameters of the 1-4 pairs, as 'parameters14' of a force-field file: the 1-4 table starts
+            // as the regular one, takes the parameters that are given, and is mixed like the regular one.
+            if (hasParameters14)
+            {
+              for (std::size_t i = 0; i < parameters_14.size(); ++i)
+              {
+                if (parameters_14[i].has_value()) forceField->setPair14SelfInteraction(i, *parameters_14[i]);
+              }
+              forceField->mixTable(forceField->data14);
+            }
+
+            // A pair that is given replaces what the mixing rule made of it, as 'BinaryInteractions' of a force-field
+            // file does. It is the 1-4 pair as well, unless that pair is given or one of its pseudo-atoms has 1-4
+            // parameters of its own (then the mixed 1-4 pair was meant).
+            for (const auto& [nameA, nameB, pair] : binary_interactions)
+            {
+              const auto [indexA, indexB] = pairOf(nameA, nameB);
+              forceField->data[indexA * numberOfPseudoAtoms + indexB] = pair;
+              forceField->data[indexB * numberOfPseudoAtoms + indexA] = pair;
+              const bool given14 = std::ranges::any_of(binary_interactions_14, [&](const BinaryInteraction& other)
+                                                       {
+                                                         const auto [a, b] = pairOf(std::get<0>(other), std::get<1>(other));
+                                                         return (a == indexA && b == indexB) || (a == indexB && b == indexA);
+                                                       });
+              const bool explicit14 = hasParameters14 && (parameters_14[indexA].has_value() || parameters_14[indexB].has_value());
+              if (!forceField->data14.empty() && !given14 && !explicit14)
+              {
+                forceField->data14[indexA * numberOfPseudoAtoms + indexB] = pair;
+                forceField->data14[indexB * numberOfPseudoAtoms + indexA] = pair;
+              }
+            }
+            for (const auto& [nameA, nameB, pair] : binary_interactions_14)
+            {
+              const auto [indexA, indexB] = pairOf(nameA, nameB);
+              forceField->ensurePair14Table();
+              forceField->data14[indexA * numberOfPseudoAtoms + indexB] = pair;
+              forceField->data14[indexB * numberOfPseudoAtoms + indexA] = pair;
+            }
+
+            // the shifts and the tail corrections are those of the pairs as they are now
+            forceField->preComputeDerivedParameters();
+            forceField->preComputePotentialShift();
+            forceField->preComputeTailCorrection();
+          },
+          nanobind::arg("pseudo_atoms"), nanobind::arg("parameters"),
+          nanobind::arg("mixing_rule") = ForceField::MixingRule::Lorentz_Berthelot,
+          nanobind::arg("cutoff_framework_vdw") = 12.0, nanobind::arg("cutoff_molecule_vdw") = 12.0,
+          nanobind::arg("cutoff_coulomb") = 12.0, nanobind::arg("shifted") = true,
+          nanobind::arg("tail_corrections") = false, nanobind::arg("use_charge") = true,
+          nanobind::arg("binary_interactions") = std::vector<BinaryInteraction>{},
+          nanobind::arg("parameters_14") = std::vector<std::optional<VDWParameters>>{},
+          nanobind::arg("binary_interactions_14") = std::vector<BinaryInteraction>{})
       .def("find_pseudo_atom", static_cast<std::optional<std::size_t> (ForceField::*)(const std::string &) const>(&ForceField::findPseudoAtom))
       .def("__repr__", &ForceField::repr)
       .def_ro("pseudo_atoms", &ForceField::pseudoAtoms)
@@ -942,10 +1371,185 @@ EXPAND_MODULE(MODULE_NAME)
       .def("result", &PropertyLambdaProbabilityHistogram::result);
 
   nanobind::class_<ConnectivityTable>(m, "ConnectivityTable")
-    .def(nanobind::init<>());
+      .def(nanobind::init<>())
+      .def(
+          "__init__",
+          [](ConnectivityTable* table, std::size_t number_of_beads,
+             const std::vector<std::array<std::size_t, 2>>& bonds)
+          {
+            for (const std::array<std::size_t, 2>& bond : bonds)
+            {
+              if (bond[0] >= number_of_beads || bond[1] >= number_of_beads || bond[0] == bond[1])
+              {
+                throw std::invalid_argument(std::format("ConnectivityTable: {}-{} is not a bond between two of the {} "
+                                                        "beads",
+                                                        bond[0], bond[1], number_of_beads));
+              }
+            }
+            new (table) ConnectivityTable(number_of_beads);
+            for (const std::array<std::size_t, 2>& bond : bonds)
+            {
+              (*table)[bond[0], bond[1]] = true;
+              (*table)[bond[1], bond[0]] = true;
+            }
+          },
+          nanobind::arg("number_of_beads"), nanobind::arg("bonds") = std::vector<std::array<std::size_t, 2>>{})
+      .def_ro("number_of_beads", &ConnectivityTable::numberOfBeads)
+      .def_prop_ro("bonds", &ConnectivityTable::findAllBonds, "The pairs of connected beads.")
+      .def_prop_ro("bends", &ConnectivityTable::findAllBends, "The triplets of beads that form a bend.")
+      .def_prop_ro("torsions", &ConnectivityTable::findAllTorsions, "The quadruplets of beads that form a torsion.")
+      .def("__repr__", &ConnectivityTable::printConnectivityTable);
 
+  // Two terms of the molecule files are left out: the out-of-plane bend, which has no energy yet (it evaluates to
+  // zero), and the in-plane MM3 bend, which the bend potential refuses.
+  bindIntraMolecularPotential<BondPotential, BondType>(m, "BondPotential", "BondType",
+      {{"NONE", BondType::None}, {"FIXED", BondType::Fixed}, {"HARMONIC", BondType::Harmonic}, {"CORE_SHELL_SPRING", BondType::CoreShellSpring}, {"MORSE", BondType::Morse}, {"LJ_12_6", BondType::LJ_12_6}, {"LENNARD_JONES", BondType::LennardJones}, {"BUCKINGHAM", BondType::Buckingham}, {"RESTRAINED_HARMONIC", BondType::RestrainedHarmonic}, {"QUARTIC", BondType::Quartic}, {"CFF_QUARTIC", BondType::CFF_Quartic}, {"MM3", BondType::MM3}},
+      BondPotential::numberOfBondParameters);
+  bindIntraMolecularPotential<UreyBradleyPotential, UreyBradleyType>(m, "UreyBradleyPotential", "UreyBradleyType",
+      {{"FIXED", UreyBradleyType::Fixed}, {"HARMONIC", UreyBradleyType::Harmonic}, {"CORE_SHELL_SPRING", UreyBradleyType::CoreShellSpring}, {"MORSE", UreyBradleyType::Morse}, {"LJ_12_6", UreyBradleyType::LJ_12_6}, {"LENNARD_JONES", UreyBradleyType::LennardJones}, {"BUCKINGHAM", UreyBradleyType::Buckingham}, {"RESTRAINED_HARMONIC", UreyBradleyType::RestrainedHarmonic}, {"QUARTIC", UreyBradleyType::Quartic}, {"CFF_QUARTIC", UreyBradleyType::CFF_Quartic}, {"MM3", UreyBradleyType::MM3}},
+      UreyBradleyPotential::numberOfUreyBradleyParameters);
+  bindIntraMolecularPotential<BendPotential, BendType>(m, "BendPotential", "BendType",
+      {{"RIGID", BendType::Rigid}, {"FIXED", BendType::Fixed}, {"HARMONIC", BendType::Harmonic}, {"CORE_SHELL", BendType::CoreShell}, {"QUARTIC", BendType::Quartic}, {"CFF_QUARTIC", BendType::CFF_Quartic}, {"HARMONIC_COSINE", BendType::HarmonicCosine}, {"COSINE", BendType::Cosine}, {"TAFIPOLSKY", BendType::Tafipolsky}, {"MM3", BendType::MM3}},
+      BendPotential::numberOfBendParameters);
+  bindIntraMolecularPotential<InversionBendPotential, InversionBendType>(m, "InversionBendPotential", "InversionBendType",
+      {{"HARMONIC", InversionBendType::Harmonic}, {"HARMONIC_COSINE", InversionBendType::HarmonicCosine}, {"PLANAR", InversionBendType::Planar}, {"HARMONIC2", InversionBendType::Harmonic2}, {"HARMONIC_COSINE2", InversionBendType::HarmonicCosine2}, {"PLANAR2", InversionBendType::Planar2}, {"MM3", InversionBendType::MM3}},
+      InversionBendPotential::numberOfInversionBendParameters);
+  bindIntraMolecularPotential<TorsionPotential, TorsionType>(m, "TorsionPotential", "TorsionType",
+      {{"FIXED", TorsionType::Fixed}, {"HARMONIC", TorsionType::Harmonic}, {"HARMONIC_COSINE", TorsionType::HarmonicCosine}, {"THREE_COSINE", TorsionType::ThreeCosine}, {"RYCKAERT_BELLEMANS", TorsionType::RyckaertBellemans}, {"TRAPPE", TorsionType::TraPPE}, {"TRAPPE_EXTENDED", TorsionType::TraPPE_Extended}, {"MOD_TRAPPE", TorsionType::ModifiedTraPPE}, {"CVFF", TorsionType::CVFF}, {"CFF", TorsionType::CFF}, {"CFF2", TorsionType::CFF2}, {"OPLS", TorsionType::OPLS}, {"MM3", TorsionType::MM3}, {"FOURIER_SERIES", TorsionType::FourierSeries}, {"FOURIER_SERIES2", TorsionType::FourierSeries2}, {"CVFF_BLOCKED", TorsionType::CVFFBlocked}, {"POLYNOMIAL", TorsionType::Polynomial}},
+      TorsionPotential::numberOfTorsionParameters);
+  bindIntraMolecularPotential<BondBondPotential, BondBondType>(m, "BondBondPotential", "BondBondType",
+      {{"CVFF", BondBondType::CVFF}, {"CFF", BondBondType::CFF}},
+      BondBondPotential::numberOfBondBondParameters);
+  bindIntraMolecularPotential<BondBendPotential, BondBendType>(m, "BondBendPotential", "BondBendType",
+      {{"CVFF", BondBendType::CVFF}, {"CFF", BondBendType::CFF}, {"MM3", BondBendType::MM3}, {"TRUNCATED_HARMONIC", BondBendType::TruncatedHarmonic}, {"SCREENED_HARMONIC", BondBendType::ScreenedHarmonic}, {"SCREENED_VESSAL", BondBendType::ScreenedVessal}, {"TRUNCATED_VESSAL", BondBendType::TruncatedVessal}},
+      BondBendPotential::numberOfBondBendParameters);
+  bindIntraMolecularPotential<BondTorsionPotential, BondTorsionType>(m, "BondTorsionPotential", "BondTorsionType",
+      {{"MM3", BondTorsionType::MM3}},
+      BondTorsionPotential::numberOfBondTorsionParameters);
+  bindIntraMolecularPotential<BendBendPotential, BendBendType>(m, "BendBendPotential", "BendBendType",
+      {{"CVFF", BendBendType::CVFF}, {"CFF", BendBendType::CFF}, {"MM3", BendBendType::MM3}},
+      BendBendPotential::numberOfBendBendParameters);
+  bindIntraMolecularPotential<BendTorsionPotential, BendTorsionType>(m, "BendTorsionPotential", "BendTorsionType",
+      {{"SMOOTHED", BendTorsionType::Smoothed}, {"SMOOTHED_THREE_COSINE", BendTorsionType::SmoothedThreeCosine}, {"NICHOLAS", BendTorsionType::Nicholas}, {"CFF", BendTorsionType::CFF}, {"SMOOTHED_CFF", BendTorsionType::SmoothedCFF}, {"SMOOTHED_CFF2", BendTorsionType::SmoothedCFF2}, {"SMOOTHED_CFF3", BendTorsionType::SmoothedCFF3}, {"CVFF", BendTorsionType::CVFF}},
+      BendTorsionPotential::numberOfBendTorsionParameters);
+
+  // the pairs of atoms inside a molecule whose non-bonded interaction is given, instead of following from the bonds
+  nanobind::class_<VanDerWaalsPotential>(m, "VanDerWaalsPotential")
+      .def(nanobind::init<std::array<std::size_t, 2>, const VDWParameters&, double>(), nanobind::arg("identifiers"),
+           nanobind::arg("parameters"), nanobind::arg("scaling") = 1.0)
+      .def_ro("identifiers", &VanDerWaalsPotential::identifiers)
+      .def_ro("scaling", &VanDerWaalsPotential::scaling);
+
+  nanobind::class_<CoulombPotential>(m, "CoulombPotential")
+      .def(
+          "__init__",
+          [](CoulombPotential* potential, std::array<std::size_t, 2> identifiers, double charge_a, double charge_b,
+             double scaling)
+          { new (potential) CoulombPotential(identifiers, CoulombType::Coulomb, charge_a, charge_b, scaling); },
+          nanobind::arg("identifiers"), nanobind::arg("charge_a"), nanobind::arg("charge_b"),
+          nanobind::arg("scaling") = 1.0)
+      .def_ro("identifiers", &CoulombPotential::identifiers)
+      .def_ro("scaling", &CoulombPotential::scaling);
+
+  // The CMAP correction of protein force fields: an energy map over two consecutive backbone dihedrals, and the
+  // terms that use a map.
+  nanobind::class_<CMAPMap>(m, "CMAPMap")
+      .def(
+          "__init__",
+          [](CMAPMap* map, std::string name, std::size_t resolution, std::vector<double> energies)
+          {
+            for (double& energy : energies) energy *= Units::KelvinToEnergy;
+            try
+            {
+              new (map) CMAPMap(std::move(name), resolution, std::move(energies));
+            }
+            catch (const std::runtime_error& error)
+            {
+              throw std::invalid_argument(error.what());
+            }
+          },
+          nanobind::arg("name"), nanobind::arg("resolution"), nanobind::arg("energies"),
+          "A map of resolution x resolution energies [K] over the two angles; the first angle is the slow index.")
+      .def_ro("name", &CMAPMap::name)
+      .def_ro("resolution", &CMAPMap::resolution)
+      .def("__repr__", &CMAPMap::print);
+
+  nanobind::class_<CMAPPotential>(m, "CMAPPotential")
+      .def(nanobind::init<std::array<std::size_t, 5>, std::size_t>(), nanobind::arg("identifiers"),
+           nanobind::arg("map_index"),
+           "A CMAP term of the five atoms A, B, C, D, E with the map at 'map_index' of the maps of the potentials.")
+      .def_ro("identifiers", &CMAPPotential::identifiers)
+      .def_ro("map_index", &CMAPPotential::mapIndex)
+      .def("__repr__", &CMAPPotential::print);
+
+  nanobind::class_<ChiralCenter> chiralCenter(m, "ChiralCenter");
+  nanobind::enum_<ChiralCenter::Chirality>(chiralCenter, "Chirality", nanobind::is_arithmetic())
+      .value("S", ChiralCenter::Chirality::S_Chiral)
+      .value("R", ChiralCenter::Chirality::R_Chiral);
+  chiralCenter
+      .def_ro("identifiers", &ChiralCenter::ids, "The center atom and three of its bonded neighbors.")
+      .def_ro("chirality", &ChiralCenter::type, "The handedness the atoms have in the positions of the component.");
+
+  // The bonded terms of a flexible molecule. The bonds are its connectivity: every bond, bend and torsion they form
+  // needs a potential (Component checks this).
   nanobind::class_<Potentials::IntraMolecularPotentials>(m, "IntraMolecularPotentials")
-    .def(nanobind::init<>());
+      .def(
+          "__init__",
+          [](Potentials::IntraMolecularPotentials* potentials, std::vector<BondPotential> bonds,
+             std::vector<BendPotential> bends, std::vector<TorsionPotential> torsions,
+             std::vector<TorsionPotential> improper_torsions, std::vector<UreyBradleyPotential> urey_bradleys,
+             std::vector<InversionBendPotential> inversion_bends, std::vector<BondBondPotential> bond_bonds,
+             std::vector<BondBendPotential> bond_bends, std::vector<BondTorsionPotential> bond_torsions,
+             std::vector<BendBendPotential> bend_bends, std::vector<BendTorsionPotential> bend_torsions,
+             std::vector<VanDerWaalsPotential> van_der_waals, std::vector<CoulombPotential> coulombs,
+             std::vector<CMAPMap> cmap_maps, std::vector<CMAPPotential> cmaps)
+          {
+            new (potentials) Potentials::IntraMolecularPotentials();
+            potentials->bonds = std::move(bonds);
+            potentials->bends = std::move(bends);
+            potentials->torsions = std::move(torsions);
+            potentials->improperTorsions = std::move(improper_torsions);
+            potentials->ureyBradleys = std::move(urey_bradleys);
+            potentials->inversionBends = std::move(inversion_bends);
+            potentials->bondBonds = std::move(bond_bonds);
+            potentials->bondBends = std::move(bond_bends);
+            potentials->bondTorsions = std::move(bond_torsions);
+            potentials->bendBends = std::move(bend_bends);
+            potentials->bendTorsions = std::move(bend_torsions);
+            potentials->vanDerWaals = std::move(van_der_waals);
+            potentials->coulombs = std::move(coulombs);
+            potentials->cmapMaps = std::move(cmap_maps);
+            potentials->cmaps = std::move(cmaps);
+          },
+          nanobind::arg("bonds") = std::vector<BondPotential>{}, nanobind::arg("bends") = std::vector<BendPotential>{},
+          nanobind::arg("torsions") = std::vector<TorsionPotential>{},
+          nanobind::arg("improper_torsions") = std::vector<TorsionPotential>{},
+          nanobind::arg("urey_bradleys") = std::vector<UreyBradleyPotential>{},
+          nanobind::arg("inversion_bends") = std::vector<InversionBendPotential>{},
+          nanobind::arg("bond_bonds") = std::vector<BondBondPotential>{},
+          nanobind::arg("bond_bends") = std::vector<BondBendPotential>{},
+          nanobind::arg("bond_torsions") = std::vector<BondTorsionPotential>{},
+          nanobind::arg("bend_bends") = std::vector<BendBendPotential>{},
+          nanobind::arg("bend_torsions") = std::vector<BendTorsionPotential>{},
+          nanobind::arg("van_der_waals") = std::vector<VanDerWaalsPotential>{},
+          nanobind::arg("coulombs") = std::vector<CoulombPotential>{},
+          nanobind::arg("cmap_maps") = std::vector<CMAPMap>{}, nanobind::arg("cmaps") = std::vector<CMAPPotential>{})
+      .def_ro("bonds", &Potentials::IntraMolecularPotentials::bonds)
+      .def_ro("bends", &Potentials::IntraMolecularPotentials::bends)
+      .def_ro("torsions", &Potentials::IntraMolecularPotentials::torsions)
+      .def_ro("improper_torsions", &Potentials::IntraMolecularPotentials::improperTorsions)
+      .def_ro("urey_bradleys", &Potentials::IntraMolecularPotentials::ureyBradleys)
+      .def_ro("inversion_bends", &Potentials::IntraMolecularPotentials::inversionBends)
+      .def_ro("bond_bonds", &Potentials::IntraMolecularPotentials::bondBonds)
+      .def_ro("bond_bends", &Potentials::IntraMolecularPotentials::bondBends)
+      .def_ro("bond_torsions", &Potentials::IntraMolecularPotentials::bondTorsions)
+      .def_ro("bend_bends", &Potentials::IntraMolecularPotentials::bendBends)
+      .def_ro("bend_torsions", &Potentials::IntraMolecularPotentials::bendTorsions)
+      .def_ro("van_der_waals", &Potentials::IntraMolecularPotentials::vanDerWaals)
+      .def_ro("coulombs", &Potentials::IntraMolecularPotentials::coulombs)
+      .def_ro("cmap_maps", &Potentials::IntraMolecularPotentials::cmapMaps)
+      .def_ro("cmaps", &Potentials::IntraMolecularPotentials::cmaps)
+      .def_ro("chiral_centers", &Potentials::IntraMolecularPotentials::chiralCenters);
 
   nanobind::class_<MoveStatistics<double>>(m, "MoveStatisticsDouble")
     .def_ro("counts", &MoveStatistics<double>::counts)
@@ -1030,10 +1634,56 @@ EXPAND_MODULE(MODULE_NAME)
         .value("CATION", Component::Type::Cation);
 
     component
-        .def(nanobind::init<const ForceField&, std::string, double, double, double, std::vector<Atom>,
-                            const ConnectivityTable&, const Potentials::IntraMolecularPotentials&, std::size_t,
-                            std::size_t, const MCMoveProbabilities&, std::optional<double>, bool,
-                            std::vector<double4>>(),
+        .def("__init__",
+             [](Component* component, const ForceField& force_field, std::string component_name,
+                double critical_temperature, double critical_pressure, double acentric_factor,
+                std::vector<Atom> defined_atoms, const ConnectivityTable& connectivity_table,
+                const Potentials::IntraMolecularPotentials& intra_molecular_potentials, std::size_t number_of_blocks,
+                std::size_t number_of_lambda_bins, const MCMoveProbabilities& particle_probabilities,
+                std::optional<double> fugacity_coefficient, bool thermodynamic_integration,
+                std::vector<double4> blocking_pockets, std::vector<std::vector<std::size_t>> rigid_bodies,
+                const std::vector<std::array<std::size_t, 4>>& chiral_centers,
+                double intra_14_van_der_waals_scaling, double intra_14_charge_charge_scaling,
+                const std::vector<std::vector<std::size_t>>& partial_reinsertion_fixed_atoms,
+                const std::vector<std::vector<std::size_t>>& repeat_units,
+                std::optional<std::array<std::size_t, 2>> end_to_end_atoms)
+             {
+               for (const Atom& atom : defined_atoms)
+               {
+                 if (static_cast<std::size_t>(atom.type) >= force_field.pseudoAtoms.size())
+                 {
+                   throw std::invalid_argument(std::format("Component: an atom has type {}, but the force field has "
+                                                           "{} pseudo-atoms",
+                                                           static_cast<std::size_t>(atom.type),
+                                                           force_field.pseudoAtoms.size()));
+                 }
+               }
+               const ConnectivityTable connectivity = connectivityOfComponent(
+                   defined_atoms.size(), connectivity_table, intra_molecular_potentials, rigid_bodies);
+               try
+               {
+                 new (component)
+                     Component(force_field, component_name, critical_temperature, critical_pressure, acentric_factor,
+                               defined_atoms, connectivity, intra_molecular_potentials, number_of_blocks,
+                               number_of_lambda_bins, particle_probabilities, fugacity_coefficient,
+                               thermodynamic_integration, blocking_pockets, rigid_bodies,
+                               intra_14_van_der_waals_scaling, intra_14_charge_charge_scaling);
+               }
+               catch (const std::runtime_error& error)
+               {
+                 throw std::invalid_argument(std::format("Component: {}", error.what()));
+               }
+               try
+               {
+                 describeFlexibleComponent(*component, chiral_centers, partial_reinsertion_fixed_atoms, repeat_units,
+                                           end_to_end_atoms);
+               }
+               catch (...)
+               {
+                 component->~Component();
+                 throw;
+               }
+             },
              nanobind::arg("force_field"), nanobind::arg("component_name"), nanobind::arg("critical_temperature"),
              nanobind::arg("critical_pressure"), nanobind::arg("acentric_factor"),
              nanobind::arg("defined_atoms") = std::vector<Atom>(),
@@ -1043,8 +1693,43 @@ EXPAND_MODULE(MODULE_NAME)
              nanobind::arg("particle_probabilities") = MCMoveProbabilities(),
              nanobind::arg("fugacity_coefficient") = nanobind::none(),
              nanobind::arg("thermodynamic_integration") = false,
-             nanobind::arg("blocking_pockets") = std::vector<double4>())
+             nanobind::arg("blocking_pockets") = std::vector<double4>(),
+             nanobind::arg("rigid_bodies") = std::vector<std::vector<std::size_t>>(),
+             nanobind::arg("chiral_centers") = std::vector<std::array<std::size_t, 4>>(),
+             nanobind::arg("intra_14_van_der_waals_scaling") = 0.0,
+             nanobind::arg("intra_14_charge_charge_scaling") = 0.0,
+             nanobind::arg("partial_reinsertion_fixed_atoms") = std::vector<std::vector<std::size_t>>(),
+             nanobind::arg("repeat_units") = std::vector<std::vector<std::size_t>>(),
+             nanobind::arg("end_to_end_atoms") = nanobind::none())
         .def_ro("name", &Component::name)
+        .def_ro("rigid", &Component::rigid, "Whether the molecule is a single rigid body.")
+        .def_prop_ro(
+            "rigid_bodies",
+            [](const Component& c)
+            {
+              std::vector<std::vector<std::size_t>> bodies{};
+              for (const Fragment& fragment : c.fragmentGraph.fragments)
+              {
+                if (fragment.isRigidBody()) bodies.push_back(fragment.atoms);
+              }
+              return bodies;
+            },
+            "The groups of atoms that move as one rigid unit.")
+        .def_prop_ro(
+            "chiral_centers", [](const Component& c) { return c.intraMolecularPotentials.chiralCenters; },
+            "The chiral centers, with the handedness they have in the positions of the atoms.")
+        .def_ro("partial_reinsertion_fixed_atoms", &Component::partialReinsertionFixedAtoms,
+                "The sets of atoms that stay where they are in a partial reinsertion; the others are grown again.")
+        .def_ro("repeat_units", &Component::repeatUnits,
+                "The repeat units of a chain molecule, for the reptation move.")
+        .def_ro("end_to_end_atoms", &Component::endToEndAtoms,
+                "The two atoms whose distance is the end-to-end distance of the molecule.")
+        .def("backbone_atoms", &Component::backboneAtoms,
+             "The atoms on the shortest path of bonds between the end-to-end atoms.")
+        .def_ro("intra_14_van_der_waals_scaling", &Component::intra14VanDerWaalsScaling)
+        .def_ro("intra_14_charge_charge_scaling", &Component::intra14ChargeChargeScaling)
+        .def_ro("connectivity_table", &Component::connectivityTable)
+        .def_ro("intra_molecular_potentials", &Component::intraMolecularPotentials)
         .def_prop_rw(
           "lambda_histogram", [](Component& c) -> PropertyLambdaProbabilityHistogram& { return c.lambdaGC; },
           [](Component& c, const PropertyLambdaProbabilityHistogram& value)
@@ -1466,7 +2151,9 @@ EXPAND_MODULE(MODULE_NAME)
            nanobind::arg("initial_positions") = std::vector<std::vector<double3>>(),
            nanobind::arg("initial_number_of_molecules") = std::vector<std::size_t>(),
            nanobind::arg("number_of_blocks") = 5, nanobind::arg("system_probabilities") = MCMoveProbabilities())
-      .def("compute_total_energies", &System::computeTotalEnergies)
+      // (the member takes a pointer to an overlap flag, which was bound as a boolean that had to be given)
+      .def("compute_total_energies", [](System& system) { return system.computeTotalEnergies(); },
+           "The energies of the configuration as it is, in internal units of 10 J/mol.")
       .def("framework_mass", &System::frameworkMass)
       .def_ro("simulation_box", &System::simulationBox)
       .def_ro("input_pressure", &System::input_pressure)
