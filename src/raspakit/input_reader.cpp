@@ -2756,6 +2756,38 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      // SHAKE/RATTLE of the FIXED bonds in molecular dynamics: the relative tolerance of the constrained lengths
+      // and the iteration limit per molecule and step
+      if (item.contains("ConstraintTolerance"))
+      {
+        if (!item["ConstraintTolerance"].is_number() || !(item["ConstraintTolerance"].get<double>() > 0.0))
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'ConstraintTolerance' of component '{}' must be a positive number (the relative "
+              "error of a constrained bond length, e.g. 1e-8)\n",
+              jsonComponents[0][componentId].name));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].constraintTolerance = item["ConstraintTolerance"].get<double>();
+        }
+      }
+      if (item.contains("ConstraintMaximumIterations"))
+      {
+        if (!item["ConstraintMaximumIterations"].is_number_unsigned() ||
+            item["ConstraintMaximumIterations"].get<std::size_t>() == 0)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'ConstraintMaximumIterations' of component '{}' must be a positive integer\n",
+              jsonComponents[0][componentId].name));
+        }
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].constraintMaximumIterations =
+              item["ConstraintMaximumIterations"].get<std::size_t>();
+        }
+      }
+
       // The mean intramolecular energy of the molecule in the ideal gas [K]: the reference the enthalpy of
       // adsorption (and the isosteric heat of the reweighting drivers) of a flexible molecule is measured from.
       // The component carried it and every such output subtracted it, but no key set it.
@@ -7018,6 +7050,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "FugacityCoefficient",
     "IdealGasRosenbluthWeight",
     "IdealGasRosenbluthWeightTolerance",
+    "ConstraintTolerance",
+    "ConstraintMaximumIterations",
     "IdealGasEnergy",
     "CrossSection",
     "LiquidVolume",

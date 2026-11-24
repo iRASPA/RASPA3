@@ -194,6 +194,32 @@ class Component():
         ...
 
     @property
+    def constraint_tolerance(self) -> float:
+        """The relative error to which molecular dynamics restores a FIXED
+        bond length with SHAKE/RATTLE [-]. Default 1e-8."""
+        ...
+
+    @constraint_tolerance.setter
+    def constraint_tolerance(self, value: float) -> None:
+        ...
+
+    @property
+    def constraint_maximum_iterations(self) -> int:
+        """The iteration limit of SHAKE and of RATTLE per molecule and step.
+        Default 500."""
+        ...
+
+    @constraint_maximum_iterations.setter
+    def constraint_maximum_iterations(self, value: int) -> None:
+        ...
+
+    @property
+    def distance_constraints(self) -> list[tuple[int, int, float]]:
+        """The distance constraints (atom, atom, length [Å]) that molecular
+        dynamics holds for the FIXED terms of the molecule."""
+        ...
+
+    @property
     def ideal_gas_energy(self) -> float | None:
         """The mean intramolecular energy of the isolated molecule [K], the
         reference of the enthalpy of adsorption."""

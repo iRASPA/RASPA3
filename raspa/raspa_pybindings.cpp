@@ -2383,6 +2383,32 @@ EXPAND_MODULE(MODULE_NAME)
             nanobind::for_setter(nanobind::arg("value").none()),
             "The relative standard error to which a weight that is not given is computed [-].")
         .def_prop_rw(
+            "constraint_tolerance", [](const Component& c) { return c.constraintTolerance; },
+            [](Component& c, double tolerance)
+            {
+              if (!(tolerance > 0.0)) throw std::invalid_argument("constraint_tolerance must be positive");
+              c.constraintTolerance = tolerance;
+            },
+            "The relative error to which molecular dynamics restores a FIXED bond length (SHAKE/RATTLE) [-].")
+        .def_prop_rw(
+            "constraint_maximum_iterations", [](const Component& c) { return c.constraintMaximumIterations; },
+            [](Component& c, std::size_t iterations)
+            {
+              if (iterations == 0) throw std::invalid_argument("constraint_maximum_iterations must be positive");
+              c.constraintMaximumIterations = iterations;
+            },
+            "The iteration limit of SHAKE and of RATTLE per molecule and step.")
+        .def_prop_ro(
+            "distance_constraints",
+            [](const Component& c)
+            {
+              std::vector<std::tuple<std::size_t, std::size_t, double>> constraints;
+              for (const Component::DistanceConstraint& constraint : c.distanceConstraints)
+                constraints.emplace_back(constraint.a, constraint.b, constraint.length);
+              return constraints;
+            },
+            "The distance constraints (atom, atom, length [Å]) that molecular dynamics holds for the FIXED terms.")
+        .def_prop_rw(
             "ideal_gas_energy",
             [](const Component& c) -> std::optional<double>
             {

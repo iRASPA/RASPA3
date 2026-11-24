@@ -408,6 +408,7 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
         dynamics[i].velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
                                std::sqrt(Units::KB * system.temperature / mass);
       }
+      Integrators::constrainMoleculeVelocities(component, atoms, dynamics);
       // the molecule record (what the drift removal below and the VACF read) follows the fragments and atoms
       Integrators::syncNonRigidMoleculeCenterOfMass(molecule, atoms, dynamics, component, system.spanOfGroupData(),
                                                     offset);
@@ -452,6 +453,15 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
 RunningEnergy thermobarostatVelocityVerlet(System& system)
 {
   Thermobarostat& barostat = *system.thermobarostat;
+  // The constraint forces are left out of the atomic virial: with constrained bonds the barostat has to couple to
+  // the centres of mass of the molecules, where forces inside a molecule cancel.
+  if (system.thermobarostat->coupling == BarostatCoupling::Atomic &&
+      std::ranges::any_of(system.components,
+                          [](const Component& component) { return !component.distanceConstraints.empty(); }))
+  {
+    throw std::runtime_error(
+        "[Molecular dynamics]: molecules with FIXED (constrained) bonds need 'BarostatCoupling' : \"Molecular\"\n");
+  }
   const double3x3 pressureBefore =
       computeBarostatVirial(system, system.computeMolecularPressure().second, barostat.coupling);
 
@@ -517,6 +527,9 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
                                 system.spanOfFrameworkDynamics(), &system.forceField, system.spanOfGroupData(),
                                 system.spanOfFrameworkGroupData());
   propagateCell(system, cellRate, barostat.coupling);
+  // SHAKE (molecular coupling moves a molecule as a whole: its atoms drifted relative to the centre of mass)
+  Integrators::applyPositionConstraints(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                        system.spanOfMoleculeDynamics(), system.components, system.timeStep);
   if (molecularDynamicsUsesIsotropicBarostat(barostat.ensemble))
     barostat.logVolumePosition += system.timeStep * barostat.logVolumeVelocity;
   Integrators::noSquishFreeRotorOrderTwo(system.moleculeData, system.components, system.timeStep,
@@ -540,6 +553,9 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
                                 system.components, system.timeStep, system.framework, system.spanOfFrameworkAtoms(),
                                 system.spanOfFrameworkDynamics(), &system.forceField, system.spanOfGroupData(),
                                 system.spanOfFrameworkGroupData());
+  // RATTLE
+  Integrators::applyVelocityConstraints(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                        system.spanOfMoleculeDynamics(), system.components);
   applyVelocityMatrix(system,
                       velocityPropagator(cellRate, 0.5 * system.timeStep, barostat.translationalDegreesOfFreedom),
                       barostat.coupling);
@@ -791,6 +807,8 @@ void MolecularDynamics::setup()
 {
   for (std::size_t system_id{0}; System& system : systems)
   {
+    // FIXED terms are held with SHAKE/RATTLE: refuse what cannot be held before the first step
+    system.requireSupportedDynamicsConstraints();
     if (system.propertyElasticConstantsFluctuation)
     {
       if (system.molecularDynamicsEnsemble != MolecularDynamicsEnsemble::NVT)

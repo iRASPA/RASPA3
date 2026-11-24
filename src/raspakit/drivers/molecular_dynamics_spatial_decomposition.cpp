@@ -374,6 +374,15 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, ForceEngine& en
     return energies;
   }
 
+  // The constraint forces are left out of the atomic virial: with constrained bonds the barostat has to couple to
+  // the centres of mass of the molecules, where forces inside a molecule cancel.
+  if (system.thermobarostat->coupling == BarostatCoupling::Atomic &&
+      std::ranges::any_of(system.components,
+                          [](const Component& component) { return !component.distanceConstraints.empty(); }))
+  {
+    throw std::runtime_error(
+        "[Molecular dynamics]: molecules with FIXED (constrained) bonds need 'BarostatCoupling' : \"Molecular\"\n");
+  }
   Thermobarostat& barostat = *system.thermobarostat;
   // a local reference: a thread_local is not captured by the lambdas below, each worker thread would see its own
   static thread_local IntegratorWorkspace workspace;
@@ -480,6 +489,7 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, ForceEngine& en
                {
                  const RangeViews v = viewsOf(system, range);
                  if (molecular) distributeCenterOfMassDisplacement(system, range, w.table, w.comDisplacement);
+                 Integrators::applyPositionConstraints(v.molecules, v.atoms, v.dynamics, components, dt);
                  Integrators::noSquishFreeRotorOrderTwo(v.molecules, components, dt, v.groups, std::nullopt, {});
                  Integrators::createCartesianPositions(v.molecules, v.atoms, components, v.groups, std::nullopt, {}, {});
                });
@@ -496,6 +506,7 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, ForceEngine& en
                                                                        v.groups, std::nullopt, {}, {});
                  Integrators::updateVelocities(v.molecules, v.atoms, v.dynamics, components, dt, std::nullopt, {}, {},
                                                forceField, v.groups, {});
+                 Integrators::applyVelocityConstraints(v.molecules, v.atoms, v.dynamics, components);
                  if (molecular) centersOfMass(system, range, false, w.table);
                  applyVelocityMatrix(system, range, propagator, coupling, w.table);
                  if (molecular) w.virial[r] = tableKineticVirial(range, w.table);
@@ -662,6 +673,8 @@ void MolecularDynamicsSpatialDecomposition::setup()
 {
   for (std::size_t system_id{0}; System& system : systems)
   {
+    // FIXED terms are held with SHAKE/RATTLE: refuse what cannot be held before the first step
+    system.requireSupportedDynamicsConstraints();
     std::string reason;
     if (!ForceEngine::supports(system, reason))
     {

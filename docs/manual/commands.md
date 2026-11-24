@@ -3052,6 +3052,36 @@ not improved by it.
     not reached. Without effect for a component whose weight is given or
     needs none.
 
+-   `"ConstraintTolerance" : floating-point-number`\
+    Molecular dynamics holds the `FIXED` terms of a flexible or semi-flexible
+    molecule as distance constraints with SHAKE (positions) and RATTLE
+    (velocities), as Monte Carlo holds them through its moves. (The two are
+    not the same ensemble to the last digit: constrained dynamics samples
+    rigid bonds, the moves the limit of infinitely stiff ones, which differ
+    by the metric factor of the constraints, the Fixman term; it is not
+    corrected for.)
+    This is the relative error to which a constrained length is restored
+    every step, and to which the velocity along it is removed. Default:
+    `1e-8`. The constraints are: `FIXED` bonds, `FIXED` Urey-Bradley
+    distances, and `FIXED` or `RIGID` bends between two `FIXED` bonds (held
+    as the 1-3 distance). Each independent constraint takes one degree of
+    freedom off the molecule, which the thermostat and the reported
+    temperature follow. Other fixed terms cannot be held and the dynamics
+    refuse the component with a message that lists them: a fixed bend with
+    an arm that is not a `FIXED` bond, a `FIXED` torsion, and a fixed term
+    between a rigid group and an atom outside it; use stiff potentials for
+    those, or make the atoms one rigid group. With a barostat, constrained
+    molecules need the (default) molecular coupling, `"BarostatCoupling" :
+    "Molecular"`. The domain-decomposed dynamics apply the constraints on
+    the processor: the integrator that keeps the whole step on a GPU is
+    not used for a system with constrained molecules, the forces still are.
+
+-   `"ConstraintMaximumIterations" : integer`\
+    The number of SHAKE (and of RATTLE) iterations after which a molecule
+    that has not reached `"ConstraintTolerance"` stops the run with an
+    error. Default: `500`. A molecule that does not converge usually points
+    at a time step that is too large.
+
 -   `"IdealGasEnergy" : floating-point-number`\
     The mean intramolecular energy of a single molecule in the ideal gas at the
     temperature of the system [K], from a run of one molecule in an empty box.

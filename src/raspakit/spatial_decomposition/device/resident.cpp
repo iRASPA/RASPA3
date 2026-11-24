@@ -122,6 +122,11 @@ bool DeviceResident::supports(const System& system, std::string& reason)
       reason = std::format("semi-flexible molecules (component '{}')", component.name);
       return false;
     }
+    if (!component.distanceConstraints.empty() || !component.unsupportedDynamicsConstraints.empty())
+    {
+      reason = std::format("constrained bonds (component '{}': SHAKE/RATTLE runs on the host)", component.name);
+      return false;
+    }
   }
   if (!system.spanOfGroupData().empty())
   {

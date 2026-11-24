@@ -442,6 +442,9 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
     buildIntraMolecularNonBondedPairs(forceField);
     intraMolecularPotentials.chiralCenters = readChiralCenters(parsed_data);
 
+    // the fragment graph was built before the potentials were read: the FIXED terms are known only now
+    buildDistanceConstraints();
+
     partialReinsertionFixedAtoms = readPartialReinsertionFixedAtoms(parsed_data);
     repeatUnits = readRepeatUnits(parsed_data);
     endToEndAtoms = determineEndToEndAtoms(parsed_data);
@@ -661,23 +664,180 @@ void Component::buildFragmentGraph(const std::vector<std::vector<std::size_t>> &
 
   fragmentGraph.build(connectivityTable, partition, startingBead, referencePositions, masses);
 
+  // the degrees of freedom of the molecule follow from the fragments and from the distance constraints
+  buildDistanceConstraints();
+}
+
+void Component::buildDistanceConstraints()
+{
+  distanceConstraints.clear();
+  unsupportedDynamicsConstraints.clear();
+  numberOfConstrainedDegreesOfFreedom = 0;
+  // a rigid molecule is one rigid body: its degrees of freedom are set by 'computeRigidProperties'
+  if (rigid) return;
+
+  const std::size_t numberOfBeads = definedAtoms.size();
+
+  // Terms whose atoms all lie in one rigid fragment are held by the rigid body. A term between a rigid fragment and
+  // an atom outside it would couple the constraint to the rigid-body motion, which SHAKE on atoms cannot do.
+  const auto insideOneRigidFragment = [&](std::span<const std::size_t> ids)
+  {
+    const std::optional<std::size_t> first = rigidFragmentContaining(ids[0]);
+    if (!first.has_value()) return false;
+    return std::ranges::all_of(ids, [&](std::size_t id) { return rigidFragmentContaining(id) == first; });
+  };
+  const auto touchesRigidFragment = [&](std::span<const std::size_t> ids)
+  { return std::ranges::any_of(ids, [&](std::size_t id) { return rigidFragmentContaining(id).has_value(); }); };
+  const auto find = [&](std::size_t a, std::size_t b) -> const DistanceConstraint *
+  {
+    for (const DistanceConstraint &constraint : distanceConstraints)
+    {
+      if ((constraint.a == a && constraint.b == b) || (constraint.a == b && constraint.b == a)) return &constraint;
+    }
+    return nullptr;
+  };
+  const auto add = [&](std::size_t a, std::size_t b, double length, const std::string &description)
+  {
+    if (const DistanceConstraint *present = find(a, b))
+    {
+      if (std::abs(present->length - length) > 1.0e-6 * std::max(1.0, length))
+      {
+        unsupportedDynamicsConstraints.push_back(std::format(
+            "{} asks for a distance of {:g} Å between atoms {} and {}, another fixed term for {:g} Å", description,
+            length, a, b, present->length));
+      }
+      return;
+    }
+    if (!(length > 0.0))
+    {
+      unsupportedDynamicsConstraints.push_back(std::format("{} has no positive length", description));
+      return;
+    }
+    distanceConstraints.push_back({a, b, length});
+  };
+
+  for (const BondPotential &bond : intraMolecularPotentials.bonds)
+  {
+    if (bond.type != BondType::Fixed) continue;
+    if (insideOneRigidFragment(bond.identifiers)) continue;
+    const std::string description = std::format("the FIXED bond {}-{}", bond.identifiers[0], bond.identifiers[1]);
+    if (touchesRigidFragment(bond.identifiers))
+    {
+      unsupportedDynamicsConstraints.push_back(description + " joins a rigid group to an atom outside it");
+      continue;
+    }
+    add(bond.identifiers[0], bond.identifiers[1], bond.parameters[0], description);
+  }
+
+  // A fixed angle is a distance constraint only when its two arms are: the 1-3 distance then closes the triangle.
+  for (const BendPotential &bend : intraMolecularPotentials.bends)
+  {
+    if (bend.type != BendType::Fixed && bend.type != BendType::Rigid) continue;
+    if (insideOneRigidFragment(bend.identifiers)) continue;
+    const std::string description =
+        std::format("the {} bend {}-{}-{}", bend.type == BendType::Fixed ? "FIXED" : "RIGID", bend.identifiers[0],
+                    bend.identifiers[1], bend.identifiers[2]);
+    if (touchesRigidFragment(bend.identifiers))
+    {
+      unsupportedDynamicsConstraints.push_back(description + " joins a rigid group to an atom outside it");
+      continue;
+    }
+    const DistanceConstraint *first = find(bend.identifiers[0], bend.identifiers[1]);
+    const DistanceConstraint *second = find(bend.identifiers[1], bend.identifiers[2]);
+    if (first == nullptr || second == nullptr)
+    {
+      unsupportedDynamicsConstraints.push_back(
+          description + " has an arm that is not a FIXED bond (an angle constraint, not a distance)");
+      continue;
+    }
+    const double a = first->length;
+    const double b = second->length;
+    const double squared = a * a + b * b - 2.0 * a * b * std::cos(bend.parameters[0]);
+    add(bend.identifiers[0], bend.identifiers[2], std::sqrt(std::max(0.0, squared)), description);
+  }
+
+  for (const UreyBradleyPotential &ureyBradley : intraMolecularPotentials.ureyBradleys)
+  {
+    if (ureyBradley.type != UreyBradleyType::Fixed) continue;
+    if (insideOneRigidFragment(ureyBradley.identifiers)) continue;
+    // a fixed bend between the same two atoms already holds the distance
+    if (find(ureyBradley.identifiers[0], ureyBradley.identifiers[1]) != nullptr) continue;
+    const std::string description =
+        std::format("the FIXED Urey-Bradley distance {}-{}", ureyBradley.identifiers[0], ureyBradley.identifiers[1]);
+    if (touchesRigidFragment(ureyBradley.identifiers))
+    {
+      unsupportedDynamicsConstraints.push_back(description + " joins a rigid group to an atom outside it");
+      continue;
+    }
+    add(ureyBradley.identifiers[0], ureyBradley.identifiers[1], ureyBradley.parameters[0], description);
+  }
+
+  const auto fixedTorsions = [&](const std::vector<TorsionPotential> &torsions, std::string_view kind)
+  {
+    for (const TorsionPotential &torsion : torsions)
+    {
+      if (torsion.type != TorsionType::Fixed) continue;
+      if (insideOneRigidFragment(torsion.identifiers)) continue;
+      unsupportedDynamicsConstraints.push_back(
+          std::format("the FIXED {} {}-{}-{}-{} is a dihedral-angle constraint, not a distance", kind,
+                      torsion.identifiers[0], torsion.identifiers[1], torsion.identifiers[2], torsion.identifiers[3]));
+    }
+  };
+  fixedTorsions(intraMolecularPotentials.torsions, "torsion");
+  fixedTorsions(intraMolecularPotentials.improperTorsions, "improper torsion");
+
+  // The degrees of freedom the constraints remove. Constraints are independent until a group of n atoms they
+  // connect is rigid, which takes 3n - 6 of them (one for a pair): further ones in that group are redundant. The
+  // count is taken per connected group of constrained atoms; a group that is rigid in part only, with redundant
+  // constraints inside that part, is counted one for one.
+  std::vector<std::size_t> group(numberOfBeads);
+  std::iota(group.begin(), group.end(), std::size_t{0});
+  const auto root = [&](std::size_t atom)
+  {
+    while (group[atom] != atom) atom = group[atom] = group[group[atom]];
+    return atom;
+  };
+  for (const DistanceConstraint &constraint : distanceConstraints) group[root(constraint.a)] = root(constraint.b);
+  std::vector<std::size_t> atomsOfGroup(numberOfBeads, 0);
+  std::vector<std::size_t> constraintsOfGroup(numberOfBeads, 0);
+  for (std::size_t atom = 0; atom != numberOfBeads; ++atom) ++atomsOfGroup[root(atom)];
+  for (const DistanceConstraint &constraint : distanceConstraints) ++constraintsOfGroup[root(constraint.a)];
+  for (std::size_t atom = 0; atom != numberOfBeads; ++atom)
+  {
+    if (constraintsOfGroup[atom] == 0) continue;
+    const std::size_t rigidLimit = atomsOfGroup[atom] == 2 ? 1 : 3 * atomsOfGroup[atom] - 6;
+    numberOfConstrainedDegreesOfFreedom += std::min(constraintsOfGroup[atom], rigidLimit);
+  }
+
   // A semi-flexible molecule is integrated as a set of rigid-body fragments (each contributing three
   // center-of-mass translations plus its rotational degrees of freedom) together with per-atom
-  // Cartesian degrees of freedom for every single-atom (flexible) fragment.
-  if (fragmentGraph.isSemiFlexible())
+  // Cartesian degrees of freedom for every single-atom (flexible) fragment; a flexible molecule has the
+  // Cartesian degrees of freedom of its atoms.
+  std::size_t rigidFragmentAtoms{};
+  std::size_t rotationalDof{};
+  for (const Fragment &fragment : fragmentGraph.fragments)
   {
-    std::size_t rigidFragmentAtoms{};
-    std::size_t rotationalDof{};
-    for (const Fragment &fragment : fragmentGraph.fragments)
-    {
-      if (!fragment.isRigidBody()) continue;
-      rigidFragmentAtoms += fragment.atoms.size();
-      rotationalDof += fragment.rotationalDegreesOfFreedom;
-    }
-    std::size_t flexibleAtoms = numberOfBeads - rigidFragmentAtoms;
-    translationalDegreesOfFreedom = 3 * flexibleAtoms + 3 * fragmentGraph.numberOfRigidFragments();
-    rotationalDegreesOfFreedom = rotationalDof;
+    if (!fragment.isRigidBody()) continue;
+    rigidFragmentAtoms += fragment.atoms.size();
+    rotationalDof += fragment.rotationalDegreesOfFreedom;
   }
+  const std::size_t flexibleAtoms = numberOfBeads - std::min(numberOfBeads, rigidFragmentAtoms);
+  const std::size_t unconstrained = 3 * flexibleAtoms + 3 * fragmentGraph.numberOfRigidFragments();
+  translationalDegreesOfFreedom = unconstrained - std::min(unconstrained, numberOfConstrainedDegreesOfFreedom);
+  rotationalDegreesOfFreedom = rotationalDof;
+}
+
+void Component::requireSupportedDynamicsConstraints() const
+{
+  if (unsupportedDynamicsConstraints.empty()) return;
+  std::string list;
+  for (const std::string &item : unsupportedDynamicsConstraints) list += std::format("  - {}\n", item);
+  throw std::runtime_error(std::format(
+      "[Molecular dynamics]: component '{}' has FIXED or RIGID terms that the dynamics cannot hold as constraints "
+      "(SHAKE/RATTLE holds distances between flexible atoms: FIXED bonds, FIXED Urey-Bradley distances, and FIXED "
+      "or RIGID bends between two FIXED bonds):\n{}Use stiff potentials for these terms, or make the atoms one "
+      "rigid group.\n",
+      name, list));
 }
 
 bool Component::mayUseGrowthPlans() const
@@ -4121,6 +4281,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
     archive << c.idealGasRosenbluthWeightEstimate->converged;
   }
   archive << c.idealGasRosenbluthWeightTolerance;
+  archive << c.constraintTolerance;
+  archive << c.constraintMaximumIterations;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -4287,6 +4449,14 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   {
     c.idealGasRosenbluthWeightTolerance.reset();
   }
+  if (versionNumber >= 5)
+  {
+    archive >> c.constraintTolerance;
+    archive >> c.constraintMaximumIterations;
+  }
+  // the constraints follow from the potentials and the fragments (a restart file of before them has none stored,
+  // and the degrees of freedom of its flexible molecules without the constraints taken off)
+  c.buildDistanceConstraints();
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

@@ -465,6 +465,164 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
   integratorsCPUTime.updateVelocities += end - begin;
 }
 
+namespace
+{
+// The inverse mass of a bead; a massless site takes no part in the correction of a constraint.
+double inverseMassOf(const Component& component, std::size_t bead, const Atom& atom)
+{
+  const double mass = component.atomMass(bead, atom);
+  return mass > 0.0 ? 1.0 / mass : 0.0;
+}
+
+void constrainMoleculePositions(const Component& component, std::span<Atom> atoms, std::span<AtomDynamics> dynamics,
+                                double dt)
+{
+  const std::vector<Component::DistanceConstraint>& constraints = component.distanceConstraints;
+
+  // the bond vectors before the drift: the directions of the constraint forces of this step
+  static thread_local std::vector<double3> reference;
+  reference.resize(constraints.size());
+  for (std::size_t k = 0; k != constraints.size(); ++k)
+  {
+    const std::size_t a = constraints[k].a, b = constraints[k].b;
+    reference[k] = (atoms[a].position - atoms[b].position) - dt * (dynamics[a].velocity - dynamics[b].velocity);
+  }
+
+  const double inverseTimeStep = dt != 0.0 ? 1.0 / dt : 0.0;
+  for (std::size_t iteration = 0; iteration != component.constraintMaximumIterations; ++iteration)
+  {
+    bool converged = true;
+    for (std::size_t k = 0; k != constraints.size(); ++k)
+    {
+      const std::size_t a = constraints[k].a, b = constraints[k].b;
+      const double lengthSquared = constraints[k].length * constraints[k].length;
+      const double3 separation = atoms[a].position - atoms[b].position;
+      const double difference = lengthSquared - double3::dot(separation, separation);
+      if (std::abs(difference) <= 2.0 * component.constraintTolerance * lengthSquared) continue;
+      converged = false;
+
+      const double inverseMassA = inverseMassOf(component, a, atoms[a]);
+      const double inverseMassB = inverseMassOf(component, b, atoms[b]);
+      const double projection = double3::dot(separation, reference[k]);
+      // the bond turned (nearly) perpendicular to where it was a step ago: no correction along the old bond
+      // restores its length
+      if (!(std::abs(projection) > 1.0e-6 * lengthSquared) || !(inverseMassA + inverseMassB > 0.0))
+      {
+        throw std::runtime_error(std::format(
+            "[Molecular dynamics]: SHAKE cannot restore the constrained distance between atoms {} and {} of a "
+            "molecule of component '{}' (the bond rotated too far in one step, or both atoms are massless); "
+            "reduce the time step.\n",
+            a, b, component.name));
+      }
+      const double multiplier = difference / (2.0 * (inverseMassA + inverseMassB) * projection);
+      atoms[a].position += (multiplier * inverseMassA) * reference[k];
+      atoms[b].position -= (multiplier * inverseMassB) * reference[k];
+      dynamics[a].velocity += (multiplier * inverseMassA * inverseTimeStep) * reference[k];
+      dynamics[b].velocity -= (multiplier * inverseMassB * inverseTimeStep) * reference[k];
+    }
+    if (converged) return;
+  }
+  throw std::runtime_error(std::format(
+      "[Molecular dynamics]: SHAKE did not converge to a relative tolerance of {:g} in {} iterations for a molecule "
+      "of component '{}'; reduce the time step, or raise 'ConstraintMaximumIterations' or 'ConstraintTolerance'.\n",
+      component.constraintTolerance, component.constraintMaximumIterations, component.name));
+}
+}  // namespace
+
+void Integrators::constrainMoleculeVelocities(const Component& component, std::span<const Atom> atoms,
+                                              std::span<AtomDynamics> dynamics)
+{
+  const std::vector<Component::DistanceConstraint>& constraints = component.distanceConstraints;
+  if (constraints.empty()) return;
+
+  // The scale the residual is measured against is that of the velocities coming in: the velocity along a
+  // constraint is driven to zero, so a criterion relative to what is left of it would never be met.
+  double scaleSquared{};
+  for (const Component::DistanceConstraint& constraint : constraints)
+  {
+    scaleSquared = std::max({scaleSquared, double3::dot(dynamics[constraint.a].velocity, dynamics[constraint.a].velocity),
+                             double3::dot(dynamics[constraint.b].velocity, dynamics[constraint.b].velocity)});
+  }
+  const double scale = std::sqrt(scaleSquared);
+
+  for (std::size_t iteration = 0; iteration != component.constraintMaximumIterations; ++iteration)
+  {
+    bool converged = true;
+    for (const Component::DistanceConstraint& constraint : constraints)
+    {
+      const std::size_t a = constraint.a, b = constraint.b;
+      const double3 separation = atoms[a].position - atoms[b].position;
+      const double3 relativeVelocity = dynamics[a].velocity - dynamics[b].velocity;
+      const double rate = double3::dot(separation, relativeVelocity);
+      const double separationSquared = double3::dot(separation, separation);
+      if (std::abs(rate) <= component.constraintTolerance * std::sqrt(separationSquared) * scale) continue;
+      converged = false;
+
+      const double inverseMassA = inverseMassOf(component, a, atoms[a]);
+      const double inverseMassB = inverseMassOf(component, b, atoms[b]);
+      if (!(inverseMassA + inverseMassB > 0.0) || !(separationSquared > 0.0))
+      {
+        throw std::runtime_error(std::format(
+            "[Molecular dynamics]: RATTLE cannot constrain the velocities of atoms {} and {} of a molecule of "
+            "component '{}' (the atoms coincide, or both are massless).\n",
+            a, b, component.name));
+      }
+      const double multiplier = rate / ((inverseMassA + inverseMassB) * separationSquared);
+      dynamics[a].velocity -= (multiplier * inverseMassA) * separation;
+      dynamics[b].velocity += (multiplier * inverseMassB) * separation;
+    }
+    if (converged) return;
+  }
+  throw std::runtime_error(std::format(
+      "[Molecular dynamics]: RATTLE did not converge to a relative tolerance of {:g} in {} iterations for a "
+      "molecule of component '{}'; raise 'ConstraintMaximumIterations' or 'ConstraintTolerance'.\n",
+      component.constraintTolerance, component.constraintMaximumIterations, component.name));
+}
+
+void Integrators::applyPositionConstraints(std::span<const Molecule> moleculeData,
+                                           std::span<Atom> moleculeAtomPositions,
+                                           std::span<AtomDynamics> moleculeDynamics,
+                                           const std::vector<Component>& components, double dt)
+{
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  std::size_t index{};
+  for (const Molecule& molecule : moleculeData)
+  {
+    const Component& component = components[molecule.componentId];
+    // FIXED terms that are no distance constraint would be left free: refuse the dynamics of such a molecule
+    if (!component.unsupportedDynamicsConstraints.empty()) component.requireSupportedDynamicsConstraints();
+    if (!component.distanceConstraints.empty())
+    {
+      constrainMoleculePositions(component, moleculeAtomPositions.subspan(index, molecule.numberOfAtoms),
+                                 moleculeDynamics.subspan(index, molecule.numberOfAtoms), dt);
+    }
+    index += molecule.numberOfAtoms;
+  }
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+  integratorsCPUTime.updatePositions += end - begin;
+}
+
+void Integrators::applyVelocityConstraints(std::span<const Molecule> moleculeData,
+                                           std::span<const Atom> moleculeAtomPositions,
+                                           std::span<AtomDynamics> moleculeDynamics,
+                                           const std::vector<Component>& components)
+{
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+  std::size_t index{};
+  for (const Molecule& molecule : moleculeData)
+  {
+    const Component& component = components[molecule.componentId];
+    if (!component.distanceConstraints.empty())
+    {
+      constrainMoleculeVelocities(component, moleculeAtomPositions.subspan(index, molecule.numberOfAtoms),
+                                  moleculeDynamics.subspan(index, molecule.numberOfAtoms));
+    }
+    index += molecule.numberOfAtoms;
+  }
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+  integratorsCPUTime.updateVelocities += end - begin;
+}
+
 void Integrators::initializeMoleculeVelocity(RandomNumber& random, Molecule& molecule,
                                              std::span<const Atom> moleculeAtoms,
                                              std::span<AtomDynamics> moleculeDynamics, const Component& component,
@@ -494,13 +652,19 @@ void Integrators::initializeMoleculeVelocity(RandomNumber& random, Molecule& mol
   {
     if (moleculeDynamics.size() != molecule.numberOfAtoms || moleculeAtoms.size() != molecule.numberOfAtoms)
       throw std::runtime_error("Flexible-molecule dynamics span has the wrong size");
-    double3 momentum{};
     for (std::size_t i = 0; i != moleculeDynamics.size(); i++)
     {
       const double mass = component.atomMass(i, moleculeAtoms[i]);
       moleculeDynamics[i].velocity =
           double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
-      momentum += mass * moleculeDynamics[i].velocity;
+    }
+    // The Maxwell-Boltzmann distribution of a constrained molecule is that of its free atoms projected on the
+    // velocities the constraints allow.
+    constrainMoleculeVelocities(component, moleculeAtoms, moleculeDynamics);
+    double3 momentum{};
+    for (std::size_t i = 0; i != moleculeDynamics.size(); i++)
+    {
+      momentum += component.atomMass(i, moleculeAtoms[i]) * moleculeDynamics[i].velocity;
     }
     molecule.velocity = momentum * molecule.invMass;
     molecule.orientationMomentum = simd_quatd(0.0, 0.0, 0.0, 0.0);
@@ -591,6 +755,7 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
         dynamics[i].velocity =
             double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
       }
+      constrainMoleculeVelocities(component, atoms, dynamics);
       syncNonRigidMoleculeCenterOfMass(molecule, atoms, dynamics, component, groupData, groupIndex);
       groupIndex += component.numberOfRigidFragments();
       index += molecule.numberOfAtoms;

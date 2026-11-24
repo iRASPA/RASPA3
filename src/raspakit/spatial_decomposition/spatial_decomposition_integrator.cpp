@@ -198,6 +198,7 @@ RunningEnergy engineVelocityVerlet(System& system, ForceEngine& engine)
                                                forceField, v.groups, {});
                  Integrators::updatePositions(v.molecules, v.atoms, v.dynamics, components, dt, std::nullopt, {}, {},
                                               v.groups, {});
+                 Integrators::applyPositionConstraints(v.molecules, v.atoms, v.dynamics, components, dt);
                  Integrators::noSquishFreeRotorOrderTwo(v.molecules, components, dt, v.groups, std::nullopt, {});
                  Integrators::createCartesianPositions(v.molecules, v.atoms, components, v.groups, std::nullopt, {},
                                                        {});
@@ -213,6 +214,7 @@ RunningEnergy engineVelocityVerlet(System& system, ForceEngine& engine)
                                                                        v.groups, std::nullopt, {}, {});
                  Integrators::updateVelocities(v.molecules, v.atoms, v.dynamics, components, dt, std::nullopt, {}, {},
                                                forceField, v.groups, {});
+                 Integrators::applyVelocityConstraints(v.molecules, v.atoms, v.dynamics, components);
                  w.kinetic[r] = rangeKineticEnergies(system, range);
                });
   auto [translational, rotational] = w.totalKinetic();

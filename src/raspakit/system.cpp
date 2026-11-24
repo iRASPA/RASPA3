@@ -982,6 +982,29 @@ void System::refreshStoredEwaldStructureFactors() noexcept
                                           spanOfFrameworkAtoms());
 }
 
+void System::requireSupportedDynamicsConstraints() const
+{
+  bool constrained = false;
+  for (const Component& component : components)
+  {
+    component.requireSupportedDynamicsConstraints();
+    constrained = constrained || !component.distanceConstraints.empty();
+  }
+  if (!constrained) return;
+  if (thermobarostat.has_value() && thermobarostat->coupling == BarostatCoupling::Atomic)
+  {
+    throw std::runtime_error(
+        "[Molecular dynamics]: molecules with FIXED (constrained) bonds need 'BarostatCoupling' : \"Molecular\" "
+        "(the atomic virial leaves the constraint forces out)\n");
+  }
+  if (propertyElasticConstantsFluctuation.has_value())
+  {
+    throw std::runtime_error(
+        "[Molecular dynamics]: the stress-fluctuation elastic constants are not available for molecules with FIXED "
+        "(constrained) bonds (the atomic stress leaves the constraint forces out)\n");
+  }
+}
+
 bool System::conservesCenterOfMassMomentum() const noexcept
 {
   if (hasExternalField) return false;

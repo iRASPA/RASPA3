@@ -153,6 +153,17 @@ struct InputScript
   std::map<std::pair<std::size_t, std::size_t>, CoefficientLine> pairCoefficients{};
   std::map<std::size_t, CoefficientLine> bondCoefficients{}, angleCoefficients{}, dihedralCoefficients{},
       improperCoefficients{};
+
+  /// 'fix shake' (or 'fix rattle'): the bonds and angles LAMMPS holds as constraints. They become FIXED terms,
+  /// which the molecular dynamics of RASPA holds with SHAKE/RATTLE and its Monte Carlo through its moves.
+  struct Shake
+  {
+    double tolerance{};
+    std::size_t iterations{};
+    std::set<std::size_t> bondTypes{}, angleTypes{}, atomTypes{};
+    std::vector<double> masses{};
+  };
+  std::optional<Shake> shake{};
 };
 
 CoefficientLine parseCoefficientLine(const std::vector<std::string> &words, std::size_t firstValue)
@@ -289,6 +300,49 @@ InputScript readInputScript(const std::filesystem::path &path, std::vector<std::
           script.specialCoulomb = std::array{0.0, 1.0, 1.0};
         }
       }
+    }
+    else if (command == "fix" && words.size() > 6 && (words[3] == "shake" || words[3] == "rattle"))
+    {
+      // fix ID group shake|rattle tolerance iterations N keyword values ... (b: bond types, a: angle types,
+      // t: atom types, m: masses)
+      if (script.shake) warnings.push_back("[LAMMPS reader] more than one 'fix shake': their constraints are merged");
+      InputScript::Shake shake = script.shake.value_or(InputScript::Shake{});
+      shake.tolerance = toDouble(words[4]);
+      shake.iterations = static_cast<std::size_t>(std::stoul(words[5]));
+      char keyword{};
+      for (std::size_t i = 7; i < words.size(); ++i)
+      {
+        if (!isNumber(words[i]))
+        {
+          keyword = words[i].size() == 1 ? words[i][0] : '\0';
+          // 'mol template' and other keywords carry no constraint list
+          if (keyword != 'b' && keyword != 'a' && keyword != 't' && keyword != 'm')
+          {
+            keyword = '\0';
+            if (words[i] != "mol")
+              warnings.push_back(std::format("[LAMMPS reader] fix {}: keyword '{}' is not read", words[3], words[i]));
+          }
+          continue;
+        }
+        switch (keyword)
+        {
+          case 'b':
+            shake.bondTypes.insert(static_cast<std::size_t>(std::stoul(words[i])));
+            break;
+          case 'a':
+            shake.angleTypes.insert(static_cast<std::size_t>(std::stoul(words[i])));
+            break;
+          case 't':
+            shake.atomTypes.insert(static_cast<std::size_t>(std::stoul(words[i])));
+            break;
+          case 'm':
+            shake.masses.push_back(toDouble(words[i]));
+            break;
+          default:
+            break;
+        }
+      }
+      script.shake = shake;
     }
     else if (command == "kspace_style" && words.size() > 1)
     {
@@ -1176,6 +1230,18 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
       return term;
     };
 
+    // 'fix shake' constrains a bond by its type, or by the type or the mass of either of its atoms (LAMMPS matches
+    // a mass to within 0.1), and an angle by its type when its two bonds are constrained. The constrained length
+    // and angle are the equilibrium values of the harmonic term, as in LAMMPS, or else those of the geometry.
+    std::set<std::pair<std::size_t, std::size_t>> shakenBonds;
+    const auto shakenAtom = [&](std::size_t local)
+    {
+      const std::size_t type = pseudoAtoms[tpl.pseudoAtomIndex[local]].type;
+      if (script.shake->atomTypes.contains(type)) return true;
+      if (!data.masses.contains(type)) return false;
+      return std::ranges::any_of(script.shake->masses,
+                                 [&](double mass) { return std::abs(mass - data.masses.at(type)) <= 0.1; });
+    };
     if (!tpl.bonds.empty())
     {
       definition["Connectivity"] = nlohmann::json::array();
@@ -1184,8 +1250,19 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
       {
         definition["Connectivity"].push_back({bond[0], bond[1]});
         auto it = bondTerms.find(bond[2]);
-        if (it == bondTerms.end()) continue;
         const std::array<double, 3> r = separation(bond[0], bond[1]);
+        if (script.shake &&
+            (script.shake->bondTypes.contains(bond[2]) || shakenAtom(bond[0]) || shakenAtom(bond[1])))
+        {
+          const bool harmonic = it != bondTerms.end() && it->second.type == "HARMONIC" && it->second.parameters.size() > 1;
+          const bool fixed = it != bondTerms.end() && it->second.type == "FIXED" && !it->second.parameters.empty();
+          const double length =
+              harmonic ? it->second.parameters[1] : fixed ? it->second.parameters[0] : std::sqrt(dot(r, r));
+          definition["Bonds"].push_back({{bond[0], bond[1]}, "FIXED", {length}});
+          shakenBonds.insert(std::minmax(bond[0], bond[1]));
+          continue;
+        }
+        if (it == bondTerms.end()) continue;
         const RaspaTerm term = fixedReference(it->second, std::sqrt(dot(r, r)));
         definition["Bonds"].push_back({{bond[0], bond[1]}, term.type, term.parameters});
       }
@@ -1212,6 +1289,24 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
           continue;
         }
         const std::array<double, 3> u = separation(angle[1], angle[0]), v = separation(angle[1], angle[2]);
+        if (script.shake && script.shake->angleTypes.contains(angle[3]))
+        {
+          if (shakenBonds.contains(std::minmax(angle[0], angle[1])) &&
+              shakenBonds.contains(std::minmax(angle[1], angle[2])))
+          {
+            const bool harmonic = it->second.type == "HARMONIC" && it->second.parameters.size() > 1;
+            const bool fixed = it->second.type == "FIXED" && !it->second.parameters.empty();
+            const double theta =
+                harmonic ? it->second.parameters[1]
+                         : fixed ? it->second.parameters[0]
+                                 : degrees * std::acos(std::clamp(dot(u, v) / std::sqrt(dot(u, u) * dot(v, v)), -1.0, 1.0));
+            definition["Bends"].push_back({{angle[0], angle[1], angle[2]}, "FIXED", {theta}});
+            continue;
+          }
+          result.warnings.push_back(std::format(
+              "[LAMMPS reader] fix shake: angle {}-{}-{} of type {} is not constrained, its two bonds are not both",
+              angle[0], angle[1], angle[2], angle[3]));
+        }
         const RaspaTerm term =
             fixedReference(it->second, degrees * std::acos(std::clamp(dot(u, v) / std::sqrt(dot(u, u) * dot(v, v)),
                                                                       -1.0, 1.0)));
@@ -1335,6 +1430,15 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
     entry["RotationProbability"] = 1.0;
     if (component.definition.contains("Bonds")) entry["ReinsertionProbability"] = 0.5;
     entry["CreateNumberOfMolecules"] = component.count;
+    if (script.shake)
+    {
+      const bool constrained = component.definition.contains("Bonds") &&
+                               std::ranges::any_of(component.definition["Bonds"],
+                                                   [](const nlohmann::json &bond) { return bond[1] == "FIXED"; });
+      if (constrained && script.shake->tolerance > 0.0) entry["ConstraintTolerance"] = script.shake->tolerance;
+      if (constrained && script.shake->iterations > 0)
+        entry["ConstraintMaximumIterations"] = script.shake->iterations;
+    }
     simulation["Components"].push_back(entry);
   }
   result.simulation = simulation;

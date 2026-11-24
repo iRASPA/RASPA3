@@ -60,6 +60,9 @@ RunningEnergy Integrators::velocityVerlet(
   updatePositions(moleculeData, moleculeAtomPositions, moleculeDynamics, components, dt, framework,
                   frameworkAtomPositions, frameworkDynamics, groupData, frameworkGroupData);
 
+  // SHAKE: bring the constrained distances of flexible molecules back to their lengths
+  applyPositionConstraints(moleculeData, moleculeAtomPositions, moleculeDynamics, components, dt);
+
   // evolve the part of rigid bodies involving free rotation
   noSquishFreeRotorOrderTwo(moleculeData, components, dt, groupData, framework, frameworkGroupData);
 
@@ -81,6 +84,9 @@ RunningEnergy Integrators::velocityVerlet(
   // evolve the positions a half timestep
   updateVelocities(moleculeData, moleculeAtomPositions, moleculeDynamics, components, dt, framework,
                    frameworkAtomPositions, frameworkDynamics, &forceField, groupData, frameworkGroupData);
+
+  // RATTLE: remove the velocities along the constrained distances
+  applyVelocityConstraints(moleculeData, moleculeAtomPositions, moleculeDynamics, components);
 
   // apply thermo for temperature control
   if (thermostat.has_value())

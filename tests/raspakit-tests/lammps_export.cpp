@@ -1665,3 +1665,120 @@ read_data chain.data
   EXPECT_NEAR(c[3] / c[0], -0.5 / 1.5, 1e-12);
   EXPECT_NEAR(c[2], 0.0, 1e-12);
 }
+
+// 'fix shake' names the bonds and angles LAMMPS holds as constraints: they are read as FIXED terms at the
+// equilibrium values of their harmonic styles (not at the lengths of the geometry), which the dynamics of RASPA
+// hold with SHAKE/RATTLE. A bond is named by its type, or by the type or mass of one of its atoms; an angle is
+// constrained only between two constrained bonds.
+TEST(lammps_export, reader_turns_fix_shake_into_fixed_bonds_and_bends)
+{
+  const std::string data = R"(LAMMPS data file
+
+4 atoms
+3 bonds
+3 angles
+3 atom types
+2 bond types
+2 angle types
+
+0.0 20.0 xlo xhi
+0.0 20.0 ylo yhi
+0.0 20.0 zlo zhi
+
+Masses
+
+1 15.9994
+2 1.008
+3 12.011
+
+Pair Coeffs # lj/cut
+
+1 0.15 3.15
+2 0.0 1.0
+3 0.1 3.5
+
+Bond Coeffs # harmonic
+
+1 450.0 0.9572
+2 320.0 1.43
+
+Angle Coeffs # harmonic
+
+1 55.0 104.52
+2 50.0 108.5
+
+Atoms # molecular
+
+1 1 1 5.0 5.0 5.0
+2 1 2 6.0 5.0 5.0
+3 1 2 4.7 5.95 5.0
+4 1 3 5.0 5.0 6.43
+
+Bonds
+
+1 1 1 2
+2 1 1 3
+3 2 1 4
+
+Angles
+
+1 1 2 1 3
+2 2 2 1 4
+3 2 3 1 4
+)";
+  const auto read = [&](const std::string& fix)
+  {
+    TemporaryDirectory directory;
+    const std::filesystem::path dataPath = directory.path / "shake.data";
+    const std::filesystem::path inputPath = directory.path / "shake.in";
+    std::ofstream(dataPath) << data;
+    std::ofstream(inputPath) << "units real\natom_style molecular\npair_style lj/cut 9.0\nbond_style harmonic\n"
+                                "angle_style harmonic\nread_data shake.data\n"
+                             << fix << "\n";
+    return LAMMPS::readDataFile(dataPath, inputPath);
+  };
+  const auto fixedBonds = [](const nlohmann::json& definition)
+  {
+    std::size_t count{};
+    for (const nlohmann::json& bond : definition["Bonds"])
+    {
+      if (bond[1] != "FIXED") continue;
+      ++count;
+      EXPECT_NEAR(bond[2][0].get<double>(), 0.9572, 1e-12);
+    }
+    return count;
+  };
+
+  // by bond and angle type
+  {
+    const LAMMPS::ReadResult result = read("fix constraints all shake 1.0e-6 50 0 b 1 a 1 2");
+    ASSERT_EQ(result.components.size(), 1u);
+    const nlohmann::json& definition = result.components[0].definition;
+    ASSERT_EQ(definition["Bonds"].size(), 3u);
+    EXPECT_EQ(fixedBonds(definition), 2u);
+    // the angle between the two constrained bonds is held; those of type 2 have the free C-O bond as an arm
+    std::size_t fixedBends{};
+    for (const nlohmann::json& bend : definition["Bends"])
+    {
+      if (bend[1] != "FIXED") continue;
+      ++fixedBends;
+      EXPECT_NEAR(bend[2][0].get<double>(), 104.52, 1e-12);
+    }
+    EXPECT_EQ(fixedBends, 1u);
+    EXPECT_EQ(definition["Bends"].size(), 3u);
+    const nlohmann::json& entry = result.simulation["Components"][0];
+    EXPECT_DOUBLE_EQ(entry["ConstraintTolerance"].get<double>(), 1.0e-6);
+    EXPECT_EQ(entry["ConstraintMaximumIterations"].get<std::size_t>(), 50u);
+  }
+  // by the mass of the hydrogen atoms, and by their type
+  for (const std::string fix : {"fix constraints all shake 1.0e-4 20 0 m 1.0", "fix constraints all rattle 1.0e-4 20 0 t 2"})
+  {
+    const LAMMPS::ReadResult result = read(fix);
+    ASSERT_EQ(result.components.size(), 1u);
+    const nlohmann::json& definition = result.components[0].definition;
+    EXPECT_EQ(fixedBonds(definition), 2u) << fix;
+    for (const nlohmann::json& bend : definition["Bends"]) EXPECT_NE(bend[1], "FIXED") << fix;
+  }
+  // without the fix nothing is constrained
+  EXPECT_EQ(fixedBonds(read("").components[0].definition), 0u);
+}

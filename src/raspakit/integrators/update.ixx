@@ -113,6 +113,37 @@ void updateVelocities(std::span<Molecule> moleculeData, std::span<Atom> molecule
                       std::span<GroupState> groupData = {}, std::span<GroupState> frameworkGroupData = {});
 
 /**
+ * \brief SHAKE, the position stage of RATTLE: moves the atoms of every molecule with distance constraints
+ *        ('Component::distanceConstraints') back onto the constrained lengths after an unconstrained drift, and
+ *        gives the velocities the matching correction.
+ *
+ * Called after the positions were advanced by 'dt' with the current velocities and before anything else changes
+ * either: the bond vectors of before the drift, along which the constraint forces act, are rebuilt from the two
+ * (r_ab - dt v_ab). This holds for the plain drift and for the cell propagation of a barostat with molecular
+ * coupling alike, which moves a molecule as a whole and lets its atoms drift relative to the centre of mass.
+ * The corrections conserve the momentum of the molecule, so its centre of mass is not moved.
+ *
+ * \throws std::runtime_error when a molecule does not converge in 'Component::constraintMaximumIterations'.
+ */
+void applyPositionConstraints(std::span<const Molecule> moleculeData, std::span<Atom> moleculeAtomPositions,
+                              std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components,
+                              double dt);
+
+/**
+ * \brief The velocity stage of RATTLE: removes the velocity components along the constrained distances of every
+ *        molecule with distance constraints, so that the constraints are stationary. Called after the second
+ *        half-kick of a step, and on freshly drawn velocities.
+ *
+ * \throws std::runtime_error when a molecule does not converge in 'Component::constraintMaximumIterations'.
+ */
+void applyVelocityConstraints(std::span<const Molecule> moleculeData, std::span<const Atom> moleculeAtomPositions,
+                              std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components);
+
+/// The velocity stage of RATTLE for the atoms of one molecule of 'component'.
+void constrainMoleculeVelocities(const Component& component, std::span<const Atom> moleculeAtoms,
+                                 std::span<AtomDynamics> moleculeDynamics);
+
+/**
  * \brief Initializes the velocities according to the Boltzmann distribution
  *
  * Rigid molecules get a center-of-mass velocity and an orientation momentum; flexible

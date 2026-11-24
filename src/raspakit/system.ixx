@@ -503,6 +503,11 @@ export struct System
   /// Whether molecular dynamics conserves a total momentum that can be removed from the velocities (with its three
   /// degrees of freedom): more than one mobile entity, no lab-fixed framework atoms and no external field.
   [[nodiscard]] bool conservesCenterOfMassMomentum() const noexcept;
+
+  /// Throws when molecular dynamics cannot hold the FIXED terms of a component as constraints (see
+  /// 'Component::distanceConstraints'), or when constrained molecules meet something that needs the atomic virial,
+  /// which leaves the constraint forces out: atomic barostat coupling, the stress-fluctuation elastic constants.
+  void requireSupportedDynamicsConstraints() const;
   /// Sets the translational centre-of-mass constraint of the system and its thermostat accordingly.
   void updateCenterOfMassConstraint() noexcept;
   void precomputeTotalGradients() noexcept;

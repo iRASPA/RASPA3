@@ -249,6 +249,7 @@ void applyBath(RandomNumber& rng, DcTSTSettings::TrajectoryThermostat type, doub
             if (component.rigidFragmentContaining(i).has_value()) continue;
             moleculeDynamics[i].velocity = gaussian3() * std::sqrt(kT / component.atomMass(i, moleculeAtoms[i]));
           }
+          Integrators::constrainMoleculeVelocities(component, moleculeAtoms, moleculeDynamics);
           Integrators::syncNonRigidMoleculeCenterOfMass(molecule, moleculeAtoms, moleculeDynamics, component, groupData,
                                                         groupIndex);
         }
@@ -282,6 +283,8 @@ void applyBath(RandomNumber& rng, DcTSTSettings::TrajectoryThermostat type, doub
           moleculeDynamics[i].velocity = c1 * moleculeDynamics[i].velocity +
                                          c2 * std::sqrt(kT / component.atomMass(i, moleculeAtoms[i])) * gaussian3();
         }
+        // the random kick is drawn for free atoms: keep the part the constraints allow
+        Integrators::constrainMoleculeVelocities(component, moleculeAtoms, moleculeDynamics);
         Integrators::syncNonRigidMoleculeCenterOfMass(molecule, moleculeAtoms, moleculeDynamics, component, groupData,
                                                       groupIndex);
       }
@@ -299,12 +302,17 @@ void applyBath(RandomNumber& rng, DcTSTSettings::TrajectoryThermostat type, doub
       }
       else
       {
-        double3 momentum{};
         for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
         {
           const double mass = component.atomMass(i, moleculeAtoms[i]);
           moleculeDynamics[i].velocity = c1 * moleculeDynamics[i].velocity + c2 * std::sqrt(kT / mass) * gaussian3();
-          momentum += mass * moleculeDynamics[i].velocity;
+        }
+        // the random kick is drawn for free atoms: keep the part the constraints allow
+        Integrators::constrainMoleculeVelocities(component, moleculeAtoms, moleculeDynamics);
+        double3 momentum{};
+        for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+        {
+          momentum += component.atomMass(i, moleculeAtoms[i]) * moleculeDynamics[i].velocity;
         }
         molecule.velocity = momentum * molecule.invMass;
       }
@@ -615,6 +623,8 @@ void DynamicallyCorrectedTST::setup()
 {
   for (System& system : systems)
   {
+    // FIXED terms are held with SHAKE/RATTLE: refuse what cannot be held before the first step
+    system.requireSupportedDynamicsConstraints();
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
 

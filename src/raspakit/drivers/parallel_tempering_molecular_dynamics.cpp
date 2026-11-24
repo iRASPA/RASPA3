@@ -211,6 +211,8 @@ void ParallelTemperingMolecularDynamics::setup()
 {
   for (System& system : systems)
   {
+    // FIXED terms are held with SHAKE/RATTLE: refuse what cannot be held before the first step
+    system.requireSupportedDynamicsConstraints();
     // the integrator evaluates the pair, Ewald and intramolecular forces only
     if (system.hasExternalField)
       throw std::runtime_error(

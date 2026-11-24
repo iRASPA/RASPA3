@@ -157,7 +157,7 @@ export struct Component
             std::vector<std::vector<std::size_t>> rigidBodies = {}, double intra14VanDerWaalsScaling = 0.0,
             double intra14ChargeChargeScaling = 0.0) noexcept(false);
 
-  std::uint64_t versionNumber{4};  ///< Version number for serialization.
+  std::uint64_t versionNumber{5};  ///< Version number for serialization (5: constraint settings).
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 
@@ -169,6 +169,33 @@ export struct Component
   bool rigid{true};                             ///< Flag indicating if the component is rigid.
   std::size_t translationalDegreesOfFreedom{};  ///< Number of translational degrees of freedom.
   std::size_t rotationalDegreesOfFreedom{};     ///< Number of rotational degrees of freedom.
+
+  /// A holonomic distance constraint of molecular dynamics: beads 'a' and 'b' are kept 'length' apart.
+  struct DistanceConstraint
+  {
+    std::size_t a{};
+    std::size_t b{};
+    double length{};
+  };
+  /// The distance constraints that molecular dynamics imposes with SHAKE/RATTLE: the FIXED bonds, the FIXED
+  /// Urey-Bradley distances, and the FIXED or RIGID bends between two FIXED bonds (as the 1-3 distance that closes
+  /// the triangle). Terms inside one rigid fragment are held by the rigid body and are not listed. Built by
+  /// 'buildDistanceConstraints'; Monte Carlo keeps the same terms through its moves and does not read the list.
+  std::vector<DistanceConstraint> distanceConstraints{};
+  /// The FIXED and RIGID terms that are no distance constraint between flexible atoms (a bend with a flexible arm,
+  /// a torsion, a term between a rigid fragment and an atom outside it): molecular dynamics cannot hold them and
+  /// refuses the component, see 'requireSupportedDynamicsConstraints'.
+  std::vector<std::string> unsupportedDynamicsConstraints{};
+  /// The number of degrees of freedom the distance constraints remove (subtracted from the translational ones).
+  std::size_t numberOfConstrainedDegreesOfFreedom{};
+  double constraintTolerance{1.0e-8};            ///< Relative tolerance of the constrained lengths (and velocities).
+  std::size_t constraintMaximumIterations{500};  ///< Iteration limit of SHAKE and of RATTLE per molecule and step.
+
+  /// Derives 'distanceConstraints' from the intramolecular potentials and the fragment graph, and sets the
+  /// degrees of freedom of a non-rigid component (those of its atoms and rigid fragments, less the constraints).
+  void buildDistanceConstraints();
+  /// Throws when the component has FIXED or RIGID terms that molecular dynamics cannot hold as constraints.
+  void requireSupportedDynamicsConstraints() const;
 
   double criticalTemperature{0.0};  ///< Critical temperature of the component [K].
   double criticalPressure{0.0};     ///< Critical pressure of the component [Pa].
