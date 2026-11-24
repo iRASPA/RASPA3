@@ -127,4 +127,11 @@ class MonteCarlo():
         """
         ...
 
+    def restart_from_binary_file(self, file_name: str = "restart_data.bin") -> None:
+        """Read the state of the driver from a binary restart file.
 
+        ``run`` then continues where that run stopped. A restart file is
+        written every ``write_binary_restart_every`` cycles when
+        ``output_to_files`` is set.
+        """
+        ...

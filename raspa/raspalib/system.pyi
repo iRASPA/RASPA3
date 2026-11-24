@@ -1,3 +1,6 @@
+from raspalib.thermobarostat import *
+from raspalib.property_temperature import *
+from raspalib.property_simulation_box import *
 import collections.abc
 from raspalib.force_field import *
 from raspalib.mc_move_probabilities import *
@@ -219,3 +222,69 @@ class System():
         """Attach velocity-autocorrelation property configuration."""
         ...
 
+    @property
+    def temperature(self) -> float:
+        """The external temperature [K]."""
+        ...
+
+    @property
+    def external_pressure_diagonal(self) -> tuple[float, float, float]:
+        """The external pressure along x, y and z [Pa], for the anisotropic
+        volume move."""
+        ...
+
+    @external_pressure_diagonal.setter
+    def external_pressure_diagonal(self, value: tuple[float, float, float]) -> None:
+        ...
+
+    @property
+    def molecular_dynamics_ensemble(self) -> MolecularDynamicsEnsemble:
+        """The ensemble of molecular dynamics. 'set_thermobarostat' sets it
+        to that of the barostat."""
+        ...
+
+    @molecular_dynamics_ensemble.setter
+    def molecular_dynamics_ensemble(self, value: MolecularDynamicsEnsemble) -> None:
+        ...
+
+    @property
+    def thermobarostat(self) -> Thermobarostat | None:
+        """(self) -> raspalib._raspalib.Thermobarostat | None"""
+        ...
+
+    @property
+    def number_of_hybrid_mc_steps(self) -> int:
+        """The number of molecular-dynamics steps of a hybrid Monte Carlo
+        move."""
+        ...
+
+    @number_of_hybrid_mc_steps.setter
+    def number_of_hybrid_mc_steps(self, value: int) -> None:
+        ...
+
+    @property
+    def average_temperature(self) -> PropertyTemperature:
+        """(self) -> raspalib._raspalib.PropertyTemperature"""
+        ...
+
+    @property
+    def average_translational_temperature(self) -> PropertyTemperature:
+        """(self) -> raspalib._raspalib.PropertyTemperature"""
+        ...
+
+    @property
+    def average_rotational_temperature(self) -> PropertyTemperature:
+        """(self) -> raspalib._raspalib.PropertyTemperature"""
+        ...
+
+    @property
+    def average_simulation_box(self) -> PropertySimulationBox:
+        """(self) -> raspalib._raspalib.PropertySimulationBox"""
+        ...
+
+    def set_thermobarostat(self, thermobarostat: Thermobarostat | None = None) -> None:
+        """Build the barostat of the system from the given settings, with the
+        temperature, the pressure and the time step the system has at this
+        moment; ``None`` removes it. The ensembles with a barostat are
+        thermostatted as well: see ``set_thermostat``."""
+        ...

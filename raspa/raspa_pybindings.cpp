@@ -67,6 +67,13 @@ import mean_squared_displacement_data;
 import property_msd;
 import velocity_autocorrelation_function_data;
 import property_vacf;
+import property_temperature;
+import property_simulationbox;
+import thermobarostat;
+import minimization_cell_layout;
+import archive;
+import threadpool;
+import spatial_decomposition_settings;
 
 template <typename T>
 std::pair<T, T>& operator*=(std::pair<T, T>& p, const double& s)
@@ -362,6 +369,148 @@ public:
 } // namespace nanobind
 
 
+// The move types under the names they have in Python. The probability of a move goes by the lower-case name with
+// '_probability' appended ('translation_probability' for TRANSLATION).
+const std::vector<std::pair<const char*, Move::Types>> moveTypeNames = {
+    {"TRANSLATION", Move::Types::Translation},
+    {"RANDOM_TRANSLATION", Move::Types::RandomTranslation},
+    {"ROTATION", Move::Types::Rotation},
+    {"RANDOM_ROTATION", Move::Types::RandomRotation},
+    {"TRANSLATION_SMART_MC", Move::Types::TranslationSmartMC},
+    {"TRANSLATION_SMART_MC_ALL", Move::Types::TranslationSmartMCAll},
+    {"ROTATION_SMART_MC", Move::Types::RotationSmartMC},
+    {"ROTATION_SMART_MC_ALL", Move::Types::RotationSmartMCAll},
+    {"TRANSLATION_ROTATION_SMART_MC", Move::Types::TranslationRotationSmartMC},
+    {"VOLUME_CHANGE", Move::Types::VolumeChange},
+    {"ANISOTROPIC_VOLUME_CHANGE", Move::Types::AnisotropicVolumeChange},
+    {"REINSERTION_CBMC", Move::Types::ReinsertionCBMC},
+    {"PARTIAL_REINSERTION_CBMC", Move::Types::PartialReinsertionCBMC},
+    {"IDENTITY_CHANGE_CBMC", Move::Types::IdentityChangeCBMC},
+    {"IDENTITY_SWITCH_CBMC", Move::Types::IdentitySwitchCBMC},
+    {"SWAP", Move::Types::Swap},
+    {"SWAP_CBMC", Move::Types::SwapCBMC},
+    {"SWAP_CFCMC", Move::Types::SwapCFCMC},
+    {"SWAP_CBCFCMC", Move::Types::SwapCBCFCMC},
+    {"GIBBS_VOLUME", Move::Types::GibbsVolume},
+    {"GIBBS_SWAP_CBMC", Move::Types::GibbsSwapCBMC},
+    {"GIBBS_CONVENTIONAL_CFCMC", Move::Types::GibbsConventionalCFCMC},
+    {"GIBBS_CONVENTIONAL_CBCFCMC", Move::Types::GibbsConventionalCBCFCMC},
+    {"GIBBS_SWAP_CFCMC", Move::Types::GibbsSwapCFCMC},
+    {"GIBBS_SWAP_CBCFCMC", Move::Types::GibbsSwapCBCFCMC},
+    {"GIBBS_IDENTITY_CHANGE_CBMC", Move::Types::GibbsIdentityChangeCBMC},
+    {"WIDOM", Move::Types::Widom},
+    {"WIDOM_CFCMC", Move::Types::WidomCFCMC},
+    {"WIDOM_CBCFCMC", Move::Types::WidomCBCFCMC},
+    {"PARALLEL_TEMPERING", Move::Types::ParallelTempering},
+    {"HYBRID_MC", Move::Types::HybridMC},
+    {"REACTION_CBMC", Move::Types::ReactionCBMC},
+    {"REACTION_CONVENTIONAL_CFCMC", Move::Types::ReactionConventionalCFCMC},
+    {"REACTION_CONVENTIONAL_CBCFCMC", Move::Types::ReactionConventionalCBCFCMC},
+    {"REACTION_CFCMC", Move::Types::ReactionCFCMC},
+    {"REACTION_CBCFCMC", Move::Types::ReactionCBCFCMC},
+    {"PAIR_SWAP", Move::Types::PairSwap},
+    {"PAIR_SWAP_CBMC", Move::Types::PairSwapCBMC},
+    {"PAIR_SWAP_CFCMC", Move::Types::PairSwapCFCMC},
+    {"PAIR_SWAP_CBCFCMC", Move::Types::PairSwapCBCFCMC},
+    {"GROUP_SWAP", Move::Types::GroupSwap},
+    {"GROUP_SWAP_CBMC", Move::Types::GroupSwapCBMC},
+    {"GROUP_SWAP_CFCMC", Move::Types::GroupSwapCFCMC},
+    {"GROUP_SWAP_CBCFCMC", Move::Types::GroupSwapCBCFCMC},
+    {"TETHERED_PROTON_HOP", Move::Types::TetheredProtonHop},
+    {"PIVOT", Move::Types::Pivot},
+    {"CRANKSHAFT", Move::Types::Crankshaft},
+    {"REPTATION", Move::Types::Reptation},
+    {"CONCERTED_ROTATION", Move::Types::ConcertedRotation},
+    {"BEAD_DISPLACEMENT", Move::Types::BeadDisplacement},
+    {"BEAD_FLIP", Move::Types::BeadFlip},
+    {"DOUBLE_BRIDGING", Move::Types::DoubleBridging},
+    {"INTRAMOLECULAR_DOUBLE_REBRIDGING", Move::Types::IntramolecularDoubleRebridging},
+    {"CROSS_LINK_SWAP", Move::Types::CrossLinkSwap},
+    {"CROSS_LINK_FORMATION_SCISSION", Move::Types::CrossLinkFormationScission},
+    {"CROSS_LINK_EXCHANGE", Move::Types::CrossLinkExchange},
+    {"PIVOT_CBMC", Move::Types::PivotCBMC},
+    {"SWAP_MULTI_TRIAL_CBMC", Move::Types::SwapMultiTrialCBMC},
+    {"REINSERTION_MULTI_TRIAL_CBMC", Move::Types::ReinsertionMultiTrialCBMC},
+    {"GIBBS_SWAP_MULTI_TRIAL_CBMC", Move::Types::GibbsSwapMultiTrialCBMC},
+};
+
+// two probabilities had a shorter keyword before every move had one
+const std::vector<std::pair<const char*, Move::Types>> moveProbabilityAliases = {
+    {"identity_change_probability", Move::Types::IdentityChangeCBMC},
+    {"gibbs_volume_change_probability", Move::Types::GibbsVolume},
+};
+
+std::string moveProbabilityKeyword(const char* moveName)
+{
+  std::string keyword(moveName);
+  std::ranges::transform(keyword, keyword.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  return keyword + "_probability";
+}
+
+Move::Types moveTypeOfProbabilityKeyword(const std::string& keyword)
+{
+  for (const auto& [moveName, moveType] : moveTypeNames)
+  {
+    if (keyword == moveProbabilityKeyword(moveName)) return moveType;
+  }
+  for (const auto& [alias, moveType] : moveProbabilityAliases)
+  {
+    if (keyword == alias) return moveType;
+  }
+  throw nanobind::type_error(
+      std::format("MCMoveProbabilities: unknown keyword '{}'; a probability is the name of a move of Move.Types in "
+                  "lower case with '_probability' appended, like 'translation_probability'",
+                  keyword)
+          .c_str());
+}
+
+void setMoveProbability(MCMoveProbabilities& probabilities, Move::Types move, double probability)
+{
+  if (!(probability >= 0.0))
+  {
+    throw std::invalid_argument("MCMoveProbabilities: a probability can not be negative");
+  }
+  probabilities.setProbability(move, probability);
+}
+
+// the signature shown for the constructor of MCMoveProbabilities: one keyword for every move
+std::string moveProbabilitiesSignature()
+{
+  std::string signature = "def __init__(self, *";
+  for (const auto& [moveName, moveType] : moveTypeNames)
+  {
+    signature += std::format(", {}: float = 0.0", moveProbabilityKeyword(moveName));
+  }
+  return signature + ") -> None";
+}
+
+// a property of a class that is a fraction, and one that is a count of at least one
+template <typename Class>
+void defineFraction(nanobind::class_<Class>& bound, const char* name, double Class::* member, const char* doc)
+{
+  bound.def_prop_rw(
+      name, [member](const Class& object) { return object.*member; },
+      [member, name](Class& object, double value)
+      {
+        if (!(value >= 0.0 && value <= 1.0)) throw std::invalid_argument(std::format("{} must be in [0, 1]", name));
+        object.*member = value;
+      },
+      doc);
+}
+
+template <typename Class>
+void defineCount(nanobind::class_<Class>& bound, const char* name, std::size_t Class::* member, const char* doc)
+{
+  bound.def_prop_rw(
+      name, [member](const Class& object) { return object.*member; },
+      [member, name](Class& object, std::size_t value)
+      {
+        if (value == 0) throw std::invalid_argument(std::format("{} must be at least 1", name));
+        object.*member = value;
+      },
+      doc);
+}
+
 // A driver works on its own copy of the systems it is given: the kits are value-based and keep no references to the
 // objects of the caller. To let those objects hold the results nevertheless, the systems of the driver are assigned
 // back to the Python objects they were copied from whenever a phase returns (copy in, copy out). Inside a call-back
@@ -458,6 +607,32 @@ void bindDriver(nanobind::module_& m, const char* name)
   phase("initialize", &Driver::initialize);
   phase("equilibrate", &Driver::equilibrate);
   phase("production", &Driver::production);
+
+  // continues from a binary restart file, as the command-line program does for 'RestartFromBinaryFile': the driver
+  // is read back, and what the file does not hold is made again (the output files and the interpolation grids)
+  driver.def(
+      "restart_from_binary_file",
+      [](Bound& d, const std::string& file_name)
+      {
+        // the device of the multiple-try grower belongs to the machine, not to the state: it is not in the file
+        std::vector<PairDevice> devices;
+        for (const System& system : d.systems) devices.push_back(system.cbmcDevice);
+        const bool outputToFiles = d.outputToFiles;
+
+        readBinaryRestartFile(static_cast<Driver&>(d), file_name);
+
+        d.outputToFiles = outputToFiles;
+        if (devices.size() == d.systems.size())
+        {
+          for (std::size_t i = 0; i < devices.size(); ++i) d.systems[i].cbmcDevice = devices[i];
+        }
+        if (d.outputToFiles) d.createOutputFiles();
+        d.createInterpolationGrids();
+        d.copyOut();
+      },
+      nanobind::arg("file_name") = "restart_data.bin",
+      "Reads the state of the driver from a binary restart file; 'run' then continues where that run stopped. A "
+      "restart file is written every 'write_binary_restart_every' cycles when 'output_to_files' is set.");
 
   // a single cycle does not copy out: the phases and 'tear_down' do
   if constexpr (requires(Driver d) { d.performCycle(); })
@@ -597,7 +772,15 @@ EXPAND_MODULE(MODULE_NAME)
   nanobind::class_<ForceField> forceField(m, "ForceField");
   nanobind::enum_<ForceField::MixingRule>(forceField, "MixingRule", nanobind::is_arithmetic())
       .value("LORENTZ_BERTHELOT", ForceField::MixingRule::Lorentz_Berthelot)
-      .value("JORGENSEN", ForceField::MixingRule::Jorgensen);
+      .value("JORGENSEN", ForceField::MixingRule::Jorgensen)
+      .value("SIXTH_POWER", ForceField::MixingRule::SixthPower);
+  nanobind::enum_<ForceField::ChargeMethod>(forceField, "ChargeMethod", nanobind::is_arithmetic())
+      .value("EWALD", ForceField::ChargeMethod::Ewald)
+      .value("COULOMB", ForceField::ChargeMethod::Coulomb)
+      .value("WOLF", ForceField::ChargeMethod::Wolf)
+      .value("DAMPED_SHIFTED_FORCE", ForceField::ChargeMethod::DampedShiftedForce)
+      .value("MODIFIED_SHIFTED_FORCE", ForceField::ChargeMethod::ModifiedShiftedForce)
+      .value("ZERO_DIPOLE", ForceField::ChargeMethod::ZeroDipole);
 
   forceField.def(nanobind::init<std::vector<PseudoAtom>, std::vector<VDWParameters>, ForceField::MixingRule, 
                  double, double, double, bool, bool, bool>(),
@@ -614,7 +797,58 @@ EXPAND_MODULE(MODULE_NAME)
       .def("__repr__", &ForceField::repr)
       .def_ro("pseudo_atoms", &ForceField::pseudoAtoms)
       .def_ro("vdw_parameters", &ForceField::data)
-      .def_rw("use_charge", &ForceField::useCharge);
+      .def_rw("use_charge", &ForceField::useCharge)
+      // The settings below are those of the force field a component or a system is constructed with: both keep
+      // their own copy, so a setting is made before the force field is handed to them.
+      .def_rw("charge_method", &ForceField::chargeMethod, "How the electrostatic interactions are computed.")
+      .def_prop_rw(
+          "ewald_precision", [](const ForceField& f) { return f.EwaldPrecision; },
+          [](ForceField& f, double precision)
+          {
+            if (!(precision > 0.0)) throw std::invalid_argument("ewald_precision must be positive");
+            f.EwaldPrecision = precision;
+            f.automaticEwald = true;
+          },
+          "The relative precision the Ewald parameters are chosen for [-]; setting it makes the choice automatic.")
+      .def_ro("ewald_alpha", &ForceField::EwaldAlpha, "The Ewald damping parameter alpha [1/Angstrom].")
+      .def_ro("number_of_wave_vectors", &ForceField::numberOfWaveVectors,
+              "The number of wave vectors of the Ewald sum in each direction.")
+      .def_ro("automatic_ewald", &ForceField::automaticEwald,
+              "Whether alpha and the wave vectors are chosen from 'ewald_precision'.")
+      .def(
+          "set_ewald_parameters",
+          [](ForceField& f, double alpha, int3 numberOfWaveVectors)
+          {
+            if (!(alpha > 0.0)) throw std::invalid_argument("set_ewald_parameters: alpha must be positive");
+            if (numberOfWaveVectors.x < 0 || numberOfWaveVectors.y < 0 || numberOfWaveVectors.z < 0)
+            {
+              throw std::invalid_argument("set_ewald_parameters: the number of wave vectors can not be negative");
+            }
+            f.EwaldAlpha = alpha;
+            f.numberOfWaveVectors = numberOfWaveVectors;
+            f.automaticEwald = false;
+          },
+          nanobind::arg("alpha"), nanobind::arg("number_of_wave_vectors"),
+          "Fixes the Ewald damping parameter alpha [1/Angstrom] and the number of wave vectors, instead of "
+          "choosing them from 'ewald_precision'.")
+      .def_prop_rw(
+          "modified_shifted_force_beta", [](const ForceField& f) { return f.modifiedShiftedForceBeta; },
+          [](ForceField& f, double beta)
+          {
+            if (!(beta > 0.0)) throw std::invalid_argument("modified_shifted_force_beta must be positive");
+            f.modifiedShiftedForceBeta = beta;
+          },
+          "The switching parameter beta of the modified shifted-force charge method [1/Angstrom].")
+      .def_rw("omit_ewald_fourier", &ForceField::omitEwaldFourier,
+              "Leaves out the Fourier part of the Ewald sum.")
+      .def_rw("compute_polarization", &ForceField::computePolarization, "Whether the polarization energy is computed.")
+      .def_rw("omit_inter_polarization", &ForceField::omitInterPolarization,
+              "Leaves out the polarization between molecules.")
+      .def_rw("omit_inter_interactions", &ForceField::omitInterInteractions,
+              "Leaves out the interactions between molecules.")
+      .def_ro("cutoff_framework_vdw", &ForceField::cutOffFrameworkVDW)
+      .def_ro("cutoff_molecule_vdw", &ForceField::cutOffMoleculeVDW)
+      .def_ro("cutoff_coulomb", &ForceField::cutOffCoulomb);
 
   nanobind::class_<CIFReader> cifReader(m, "CIFReader");
   cifReader
@@ -643,29 +877,34 @@ EXPAND_MODULE(MODULE_NAME)
       .def("print", &Framework::printStatus)
       .def("__repr__", &Framework::repr);
 
+  // one keyword for every move of Move.Types. The constructor took twenty positional numbers before, of which the
+  // last five were handed to the wrong moves ('widom_probability' set the Gibbs identity change, and so on).
+  static const std::string moveProbabilitiesSignatureText = moveProbabilitiesSignature();
   nanobind::class_<MCMoveProbabilities>(m, "MCMoveProbabilities")
-      .def(nanobind::init<double, double, double, double, double, double, double, double, double, double, double,
-                          double, double, double, double, double, double, double, double, double>(),
-           nanobind::arg("translation_probability") = 0.0, 
-           nanobind::arg("random_translation_probability") = 0.0,
-           nanobind::arg("rotation_probability") = 0.0, 
-           nanobind::arg("random_rotation_probability") = 0.0,
-           nanobind::arg("volume_change_probability") = 0.0, 
-           nanobind::arg("reinsertion_cbmc_probability") = 0.0,
-           nanobind::arg("partial_reinsertion_cbmc_probability") = 0.0,
-           nanobind::arg("identity_change_probability") = 0.0, 
-           nanobind::arg("swap_probability") = 0.0,
-           nanobind::arg("swap_cbmc_probability") = 0.0, 
-           nanobind::arg("swap_cfcmc_probability") = 0.0,
-           nanobind::arg("swap_cbcfcmc_probability") = 0.0, 
-           nanobind::arg("gibbs_volume_change_probability") = 0.0,
-           nanobind::arg("gibbs_swap_cbmc_probability") = 0.0, 
-           nanobind::arg("gibbs_swap_cfcmc_probability") = 0.0,
-           nanobind::arg("widom_probability") = 0.0, 
-           nanobind::arg("widom_cfcmc_probability") = 0.0,
-           nanobind::arg("widom_cbcfcmc_probability") = 0.0, 
-           nanobind::arg("parallel_tempering_probability") = 0.0,
-           nanobind::arg("hybrid_mc_probability") = 0.0)
+      .def(
+          "__init__",
+          [](MCMoveProbabilities* probabilities, nanobind::kwargs keywords)
+          {
+            new (probabilities) MCMoveProbabilities();
+            for (auto [key, value] : keywords)
+            {
+              const Move::Types move = moveTypeOfProbabilityKeyword(nanobind::cast<std::string>(key));
+              if (!nanobind::isinstance<nanobind::float_>(value) && !nanobind::isinstance<nanobind::int_>(value))
+              {
+                throw nanobind::type_error("MCMoveProbabilities: a probability is a number");
+              }
+              setMoveProbability(*probabilities, move, nanobind::cast<double>(value));
+            }
+          },
+          nanobind::sig(moveProbabilitiesSignatureText.c_str()),
+          "The relative probabilities of the Monte Carlo moves, one keyword for every move of Move.Types.")
+      .def("__getitem__",
+           [](const MCMoveProbabilities& probabilities, Move::Types move) { return probabilities.getProbability(move); })
+      .def("__setitem__", &setMoveProbability)
+      .def("get_probability",
+           [](const MCMoveProbabilities& probabilities, Move::Types move) { return probabilities.getProbability(move); },
+           nanobind::arg("move"))
+      .def("set_probability", &setMoveProbability, nanobind::arg("move"), nanobind::arg("probability"))
       .def("join", &MCMoveProbabilities::join)
       .def("__repr__", &MCMoveProbabilities::repr);
 
@@ -738,67 +977,8 @@ EXPAND_MODULE(MODULE_NAME)
 
   nanobind::class_<Move> move(m, "Move");
     move.def(nanobind::init());
-    nanobind::enum_<Move::Types>(move, "Types", nanobind::is_arithmetic())
-        .value("TRANSLATION", Move::Types::Translation)
-        .value("RANDOM_TRANSLATION", Move::Types::RandomTranslation)
-        .value("ROTATION", Move::Types::Rotation)
-        .value("RANDOM_ROTATION", Move::Types::RandomRotation)
-        .value("TRANSLATION_SMART_MC", Move::Types::TranslationSmartMC)
-        .value("TRANSLATION_SMART_MC_ALL", Move::Types::TranslationSmartMCAll)
-        .value("ROTATION_SMART_MC", Move::Types::RotationSmartMC)
-        .value("ROTATION_SMART_MC_ALL", Move::Types::RotationSmartMCAll)
-        .value("TRANSLATION_ROTATION_SMART_MC", Move::Types::TranslationRotationSmartMC)
-        .value("VOLUME_CHANGE", Move::Types::VolumeChange)
-        .value("ANISOTROPIC_VOLUME_CHANGE", Move::Types::AnisotropicVolumeChange)
-        .value("REINSERTION_CBMC", Move::Types::ReinsertionCBMC)
-        .value("PARTIAL_REINSERTION_CBMC", Move::Types::PartialReinsertionCBMC)
-        .value("IDENTITY_CHANGE_CBMC", Move::Types::IdentityChangeCBMC)
-        .value("IDENTITY_SWITCH_CBMC", Move::Types::IdentitySwitchCBMC)
-        .value("SWAP", Move::Types::Swap)
-        .value("SWAP_CBMC", Move::Types::SwapCBMC)
-        .value("SWAP_CFCMC", Move::Types::SwapCFCMC)
-        .value("SWAP_CBCFCMC", Move::Types::SwapCBCFCMC)
-        .value("GIBBS_VOLUME", Move::Types::GibbsVolume)
-        .value("GIBBS_SWAP_CBMC", Move::Types::GibbsSwapCBMC)
-        .value("GIBBS_CONVENTIONAL_CFCMC", Move::Types::GibbsConventionalCFCMC)
-        .value("GIBBS_CONVENTIONAL_CBCFCMC", Move::Types::GibbsConventionalCBCFCMC)
-        .value("GIBBS_SWAP_CFCMC", Move::Types::GibbsSwapCFCMC)
-        .value("GIBBS_SWAP_CBCFCMC", Move::Types::GibbsSwapCBCFCMC)
-        .value("GIBBS_IDENTITY_CHANGE_CBMC", Move::Types::GibbsIdentityChangeCBMC)
-        .value("WIDOM", Move::Types::Widom)
-        .value("WIDOM_CFCMC", Move::Types::WidomCFCMC)
-        .value("WIDOM_CBCFCMC", Move::Types::WidomCBCFCMC)
-        .value("PARALLEL_TEMPERING", Move::Types::ParallelTempering)
-        .value("HYBRID_MC", Move::Types::HybridMC)
-        .value("REACTION_CBMC", Move::Types::ReactionCBMC)
-        .value("REACTION_CONVENTIONAL_CFCMC", Move::Types::ReactionConventionalCFCMC)
-        .value("REACTION_CONVENTIONAL_CBCFCMC", Move::Types::ReactionConventionalCBCFCMC)
-        .value("REACTION_CFCMC", Move::Types::ReactionCFCMC)
-        .value("REACTION_CBCFCMC", Move::Types::ReactionCBCFCMC)
-        .value("PAIR_SWAP", Move::Types::PairSwap)
-        .value("PAIR_SWAP_CBMC", Move::Types::PairSwapCBMC)
-        .value("PAIR_SWAP_CFCMC", Move::Types::PairSwapCFCMC)
-        .value("PAIR_SWAP_CBCFCMC", Move::Types::PairSwapCBCFCMC)
-        .value("GROUP_SWAP", Move::Types::GroupSwap)
-        .value("GROUP_SWAP_CBMC", Move::Types::GroupSwapCBMC)
-        .value("GROUP_SWAP_CFCMC", Move::Types::GroupSwapCFCMC)
-        .value("GROUP_SWAP_CBCFCMC", Move::Types::GroupSwapCBCFCMC)
-        .value("TETHERED_PROTON_HOP", Move::Types::TetheredProtonHop)
-        .value("PIVOT", Move::Types::Pivot)
-        .value("CRANKSHAFT", Move::Types::Crankshaft)
-        .value("REPTATION", Move::Types::Reptation)
-        .value("CONCERTED_ROTATION", Move::Types::ConcertedRotation)
-        .value("BEAD_DISPLACEMENT", Move::Types::BeadDisplacement)
-        .value("BEAD_FLIP", Move::Types::BeadFlip)
-        .value("DOUBLE_BRIDGING", Move::Types::DoubleBridging)
-        .value("INTRAMOLECULAR_DOUBLE_REBRIDGING", Move::Types::IntramolecularDoubleRebridging)
-        .value("CROSS_LINK_SWAP", Move::Types::CrossLinkSwap)
-        .value("CROSS_LINK_FORMATION_SCISSION", Move::Types::CrossLinkFormationScission)
-        .value("CROSS_LINK_EXCHANGE", Move::Types::CrossLinkExchange)
-        .value("PIVOT_CBMC", Move::Types::PivotCBMC)
-        .value("SWAP_MULTI_TRIAL_CBMC", Move::Types::SwapMultiTrialCBMC)
-        .value("REINSERTION_MULTI_TRIAL_CBMC", Move::Types::ReinsertionMultiTrialCBMC)
-        .value("GIBBS_SWAP_MULTI_TRIAL_CBMC", Move::Types::GibbsSwapMultiTrialCBMC);
+    nanobind::enum_<Move::Types> moveTypes(move, "Types", nanobind::is_arithmetic());
+    for (const auto& [moveName, moveType] : moveTypeNames) moveTypes.value(moveName, moveType);
 
     nanobind::class_<MCMoveStatistics>(m, "MCMoveStatistics")
         // the statistics held by the object, not a copy of them: 'stats[MoveTypes.Translation].max_change = 0.5'
@@ -888,6 +1068,121 @@ EXPAND_MODULE(MODULE_NAME)
         .def_rw("average_gibbs_rosenbluth_weights", &Component::averageGibbsRosenbluthWeights)
         .def("print_status", &Component::printStatus)
         .def("__repr__", &Component::repr);
+
+    // The settings below are those of the component a system is constructed with: the system keeps its own copy, so
+    // a setting is made before the component is handed to it.
+    component
+        .def_rw("type", &Component::type, "Adsorbate or cation.")
+        .def_prop_rw(
+            "mol_fraction", [](const Component& c) { return c.molFraction; },
+            [](Component& c, double fraction)
+            {
+              if (!(fraction >= 0.0)) throw std::invalid_argument("mol_fraction can not be negative");
+              c.molFraction = fraction;
+            },
+            "The mole fraction of the component in the reservoir [-].")
+        .def_prop_rw(
+            "fugacity_coefficient", [](const Component& c) { return c.fugacityCoefficient; },
+            [](Component& c, std::optional<double> coefficient)
+            {
+              if (coefficient.has_value() && !(*coefficient > 0.0))
+              {
+                throw std::invalid_argument("fugacity_coefficient must be positive (None for the equation of state)");
+              }
+              c.fugacityCoefficient = coefficient;
+              c.fugacityCoefficientGiven = coefficient.has_value();
+            },
+            nanobind::for_setter(nanobind::arg("value").none()),
+            "The fugacity coefficient [-]; None takes it from the equation of state.")
+        .def_ro("critical_temperature", &Component::criticalTemperature, "[K]")
+        .def_ro("critical_pressure", &Component::criticalPressure, "[Pa]")
+        .def_ro("acentric_factor", &Component::acentricFactor, "[-]")
+        .def_ro("net_charge", &Component::netCharge, "[e]")
+        .def_ro("swappable", &Component::swappable, "Whether a move of a system inserts or deletes the component.")
+        .def_prop_rw(
+            "starting_bead", [](const Component& c) { return c.startingBead; },
+            [](Component& c, std::size_t bead)
+            {
+              if (bead >= c.definedAtoms.size()) throw std::invalid_argument("starting_bead is not an atom of the component");
+              c.setStartingBead(bead);
+            },
+            "The atom the growth of the molecule starts from.")
+        .def_rw("ideal_gas_rosenbluth_weight", &Component::idealGasRosenbluthWeight,
+                nanobind::for_setter(nanobind::arg("value").none()),
+                "The Rosenbluth weight of the isolated molecule [-]; None computes it at the start of the run.")
+        .def_prop_rw(
+            "ideal_gas_rosenbluth_weight_tolerance",
+            [](const Component& c) { return c.idealGasRosenbluthWeightTolerance; },
+            [](Component& c, std::optional<double> tolerance)
+            {
+              if (tolerance.has_value() && !(*tolerance > 0.0))
+              {
+                throw std::invalid_argument("ideal_gas_rosenbluth_weight_tolerance must be positive");
+              }
+              c.idealGasRosenbluthWeightTolerance = tolerance;
+            },
+            nanobind::for_setter(nanobind::arg("value").none()),
+            "The relative standard error to which a weight that is not given is computed [-].")
+        .def_prop_rw(
+            "ideal_gas_energy",
+            [](const Component& c) -> std::optional<double>
+            {
+              if (!c.idealGasEnergy.has_value()) return std::nullopt;
+              return Units::EnergyToKelvin * *c.idealGasEnergy;
+            },
+            [](Component& c, std::optional<double> energy)
+            {
+              c.idealGasEnergy = energy.has_value() ? std::optional<double>(Units::KelvinToEnergy * *energy) : std::nullopt;
+            },
+            nanobind::for_setter(nanobind::arg("value").none()),
+            "The mean intramolecular energy of the isolated molecule [K], the reference of the enthalpy of adsorption.")
+        .def_rw("pair_component", &Component::pairComponentId, nanobind::for_setter(nanobind::arg("value").none()),
+                "The index of the partner component of the pair-swap moves.")
+        .def_rw("maximum_pair_distance", &Component::maximumPairDistance,
+                nanobind::for_setter(nanobind::arg("value").none()),
+                "The largest separation of the pair of the pair-swap moves [Angstrom].")
+        .def_rw("group_components", &Component::groupComponentIds,
+                "The indices of the satellite components of the group-swap moves, one entry per molecule.")
+        .def_rw("maximum_group_distance", &Component::maximumGroupDistance,
+                nanobind::for_setter(nanobind::arg("value").none()),
+                "The largest distance of a satellite from the central molecule of the group-swap moves [Angstrom].")
+        .def_rw("tethered_proton_hop_sites", &Component::tetheredProtonHopSiteGroups,
+                "The sites of the tethered proton-hop move: per tethering site a list of fractional positions.")
+        .def_rw("identity_changes", &Component::identityChanges,
+                "The indices of the components the identity-change move changes the component into.")
+        .def_rw("identity_switches", &Component::identitySwitches,
+                "The indices of the partner components of the identity-switch move.")
+        .def_rw("gibbs_identity_changes", &Component::gibbsIdentityChanges,
+                "The indices of the components the Gibbs identity-change move changes the component into.")
+        .def_prop_ro(
+            "lambda_gibbs_histogram", [](Component& c) -> PropertyLambdaProbabilityHistogram& { return c.lambdaGibbs; },
+            nanobind::rv_policy::reference_internal)
+        .def_prop_ro(
+            "lambda_pair_swap_histogram",
+            [](Component& c) -> PropertyLambdaProbabilityHistogram& { return c.lambdaPairSwap; },
+            nanobind::rv_policy::reference_internal)
+        .def_prop_ro(
+            "lambda_group_swap_histogram",
+            [](Component& c) -> PropertyLambdaProbabilityHistogram& { return c.lambdaGroupSwap; },
+            nanobind::rv_policy::reference_internal);
+
+    defineCount(component, "number_of_trial_molecules", &Component::numberOfTrialMolecules,
+                "The number of complete trial molecules of the multiple-try moves.");
+    defineCount(component, "pivot_cbmc_number_of_trial_angles", &Component::pivotCBMCNumberOfTrialAngles,
+                "The number of trial angles of the configurational-bias pivot move.");
+    defineCount(component, "crankshaft_max_segment_size", &Component::crankshaftMaxSegmentSize,
+                "The largest number of atoms in the rotated segment of the crankshaft move.");
+    defineFraction(component, "pivot_randomization_fraction", &Component::pivotRandomizationFraction,
+                   "The fraction of pivot attempts that draw the angle from the full circle.");
+    defineFraction(component, "pivot_cbmc_randomization_fraction", &Component::pivotCBMCRandomizationFraction,
+                   "The fraction of configurational-bias pivot attempts that draw the trial angles from the full circle.");
+    defineFraction(component, "crankshaft_randomization_fraction", &Component::crankshaftRandomizationFraction,
+                   "The fraction of crankshaft attempts that draw the angle from the full circle.");
+    defineFraction(component, "concerted_rotation_randomization_fraction",
+                   &Component::concertedRotationRandomizationFraction,
+                   "The fraction of concerted-rotation attempts that draw the driver angle from the full circle.");
+    defineFraction(component, "bead_flip_randomization_fraction", &Component::beadFlipRandomizationFraction,
+                   "The fraction of bead-flip attempts that randomize the rotation completely.");
 
     nanobind::class_<LoadingData>(m, "LoadingData")
         .def(nanobind::init<std::size_t>(), nanobind::arg("number_of_components"))
@@ -1071,6 +1366,94 @@ EXPAND_MODULE(MODULE_NAME)
       .def_rw("framework_molecule_vdw", &RunningEnergy::frameworkMoleculeVDW)
       .def("__repr__", &RunningEnergy::repr);
 
+  nanobind::enum_<MolecularDynamicsEnsemble>(m, "MolecularDynamicsEnsemble", nanobind::is_arithmetic())
+      .value("NVE", MolecularDynamicsEnsemble::NVE)
+      .value("NVT", MolecularDynamicsEnsemble::NVT)
+      .value("NPT", MolecularDynamicsEnsemble::NPT)
+      .value("NPTPR", MolecularDynamicsEnsemble::NPTPR)
+      .value("MUVT", MolecularDynamicsEnsemble::MuVT)
+      .value("MUPT", MolecularDynamicsEnsemble::MuPT)
+      .value("MUPTPR", MolecularDynamicsEnsemble::MuPTPR);
+
+  nanobind::enum_<BarostatCoupling>(m, "BarostatCoupling", nanobind::is_arithmetic())
+      .value("MOLECULAR", BarostatCoupling::Molecular)
+      .value("ATOMIC", BarostatCoupling::Atomic);
+
+  nanobind::enum_<CellMinimizationType>(m, "CellType", nanobind::is_arithmetic())
+      .value("FIXED", CellMinimizationType::Fixed)
+      .value("ISOTROPIC", CellMinimizationType::Isotropic)
+      .value("ANISOTROPIC", CellMinimizationType::Anisotropic)
+      .value("MONOCLINIC", CellMinimizationType::Monoclinic)
+      .value("REGULAR", CellMinimizationType::Regular)
+      .value("REGULAR_UPPER_TRIANGLE", CellMinimizationType::RegularUpperTriangle)
+      .value("MONOCLINIC_UPPER_TRIANGLE", CellMinimizationType::MonoclinicUpperTriangle);
+
+  nanobind::enum_<MonoclinicAngleType>(m, "MonoclinicAngleType", nanobind::is_arithmetic())
+      .value("ALPHA", MonoclinicAngleType::Alpha)
+      .value("BETA", MonoclinicAngleType::Beta)
+      .value("GAMMA", MonoclinicAngleType::Gamma);
+
+  // The settings of a barostat, as Thermostat holds those of a thermostat: 'System.set_thermobarostat' builds the
+  // barostat of the system from them, with the temperature, the pressure and the time step of the system.
+  nanobind::class_<Thermobarostat>(m, "Thermobarostat")
+      .def(
+          "__init__",
+          [](Thermobarostat* barostat, MolecularDynamicsEnsemble ensemble, std::size_t barostat_chain_length,
+             std::size_t number_of_yoshida_suzuki_steps, double time_scale_parameter,
+             std::size_t number_of_respa_steps, BarostatCoupling coupling, std::optional<CellMinimizationType> cell_type,
+             MonoclinicAngleType monoclinic_angle)
+          {
+            const bool isotropic = molecularDynamicsUsesIsotropicBarostat(ensemble);
+            const bool flexible = molecularDynamicsUsesFlexibleBarostat(ensemble);
+            if (!isotropic && !flexible)
+            {
+              throw std::invalid_argument("Thermobarostat: the ensemble has no barostat (NPT, NPTPR, MUPT or MUPTPR)");
+            }
+            if (barostat_chain_length == 0 || number_of_respa_steps == 0 || number_of_yoshida_suzuki_steps == 0)
+            {
+              throw std::invalid_argument("Thermobarostat: the chain length and the numbers of steps must be positive");
+            }
+            if (!(time_scale_parameter > 0.0))
+            {
+              throw std::invalid_argument("Thermobarostat: time_scale_parameter must be positive");
+            }
+            // an isotropic barostat scales the volume; a flexible one changes the cell, fully unless a type is given
+            CellMinimizationType cellType = CellMinimizationType::Isotropic;
+            if (flexible)
+            {
+              cellType = cell_type.value_or(CellMinimizationType::Regular);
+              if (cellType == CellMinimizationType::Fixed) cellType = CellMinimizationType::Regular;
+            }
+            new (barostat) Thermobarostat();
+            barostat->ensemble = ensemble;
+            barostat->cellType = cellType;
+            barostat->monoclinicAngle = monoclinic_angle;
+            barostat->chainLength = barostat_chain_length;
+            barostat->numberOfYoshidaSuzukiSteps = number_of_yoshida_suzuki_steps;
+            barostat->timeScaleParameterBarostat = time_scale_parameter;
+            barostat->numberOfRespaSteps = number_of_respa_steps;
+            barostat->coupling = coupling;
+          },
+          nanobind::arg("ensemble"), nanobind::arg("barostat_chain_length") = 5,
+          nanobind::arg("number_of_yoshida_suzuki_steps") = 5, nanobind::arg("time_scale_parameter") = 1.0,
+          nanobind::arg("number_of_respa_steps") = 5, nanobind::arg("coupling") = BarostatCoupling::Molecular,
+          nanobind::arg("cell_type") = nanobind::none(), nanobind::arg("monoclinic_angle") = MonoclinicAngleType::Beta)
+      .def_ro("ensemble", &Thermobarostat::ensemble)
+      .def_ro("cell_type", &Thermobarostat::cellType)
+      .def_ro("coupling", &Thermobarostat::coupling)
+      .def_ro("barostat_chain_length", &Thermobarostat::chainLength)
+      .def_ro("number_of_yoshida_suzuki_steps", &Thermobarostat::numberOfYoshidaSuzukiSteps)
+      .def_ro("number_of_respa_steps", &Thermobarostat::numberOfRespaSteps)
+      .def_ro("time_scale_parameter", &Thermobarostat::timeScaleParameterBarostat);
+
+  nanobind::class_<PropertyTemperature>(m, "PropertyTemperature")
+      .def("result", [](const PropertyTemperature& p) { return p.average(); },
+           "The average temperature and its error [K].");
+
+  nanobind::class_<PropertySimulationBox>(m, "PropertySimulationBox")
+      .def("result", [](const PropertySimulationBox& p) { return p.average(); },
+           "The average simulation box and its error.");
+
   nanobind::class_<System>(m, "System")
       .def(nanobind::init<ForceField, std::optional<SimulationBox>, bool, double, std::optional<double>, double,
                           std::optional<Framework>, std::vector<Component>, std::vector<std::vector<double3>>,
@@ -1140,7 +1523,59 @@ EXPAND_MODULE(MODULE_NAME)
       .def_rw("rotational_degrees_of_freedom", &System::rotationalDegreesOfFreedom)
       .def_rw("time_step", &System::timeStep)
       .def("write_mc_move_statistics", &System::writeMCMoveStatistics)
+      .def_ro("temperature", &System::temperature, "The external temperature [K].")
+      .def_prop_rw(
+          "external_pressure_diagonal", [](const System& s) { return s.input_pressureTensorDiagonal; },
+          [](System& s, double3 pressure)
+          {
+            s.input_pressureTensorDiagonal = pressure;
+            s.pressureTensorDiagonal = pressure / Units::PressureConversionFactor;
+          },
+          "The external pressure along x, y and z [Pa], for the anisotropic volume move.")
+      .def_rw("molecular_dynamics_ensemble", &System::molecularDynamicsEnsemble,
+              "The ensemble of molecular dynamics. 'set_thermobarostat' sets it to that of the barostat.")
+      .def_ro("thermobarostat", &System::thermobarostat)
+      .def("set_thermobarostat", &System::setThermobarostat, nanobind::arg("thermobarostat") = nanobind::none(),
+           "Builds the barostat of the system from the given settings, with the temperature, the pressure and the "
+           "time step the system has at this moment; None removes it. The ensembles with a barostat are "
+           "thermostatted as well: see 'set_thermostat'.")
+      .def_prop_rw(
+          "number_of_hybrid_mc_steps", [](const System& s) { return s.numberOfHybridMCSteps; },
+          [](System& s, std::size_t steps)
+          {
+            if (steps == 0) throw std::invalid_argument("number_of_hybrid_mc_steps must be at least 1");
+            s.numberOfHybridMCSteps = steps;
+          },
+          "The number of molecular-dynamics steps of a hybrid Monte Carlo move.")
+      .def_ro("average_temperature", &System::averageTemperature)
+      .def_ro("average_translational_temperature", &System::averageTranslationalTemperature)
+      .def_ro("average_rotational_temperature", &System::averageRotationalTemperature)
+      .def_ro("average_simulation_box", &System::averageSimulationBox)
       .def("__repr__", &System::repr);
+
+  // The thread pool is one for the process. It is started once: a later call with another number of threads keeps
+  // the threads that are running, and one thread switches to serial work.
+  m.def(
+      "set_number_of_threads",
+      [](std::size_t number_of_threads)
+      {
+        if (number_of_threads == 0) throw std::invalid_argument("set_number_of_threads: at least one thread");
+        auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();
+        pool.init(number_of_threads, number_of_threads > 1 ? ThreadPool::ThreadingType::ThreadPool
+                                                           : ThreadPool::ThreadingType::Serial);
+      },
+      nanobind::arg("number_of_threads"),
+      "Sets the number of threads of the thread pool of the process, as 'NumberOfThreads' does for the "
+      "command-line program.");
+  m.def(
+      "number_of_threads",
+      []() -> std::size_t
+      {
+        auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();
+        // the calling thread works too
+        return pool.getThreadingType() == ThreadPool::ThreadingType::ThreadPool ? pool.getThreadCount() + 1 : 1;
+      },
+      "The number of threads the thread pool works with.");
 
   bindDriver<MonteCarlo>(m, "MonteCarlo");
   bindDriver<MolecularDynamics>(m, "MolecularDynamics");

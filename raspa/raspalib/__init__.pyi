@@ -38,6 +38,9 @@ from raspalib.property_conventional_radial_distribution_function import *
 from raspalib.property_mean_squared_displacement import *
 from raspalib.property_velocity_autocorrelation_function import *
 from raspalib.thermostat import *
+from raspalib.thermobarostat import *
+from raspalib.property_temperature import *
+from raspalib.property_simulation_box import *
 from raspalib.simulation_box import *
 from raspalib.component import *
 from raspalib.framework import *
@@ -87,6 +90,27 @@ __all__ = [
     "PropertyMeanSquaredDisplacement",
     "PropertyVelocityAutoCorrelationFunction",
     "PropertyEnthalpy",
-    "EnthalpyOfAdsorptionData"
+    "EnthalpyOfAdsorptionData",
+    "Thermobarostat",
+    "MolecularDynamicsEnsemble",
+    "BarostatCoupling",
+    "CellType",
+    "MonoclinicAngleType",
+    "PropertyTemperature",
+    "PropertySimulationBox",
+    "set_number_of_threads",
+    "number_of_threads",
 ]
+
+def set_number_of_threads(number_of_threads: int) -> None:
+    """Set the number of threads of the thread pool of the process.
+
+    The pool is started once: a later call with another number keeps the
+    threads that are running; one thread switches to serial work.
+    """
+    ...
+
+def number_of_threads() -> int:
+    """Return the number of threads the thread pool works with."""
+    ...
 

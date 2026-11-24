@@ -128,6 +128,15 @@ __all__ = [
     "PropertyPartialMolarProperties",
     "PropertyRadialDistributionFunction",
     "RandomNumber",
-    "VelocityAutoCorrelationFunctionData"
+    "VelocityAutoCorrelationFunctionData",
+    "Thermobarostat",
+    "MolecularDynamicsEnsemble",
+    "BarostatCoupling",
+    "CellType",
+    "MonoclinicAngleType",
+    "PropertyTemperature",
+    "PropertySimulationBox",
+    "set_number_of_threads",
+    "number_of_threads",
 ]
 
