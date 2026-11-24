@@ -1885,3 +1885,100 @@ Atoms # molecular
     EXPECT_FALSE(result.simulation["Systems"][0].contains("Ensemble"));
   }
 }
+
+// The configuration of the data file is what the converted simulation starts from: the positions of every
+// component, molecule after molecule in the atom order of its template, each molecule in one piece (also one that
+// the file has wrapped across the boundary, with image flags or without), relative to the origin of the box.
+TEST(lammps_export, reader_keeps_the_configuration_of_the_data_file_as_the_start_of_the_simulation)
+{
+  // two dimers and two single atoms, the molecules interleaved; the second dimer lies across the x boundary
+  const std::string data = R"(LAMMPS data file
+
+6 atoms
+2 bonds
+2 atom types
+1 bond types
+
+-5.0 15.0 xlo xhi
+0.0 20.0 ylo yhi
+0.0 20.0 zlo zhi
+
+Masses
+
+1 15.0
+2 39.948
+
+Pair Coeffs # lj/cut
+
+1 0.2 3.75
+2 0.238 3.405
+
+Bond Coeffs # harmonic
+
+1 300.0 1.54
+
+Atoms # molecular
+
+1 1 1 2.0 3.0 4.0
+5 3 2 9.0 9.0 9.0
+2 1 1 3.54 3.0 4.0
+3 2 1 14.5 10.0 10.0
+6 4 2 1.0 12.0 3.0
+4 2 1 -3.96 10.0 10.0
+
+Bonds
+
+1 1 1 2
+2 1 3 4
+)";
+  TemporaryDirectory directory;
+  const std::filesystem::path dataPath = directory.path / "start.data";
+  const std::filesystem::path inputPath = directory.path / "start.in";
+  std::ofstream(dataPath) << data;
+  std::ofstream(inputPath) << "units real\natom_style molecular\npair_style lj/cut 9.0\nbond_style harmonic\n"
+                              "read_data start.data\n";
+  const LAMMPS::ReadResult result = LAMMPS::readDataFile(dataPath, inputPath);
+  ASSERT_EQ(result.components.size(), 2u);
+
+  const nlohmann::json& system = result.simulation["Systems"][0];
+  EXPECT_EQ(system["RestartFileName"], "initial_configuration");
+  for (const nlohmann::json& entry : result.simulation["Components"])
+  {
+    EXPECT_EQ(entry["CreateNumberOfMolecules"].get<std::size_t>(), 0u);
+  }
+
+  const auto positionsOf = [&](std::size_t atomsPerMolecule)
+  {
+    for (const LAMMPS::ReadComponent& component : result.components)
+    {
+      if (component.atomsPerMolecule == atomsPerMolecule)
+        return result.configuration[component.name].get<std::vector<std::array<double, 3>>>();
+    }
+    return std::vector<std::array<double, 3>>{};
+  };
+  const auto expectPosition = [](const std::array<double, 3>& position, double x, double y, double z)
+  {
+    EXPECT_NEAR(position[0], x, 1e-12);
+    EXPECT_NEAR(position[1], y, 1e-12);
+    EXPECT_NEAR(position[2], z, 1e-12);
+  };
+
+  // the dimers: atoms 1-2, then 3-4, shifted by the origin of the box (x from -5)
+  const std::vector<std::array<double, 3>> dimers = positionsOf(2);
+  ASSERT_EQ(dimers.size(), 4u);
+  expectPosition(dimers[0], 7.0, 3.0, 4.0);
+  expectPosition(dimers[1], 8.54, 3.0, 4.0);
+  expectPosition(dimers[2], 19.5, 10.0, 10.0);
+  // atom 4 was wrapped to the other side of the box: it is put back next to atom 3
+  expectPosition(dimers[3], 21.04, 10.0, 10.0);
+
+  // the single atoms, in the order of their molecule ids
+  const std::vector<std::array<double, 3>> atoms = positionsOf(1);
+  ASSERT_EQ(atoms.size(), 2u);
+  expectPosition(atoms[0], 14.0, 9.0, 9.0);
+  expectPosition(atoms[1], 6.0, 12.0, 3.0);
+
+  // the files of the converted input
+  LAMMPS::writeRaspaInput(result, directory.path / "converted");
+  EXPECT_TRUE(std::filesystem::exists(directory.path / "converted" / "initial_configuration.json"));
+}

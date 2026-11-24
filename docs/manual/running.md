@@ -116,6 +116,12 @@ relative difference of $3.5\times10^{-5}$ in the electrostatic energies.
 The data file provides masses, pair coefficients, bonds, angles, dihedrals and molecules; the input
 script (optional) names the styles, `special_bonds` and `pair_modify` settings.
 
+The configuration of the data file is kept: the positions of all atoms are written per component to
+`initial_configuration.json`, each molecule in one piece, and the simulation names that file as its
+`"RestartFileName"`, so the converted run starts from the configuration LAMMPS had (with
+`"CreateNumberOfMolecules" : 0`, since no molecules are created next to those read). The velocities of the data
+file are not carried over; molecular dynamics draws them at the temperature of the run.
+
 A `fix shake` (or `fix rattle`) in the input script is read as well: the bonds it names by bond type (`b`), by
 atom type (`t`) or by atom mass (`m`) become `FIXED` bonds at the equilibrium length of their harmonic style (the
 length in the data file for other styles), and the angles it names (`a`) become `FIXED` bends when both their

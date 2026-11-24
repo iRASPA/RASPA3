@@ -24,8 +24,9 @@ import json;
  *   - special_bonds 1-4 factors -> Intra14VanDerWaalsScalingValue / Intra14ChargeChargeScalingValue.
  *   - pair_style cut-offs, pair_modify mix/shift/tail, kspace_style -> force-field and simulation settings.
  *
- * Coordinates of all molecules are kept in 'positions' (Angstrom, unwrapped) so a caller can seed a RASPA
- * configuration; RASPA itself starts from the component templates.
+ * Coordinates of all molecules are kept in 'positions' (Angstrom, unwrapped, in the order of the file) and,
+ * sorted per component, in 'configuration': the restart file that the simulation written here starts from, so
+ * a converted run begins at the configuration of the data file. Velocities are not carried over.
  */
 export namespace LAMMPS
 {
@@ -42,6 +43,9 @@ struct ReadResult
   nlohmann::json forceField{};
   std::vector<ReadComponent> components{};
   nlohmann::json simulation{};
+  /// The configuration of the data file, as the restart file the simulation names ('RestartFileName'): for every
+  /// component the positions of its atoms, molecule after molecule, each molecule in one piece [Angstrom].
+  nlohmann::json configuration{};
   std::array<double, 3> boxLengths{};
   std::array<double, 3> boxAngles{90.0, 90.0, 90.0};
   std::vector<std::array<double, 3>> positions{};  ///< all atoms in file order, unwrapped, Angstrom
@@ -50,6 +54,7 @@ struct ReadResult
 
 ReadResult readDataFile(const std::filesystem::path &dataFile, const std::optional<std::filesystem::path> &inputScript);
 
-/// Writes force_field.json, <component>.json files and simulation.json into 'directory'.
+/// Writes force_field.json, <component>.json files, simulation.json and initial_configuration.json into
+/// 'directory'.
 void writeRaspaInput(const ReadResult &result, const std::filesystem::path &directory);
 }  // namespace LAMMPS

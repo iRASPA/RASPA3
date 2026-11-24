@@ -771,6 +771,7 @@ struct Template
   std::vector<std::array<double, 3>> positions{};  // first instance, unwrapped
   std::size_t count{};
   std::vector<std::size_t> firstAtomIds{};  // global id of the first atom of every instance
+  std::vector<std::vector<std::size_t>> instances{};  // the atoms (indices in the data file) of every instance
 
   auto key() const { return std::tie(pseudoAtomIndex, chargeKeys, bonds, angles, dihedrals, impropers); }
 };
@@ -1289,6 +1290,7 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
       {
         existing.count++;
         existing.firstAtomIds.push_back(data.atoms[atomIndices[0]].id);
+        existing.instances.push_back(atomIndices);
         found = true;
         break;
       }
@@ -1297,6 +1299,7 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
     {
       candidate.count = 1;
       candidate.firstAtomIds.push_back(data.atoms[atomIndices[0]].id);
+      candidate.instances.push_back(atomIndices);
       templates.push_back(std::move(candidate));
     }
   }
@@ -1533,6 +1536,20 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
       if (coul14 != 0.0) definition["Intra14ChargeChargeScalingValue"] = coul14;
     }
     component.definition = definition;
+    // The configuration of the data file: the positions of the atoms of every molecule of the component, molecule
+    // after molecule in the atom order of the template, each molecule in one piece, relative to the origin of the
+    // box. It is what the simulation starts from ('RestartFileName').
+    nlohmann::json positions = nlohmann::json::array();
+    for (const std::vector<std::size_t> &instance : tpl.instances)
+    {
+      for (const std::size_t atom : instance)
+      {
+        positions.push_back({result.positions[atom][0] - data.low[0], result.positions[atom][1] - data.low[1],
+                             result.positions[atom][2] - data.low[2]});
+      }
+    }
+    result.configuration[component.name] = std::move(positions);
+
     result.components.push_back(component);
   }
 
@@ -1548,6 +1565,7 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
   system["BoxLengths"] = result.boxLengths;
   if (data.triclinic) system["BoxAngles"] = result.boxAngles;
   system["ExternalTemperature"] = 300.0;
+  system["RestartFileName"] = "initial_configuration";
   system["ChargeMethod"] = !(coulomb && anyCharge) ? "None"
                            : wolf                  ? "Wolf"
                            : dampedShiftedForce    ? "DampedShiftedForce"
@@ -1633,7 +1651,8 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
     entry["TranslationProbability"] = 1.0;
     entry["RotationProbability"] = 1.0;
     if (component.definition.contains("Bonds")) entry["ReinsertionProbability"] = 0.5;
-    entry["CreateNumberOfMolecules"] = component.count;
+    // the molecules are those of the data file, read from the configuration: none are created next to them
+    entry["CreateNumberOfMolecules"] = 0;
     if (script.shake)
     {
       const bool constrained = component.definition.contains("Bonds") &&
@@ -1665,6 +1684,10 @@ void writeRaspaInput(const ReadResult &result, const std::filesystem::path &dire
   {
     std::ofstream file(directory / "simulation.json");
     file << result.simulation.dump(2) << '\n';
+  }
+  {
+    std::ofstream file(directory / "initial_configuration.json");
+    file << result.configuration.dump() << '\n';
   }
   if (!result.warnings.empty())
   {
