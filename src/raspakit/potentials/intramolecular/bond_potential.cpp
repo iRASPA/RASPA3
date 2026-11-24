@@ -180,7 +180,8 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // 0.5 * p0 * SQR(r);
       // ===============================================
       // p_0/k_B [K/A^2]   force constant
-      sigma = std::sqrt(1.0 / (beta * parameters[0]));
+      // (a spring of no strength has no width to sample over: the interval of the other types)
+      sigma = (parameters[0] > 0.0) ? std::sqrt(1.0 / (beta * parameters[0])) : 0.5;
       return sampleBondLengthRejection(tag, random, 0.0, 6.0 * sigma, beta,
                                        [&](double r) { return 0.5 * parameters[0] * r * r; });
     case BondType::Morse:
@@ -189,7 +190,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // p_0/k_B [K]       force constant
       // p_1     [A^-1]    parameter
       // p_2     [A]       reference bond distance
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta,
                                        [&](double r)
                                        {
                                          return parameters[0] *
@@ -201,7 +202,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // ===============================================
       // p_0/k_B [K A^12]
       // p_1/k_B [K A^6]
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta,
                                        [&](double r)
                                        {
                                          double temp = std::pow(1.0 / (r * r), 3);
@@ -212,7 +213,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // ===============================================
       // p_0/k_B [K]
       // p_1     [A]
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta,
                                        [&](double r)
                                        {
                                          double temp = std::pow((parameters[1] * parameters[1]) / (r * r), 3);
@@ -237,7 +238,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // p_0/k_B [K/A^2]
       // p_1     [A]
       // p_2     [A]
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta,
                                        [&](double r)
                                        {
                                          double r1 = r - parameters[1];
@@ -253,7 +254,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // p_1     [A]
       // p_2/k_B [K/A^3]
       // p_3/k_B [K/A^4]
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta,
                                        [&](double r)
                                        {
                                          double temp = r - parameters[1];
@@ -269,7 +270,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // p_1     [A]
       // p_2/k_B [K/A^3]
       // p_3/k_B [K/A^4]
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta,
                                        [&](double r)
                                        {
                                          double temp = r - parameters[1];
@@ -282,7 +283,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // =================================================================
       // p_0     [mdyne/A molecule]
       // p_1     [A]
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta,
                                        [&](double r)
                                        {
                                          double temp = r - parameters[1];
@@ -317,7 +318,7 @@ double BondPotential::logBoltzmannVolumeNormalization(double beta) const
 
   // The integration interval mirrors the support of the density sampled by generateBondLength.
   double lo = 0.0;
-  double hi = 3.0;
+  double hi = anharmonicUpperLength(type, parameters);
   switch (type)
   {
     case BondType::Harmonic:
@@ -335,7 +336,7 @@ double BondPotential::logBoltzmannVolumeNormalization(double beta) const
       break;
     }
     case BondType::CoreShellSpring:
-      hi = 6.0 * std::sqrt(1.0 / (beta * parameters[0]));
+      hi = 6.0 * ((parameters[0] > 0.0) ? std::sqrt(1.0 / (beta * parameters[0])) : 0.5);
       break;
     case BondType::Buckingham:
       lo = 0.8;
@@ -345,15 +346,21 @@ double BondPotential::logBoltzmannVolumeNormalization(double beta) const
       break;
   }
 
+  // summed with the largest exponent taken out: the Boltzmann factor at the bottom of a deep well is beyond a
+  // double, and the logarithm of the integral is not
   constexpr std::size_t numberOfGridPoints = 4096;
   const double h = (hi - lo) / static_cast<double>(numberOfGridPoints);
-  double integral = 0.0;
+  std::vector<double> exponents(numberOfGridPoints);
+  double largest = -std::numeric_limits<double>::max();
   for (std::size_t i = 0; i != numberOfGridPoints; ++i)
   {
     const double r = lo + (static_cast<double>(i) + 0.5) * h;
-    integral += r * r * std::exp(-beta * calculateEnergy(double3{0.0, 0.0, 0.0}, double3{r, 0.0, 0.0}));
+    exponents[i] = 2.0 * std::log(r) - beta * calculateEnergy(double3{0.0, 0.0, 0.0}, double3{r, 0.0, 0.0});
+    largest = std::max(largest, exponents[i]);
   }
-  const double result = std::log(integral * h);
+  double integral = 0.0;
+  for (double exponent : exponents) integral += std::exp(exponent - largest);
+  const double result = std::log(integral * h) + largest;
 
   cache[key] = result;
   return result;

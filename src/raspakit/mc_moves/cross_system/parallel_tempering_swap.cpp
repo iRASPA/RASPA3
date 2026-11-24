@@ -208,8 +208,25 @@ bool sameExternalField(const System& systemA, const System& systemB)
 {
   if (systemA.hasExternalField != systemB.hasExternalField) return false;
   if (!systemA.hasExternalField) return true;
-  return systemA.externalFieldInterpolationGrid.has_value() == systemB.externalFieldInterpolationGrid.has_value() &&
-         !(systemA.simulationBox != systemB.simulationBox);
+  if (systemA.externalFieldInterpolationGrid.has_value() != systemB.externalFieldInterpolationGrid.has_value())
+  {
+    return false;
+  }
+  if (!(systemA.simulationBox != systemB.simulationBox)) return true;
+
+  // Two boxes. For replicas whose box is fixed that is the field laid out in another box, another Hamiltonian.
+  // Replicas that sample their volume are another matter: the box is then a coordinate of the state like the
+  // positions, the field that is evaluated (not tabulated) is a function of both, and the box travels with the
+  // configuration where there is no framework, so the energy of each configuration is the same before the
+  // exchange and after. Their boxes differ from the first accepted volume change on, and held to one box the
+  // replicas of an isobaric ladder in such a field stopped exchanging there, and went on without a word.
+  auto samplesItsVolume = [](const System& system)
+  {
+    return system.mc_moves_probabilities.getProbability(Move::Types::VolumeChange) > 0.0 ||
+           system.mc_moves_probabilities.getProbability(Move::Types::AnisotropicVolumeChange) > 0.0;
+  };
+  return !systemA.externalFieldInterpolationGrid.has_value() && !systemA.framework.has_value() &&
+         !systemB.framework.has_value() && samplesItsVolume(systemA) && samplesItsVolume(systemB);
 }
 
 bool compatibleMobileTopology(const System& systemA, const System& systemB)
@@ -365,8 +382,11 @@ std::optional<double> soluteHamiltonianChange(const System& holder, const System
   auto soluteInterEnergy = [&](const ForceField& forceField, std::span<const Atom> all,
                                std::span<const Atom> solute) -> std::optional<double>
   {
-    std::optional<RunningEnergy> withAll =
-        Interactions::computeInterMolecularEnergyDifference(forceField, holder.simulationBox, all, solute, {});
+    // Without the test for an overlap: the configuration is one the replica holds, not a trial, and the pair a
+    // cross-link joins stands at its bond length, far above the criterion, until the cross-link terms below take
+    // it out again. Tested, every exchange of a cross-linked solute was refused as an overlap.
+    std::optional<RunningEnergy> withAll = Interactions::computeInterMolecularEnergyDifference(
+        forceField, holder.simulationBox, all, solute, {}, false);
     if (!withAll.has_value()) return std::nullopt;
     RunningEnergy soluteSolute = Interactions::computeInterMolecularEnergy(forceField, holder.simulationBox, solute);
     return withAll->potentialEnergy() - soluteSolute.potentialEnergy();

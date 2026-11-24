@@ -1822,3 +1822,67 @@ TEST(MC_CROSS_LINKS, displacing_a_linked_monomer_is_not_rejected_as_an_overlap)
   const RunningEnergy drift = system.runningEnergies - system.computeTotalEnergies();
   EXPECT_NEAR(drift.potentialEnergy(), 0.0, 1e-6 * std::max(1.0, std::abs(system.runningEnergies.potentialEnergy())));
 }
+
+
+// The whole energy with a test for an overlap, as the moves that take all of it ask for it (a volume change, a
+// hybrid MC trajectory): the pair a cross-link joins is at its bond length, with a Lennard-Jones energy far above
+// the criterion, and is no overlap, the cross-link terms taking it out of the sum again. It was reported as one,
+// in every configuration with a link, and each of those moves was refused. An unlinked pair that near is one.
+TEST(MC_CROSS_LINKS, the_total_energy_does_not_take_a_linked_pair_for_an_overlap)
+{
+  const ForceField forceField = makeForceField(100.0, 0.0, 0.0, false);
+  const double3 posA(10.0, 10.0, 10.0);
+  const double3 posB(10.0 + kBondLength, 10.0, 10.0);
+  Component monomerA = makeComponent(forceField, 0, "xl-monomer-a-total", monomerJson("A", "X"));
+  Component monomerB = makeComponent(forceField, 1, "xl-monomer-b-total", monomerJson("B", "Y"));
+
+  System unlinked = makeSystem(forceField, {monomerA, monomerB}, {{posA}, {posB}});
+  unlinked.crossLinks.bondTypes.push_back(harmonicBondType("X", "Y", kBondK, kBondLength, 3.0));
+  bool overlapUnlinked = false;
+  unlinked.computeTotalEnergies(&overlapUnlinked);
+  EXPECT_TRUE(overlapUnlinked) << "the bare pair at the bond length is above the criterion";
+
+  System linked = makeSystem(forceField, {monomerA, monomerB}, {{posA}, {posB}});
+  linked.crossLinks.bondTypes.push_back(harmonicBondType("X", "Y", kBondK, kBondLength, 3.0));
+  linked.crossLinks.addLink(CrossLink{site(0, 0, 0), site(1, 0, 0), 0});
+  bool overlapLinked = false;
+  const RunningEnergy tested = linked.computeTotalEnergies(&overlapLinked);
+  EXPECT_FALSE(overlapLinked);
+  // and the energy is the whole of it, not the sum broken off at the pair
+  const RunningEnergy untested = linked.computeTotalEnergies();
+  EXPECT_NEAR(tested.potentialEnergy(), untested.potentialEnergy(),
+              1e-9 * std::max(1.0, std::abs(untested.potentialEnergy())));
+}
+
+// A bond in a well some eight hundred kT deep: the Boltzmann factor at its minimum is beyond a double, and the
+// sampler formed it, an infinite density over an infinite envelope, and did not return. In logarithms the bond
+// comes out at its minimum, and so does the normalization of its density.
+TEST(MC_CROSS_LINKS, a_bond_in_a_well_deeper_than_a_double_holds_is_sampled)
+{
+  const double temperature = 50.0;
+  const double beta = 1.0 / (Units::KB * temperature);
+  const double wellDepth = 40000.0;  // K
+  const double reference = 1.2;
+  const BondPotential morse({0, 1}, BondType::Morse, {wellDepth, 2.0, reference});
+  ASSERT_GT(wellDepth / temperature, 710.0);
+  // the depth is what was given, in the units the potential keeps it in
+  ASSERT_NEAR(morse.calculateEnergy(double3(0.0, 0.0, 0.0), double3(reference, 0.0, 0.0)) * beta,
+              -wellDepth / temperature, 1e-6 * wellDepth / temperature);
+
+  RandomNumber random(7);
+  double sum = 0.0;
+  const std::size_t samples = 2000;
+  for (std::size_t i = 0; i != samples; ++i)
+  {
+    const double r = morse.generateBondLength(random, beta);
+    ASSERT_GT(r, reference - 0.2);
+    ASSERT_LT(r, reference + 0.2);
+    sum += r;
+  }
+  EXPECT_NEAR(sum / static_cast<double>(samples), reference, 0.01);
+
+  // ln of int r^2 exp(-beta u): the well depth in kT, and the width of the well next to it
+  const double logNormalization = morse.logBoltzmannVolumeNormalization(beta);
+  EXPECT_GT(logNormalization, wellDepth / temperature - 10.0);
+  EXPECT_LT(logNormalization, wellDepth / temperature + 1.0);
+}

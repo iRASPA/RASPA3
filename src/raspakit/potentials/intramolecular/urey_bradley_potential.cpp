@@ -174,7 +174,8 @@ double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber& random, dou
       // 0.5 * p0 * SQR(r);
       // ===============================================
       // p_0/k_B [K/Å^2]   force constant
-      sigma = std::sqrt(1.0 / (beta * parameters[0]));
+      // (a spring of no strength has no width to sample over: the interval of the other types)
+      sigma = (parameters[0] > 0.0) ? std::sqrt(1.0 / (beta * parameters[0])) : 0.5;
       return sampleBondLengthRejection(tag, random, 0.0, 6.0 * sigma, beta,
                                        [&](double r) { return 0.5 * parameters[0] * r * r; });
     case UreyBradleyType::Morse:
@@ -183,14 +184,14 @@ double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber& random, dou
       // p_0/k_B [K]       force constant
       // p_1     [Å^-1]    parameter
       // p_2     [Å]       reference ureyBradley distance
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta, [&](double r)
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta, [&](double r)
           { return parameters[0] * (std::pow(1.0 - std::exp(-parameters[1] * (r - parameters[2])), 2) - 1.0); });
     case UreyBradleyType::LJ_12_6:
       // A/r_ij^12-B/r_ij^6
       // ===============================================
       // p_0/k_B [K Å^12]
       // p_1/k_B [K Å^6]
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta,
                                        [&](double r)
                                        {
                                          double temp = std::pow(1.0 / (r * r), 3);
@@ -201,7 +202,7 @@ double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber& random, dou
       // ===============================================
       // p_0/k_B [K]
       // p_1     [Å]
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta,
                                        [&](double r)
                                        {
                                          double temp = std::pow((parameters[1] * parameters[1]) / (r * r), 3);
@@ -222,7 +223,7 @@ double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber& random, dou
       // p_0/k_B [K/Å^2]
       // p_1     [Å]
       // p_2     [Å]
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta,
           [&](double r)
           {
             double r1 = r - parameters[1];
@@ -236,7 +237,7 @@ double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber& random, dou
       // p_1     [Å]
       // p_2/k_B [K/Å^3]
       // p_3/k_B [K/Å^4]
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta,
                                        [&](double r)
                                        {
                                          double temp = r - parameters[1];
@@ -252,7 +253,7 @@ double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber& random, dou
       // p_1     [Å]
       // p_2/k_B [K/Å^3]
       // p_3/k_B [K/Å^4]
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta,
                                        [&](double r)
                                        {
                                          double temp = r - parameters[1];
@@ -265,7 +266,7 @@ double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber& random, dou
       // =================================================================
       // p_0     [mdyne/Å molecule]
       // p_1     [Å]
-      return sampleBondLengthRejection(tag, random, 0.0, 3.0, beta,
+      return sampleBondLengthRejection(tag, random, 0.0, anharmonicUpperLength(type, parameters), beta,
                                        [&](double r)
                                        {
                                          double temp = r - parameters[1];

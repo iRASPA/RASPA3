@@ -12,6 +12,7 @@ import intra_molecular_potentials;
 import units;
 import chiral_center;
 import bond_potential;
+import urey_bradley_potential;
 import bend_potential;
 import torsion_potential;
 import van_der_waals_potential;
@@ -146,6 +147,38 @@ static void rejectUnenforcedHolonomicTerms(const CBMC::GrowStep &step, const Fra
         "torsion potential, or make the atoms one rigid group.\n",
         torsion.identifiers[0], torsion.identifiers[1], torsion.identifiers[2], torsion.identifiers[3],
         step.nextBeads, step.currentBead));
+  }
+  // The FIXED improper torsion and the FIXED Urey-Bradley term are the same kind of term, a constraint of no
+  // energy, and nothing draws either of them: they were let through and left free. A FIXED Urey-Bradley distance
+  // between the ends of a FIXED or RIGID bend says nothing the bend does not, and goes by the bend.
+  for (const TorsionPotential &improper : step.intra.improperTorsions)
+  {
+    if (improper.type != TorsionType::Fixed) continue;
+    if (insideOneRigidBody(improper.identifiers)) continue;
+    throw std::runtime_error(std::format(
+        "CBMC growth plan: the FIXED improper torsion {}-{}-{}-{} is not held as a constraint when atom(s) {} are "
+        "grown from atom {} (a fixed torsion is only held inside a rigid group); it would be left free. Use a stiff "
+        "improper torsion potential, or make the atoms one rigid group.\n",
+        improper.identifiers[0], improper.identifiers[1], improper.identifiers[2], improper.identifiers[3],
+        step.nextBeads, step.currentBead));
+  }
+  for (const UreyBradleyPotential &ureyBradley : step.intra.ureyBradleys)
+  {
+    if (ureyBradley.type != UreyBradleyType::Fixed) continue;
+    if (insideOneRigidBody(ureyBradley.identifiers)) continue;
+    const std::size_t a = ureyBradley.identifiers[0], b = ureyBradley.identifiers[1];
+    const bool heldByBend = std::ranges::any_of(step.intra.bends, [&](const BendPotential &bend)
+    {
+      return (bend.type == BendType::Fixed || bend.type == BendType::Rigid) &&
+             ((bend.identifiers[0] == a && bend.identifiers[2] == b) ||
+              (bend.identifiers[0] == b && bend.identifiers[2] == a));
+    });
+    if (heldByBend) continue;
+    throw std::runtime_error(std::format(
+        "CBMC growth plan: the FIXED Urey-Bradley distance {}-{} is not held as a constraint when atom(s) {} are "
+        "grown from atom {} (it is only held inside a rigid group, or by a FIXED or RIGID bend between the same two "
+        "atoms); it would be left free. Use a stiff Urey-Bradley potential, or make the atoms one rigid group.\n",
+        a, b, step.nextBeads, step.currentBead));
   }
 }
 

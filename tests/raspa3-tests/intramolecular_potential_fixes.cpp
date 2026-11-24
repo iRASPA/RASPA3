@@ -21,7 +21,9 @@ TEST(INTRAMOLECULAR_POTENTIAL_FIXES, urey_bradley_lengths_follow_the_boltzmann_d
   };
   const std::array<Case, 3> cases{
       Case{UreyBradleyPotential({0, 1}, UreyBradleyType::Harmonic, {2000.0, 2.0}), 0.0, 6.0},
-      Case{UreyBradleyPotential({0, 1}, UreyBradleyType::Morse, {2000.0, 2.0, 1.8}), 0.0, 3.0},
+      // (sampled to an Angstrom and a half past the minimum where that is beyond three: a well this shallow has
+      // a tail that reaches the end of whatever interval it is given)
+      Case{UreyBradleyPotential({0, 1}, UreyBradleyType::Morse, {2000.0, 2.0, 1.8}), 0.0, 3.3},
       Case{UreyBradleyPotential({0, 1}, UreyBradleyType::Quartic, {1000.0, 1.5, -200.0, 500.0}), 0.0, 3.0}};
 
   for (const auto& [potential, lo, hi] : cases)

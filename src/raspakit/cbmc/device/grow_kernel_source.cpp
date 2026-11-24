@@ -127,7 +127,10 @@ void growEnergies(GLOBAL const float4* RESTRICT background,          // per back
         const float sigmaOverRR = lj.y / rrSafe;  // (sigma/r)^2
         const float rri3 = sigmaOverRR * sigmaOverRR * sigmaOverRR;
         const float rri6 = rri3 * rri3;
-        const float u = lj.x * (rri6 - rri3) - lj.z;
+        // (a pair of no strength has no energy at any distance: as a product, nought times a twelfth power
+        // that single precision does not hold below sigma/1600 was not a number, which is no overlap and
+        // spoiled the sum of the whole work group)
+        const float u = (lj.x != 0.0f) ? lj.x * (rri6 - rri3) - lj.z : -lj.z;
         if (u > overlapCriteria)
         {
           overlaps += 1.0f;

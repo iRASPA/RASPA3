@@ -62,6 +62,14 @@ struct CrossLinkAtomLayout
   }
 };
 
+/// The pairs of atoms (indices in the molecule-atom span) whose non-bonded interaction the cross-link terms take
+/// out of the inter-molecular sum again: the linked pair and the 1-3 pairs across every link, and the two
+/// partners of a site with two links when they are on different molecules. Each pair once. They stand at bond
+/// distances, far above the overlap criterion, and a sum that tests for an overlap has to pass them by.
+std::vector<std::array<std::uint32_t, 2>> crossLinkExcludedPairs(
+    const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+    const CrossLinkTable &table);
+
 /// Total cross-link energy of the current configuration.
 RunningEnergy computeCrossLinkEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
                                      const std::vector<Component> &components,

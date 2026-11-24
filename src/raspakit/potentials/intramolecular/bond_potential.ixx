@@ -27,23 +27,59 @@ double sampleBondLengthRejection(const Potentials::PotentialTag& tag, RandomNumb
                                                      [&]
                                                      {
                                                        constexpr std::size_t numberOfGridPoints = 1024;
-                                                       double maximum = 0.0;
+                                                       double maximum = -std::numeric_limits<double>::max();
                                                        for (std::size_t i = 0; i != numberOfGridPoints; ++i)
                                                        {
                                                          double r = lo + (hi - lo) * (static_cast<double>(i) + 0.5) /
                                                                              static_cast<double>(numberOfGridPoints);
-                                                         maximum = std::max(maximum, r * r * std::exp(-beta * energy(r)));
+                                                         maximum = std::max(maximum, 2.0 * std::log(r) - beta * energy(r));
                                                        }
-                                                       return 1.1 * maximum;
+                                                       return std::log(1.1) + maximum;
                                                      });
 
-  double bond_length, density;
-  do
+  // In logarithms, the envelope and the density both. A potential with a well below zero (Morse, the
+  // Lennard-Jones forms) has a Boltzmann factor at its minimum that a double does not hold once the well is some
+  // seven hundred kT deep: the envelope and the density were then both infinite, their ratio not a number, and
+  // the loop compared a uniform number with that for as long as it was left to.
+  double bond_length;
+  for (;;)
   {
     bond_length = lo + (hi - lo) * random.uniform();
-    density = bond_length * bond_length * std::exp(-beta * energy(bond_length));
-  } while (random.uniform() > density / envelope);
+    if (!(bond_length > 0.0)) continue;
+    const double logRatio = 2.0 * std::log(bond_length) - beta * energy(bond_length) - envelope;
+    const double uniform = random.uniform();
+    if (!(uniform > 0.0) || std::log(uniform) <= logRatio) break;
+  }
   return bond_length;
+}
+
+// How far out the bond types without a Gaussian sampler are sampled: three Angstrom, or an Angstrom and a half past
+// where the potential has its minimum. Three is ample for a bond, and was the limit whatever the potential: the
+// same types serve the Urey-Bradley term, a distance between atoms two bonds apart, and the distribution of one
+// with its minimum at 3.2 was cut off below it.
+export template <typename Type, typename Parameters>
+double anharmonicUpperLength(Type type, const Parameters& parameters)
+{
+  constexpr double shortest = 3.0;
+  constexpr double beyondMinimum = 1.5;
+  switch (type)
+  {
+    case Type::Morse:
+      return std::max(shortest, parameters[2] + beyondMinimum);
+    case Type::LJ_12_6:
+      return (parameters[0] > 0.0 && parameters[1] > 0.0)
+                 ? std::max(shortest, std::pow(2.0 * parameters[0] / parameters[1], 1.0 / 6.0) + beyondMinimum)
+                 : shortest;
+    case Type::LennardJones:
+      return std::max(shortest, 1.122462048309373 * parameters[1] + beyondMinimum);
+    case Type::RestrainedHarmonic:
+    case Type::Quartic:
+    case Type::CFF_Quartic:
+    case Type::MM3:
+      return std::max(shortest, parameters[1] + beyondMinimum);
+    default:
+      return shortest;
+  }
 }
 
 /**

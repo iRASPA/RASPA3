@@ -209,6 +209,21 @@ TEST(WHAM_OVERLAP_AND_SHARED_SLOT_FIXES, replicas_in_the_same_external_field_exc
   // a field in one replica only, or the field laid out in another box, is another Hamiltonian
   EXPECT_FALSE(MC_Moves::ParallelTemperingLogAcceptance(a, make(350.0, false, 30.0)).has_value());
   EXPECT_FALSE(MC_Moves::ParallelTemperingLogAcceptance(a, make(350.0, true, 32.0)).has_value());
+
+  // Unless the replicas sample their volume: the box is then part of the state and travels with the
+  // configuration, the two boxes differ from the first accepted volume change on, and the field, evaluated in the
+  // box each configuration is in, is one Hamiltonian in both. (Refused, an isobaric ladder in a field never
+  // exchanged again after that change.)
+  System isobaricA = make(300.0, true, 30.0);
+  System isobaricB = make(350.0, true, 32.0);
+  for (System* system : {&isobaricA, &isobaricB})
+  {
+    system->mc_moves_probabilities.setProbability(Move::Types::VolumeChange, 0.1);
+  }
+  EXPECT_TRUE(MC_Moves::ParallelTemperingLogAcceptance(isobaricA, isobaricB).has_value());
+  // one of them alone does not make the other's box a coordinate
+  isobaricB.mc_moves_probabilities.setProbability(Move::Types::VolumeChange, 0.0);
+  EXPECT_FALSE(MC_Moves::ParallelTemperingLogAcceptance(isobaricA, isobaricB).has_value());
 }
 
 // ln P and the bias compensate each other: each is beyond the range of an exponential, their sum is not.

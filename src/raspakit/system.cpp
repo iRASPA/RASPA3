@@ -1093,6 +1093,25 @@ static RunningEnergy interMolecularEnergyWithPolymerLinks(const ForceField& forc
   return energy;
 }
 
+// The pairs an overlap is not looked for in: those the polymer topology leaves out of the pair lists, and those a
+// cross-link takes out of the sum again. The second were not among them: with one cross-link in the system the
+// pair it joins, at its bond length, was an overlap in every configuration, and every move that takes the whole
+// energy (a volume change, a hybrid MC trajectory, the smart moves of all molecules) was refused.
+static PairListExclusions overlapExemptPairs(const PairListExclusions& unlisted, std::size_t numberOfAtoms,
+                                             std::span<const std::array<std::uint32_t, 2>> crossLinked)
+{
+  if (crossLinked.empty()) return unlisted;
+  std::vector<std::array<std::uint32_t, 2>> pairs(crossLinked.begin(), crossLinked.end());
+  for (std::uint32_t atom = 0; atom + 1 < unlisted.start.size(); ++atom)
+  {
+    for (std::uint32_t slot = unlisted.start[atom]; slot < unlisted.start[atom + 1]; ++slot)
+    {
+      if (atom < unlisted.partner[slot]) pairs.push_back({atom, unlisted.partner[slot]});
+    }
+  }
+  return PairListExclusions::fromPairs(numberOfAtoms, pairs);
+}
+
 RunningEnergy System::computeTotalEnergies(bool* overlap) noexcept
 {
   if (fixedFrameworkStoredEik.empty())
@@ -1137,6 +1156,15 @@ RunningEnergy System::computeTotalEnergies(bool* overlap) noexcept
                                                                  polymerLinks, true);
   }
 
+  std::optional<PairListExclusions> withCrossLinks{};
+  if (overlap != nullptr && !crossLinks.empty())
+  {
+    const std::vector<std::array<std::uint32_t, 2>> crossLinked =
+        Interactions::crossLinkExcludedPairs(components, numberOfMoleculesPerComponent, crossLinks);
+    withCrossLinks = overlapExemptPairs(polymerLinks.unlisted, moleculeAtomPositions.size(), crossLinked);
+  }
+  const PairListExclusions& overlapExempt = withCrossLinks.has_value() ? withCrossLinks.value() : polymerLinks.unlisted;
+
   if (forceField.computePolarization)
   {
     std::span<double3> moleculeElectricField = spanOfMoleculeElectricField();
@@ -1154,7 +1182,7 @@ RunningEnergy System::computeTotalEnergies(bool* overlap) noexcept
     if (forceField.omitInterPolarization)
     {
       intermolecularEnergy = interMolecularEnergyWithPolymerLinks(
-          forceField, simulationBox, pairCellList, moleculeAtomPositions, polymerLinks.unlisted, overlap);
+          forceField, simulationBox, pairCellList, moleculeAtomPositions, overlapExempt, overlap);
     }
     else
     {
@@ -1184,7 +1212,7 @@ RunningEnergy System::computeTotalEnergies(bool* overlap) noexcept
         forceField, simulationBox, interpolationGrids, framework, frameworkAtomPositions, moleculeAtomPositions,
         overlap);
     RunningEnergy intermolecularEnergy = interMolecularEnergyWithPolymerLinks(
-        forceField, simulationBox, pairCellList, moleculeAtomPositions, polymerLinks.unlisted, overlap);
+        forceField, simulationBox, pairCellList, moleculeAtomPositions, overlapExempt, overlap);
 
     RunningEnergy tailEnergy = computeTailCorrectionEnergies();
 

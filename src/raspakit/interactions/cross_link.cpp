@@ -369,6 +369,45 @@ Interactions::CrossLinkAtomLayout Interactions::CrossLinkAtomLayout::make(
   return layout;
 }
 
+std::vector<std::array<std::uint32_t, 2>> Interactions::crossLinkExcludedPairs(
+    const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+    const CrossLinkTable &table)
+{
+  std::vector<std::array<std::uint32_t, 2>> pairs{};
+  if (table.links.empty()) return pairs;
+
+  // the pairs 'evaluateLinkSet' excludes, in the order it meets them
+  const CrossLinkAtomLayout layout = CrossLinkAtomLayout::make(components, numberOfMoleculesPerComponent);
+  std::set<std::pair<std::uint32_t, std::uint32_t>> seen{};
+  auto add = [&](const CrossLinkSite &x, const CrossLinkSite &y)
+  {
+    if (x.sameMolecule(y)) return;
+    const std::uint32_t i = static_cast<std::uint32_t>(layout.index(x));
+    const std::uint32_t j = static_cast<std::uint32_t>(layout.index(y));
+    if (seen.insert(std::minmax(i, j)).second) pairs.push_back({i, j});
+  };
+  auto atomOf = [](const CrossLinkSite &site, std::size_t local)
+  { return CrossLinkSite{site.componentId, site.moleculeIndex, static_cast<std::uint32_t>(local)}; };
+
+  std::map<CrossLinkSite, std::vector<CrossLinkSite>> partnersOfSite{};
+  for (const CrossLink &link : table.links)
+  {
+    add(link.a, link.b);
+    for (std::size_t nA : neighboursOf(components[link.a.componentId], link.a.atomIndex)) add(atomOf(link.a, nA), link.b);
+    for (std::size_t nB : neighboursOf(components[link.b.componentId], link.b.atomIndex)) add(link.a, atomOf(link.b, nB));
+    partnersOfSite[link.a].push_back(link.b);
+    partnersOfSite[link.b].push_back(link.a);
+  }
+  for (const auto &[site, partners] : partnersOfSite)
+  {
+    for (std::size_t i = 0; i < partners.size(); ++i)
+    {
+      for (std::size_t j = i + 1; j < partners.size(); ++j) add(partners[i], partners[j]);
+    }
+  }
+  return pairs;
+}
+
 RunningEnergy Interactions::computeCrossLinkEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
                                                    const std::vector<Component> &components,
                                                    const std::vector<std::size_t> &numberOfMoleculesPerComponent,
