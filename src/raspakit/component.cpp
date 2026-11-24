@@ -668,6 +668,159 @@ void Component::buildFragmentGraph(const std::vector<std::vector<std::size_t>> &
   buildDistanceConstraints();
 }
 
+namespace
+{
+using DistanceConstraint = Component::DistanceConstraint;
+
+// The rank of the Jacobian of the distance constraints at the positions given: one row per constraint, the unit
+// vector between its two atoms in the columns of the one and its opposite in those of the other. By elimination
+// with full pivoting; a pivot below 1e-6 of the largest ends it.
+std::size_t jacobianRank(std::span<const double3> positions, std::span<const DistanceConstraint> constraints)
+{
+  const std::size_t rows = constraints.size();
+  const std::size_t columns = 3 * positions.size();
+  std::vector<double> matrix(rows * columns, 0.0);
+  for (std::size_t k = 0; k != rows; ++k)
+  {
+    const double3 direction = (positions[constraints[k].a] - positions[constraints[k].b]).normalized();
+    for (std::size_t axis = 0; axis != 3; ++axis)
+    {
+      const double value = axis == 0 ? direction.x : axis == 1 ? direction.y : direction.z;
+      matrix[k * columns + 3 * constraints[k].a + axis] = value;
+      matrix[k * columns + 3 * constraints[k].b + axis] = -value;
+    }
+  }
+
+  std::size_t rank{};
+  double largest{};
+  for (; rank != std::min(rows, columns); ++rank)
+  {
+    std::size_t pivotRow = rank, pivotColumn = rank;
+    double pivot{};
+    for (std::size_t i = rank; i != rows; ++i)
+    {
+      for (std::size_t j = rank; j != columns; ++j)
+      {
+        if (std::abs(matrix[i * columns + j]) > pivot)
+        {
+          pivot = std::abs(matrix[i * columns + j]);
+          pivotRow = i;
+          pivotColumn = j;
+        }
+      }
+    }
+    if (rank == 0) largest = pivot;
+    if (!(pivot > 1.0e-6 * largest) || pivot == 0.0) break;
+    for (std::size_t j = 0; j != columns; ++j) std::swap(matrix[rank * columns + j], matrix[pivotRow * columns + j]);
+    for (std::size_t i = 0; i != rows; ++i) std::swap(matrix[i * columns + rank], matrix[i * columns + pivotColumn]);
+    for (std::size_t i = rank + 1; i != rows; ++i)
+    {
+      const double factor = matrix[i * columns + rank] / matrix[rank * columns + rank];
+      if (factor == 0.0) continue;
+      for (std::size_t j = rank; j != columns; ++j) matrix[i * columns + j] -= factor * matrix[rank * columns + j];
+    }
+  }
+  return rank;
+}
+
+bool satisfied(std::span<const double3> positions, std::span<const DistanceConstraint> constraints, double tolerance)
+{
+  return std::ranges::all_of(constraints, [&](const DistanceConstraint &constraint)
+  {
+    const double length = (positions[constraint.a] - positions[constraint.b]).length();
+    return std::abs(length - constraint.length) <= tolerance * constraint.length;
+  });
+}
+
+// A conformation of 'numberOfAtoms' atoms that satisfies the constraints, with nothing special about it (not
+// planar, not collinear): the atoms are laid out along a spanning tree of the constraints at their lengths, in
+// directions drawn from 'seed', and the remaining constraints are then imposed by moving the two atoms of each
+// along their separation until all hold. Only the constrained distances are set: the rank of the constraints does
+// not depend on the coordinates they leave free. Nullopt when the iteration does not arrive.
+std::optional<std::vector<double3>> genericConformation(std::size_t numberOfAtoms,
+                                                        std::span<const DistanceConstraint> constraints,
+                                                        std::uint64_t seed)
+{
+  std::mt19937_64 generator(seed);
+  const auto uniform = [&]() { return static_cast<double>(generator() >> 11) * 0x1.0p-53; };
+  const auto direction = [&]()
+  {
+    const double cosTheta = 2.0 * uniform() - 1.0;
+    const double sinTheta = std::sqrt(std::max(0.0, 1.0 - cosTheta * cosTheta));
+    const double phi = 2.0 * std::numbers::pi * uniform();
+    return double3(sinTheta * std::cos(phi), sinTheta * std::sin(phi), cosTheta);
+  };
+
+  std::vector<double3> positions(numberOfAtoms);
+  std::vector<bool> placed(numberOfAtoms, false);
+  for (std::size_t start = 0; start != numberOfAtoms; ++start)
+  {
+    if (placed[start]) continue;
+    placed[start] = true;
+    std::vector<std::size_t> stack{start};
+    while (!stack.empty())
+    {
+      const std::size_t current = stack.back();
+      stack.pop_back();
+      for (const DistanceConstraint &constraint : constraints)
+      {
+        if (constraint.a != current && constraint.b != current) continue;
+        const std::size_t other = constraint.a == current ? constraint.b : constraint.a;
+        if (placed[other]) continue;
+        positions[other] = positions[current] + constraint.length * direction();
+        placed[other] = true;
+        stack.push_back(other);
+      }
+    }
+  }
+
+  for (std::size_t sweep = 0; sweep != 20000; ++sweep)
+  {
+    if (satisfied(positions, constraints, 1.0e-10)) return positions;
+    for (const DistanceConstraint &constraint : constraints)
+    {
+      double3 separation = positions[constraint.a] - positions[constraint.b];
+      double length = separation.length();
+      if (!(length > 1.0e-8 * constraint.length))
+      {
+        separation = constraint.length * direction();
+        length = constraint.length;
+      }
+      const double3 shift = (0.5 * (constraint.length - length) / length) * separation;
+      positions[constraint.a] += shift;
+      positions[constraint.b] -= shift;
+    }
+  }
+  return std::nullopt;
+}
+
+// The number of independent constraints among those of one connected group of 'reference.size()' atoms, the number
+// of degrees of freedom they remove. Constraints without a closed loop are always independent. With loops some may
+// repeat what the others already fix (a group of n atoms is rigid with 3n - 6 of them): the count is then the rank
+// of their Jacobian, the same at all but special conformations, taken as the largest over a few generic ones and
+// over the reference positions when these satisfy the constraints (those of a ring have to). Where no conformation
+// is found, and for a group too large for the elimination, every constraint counts up to the rigid limit.
+std::size_t independentConstraints(std::span<const double3> reference, std::span<const DistanceConstraint> constraints)
+{
+  const std::size_t numberOfAtoms = reference.size();
+  if (constraints.size() + 1 <= numberOfAtoms) return constraints.size();
+
+  const std::size_t rigidLimit = numberOfAtoms == 2 ? 1 : 3 * numberOfAtoms - 6;
+  const std::size_t counted = std::min(constraints.size(), rigidLimit);
+  if (numberOfAtoms > 128) return counted;
+
+  std::optional<std::size_t> rank{};
+  if (satisfied(reference, constraints, 1.0e-6)) rank = jacobianRank(reference, constraints);
+  for (std::uint64_t seed = 1; seed != 5; ++seed)
+  {
+    const std::optional<std::vector<double3>> positions = genericConformation(numberOfAtoms, constraints, seed);
+    if (!positions.has_value()) continue;
+    rank = std::max(rank.value_or(0), jacobianRank(*positions, constraints));
+  }
+  return rank.value_or(counted);
+}
+}  // namespace
+
 void Component::buildDistanceConstraints()
 {
   distanceConstraints.clear();
@@ -786,10 +939,8 @@ void Component::buildDistanceConstraints()
   fixedTorsions(intraMolecularPotentials.torsions, "torsion");
   fixedTorsions(intraMolecularPotentials.improperTorsions, "improper torsion");
 
-  // The degrees of freedom the constraints remove. Constraints are independent until a group of n atoms they
-  // connect is rigid, which takes 3n - 6 of them (one for a pair): further ones in that group are redundant. The
-  // count is taken per connected group of constrained atoms; a group that is rigid in part only, with redundant
-  // constraints inside that part, is counted one for one.
+  // The degrees of freedom the constraints remove: the rank of their Jacobian, taken per connected group of
+  // constrained atoms (see 'independentConstraints').
   std::vector<std::size_t> group(numberOfBeads);
   std::iota(group.begin(), group.end(), std::size_t{0});
   const auto root = [&](std::size_t atom)
@@ -798,15 +949,28 @@ void Component::buildDistanceConstraints()
     return atom;
   };
   for (const DistanceConstraint &constraint : distanceConstraints) group[root(constraint.a)] = root(constraint.b);
-  std::vector<std::size_t> atomsOfGroup(numberOfBeads, 0);
-  std::vector<std::size_t> constraintsOfGroup(numberOfBeads, 0);
-  for (std::size_t atom = 0; atom != numberOfBeads; ++atom) ++atomsOfGroup[root(atom)];
-  for (const DistanceConstraint &constraint : distanceConstraints) ++constraintsOfGroup[root(constraint.a)];
-  for (std::size_t atom = 0; atom != numberOfBeads; ++atom)
+  std::map<std::size_t, std::vector<DistanceConstraint>> constraintsOfGroup;
+  for (const DistanceConstraint &constraint : distanceConstraints)
   {
-    if (constraintsOfGroup[atom] == 0) continue;
-    const std::size_t rigidLimit = atomsOfGroup[atom] == 2 ? 1 : 3 * atomsOfGroup[atom] - 6;
-    numberOfConstrainedDegreesOfFreedom += std::min(constraintsOfGroup[atom], rigidLimit);
+    constraintsOfGroup[root(constraint.a)].push_back(constraint);
+  }
+  for (const auto &[groupRoot, constraints] : constraintsOfGroup)
+  {
+    // the atoms of the group, numbered in the order of the molecule, and their reference positions
+    std::vector<std::size_t> localIndex(numberOfBeads, numberOfBeads);
+    std::vector<double3> reference;
+    for (std::size_t atom = 0; atom != numberOfBeads; ++atom)
+    {
+      if (root(atom) != groupRoot) continue;
+      localIndex[atom] = reference.size();
+      reference.push_back(atom < atoms.size() ? atoms[atom].position : double3{});
+    }
+    std::vector<DistanceConstraint> local;
+    for (const DistanceConstraint &constraint : constraints)
+    {
+      local.push_back({localIndex[constraint.a], localIndex[constraint.b], constraint.length});
+    }
+    numberOfConstrainedDegreesOfFreedom += independentConstraints(reference, local);
   }
 
   // A semi-flexible molecule is integrated as a set of rigid-body fragments (each contributing three

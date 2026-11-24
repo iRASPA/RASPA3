@@ -982,6 +982,37 @@ void System::refreshStoredEwaldStructureFactors() noexcept
                                           spanOfFrameworkAtoms());
 }
 
+void System::reconcileDegreesOfFreedom()
+{
+  std::size_t translational{};
+  std::size_t rotational{};
+  if (framework && framework->hasMobileAtoms())
+  {
+    if (framework->isMixed())
+    {
+      translational += 3 * framework->flexibleAtomCount + 3 * framework->numberOfRigidGroups();
+      for (const FrameworkGroup& group : framework->groups)
+      {
+        if (group.isRigidBody()) rotational += group.rotationalDegreesOfFreedom;
+      }
+    }
+    else
+    {
+      translational += 3 * numberOfFrameworkAtoms;
+    }
+  }
+  for (const Molecule& molecule : moleculeData)
+  {
+    translational += components[molecule.componentId].translationalDegreesOfFreedom;
+    rotational += components[molecule.componentId].rotationalDegreesOfFreedom;
+  }
+  if (translational == translationalDegreesOfFreedom && rotational == rotationalDegreesOfFreedom) return;
+
+  translationalDegreesOfFreedom = translational;
+  rotationalDegreesOfFreedom = rotational;
+  updateCenterOfMassConstraint();
+}
+
 void System::requireSupportedDynamicsConstraints() const
 {
   bool constrained = false;
@@ -2476,6 +2507,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   // builds use fixed seeds and isolated molecules, so they give back the conformations of the original run.
   s.buildConformationReservoirs();
   s.buildRecoilReferenceConformations();
+  // The components were rebuilt on reading, with the distance constraints of their FIXED bonds: a file written
+  // before these has the degrees of freedom of the unconstrained molecules in its totals and in its thermostat.
+  s.reconcileDegreesOfFreedom();
   // An activated polymerization table stores its state only: the per-group types and initial states and the
   // derived term lists are rebuilt from the components and the restored atoms (as the Polymerization driver
   // does on its restart path), so a System read on its own evaluates its polymer terms.

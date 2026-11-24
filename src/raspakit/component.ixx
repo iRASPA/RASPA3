@@ -186,7 +186,8 @@ export struct Component
   /// a torsion, a term between a rigid fragment and an atom outside it): molecular dynamics cannot hold them and
   /// refuses the component, see 'requireSupportedDynamicsConstraints'.
   std::vector<std::string> unsupportedDynamicsConstraints{};
-  /// The number of degrees of freedom the distance constraints remove (subtracted from the translational ones).
+  /// The number of degrees of freedom the distance constraints remove (subtracted from the translational ones):
+  /// the number of independent constraints, the rank of their Jacobian at a generic conformation.
   std::size_t numberOfConstrainedDegreesOfFreedom{};
   double constraintTolerance{1.0e-8};            ///< Relative tolerance of the constrained lengths (and velocities).
   std::size_t constraintMaximumIterations{500};  ///< Iteration limit of SHAKE and of RATTLE per molecule and step.

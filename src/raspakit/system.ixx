@@ -504,6 +504,13 @@ export struct System
   /// degrees of freedom): more than one mobile entity, no lab-fixed framework atoms and no external field.
   [[nodiscard]] bool conservesCenterOfMassMomentum() const noexcept;
 
+  /// Sets the degrees of freedom to those of the mobile framework atoms and of the molecules present, as the
+  /// constructor and the insertions and deletions keep them, and passes them on to the thermostat when they
+  /// changed. For a system read from a restart file: its components are rebuilt on reading and may count
+  /// differently from the file (the distance constraints of FIXED bonds take degrees of freedom off that a file
+  /// of before them still has in its totals).
+  void reconcileDegreesOfFreedom();
+
   /// Throws when molecular dynamics cannot hold the FIXED terms of a component as constraints (see
   /// 'Component::distanceConstraints'), or when constrained molecules meet something that needs the atomic virial,
   /// which leaves the constraint forces out: atomic barostat coupling, the stress-fluctuation elastic constants.

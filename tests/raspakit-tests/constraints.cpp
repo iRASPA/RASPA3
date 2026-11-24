@@ -4,6 +4,7 @@
 
 import std;
 
+import archive;
 import int3;
 import double3;
 import double3x3;
@@ -20,6 +21,7 @@ import intra_molecular_potentials;
 import bond_potential;
 import bend_potential;
 import torsion_potential;
+import urey_bradley_potential;
 import system;
 import simulationbox;
 import running_energy;
@@ -198,6 +200,48 @@ TEST(constraints, component_lists_fixed_bonds_and_takes_their_degrees_of_freedom
   // the system sums the components
   System system = makeSystem(forceField, dimer, 3, 5.0, 3);
   EXPECT_EQ(system.translationalDegreesOfFreedom, 27uz * 5uz);
+}
+
+// Five atoms with all ten of their distances fixed are a rigid body, which nine of them already make: one is
+// redundant and takes no degree of freedom. The count is the rank of the constraints, not their number, also when
+// the group they connect is not rigid as a whole (a sixth atom hangs on one bond), with the reference positions
+// satisfying the constraints or left at zero as flexible molecule files leave them.
+TEST(constraints, redundant_constraints_take_no_degree_of_freedom)
+{
+  const ForceField forceField = makeForceField();
+  const std::vector<double3> geometry{{0.0, 0.0, 0.0},   {1.5, 0.1, 0.0},  {0.7, 1.3, 0.2},
+                                      {0.6, 0.4, 1.4},   {1.6, 1.5, 1.3},  {2.9, 1.9, 1.8}};
+  for (const bool withReference : {true, false})
+  {
+    Potentials::IntraMolecularPotentials potentials{};
+    for (std::size_t i = 0; i + 1 != geometry.size(); ++i)
+    {
+      potentials.bonds.push_back(BondPotential({i, i + 1}, BondType::Fixed, {(geometry[i] - geometry[i + 1]).length()}));
+    }
+    // the other six distances among the first five atoms
+    for (std::size_t i = 0; i != 5; ++i)
+    {
+      for (std::size_t j = i + 2; j < 5; ++j)
+      {
+        potentials.ureyBradleys.push_back(
+            UreyBradleyPotential({i, j}, UreyBradleyType::Fixed, {(geometry[i] - geometry[j]).length()}));
+      }
+    }
+    std::vector<Atom> atoms;
+    for (const double3& position : geometry) atoms.push_back(site(withReference ? position : double3{}));
+    const Component component(forceField, "braced", 305.33, 4871800.0, 0.0993, atoms, chain(6), potentials, 5, 21);
+
+    ASSERT_FALSE(component.rigid);
+    EXPECT_TRUE(component.unsupportedDynamicsConstraints.empty());
+    EXPECT_EQ(component.distanceConstraints.size(), 11uz);
+    // nine for the rigid five, one for the bond of the sixth atom
+    EXPECT_EQ(component.numberOfConstrainedDegreesOfFreedom, 10uz) << "reference positions: " << withReference;
+    EXPECT_EQ(component.translationalDegreesOfFreedom, 18uz - 10uz);
+  }
+
+  // without loops every constraint is independent, whatever the reference positions
+  EXPECT_EQ(makeDimer(forceField, true).numberOfConstrainedDegreesOfFreedom, 1uz);
+  EXPECT_EQ(makeTrimer(forceField).numberOfConstrainedDegreesOfFreedom, 3uz);
 }
 
 TEST(constraints, a_fixed_angle_with_a_flexible_arm_is_refused_by_the_dynamics)
@@ -398,4 +442,57 @@ TEST(constraints, domain_decomposed_step_follows_the_serial_step)
   for (std::size_t i = 0; i != a.size(); ++i)
     difference = std::max(difference, (a[i].position - b[i].position).length());
   EXPECT_LT(difference, 1e-9);
+}
+
+// A restart file written before the constraints existed has the degrees of freedom of the unconstrained molecules
+// in the totals of its system and in its thermostat, while the components are rebuilt with their constraints when
+// it is read: the totals follow the components. A file of now is read back as it was written.
+TEST(constraints, restart_reconciles_the_degrees_of_freedom_with_the_components)
+{
+  const ForceField forceField = makeForceField();
+  System original = makeSystem(forceField, makeDimer(forceField, true), 3, 5.5, 71);
+  const std::size_t constrained = 27uz * 5uz;
+  ASSERT_EQ(original.translationalDegreesOfFreedom, constrained);
+
+  const auto roundTrip = [](const System& system)
+  {
+    const std::filesystem::path path = std::filesystem::temp_directory_path() /
+                                       std::format("raspa3_constraints_restart_{}.bin", test_support::uniqueSuffix());
+    {
+      std::ofstream stream(path, std::ios::binary);
+      Archive<std::ofstream> archive(stream);
+      archive << system;
+    }
+    System restored;
+    {
+      std::ifstream stream(path, std::ios::binary);
+      Archive<std::ifstream> archive(stream);
+      archive >> restored;
+    }
+    std::filesystem::remove(path);
+    return restored;
+  };
+
+  original.updateCenterOfMassConstraint();
+  original.thermostat = Thermostat(original.temperature, original.timeStep, original.translationalDegreesOfFreedom, 0,
+                                   3, 1, 0.15);
+  original.updateCenterOfMassConstraint();
+  {
+    const System restored = roundTrip(original);
+    EXPECT_EQ(restored.translationalDegreesOfFreedom, constrained);
+    EXPECT_EQ(restored.translationalCenterOfMassConstraint, original.translationalCenterOfMassConstraint);
+    EXPECT_EQ(restored.thermostat->translationalDegreesOfFreedom, constrained);
+  }
+
+  // the totals of a file of before: six degrees of freedom for each dimer
+  System stale = original;
+  stale.translationalDegreesOfFreedom = 27uz * 6uz;
+  stale.thermostat->translationalDegreesOfFreedom = 27uz * 6uz;
+  {
+    const System restored = roundTrip(stale);
+    EXPECT_EQ(restored.translationalDegreesOfFreedom, constrained);
+    EXPECT_EQ(restored.rotationalDegreesOfFreedom, 0uz);
+    ASSERT_TRUE(restored.thermostat.has_value());
+    EXPECT_EQ(restored.thermostat->translationalDegreesOfFreedom, constrained);
+  }
 }
