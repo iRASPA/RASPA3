@@ -384,8 +384,10 @@ class MolecularDynamicsEnsembles(unittest.TestCase):
 
     def test_the_volume_is_constant_with_a_thermostat_only(self):
         system = self.co2_fluid(pressure=None)
-        system.set_thermostat(self.thermostat())
         self.assertEqual(system.molecular_dynamics_ensemble, raspalib.MolecularDynamicsEnsemble.NVE)
+        system.set_thermostat(self.thermostat())
+        # a thermostat makes constant energy into constant temperature
+        self.assertEqual(system.molecular_dynamics_ensemble, raspalib.MolecularDynamicsEnsemble.NVT)
         self.assertIsNone(system.thermobarostat)
         self.run_md(system)
 
@@ -397,6 +399,13 @@ class MolecularDynamicsEnsembles(unittest.TestCase):
         rotational, _ = system.average_rotational_temperature.result()
         self.assertGreater(translational, 0.0)
         self.assertGreater(rotational, 0.0)
+
+    def test_removing_the_thermostat_gives_constant_energy_again(self):
+        system = self.co2_fluid(pressure=None)
+        system.set_thermostat(self.thermostat())
+        system.set_thermostat(None)
+        self.assertEqual(system.molecular_dynamics_ensemble, raspalib.MolecularDynamicsEnsemble.NVE)
+        self.assertIsNone(system.thermostat)
 
     def test_a_barostat_changes_the_volume(self):
         system = self.co2_fluid(pressure=5.0e7)

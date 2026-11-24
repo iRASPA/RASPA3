@@ -1,3 +1,4 @@
+from raspalib.molecule_analyses import *
 import enum
 import collections.abc
 from raspalib.connectivity_table import *
@@ -443,4 +444,40 @@ class Component():
     def backbone_atoms(self) -> collections.abc.Sequence[int]:
         """Return the atoms on the shortest path of bonds between the
         end-to-end atoms."""
+        ...
+
+    @property
+    def molecule_properties_settings(self) -> MoleculePropertiesSettings | None:
+        """Histograms of the bond lengths, bend angles, torsion angles and the end-to-end distance."""
+        ...
+
+    @molecule_properties_settings.setter
+    def molecule_properties_settings(self, value: MoleculePropertiesSettings | None) -> None:
+        ...
+
+    @property
+    def molecule_shape_settings(self) -> MoleculeShapeSettings | None:
+        """The radius of gyration and the shape descriptors of the gyration tensor."""
+        ...
+
+    @molecule_shape_settings.setter
+    def molecule_shape_settings(self, value: MoleculeShapeSettings | None) -> None:
+        ...
+
+    @property
+    def molecule_backbone_settings(self) -> MoleculeBackboneSettings | None:
+        """The statistics of the backbone of a chain."""
+        ...
+
+    @molecule_backbone_settings.setter
+    def molecule_backbone_settings(self, value: MoleculeBackboneSettings | None) -> None:
+        ...
+
+    @property
+    def end_to_end_acf_settings(self) -> EndToEndACFSettings | None:
+        """The autocorrelation function of the end-to-end vector."""
+        ...
+
+    @end_to_end_acf_settings.setter
+    def end_to_end_acf_settings(self, value: EndToEndACFSettings | None) -> None:
         ...

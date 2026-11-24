@@ -1,3 +1,7 @@
+from raspalib.molecule_analyses import *
+from raspalib.property_elastic_constants_fluctuation import *
+from raspalib.property_radical_waiting_times import *
+from raspalib.write_lammps_data import *
 from raspalib.running_energy import *
 from raspalib.thermobarostat import *
 from raspalib.property_temperature import *
@@ -294,3 +298,39 @@ class System():
         """Return the energies of the configuration as it is, in internal
         units of 10 J/mol."""
         ...
+
+    @property
+    def property_molecule_properties(self) -> PropertyMoleculeProperties | None:
+        """The histograms of the molecules of the components that have
+        ``molecule_properties_settings``; created by the driver."""
+        ...
+
+    @property
+    def property_molecule_shape(self) -> PropertyMoleculeShape | None: ...
+
+    @property
+    def property_molecule_backbone(self) -> PropertyMoleculeBackbone | None: ...
+
+    @property
+    def property_end_to_end_acf(self) -> PropertyEndToEndAutoCorrelationFunction | None: ...
+
+    @property
+    def property_elastic_constants_fluctuation(self) -> PropertyElasticConstantsFluctuation | None: ...
+
+    def set_property_elastic_constants_fluctuation(
+        self, property: PropertyElasticConstantsFluctuation | None = None, sample_every: int = 100
+    ) -> None:
+        """Sample the elastic constants from the fluctuations of the stress,
+        every ``sample_every`` steps of molecular dynamics at constant volume
+        and temperature."""
+        ...
+
+    @property
+    def property_radical_waiting_times(self) -> PropertyRadicalWaitingTimes | None: ...
+
+    def set_property_radical_waiting_times(self, property: PropertyRadicalWaitingTimes | None = None) -> None: ...
+
+    @property
+    def write_lammps_data(self) -> WriteLammpsData | None: ...
+
+    def set_write_lammps_data(self, property: WriteLammpsData | None = None) -> None: ...

@@ -38,6 +38,10 @@ from raspalib.property_conventional_radial_distribution_function import *
 from raspalib.property_mean_squared_displacement import *
 from raspalib.property_velocity_autocorrelation_function import *
 from raspalib.thermostat import *
+from raspalib.molecule_analyses import *
+from raspalib.property_elastic_constants_fluctuation import *
+from raspalib.property_radical_waiting_times import *
+from raspalib.write_lammps_data import *
 from raspalib.thermobarostat import *
 from raspalib.property_temperature import *
 from raspalib.property_simulation_box import *
@@ -125,6 +129,21 @@ __all__ = [
     "ChiralCenter",
     "FrameworkDefinition",
     "FrameworkGroupType",
+    "MoleculePropertiesSettings",
+    "MoleculeShapeSettings",
+    "MoleculeBackboneSettings",
+    "EndToEndACFSettings",
+    "PropertyMoleculeProperties",
+    "PropertyMoleculeShape",
+    "PropertyMoleculeBackbone",
+    "PropertyEndToEndAutoCorrelationFunction",
+    "EndToEndAutoCorrelationFunctionData",
+    "RelaxationTimeEstimates",
+    "ScalarRelaxation",
+    "EndToEndRelaxationTimes",
+    "PropertyElasticConstantsFluctuation",
+    "PropertyRadicalWaitingTimes",
+    "WriteLammpsData",
     "set_number_of_threads",
     "number_of_threads",
 ]

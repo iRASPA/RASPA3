@@ -92,6 +92,14 @@ import fragment_graph;
 import fragment;
 import json;
 import stringutils;
+import molecule_property_settings;
+import property_molecule_properties;
+import property_molecule_shape;
+import property_molecule_backbone;
+import property_end_to_end_acf;
+import property_elastic_constants_fluctuation;
+import property_radical_waiting_times;
+import write_lammps_data;
 
 template <typename T>
 std::pair<T, T>& operator*=(std::pair<T, T>& p, const double& s)
@@ -893,6 +901,16 @@ void describeFlexibleComponent(Component& component, const std::vector<std::arra
   }
 }
 
+// The component of an analysis of molecules: one the system has and that asked for the analysis.
+template <typename Property>
+void checkSampledComponent(const Property& property, std::size_t component, const char* name)
+{
+  if (component >= property.numberOfComponents || !property.isSampled(component))
+  {
+    throw nanobind::index_error(std::format("{}: component {} is not sampled", name, component).c_str());
+  }
+}
+
 // A driver works on its own copy of the systems it is given: the kits are value-based and keep no references to the
 // objects of the caller. To let those objects hold the results nevertheless, the systems of the driver are assigned
 // back to the Python objects they were copied from whenever a phase returns (copy in, copy out). Inside a call-back
@@ -940,6 +958,30 @@ void bindDriver(nanobind::module_& m, const char* name)
       if (!nanobind::isinstance<System>(item)) throw nanobind::type_error("systems: a sequence of System is expected");
       given.push_back(nanobind::borrow(item));
       copies.push_back(nanobind::cast<const System&>(item));
+
+      // The analyses of the molecules that the components ask for (their histograms, shape, backbone statistics and
+      // end-to-end autocorrelation function) are created here, as the input reader creates them once the driver is
+      // known: the autocorrelation function has its lags in picoseconds for molecular dynamics and in cycles for
+      // Monte Carlo.
+      System& system = copies.back();
+      const bool asked = std::ranges::any_of(system.components, [](const Component& component)
+                                             {
+                                               return component.moleculePropertiesSettings.has_value() ||
+                                                      component.moleculeShapeSettings.has_value() ||
+                                                      component.moleculeBackboneSettings.has_value() ||
+                                                      component.endToEndACFSettings.has_value();
+                                             });
+      if (asked)
+      {
+        try
+        {
+          system.initializeMoleculeProperties(number_of_blocks, std::same_as<Driver, MolecularDynamics>);
+        }
+        catch (const std::runtime_error& error)
+        {
+          throw std::invalid_argument(error.what());
+        }
+      }
     }
     new (driver) Bound(
         SimulationSchedule{number_of_production_cycles, number_of_pre_initialization_cycles,
@@ -1903,6 +1945,128 @@ EXPAND_MODULE(MODULE_NAME)
             { return Units::PressureConversionFactor * p.fugacityResult(1.0 / (Units::KB * T)); },
             nanobind::arg("temperature"));
 
+    nanobind::class_<MoleculePropertiesSettings>(m, "MoleculePropertiesSettings")
+        .def(
+            "__init__",
+            [](MoleculePropertiesSettings* settings, std::size_t sample_every, std::optional<std::size_t> write_every,
+               std::size_t number_of_bins, double bond_range, std::optional<double> end_to_end_range,
+               double end_to_end_bin_width)
+            {
+              if (sample_every == 0 || number_of_bins == 0 || !(bond_range > 0.0) || !(end_to_end_bin_width > 0.0))
+              {
+                throw std::invalid_argument("MoleculePropertiesSettings: sample_every, number_of_bins, bond_range and "
+                                            "end_to_end_bin_width must be positive");
+              }
+              new (settings) MoleculePropertiesSettings();
+              settings->sampleEvery = sample_every;
+              settings->writeEvery = write_every;
+              settings->numberOfBins = number_of_bins;
+              settings->bondRange = bond_range;
+              settings->endToEndRange = end_to_end_range;
+              settings->endToEndBinWidth = end_to_end_bin_width;
+            },
+            nanobind::arg("sample_every") = 10, nanobind::arg("write_every") = nanobind::none(),
+            nanobind::arg("number_of_bins") = 128, nanobind::arg("bond_range") = 4.0,
+            nanobind::arg("end_to_end_range") = nanobind::none(), nanobind::arg("end_to_end_bin_width") = 0.25,
+            "Histograms of the bond lengths (up to 'bond_range' [Angstrom]), the bend and torsion angles, and the "
+            "end-to-end distance (up to 'end_to_end_range', by default the contour length, in bins of "
+            "'end_to_end_bin_width' [Angstrom]).")
+        .def_ro("sample_every", &MoleculePropertiesSettings::sampleEvery)
+        .def_ro("write_every", &MoleculePropertiesSettings::writeEvery)
+        .def_ro("number_of_bins", &MoleculePropertiesSettings::numberOfBins)
+        .def_ro("bond_range", &MoleculePropertiesSettings::bondRange)
+        .def_ro("end_to_end_range", &MoleculePropertiesSettings::endToEndRange)
+        .def_ro("end_to_end_bin_width", &MoleculePropertiesSettings::endToEndBinWidth);
+
+    nanobind::class_<MoleculeShapeSettings>(m, "MoleculeShapeSettings")
+        .def(
+            "__init__",
+            [](MoleculeShapeSettings* settings, std::size_t sample_every, std::optional<std::size_t> write_every,
+               std::size_t number_of_bins, bool mass_weighted, std::optional<double> radius_of_gyration_range,
+               double radius_of_gyration_bin_width)
+            {
+              if (sample_every == 0 || number_of_bins == 0 || !(radius_of_gyration_bin_width > 0.0))
+              {
+                throw std::invalid_argument("MoleculeShapeSettings: sample_every, number_of_bins and "
+                                            "radius_of_gyration_bin_width must be positive");
+              }
+              new (settings) MoleculeShapeSettings();
+              settings->sampleEvery = sample_every;
+              settings->writeEvery = write_every;
+              settings->numberOfBins = number_of_bins;
+              settings->massWeighted = mass_weighted;
+              settings->radiusOfGyrationRange = radius_of_gyration_range;
+              settings->radiusOfGyrationBinWidth = radius_of_gyration_bin_width;
+            },
+            nanobind::arg("sample_every") = 10, nanobind::arg("write_every") = nanobind::none(),
+            nanobind::arg("number_of_bins") = 128, nanobind::arg("mass_weighted") = false,
+            nanobind::arg("radius_of_gyration_range") = nanobind::none(),
+            nanobind::arg("radius_of_gyration_bin_width") = 0.1,
+            "The radius of gyration and the shape descriptors, with every atom weighing the same unless "
+            "'mass_weighted'.")
+        .def_ro("sample_every", &MoleculeShapeSettings::sampleEvery)
+        .def_ro("write_every", &MoleculeShapeSettings::writeEvery)
+        .def_ro("number_of_bins", &MoleculeShapeSettings::numberOfBins)
+        .def_ro("mass_weighted", &MoleculeShapeSettings::massWeighted)
+        .def_ro("radius_of_gyration_range", &MoleculeShapeSettings::radiusOfGyrationRange)
+        .def_ro("radius_of_gyration_bin_width", &MoleculeShapeSettings::radiusOfGyrationBinWidth);
+
+    nanobind::class_<MoleculeBackboneSettings>(m, "MoleculeBackboneSettings")
+        .def(
+            "__init__",
+            [](MoleculeBackboneSettings* settings, std::size_t sample_every, std::optional<std::size_t> write_every,
+               std::size_t number_of_wave_vectors, double wave_vector_lower_limit, double wave_vector_upper_limit)
+            {
+              if (sample_every == 0 || number_of_wave_vectors == 0)
+              {
+                throw std::invalid_argument("MoleculeBackboneSettings: sample_every and number_of_wave_vectors must "
+                                            "be positive");
+              }
+              if (!(wave_vector_lower_limit > 0.0) || !(wave_vector_upper_limit > wave_vector_lower_limit))
+              {
+                throw std::invalid_argument("MoleculeBackboneSettings: wave_vector_lower_limit must be positive and "
+                                            "below wave_vector_upper_limit");
+              }
+              new (settings) MoleculeBackboneSettings();
+              settings->sampleEvery = sample_every;
+              settings->writeEvery = write_every;
+              settings->numberOfWaveVectors = number_of_wave_vectors;
+              settings->waveVectorLowerLimit = wave_vector_lower_limit;
+              settings->waveVectorUpperLimit = wave_vector_upper_limit;
+            },
+            nanobind::arg("sample_every") = 10, nanobind::arg("write_every") = nanobind::none(),
+            nanobind::arg("number_of_wave_vectors") = 64, nanobind::arg("wave_vector_lower_limit") = 0.01,
+            nanobind::arg("wave_vector_upper_limit") = 5.0,
+            "The statistics of the backbone; the form factor is on a logarithmic grid of wave vectors [1/Angstrom].")
+        .def_ro("sample_every", &MoleculeBackboneSettings::sampleEvery)
+        .def_ro("write_every", &MoleculeBackboneSettings::writeEvery)
+        .def_ro("number_of_wave_vectors", &MoleculeBackboneSettings::numberOfWaveVectors)
+        .def_ro("wave_vector_lower_limit", &MoleculeBackboneSettings::waveVectorLowerLimit)
+        .def_ro("wave_vector_upper_limit", &MoleculeBackboneSettings::waveVectorUpperLimit);
+
+    nanobind::class_<EndToEndACFSettings>(m, "EndToEndACFSettings")
+        .def(
+            "__init__",
+            [](EndToEndACFSettings* settings, std::size_t sample_every, std::optional<std::size_t> write_every,
+               std::size_t number_of_block_elements)
+            {
+              if (sample_every == 0 || number_of_block_elements < 2)
+              {
+                throw std::invalid_argument("EndToEndACFSettings: sample_every must be positive and "
+                                            "number_of_block_elements at least 2");
+              }
+              new (settings) EndToEndACFSettings();
+              settings->sampleEvery = sample_every;
+              settings->writeEvery = write_every;
+              settings->numberOfBlockElements = number_of_block_elements;
+            },
+            nanobind::arg("sample_every") = 10, nanobind::arg("write_every") = nanobind::none(),
+            nanobind::arg("number_of_block_elements") = 25,
+            "The autocorrelation function of the end-to-end vector, by the order-N scheme.")
+        .def_ro("sample_every", &EndToEndACFSettings::sampleEvery)
+        .def_ro("write_every", &EndToEndACFSettings::writeEvery)
+        .def_ro("number_of_block_elements", &EndToEndACFSettings::numberOfBlockElements);
+
     nanobind::class_<Component> component(m, "Component");
     nanobind::enum_<Component::Type>(component, "Type", nanobind::is_arithmetic())
         .value("ADSORBATE", Component::Type::Adsorbate)
@@ -2125,6 +2289,23 @@ EXPAND_MODULE(MODULE_NAME)
             "lambda_group_swap_histogram",
             [](Component& c) -> PropertyLambdaProbabilityHistogram& { return c.lambdaGroupSwap; },
             nanobind::rv_policy::reference_internal);
+
+    // The analyses of the molecules of the component. A driver creates them for its systems; the results are read
+    // from 'property_molecule_properties', 'property_molecule_shape', 'property_molecule_backbone' and
+    // 'property_end_to_end_acf' of a system.
+    component
+        .def_rw("molecule_properties_settings", &Component::moleculePropertiesSettings,
+                nanobind::for_setter(nanobind::arg("value").none()),
+                "Histograms of the bond lengths, bend angles, torsion angles and the end-to-end distance.")
+        .def_rw("molecule_shape_settings", &Component::moleculeShapeSettings,
+                nanobind::for_setter(nanobind::arg("value").none()),
+                "The radius of gyration and the shape descriptors of the gyration tensor.")
+        .def_rw("molecule_backbone_settings", &Component::moleculeBackboneSettings,
+                nanobind::for_setter(nanobind::arg("value").none()),
+                "The statistics of the backbone of a chain: internal distances, bond correlations, form factor.")
+        .def_rw("end_to_end_acf_settings", &Component::endToEndACFSettings,
+                nanobind::for_setter(nanobind::arg("value").none()),
+                "The autocorrelation function of the end-to-end vector.");
 
     defineCount(component, "number_of_trial_molecules", &Component::numberOfTrialMolecules,
                 "The number of complete trial molecules of the multiple-try moves.");
@@ -2406,6 +2587,322 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("number_of_respa_steps", &Thermobarostat::numberOfRespaSteps)
       .def_ro("time_scale_parameter", &Thermobarostat::timeScaleParameterBarostat);
 
+  // A histogram of a property comes as the centers of its bins, the probability density, and the error of it.
+  nanobind::class_<PropertyMoleculeProperties>(m, "PropertyMoleculeProperties")
+      .def_ro("number_of_bonds", &PropertyMoleculeProperties::numberOfBondsPerComponent,
+              "The number of bonds of a molecule, per component.")
+      .def_ro("number_of_bends", &PropertyMoleculeProperties::numberOfBendsPerComponent)
+      .def_ro("number_of_torsions", &PropertyMoleculeProperties::numberOfTorsionsPerComponent)
+      .def(
+          "bond_histogram",
+          [](const PropertyMoleculeProperties& p, std::size_t component, std::size_t bond)
+          {
+            checkSampledComponent(p, component, "bond_histogram");
+            if (bond >= p.numberOfBondsPerComponent[component]) throw nanobind::index_error("bond_histogram: no such bond");
+            return p.result(p.bondHistogram, component, bond, p.deltaBondPerComponent[component], 0.0);
+          },
+          nanobind::arg("component"), nanobind::arg("bond"),
+          "The histogram of the length of a bond of the component [Angstrom], by the index of its bond potential.")
+      .def(
+          "bend_histogram",
+          [](const PropertyMoleculeProperties& p, std::size_t component, std::size_t bend)
+          {
+            checkSampledComponent(p, component, "bend_histogram");
+            if (bend >= p.numberOfBendsPerComponent[component]) throw nanobind::index_error("bend_histogram: no such bend");
+            return p.result(p.bendHistogram, component, bend, p.deltaBendPerComponent[component], 0.0);
+          },
+          nanobind::arg("component"), nanobind::arg("bend"), "The histogram of a bend angle [degrees].")
+      .def(
+          "torsion_histogram",
+          [](const PropertyMoleculeProperties& p, std::size_t component, std::size_t torsion)
+          {
+            checkSampledComponent(p, component, "torsion_histogram");
+            if (torsion >= p.numberOfTorsionsPerComponent[component])
+            {
+              throw nanobind::index_error("torsion_histogram: no such torsion");
+            }
+            return p.result(p.torsionHistogram, component, torsion, p.deltaTorsionPerComponent[component],
+                            -0.5 * p.torsionRange);
+          },
+          nanobind::arg("component"), nanobind::arg("torsion"),
+          "The histogram of a torsion angle, from -180 to 180 [degrees].")
+      .def(
+          "end_to_end_histogram",
+          [](const PropertyMoleculeProperties& p, std::size_t component)
+          {
+            checkSampledComponent(p, component, "end_to_end_histogram");
+            if (!p.endToEndAtomsPerComponent[component].has_value())
+            {
+              throw nanobind::index_error("end_to_end_histogram: the component has no end-to-end atoms");
+            }
+            return p.result(p.endToEndHistogram, component, 0, p.deltaEndToEndPerComponent[component], 0.0);
+          },
+          nanobind::arg("component"), "The histogram of the end-to-end distance [Angstrom].");
+
+  nanobind::class_<PropertyMoleculeShape> moleculeShape(m, "PropertyMoleculeShape");
+  nanobind::enum_<PropertyMoleculeShape::Moment>(moleculeShape, "Moment", nanobind::is_arithmetic())
+      .value("RADIUS_OF_GYRATION", PropertyMoleculeShape::RadiusOfGyration)
+      .value("RADIUS_OF_GYRATION_SQUARED", PropertyMoleculeShape::RadiusOfGyrationSquared)
+      .value("RADIUS_OF_GYRATION_FOURTH", PropertyMoleculeShape::RadiusOfGyrationFourth)
+      .value("LAMBDA_1", PropertyMoleculeShape::Lambda1)
+      .value("LAMBDA_2", PropertyMoleculeShape::Lambda2)
+      .value("LAMBDA_3", PropertyMoleculeShape::Lambda3)
+      .value("ASPHERICITY", PropertyMoleculeShape::Asphericity)
+      .value("ACYLINDRICITY", PropertyMoleculeShape::Acylindricity)
+      .value("SHAPE_ANISOTROPY", PropertyMoleculeShape::ShapeAnisotropy)
+      .value("SECOND_INVARIANT", PropertyMoleculeShape::SecondInvariant)
+      .value("PROLATENESS", PropertyMoleculeShape::Prolateness)
+      .value("INVERSE_HYDRODYNAMIC_RADIUS", PropertyMoleculeShape::InverseHydrodynamicRadius)
+      .value("END_TO_END_SQUARED", PropertyMoleculeShape::EndToEndSquared)
+      .value("TENSOR_XX", PropertyMoleculeShape::TensorXX)
+      .value("TENSOR_YY", PropertyMoleculeShape::TensorYY)
+      .value("TENSOR_ZZ", PropertyMoleculeShape::TensorZZ)
+      .value("TENSOR_XY", PropertyMoleculeShape::TensorXY)
+      .value("TENSOR_XZ", PropertyMoleculeShape::TensorXZ)
+      .value("TENSOR_YZ", PropertyMoleculeShape::TensorYZ);
+  moleculeShape
+      .def(
+          "result",
+          [](const PropertyMoleculeShape& p, std::size_t component, PropertyMoleculeShape::Moment moment)
+          {
+            checkSampledComponent(p, component, "result");
+            return p.momentStatistics(component, moment);
+          },
+          nanobind::arg("component"), nanobind::arg("moment"),
+          "The average of a moment over the molecules of the component and its error: lengths in Angstrom, the "
+          "eigenvalues of the gyration tensor, the asphericity and the acylindricity in Angstrom^2.")
+      .def(
+          "radius_of_gyration_histogram",
+          [](const PropertyMoleculeShape& p, std::size_t component)
+          {
+            checkSampledComponent(p, component, "radius_of_gyration_histogram");
+            return p.result(p.radiusOfGyrationHistogram, component, p.deltaRadiusOfGyrationPerComponent[component],
+                            0.0);
+          },
+          nanobind::arg("component"), "The histogram of the radius of gyration [Angstrom].")
+      .def(
+          "shape_anisotropy_histogram",
+          [](const PropertyMoleculeShape& p, std::size_t component)
+          {
+            checkSampledComponent(p, component, "shape_anisotropy_histogram");
+            return p.result(p.shapeAnisotropyHistogram, component, p.deltaShapeAnisotropyPerComponent[component], 0.0);
+          },
+          nanobind::arg("component"), "The histogram of the relative shape anisotropy, from 0 to 1.")
+      .def(
+          "prolateness_histogram",
+          [](const PropertyMoleculeShape& p, std::size_t component)
+          {
+            checkSampledComponent(p, component, "prolateness_histogram");
+            return p.result(p.prolatenessHistogram, component, p.deltaProlatenessPerComponent[component],
+                            p.prolatenessLowerLimit);
+          },
+          nanobind::arg("component"), "The histogram of the prolateness, from -1/4 to 2.");
+
+  nanobind::class_<PropertyMoleculeBackbone> moleculeBackbone(m, "PropertyMoleculeBackbone");
+  nanobind::enum_<PropertyMoleculeBackbone::Moment>(moleculeBackbone, "Moment", nanobind::is_arithmetic())
+      .value("BOND_LENGTH", PropertyMoleculeBackbone::BondLength)
+      .value("BOND_LENGTH_SQUARED", PropertyMoleculeBackbone::BondLengthSquared)
+      .value("END_TO_END_SQUARED", PropertyMoleculeBackbone::EndToEndSquared)
+      .value("PROJECTION", PropertyMoleculeBackbone::Projection)
+      .value("RADIUS_OF_GYRATION_SQUARED", PropertyMoleculeBackbone::RadiusOfGyrationSquared);
+  nanobind::class_<PropertyMoleculeBackbone::Averages>(moleculeBackbone, "Averages")
+      .def_ro("internal_distance_squared", &PropertyMoleculeBackbone::Averages::internalDistanceSquared,
+              "The mean squared distance of backbone beads k bonds apart [Angstrom^2], for k = 1, 2, ...")
+      .def_ro("bond_correlation", &PropertyMoleculeBackbone::Averages::bondCorrelation,
+              "The correlation of the directions of backbone bonds k bonds apart, for k = 0, 1, ...")
+      .def_ro("form_factor", &PropertyMoleculeBackbone::Averages::formFactor,
+              "The single-chain form factor at the wave vectors of 'wave_vectors'.");
+  moleculeBackbone
+      .def(
+          "result",
+          [](const PropertyMoleculeBackbone& p, std::size_t component)
+          {
+            checkSampledComponent(p, component, "result");
+            return p.overallAverages(component);
+          },
+          nanobind::arg("component"), "The averages over the molecules of the component and over the run.")
+      .def(
+          "moment",
+          [](const PropertyMoleculeBackbone& p, std::size_t component, PropertyMoleculeBackbone::Moment moment)
+          {
+            checkSampledComponent(p, component, "moment");
+            return p.statistics(component, [moment](const PropertyMoleculeBackbone::Averages& averages)
+                                { return averages.moments[moment]; });
+          },
+          nanobind::arg("component"), nanobind::arg("moment"), "The average of a moment and its error.")
+      .def(
+          "persistence_length_from_projection",
+          [](const PropertyMoleculeBackbone& p, std::size_t component)
+          {
+            checkSampledComponent(p, component, "persistence_length_from_projection");
+            return p.statistics(component, &PropertyMoleculeBackbone::persistenceLengthFromProjection);
+          },
+          nanobind::arg("component"),
+          "The persistence length from the projection of the chain on its end bonds, and its error [Angstrom].")
+      .def(
+          "persistence_length_from_fit",
+          [](const PropertyMoleculeBackbone& p, std::size_t component)
+          {
+            checkSampledComponent(p, component, "persistence_length_from_fit");
+            return p.statistics(component, &PropertyMoleculeBackbone::persistenceLengthFromFit);
+          },
+          nanobind::arg("component"),
+          "The persistence length from the decay of the bond correlation, and its error [Angstrom].")
+      .def(
+          "flory_exponent",
+          [](const PropertyMoleculeBackbone& p, std::size_t component)
+          {
+            checkSampledComponent(p, component, "flory_exponent");
+            return p.statistics(component, &PropertyMoleculeBackbone::floryExponent);
+          },
+          nanobind::arg("component"), "The Flory exponent from the internal distances, and its error.")
+      .def(
+          "wave_vectors",
+          [](const PropertyMoleculeBackbone& p, std::size_t component)
+          {
+            checkSampledComponent(p, component, "wave_vectors");
+            return p.waveVectorsPerComponent[component];
+          },
+          nanobind::arg("component"), "The wave vectors of the form factor [1/Angstrom].")
+      .def(
+          "backbone",
+          [](const PropertyMoleculeBackbone& p, std::size_t component)
+          {
+            checkSampledComponent(p, component, "backbone");
+            return p.backbonePerComponent[component];
+          },
+          nanobind::arg("component"), "The atoms of the backbone of the component.")
+      .def(
+          "contour_length",
+          [](const PropertyMoleculeBackbone& p, std::size_t component)
+          {
+            checkSampledComponent(p, component, "contour_length");
+            return p.contourLengthPerComponent[component];
+          },
+          nanobind::arg("component"), "The contour length of the backbone [Angstrom].");
+
+  nanobind::class_<EndToEndAutoCorrelationFunctionData>(m, "EndToEndAutoCorrelationFunctionData")
+      .def_ro("time", &EndToEndAutoCorrelationFunctionData::time, "The lag: picoseconds, or cycles for Monte Carlo.")
+      .def_ro("acf", &EndToEndAutoCorrelationFunctionData::acf, "<R(0).R(t)> [Angstrom^2].")
+      .def_ro("normalized", &EndToEndAutoCorrelationFunctionData::normalized, "<R(0).R(t)> / <R^2>.")
+      .def_ro("number_of_samples", &EndToEndAutoCorrelationFunctionData::numberOfSamples)
+      .def_ro("end_to_end_squared_acf", &EndToEndAutoCorrelationFunctionData::endToEndSquaredACF)
+      .def_ro("radius_of_gyration_squared_acf", &EndToEndAutoCorrelationFunctionData::radiusOfGyrationSquaredACF);
+
+  nanobind::class_<RelaxationTimeEstimates>(m, "RelaxationTimeEstimates")
+      .def_ro("integrated", &RelaxationTimeEstimates::integrated)
+      .def_ro("integrated_is_lower_bound", &RelaxationTimeEstimates::integratedIsLowerBound)
+      .def_ro("one_over_e", &RelaxationTimeEstimates::oneOverE)
+      .def_ro("exponential_fit", &RelaxationTimeEstimates::exponentialFit);
+
+  nanobind::class_<ScalarRelaxation>(m, "ScalarRelaxation")
+      .def_ro("available", &ScalarRelaxation::available)
+      .def_ro("mean", &ScalarRelaxation::mean)
+      .def_ro("variance", &ScalarRelaxation::variance)
+      .def_ro("times", &ScalarRelaxation::times);
+
+  nanobind::class_<EndToEndRelaxationTimes>(m, "EndToEndRelaxationTimes")
+      .def_ro("mean_squared_end_to_end", &EndToEndRelaxationTimes::meanSquaredEndToEnd, "<R^2> [Angstrom^2].")
+      .def_ro("longest_lag", &EndToEndRelaxationTimes::longestLag)
+      .def_ro("integrated", &EndToEndRelaxationTimes::integrated, "The integral of the normalized function.")
+      .def_ro("integrated_is_lower_bound", &EndToEndRelaxationTimes::integratedIsLowerBound)
+      .def_ro("one_over_e", &EndToEndRelaxationTimes::oneOverE, "The lag at which the function has decayed to 1/e.")
+      .def_ro("exponential_fit", &EndToEndRelaxationTimes::exponentialFit)
+      .def_ro("end_to_end_squared", &EndToEndRelaxationTimes::endToEndSquared)
+      .def_ro("radius_of_gyration_squared", &EndToEndRelaxationTimes::radiusOfGyrationSquared);
+
+  nanobind::class_<PropertyEndToEndAutoCorrelationFunction>(m, "PropertyEndToEndAutoCorrelationFunction")
+      .def("has_data", &PropertyEndToEndAutoCorrelationFunction::hasData, nanobind::arg("component"))
+      .def(
+          "result",
+          [](const PropertyEndToEndAutoCorrelationFunction& p, std::size_t component)
+          {
+            if (!p.hasData(component)) return std::vector<EndToEndAutoCorrelationFunctionData>{};
+            return p.result(component);
+          },
+          nanobind::arg("component"), "The autocorrelation function of the component, per lag.")
+      .def(
+          "relaxation_times",
+          [](const PropertyEndToEndAutoCorrelationFunction& p, std::size_t component)
+          {
+            if (!p.hasData(component))
+            {
+              throw nanobind::index_error("relaxation_times: the component has no data");
+            }
+            return p.relaxationTimes(component);
+          },
+          nanobind::arg("component"), "The relaxation times of the end-to-end vector, in the unit of the lags.")
+      .def_prop_ro("time_unit", &PropertyEndToEndAutoCorrelationFunction::timeUnit,
+                   "The unit of the lags: 'ps' for molecular dynamics, 'cycles' for Monte Carlo.");
+
+  // The elastic constants from the fluctuations of the stress, in molecular dynamics at constant volume and
+  // temperature. The result is what the output file holds: the tensors in Voigt order and in GPa, and what follows
+  // from them (compliance, moduli, Poisson ratios) when the stiffness can be inverted.
+  nanobind::class_<PropertyElasticConstantsFluctuation>(m, "PropertyElasticConstantsFluctuation")
+      .def(nanobind::init<std::size_t>(), nanobind::arg("number_of_blocks") = 5)
+      .def(
+          "result",
+          [](const PropertyElasticConstantsFluctuation& p, double eigenvalue_tolerance)
+          {
+            return nanobind::module_::import_("json").attr("loads")(p.jsonAveragesStatistics(eigenvalue_tolerance).dump());
+          },
+          nanobind::arg("eigenvalue_tolerance") = 1.0e-8,
+          "The averages as a dictionary: the stress, the Born, kinetic and fluctuation terms and the stiffness in "
+          "Voigt order [GPa], with the moduli derived from them.")
+      .def("write_averages_statistics", &PropertyElasticConstantsFluctuation::writeAveragesStatistics,
+           nanobind::arg("eigenvalue_tolerance") = 1.0e-8);
+
+  // the times a radical waits between reactions, of the polymerization driver
+  nanobind::class_<PropertyRadicalWaitingTimes> radicalWaitingTimes(m, "PropertyRadicalWaitingTimes");
+  nanobind::class_<PropertyRadicalWaitingTimes::Histogram>(radicalWaitingTimes, "Histogram")
+      .def_ro("bins_per_decade", &PropertyRadicalWaitingTimes::Histogram::binsPerDecade)
+      .def_ro("counts", &PropertyRadicalWaitingTimes::Histogram::counts)
+      .def_ro("count", &PropertyRadicalWaitingTimes::Histogram::count)
+      .def_ro("maximum", &PropertyRadicalWaitingTimes::Histogram::maximum)
+      .def("mean", &PropertyRadicalWaitingTimes::Histogram::mean)
+      .def("geometric_mean", &PropertyRadicalWaitingTimes::Histogram::geometricMean)
+      .def("median", &PropertyRadicalWaitingTimes::Histogram::median)
+      .def(
+          "bin_edges",
+          [](const PropertyRadicalWaitingTimes::Histogram& histogram)
+          {
+            std::vector<double> edges;
+            for (std::size_t bin = 0; bin <= histogram.numberOfBins(); ++bin) edges.push_back(histogram.lowerEdge(bin));
+            return edges;
+          },
+          "The edges of the bins [ps], logarithmically spaced.");
+  radicalWaitingTimes
+      .def(
+          "__init__",
+          [](PropertyRadicalWaitingTimes* property, std::size_t bins_per_decade, std::size_t write_every)
+          {
+            if (bins_per_decade == 0 || write_every == 0)
+            {
+              throw std::invalid_argument("PropertyRadicalWaitingTimes: bins_per_decade and write_every must be "
+                                          "positive");
+            }
+            new (property) PropertyRadicalWaitingTimes(bins_per_decade, write_every);
+          },
+          nanobind::arg("bins_per_decade") = 10, nanobind::arg("write_every") = 5000)
+      .def_ro("bins_per_decade", &PropertyRadicalWaitingTimes::binsPerDecade)
+      .def_ro("write_every", &PropertyRadicalWaitingTimes::writeEvery)
+      .def("closed", &PropertyRadicalWaitingTimes::closed, "The histogram of the intervals that a reaction ended.")
+      .def_ro("by_reaction", &PropertyRadicalWaitingTimes::byReaction,
+              "The histograms of the intervals, per reaction that ended them.");
+
+  // writes the configuration as LAMMPS data files ('s<system>.data' and its tables) every 'sample_every' cycles
+  nanobind::class_<WriteLammpsData>(m, "WriteLammpsData")
+      .def(
+          "__init__",
+          [](WriteLammpsData* writer, std::size_t system_id, std::size_t sample_every)
+          {
+            if (sample_every == 0) throw std::invalid_argument("WriteLammpsData: sample_every must be positive");
+            new (writer) WriteLammpsData(system_id, sample_every);
+          },
+          nanobind::arg("system_id") = 0, nanobind::arg("sample_every") = 10)
+      .def_ro("system_id", &WriteLammpsData::systemId)
+      .def_ro("sample_every", &WriteLammpsData::sampleEvery);
+
   nanobind::class_<PropertyTemperature>(m, "PropertyTemperature")
       .def("result", [](const PropertyTemperature& p) { return p.average(); },
            "The average temperature and its error [K].");
@@ -2448,7 +2945,23 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("average_energies", &System::averageEnergies)
       .def_ro("average_pressure", &System::averagePressure)
       .def_ro("thermostat", &System::thermostat)
-      .def("set_thermostat", &System::setThermostat, nanobind::arg("thermostat") = nanobind::none())
+      .def(
+          "set_thermostat",
+          [](System& system, const std::optional<Thermostat>& thermostat)
+          {
+            system.setThermostat(thermostat);
+            // the ensemble says what the thermostat makes of it, as it does for an input file: constant energy
+            // becomes constant temperature, and back when the thermostat is removed
+            if (thermostat.has_value() && system.molecularDynamicsEnsemble == MolecularDynamicsEnsemble::NVE)
+            {
+              system.molecularDynamicsEnsemble = MolecularDynamicsEnsemble::NVT;
+            }
+            if (!thermostat.has_value() && system.molecularDynamicsEnsemble == MolecularDynamicsEnsemble::NVT)
+            {
+              system.molecularDynamicsEnsemble = MolecularDynamicsEnsemble::NVE;
+            }
+          },
+          nanobind::arg("thermostat") = nanobind::none())
       .def_ro("property_density_grid", &System::propertyDensityGrid)
       .def("set_property_density_grid", &System::setPropertyDensityGrid, nanobind::arg("property") = nanobind::none())
       .def_ro("average_energy_histogram", &System::averageEnergyHistogram)
@@ -2471,6 +2984,42 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("property_number_of_molecules_evolution", &System::propertyNumberOfMoleculesEvolution)
       .def("set_property_number_of_molecules_evolution", &System::setPropertyNumberOfMoleculesEvolution,
            nanobind::arg("property") = nanobind::none())
+      .def_ro("property_molecule_properties", &System::propertyMoleculeProperties,
+              "The histograms of the molecules of the components that have 'molecule_properties_settings'.")
+      .def_ro("property_molecule_shape", &System::propertyMoleculeShape)
+      .def_ro("property_molecule_backbone", &System::propertyMoleculeBackbone)
+      .def_ro("property_end_to_end_acf", &System::propertyEndToEndACF)
+      .def_ro("property_elastic_constants_fluctuation", &System::propertyElasticConstantsFluctuation)
+      .def(
+          "set_property_elastic_constants_fluctuation",
+          [](System& system, const std::optional<PropertyElasticConstantsFluctuation>& property,
+             std::size_t sample_every)
+          {
+            if (!property.has_value())
+            {
+              system.propertyElasticConstantsFluctuation.reset();
+              return;
+            }
+            if (sample_every == 0) throw std::invalid_argument("sample_every must be positive");
+            if (system.hasExternalField || system.forceField.computePolarization)
+            {
+              throw std::invalid_argument("the elastic constants from fluctuations do not support an external field "
+                                          "or polarization");
+            }
+            system.propertyElasticConstantsFluctuation = property;
+            system.elasticConstantsSampleEvery = sample_every;
+          },
+          nanobind::arg("property") = nanobind::none(), nanobind::arg("sample_every") = 100,
+          "Samples the elastic constants from the fluctuations of the stress, every 'sample_every' steps of "
+          "molecular dynamics at constant volume and temperature.")
+      .def_ro("property_radical_waiting_times", &System::propertyRadicalWaitingTimes)
+      .def("set_property_radical_waiting_times", &System::setPropertyRadicalWaitingTimes,
+           nanobind::arg("property") = nanobind::none())
+      .def_ro("write_lammps_data", &System::writeLammpsData)
+      .def(
+          "set_write_lammps_data",
+          [](System& system, const std::optional<WriteLammpsData>& writer) { system.writeLammpsData = writer; },
+          nanobind::arg("property") = nanobind::none())
       .def_ro("property_volume_evolution", &System::propertyVolumeEvolution)
       .def("set_property_volume_evolution", &System::setPropertyVolumeEvolution,
            nanobind::arg("property") = nanobind::none())
