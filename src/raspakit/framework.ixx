@@ -245,6 +245,13 @@ export struct Framework
   void readFrameworkDefinition(const ForceField& forceField, const std::string& definitionName);
 
   /**
+   * Applies a framework definition that is already parsed: the content of a definition file, with its keys
+   * ('Type', 'Bonds', 'Bends', 'Torsions', 'ImproperTorsions', 'Groups', the exclusion options and the 1-4
+   * scalings). 'readFrameworkDefinition' reads the file and applies it with this.
+   */
+  void applyFrameworkDefinition(const ForceField& forceField, const nlohmann::basic_json<nlohmann::raspa_map>& data);
+
+  /**
    * \brief Reads Fixed/Rigid/Flexible Groups from a framework definition and reorders atoms Fixed-first.
    */
   void readGroups(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);

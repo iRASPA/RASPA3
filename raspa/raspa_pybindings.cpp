@@ -91,6 +91,7 @@ import chiral_center;
 import fragment_graph;
 import fragment;
 import json;
+import stringutils;
 
 template <typename T>
 std::pair<T, T>& operator*=(std::pair<T, T>& p, const double& s)
@@ -766,6 +767,88 @@ ConnectivityTable connectivityOfComponent(std::size_t numberOfAtoms, const Conne
   return table;
 }
 
+// The types of the bonds, bends and torsions under the names they have in Python (the names of the molecule and
+// framework-definition files).
+const std::vector<std::pair<const char*, BondType>> bondTypeNames = {{"NONE", BondType::None}, {"FIXED", BondType::Fixed}, {"HARMONIC", BondType::Harmonic}, {"CORE_SHELL_SPRING", BondType::CoreShellSpring}, {"MORSE", BondType::Morse}, {"LJ_12_6", BondType::LJ_12_6}, {"LENNARD_JONES", BondType::LennardJones}, {"BUCKINGHAM", BondType::Buckingham}, {"RESTRAINED_HARMONIC", BondType::RestrainedHarmonic}, {"QUARTIC", BondType::Quartic}, {"CFF_QUARTIC", BondType::CFF_Quartic}, {"MM3", BondType::MM3}};
+const std::vector<std::pair<const char*, BendType>> bendTypeNames = {{"RIGID", BendType::Rigid}, {"FIXED", BendType::Fixed}, {"HARMONIC", BendType::Harmonic}, {"CORE_SHELL", BendType::CoreShell}, {"QUARTIC", BendType::Quartic}, {"CFF_QUARTIC", BendType::CFF_Quartic}, {"HARMONIC_COSINE", BendType::HarmonicCosine}, {"COSINE", BendType::Cosine}, {"TAFIPOLSKY", BendType::Tafipolsky}, {"MM3", BendType::MM3}};
+const std::vector<std::pair<const char*, TorsionType>> torsionTypeNames = {{"FIXED", TorsionType::Fixed}, {"HARMONIC", TorsionType::Harmonic}, {"HARMONIC_COSINE", TorsionType::HarmonicCosine}, {"THREE_COSINE", TorsionType::ThreeCosine}, {"RYCKAERT_BELLEMANS", TorsionType::RyckaertBellemans}, {"TRAPPE", TorsionType::TraPPE}, {"TRAPPE_EXTENDED", TorsionType::TraPPE_Extended}, {"MOD_TRAPPE", TorsionType::ModifiedTraPPE}, {"CVFF", TorsionType::CVFF}, {"CFF", TorsionType::CFF}, {"CFF2", TorsionType::CFF2}, {"OPLS", TorsionType::OPLS}, {"MM3", TorsionType::MM3}, {"FOURIER_SERIES", TorsionType::FourierSeries}, {"FOURIER_SERIES2", TorsionType::FourierSeries2}, {"CVFF_BLOCKED", TorsionType::CVFFBlocked}, {"POLYNOMIAL", TorsionType::Polynomial}};
+
+template <typename Type>
+std::string nameOfType(const std::vector<std::pair<const char*, Type>>& names, Type type)
+{
+  for (const auto& [name, value] : names)
+  {
+    if (value == type) return name;
+  }
+  throw std::invalid_argument("FrameworkDefinition: a potential type that is not available");
+}
+
+// What makes a framework flexible: the content of a framework-definition file. The potentials are given per
+// combination of pseudo-atom types and apply to every bond, bend and torsion of those types the framework has.
+struct FrameworkDefinition
+{
+  nlohmann::basic_json<nlohmann::raspa_map> data{};
+};
+
+// A framework from the content of a CIF file, as the input reader makes it: the cell, the space group and the atoms
+// are read with the charges from the requested source; without a number of unit cells the smallest supercell is
+// taken in which the cutoffs fit (the minimum-image convention); then the definition is applied.
+Framework frameworkFromCIF(const ForceField& forceField, const std::string& content, const std::string& name,
+                           std::optional<int3> numberOfUnitCells, CIFReader::UseChargesFrom useChargesFrom,
+                           const std::optional<FrameworkDefinition>& definition,
+                           const std::optional<std::string>& definitionFile)
+{
+  if (definition.has_value() && definitionFile.has_value())
+  {
+    throw std::invalid_argument("Framework: give either a definition or a definition_file, not both");
+  }
+  try
+  {
+    const auto cif = CIFReader::readCIFString(content, forceField, useChargesFrom);
+    if (!cif.has_value())
+    {
+      throw std::invalid_argument(
+          cif.error() == CIFReader::ParseError::invalidForceField
+              ? std::format("Framework: '{}' has atoms the force field has no pseudo-atom for", name)
+              : std::format("Framework: '{}' could not be read as a CIF file", name));
+    }
+    const auto& [simulationBox, spaceGroupHallNumber, definedAtoms, fractionalAtomsUnitCell] = cif.value();
+    if (definedAtoms.empty())
+    {
+      throw std::invalid_argument(std::format("Framework: no atoms were read from '{}' as a CIF file", name));
+    }
+
+    int3 cells{};
+    if (numberOfUnitCells.has_value())
+    {
+      cells = *numberOfUnitCells;
+      if (cells.x < 1 || cells.y < 1 || cells.z < 1)
+      {
+        throw std::invalid_argument("Framework: number_of_unit_cells must be at least 1 in every direction");
+      }
+    }
+    else
+    {
+      const double cutOff =
+          std::max({forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb});
+      cells = simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutOff);
+      cells.x = std::max(cells.x, std::int32_t{1});
+      cells.y = std::max(cells.y, std::int32_t{1});
+      cells.z = std::max(cells.z, std::int32_t{1});
+    }
+
+    Framework framework(forceField, name, simulationBox, spaceGroupHallNumber, definedAtoms, fractionalAtomsUnitCell,
+                        cells);
+    if (definition.has_value()) framework.applyFrameworkDefinition(forceField, definition->data);
+    if (definitionFile.has_value()) framework.readFrameworkDefinition(forceField, *definitionFile);
+    return framework;
+  }
+  catch (const std::runtime_error& error)
+  {
+    throw std::invalid_argument(std::format("Framework: {}", error.what()));
+  }
+}
+
 // What a molecule file says of a flexible molecule besides its potentials: the chiral centres, the fixed atoms of the
 // partial reinsertions, the repeat units of a chain, and the two atoms of the end-to-end distance. These are read
 // and checked by the reader of the molecule files itself, from a description with the keys of such a file.
@@ -1018,6 +1101,16 @@ EXPAND_MODULE(MODULE_NAME)
       .def_prop_rw("position",
           [](const Atom &a) -> double3 { return a.position; },
           [](Atom &a, const double3 &value) { a.position = value; })
+      .def_rw("charge", &Atom::charge, "The charge of the atom [e].")
+      .def_prop_rw(
+          "type", [](const Atom& a) { return static_cast<std::size_t>(a.type); },
+          [](Atom& a, std::uint16_t type) { a.type = type; }, "The index of the pseudo-atom of the atom.")
+      .def_prop_ro("molecule_id", [](const Atom& a) { return static_cast<std::size_t>(a.moleculeId); })
+      .def_prop_ro("component_id", [](const Atom& a) { return static_cast<std::size_t>(a.componentId); })
+      .def_ro("scaling_vdw", &Atom::scalingVDW, "The scaling of the Van der Waals interactions of the atom.")
+      .def_ro("scaling_coulomb", &Atom::scalingCoulomb, "The scaling of the Coulomb interactions of the atom.")
+      .def_prop_ro("is_fractional", [](const Atom& a) { return a.isFractional != 0; },
+                   "Whether the atom is of a fractional molecule.")
       .def("__repr__", &Atom::repr);
 
   nanobind::class_<SimulationBox> simulationBox(m, "SimulationBox");
@@ -1286,6 +1379,86 @@ EXPAND_MODULE(MODULE_NAME)
            nanobind::arg("defined_atoms"),
            nanobind::arg("symmetry_operation_strings") = std::vector<std::string>{});
 
+  nanobind::enum_<FrameworkGroupType>(m, "FrameworkGroupType", nanobind::is_arithmetic())
+      .value("FIXED", FrameworkGroupType::Fixed)
+      .value("RIGID", FrameworkGroupType::Rigid)
+      .value("FLEXIBLE", FrameworkGroupType::Flexible);
+
+  using BondDefinition = std::tuple<std::array<std::string, 2>, BondType, std::vector<double>>;
+  using BendDefinition = std::tuple<std::array<std::string, 3>, BendType, std::vector<double>>;
+  using TorsionDefinition = std::tuple<std::array<std::string, 4>, TorsionType, std::vector<double>>;
+  using GroupDefinition = std::pair<FrameworkGroupType, std::vector<std::size_t>>;
+
+  nanobind::class_<FrameworkDefinition>(m, "FrameworkDefinition")
+      .def(
+          "__init__",
+          [](FrameworkDefinition* definition, bool flexible, const std::vector<BondDefinition>& bonds,
+             const std::vector<BendDefinition>& bends, const std::vector<TorsionDefinition>& torsions,
+             const std::vector<TorsionDefinition>& improper_torsions, const std::vector<GroupDefinition>& groups,
+             bool exclude_intra_12_interactions, bool exclude_intra_13_interactions,
+             bool exclude_intra_bond_interactions, bool exclude_intra_bend_interactions,
+             double intra_14_van_der_waals_scaling, double intra_14_charge_charge_scaling)
+          {
+            using Description = nlohmann::basic_json<nlohmann::raspa_map>;
+            auto potentials = [](const auto& definitions, const auto& names)
+            {
+              Description list = Description::array();
+              for (const auto& [atomTypes, type, parameters] : definitions)
+              {
+                Description item = Description::array();
+                item.push_back(Description(atomTypes));
+                item.push_back(Description(nameOfType(names, type)));
+                item.push_back(Description(parameters));
+                list.push_back(item);
+              }
+              return list;
+            };
+
+            new (definition) FrameworkDefinition();
+            Description& data = definition->data;
+            data = Description::object();
+            data["Type"] = flexible ? "Flexible" : "Rigid";
+            if (!bonds.empty()) data["Bonds"] = potentials(bonds, bondTypeNames);
+            if (!bends.empty()) data["Bends"] = potentials(bends, bendTypeNames);
+            if (!torsions.empty()) data["Torsions"] = potentials(torsions, torsionTypeNames);
+            if (!improper_torsions.empty()) data["ImproperTorsions"] = potentials(improper_torsions, torsionTypeNames);
+            if (!groups.empty())
+            {
+              Description list = Description::array();
+              for (const auto& [type, atoms] : groups)
+              {
+                Description group = Description::object();
+                group["Type"] = type == FrameworkGroupType::Fixed   ? "Fixed"
+                                : type == FrameworkGroupType::Rigid ? "Rigid"
+                                                                    : "Flexible";
+                group["Atoms"] = atoms;
+                list.push_back(group);
+              }
+              data["Groups"] = list;
+            }
+            data["ExcludeIntra12Interactions"] = exclude_intra_12_interactions;
+            data["ExcludeIntra13Interactions"] = exclude_intra_13_interactions;
+            data["ExcludeIntraBondInteractions"] = exclude_intra_bond_interactions;
+            data["ExcludeIntraBendInteractions"] = exclude_intra_bend_interactions;
+            data["Intra14VanDerWaalsScalingValue"] = intra_14_van_der_waals_scaling;
+            data["Intra14ChargeChargeScalingValue"] = intra_14_charge_charge_scaling;
+          },
+          nanobind::arg("flexible") = true, nanobind::arg("bonds") = std::vector<BondDefinition>{},
+          nanobind::arg("bends") = std::vector<BendDefinition>{},
+          nanobind::arg("torsions") = std::vector<TorsionDefinition>{},
+          nanobind::arg("improper_torsions") = std::vector<TorsionDefinition>{},
+          nanobind::arg("groups") = std::vector<GroupDefinition>{},
+          nanobind::arg("exclude_intra_12_interactions") = true,
+          nanobind::arg("exclude_intra_13_interactions") = true,
+          nanobind::arg("exclude_intra_bond_interactions") = false,
+          nanobind::arg("exclude_intra_bend_interactions") = false,
+          nanobind::arg("intra_14_van_der_waals_scaling") = 0.0,
+          nanobind::arg("intra_14_charge_charge_scaling") = 0.0,
+          "The definition of a flexible framework. A potential is the names of the pseudo-atoms it is between, its "
+          "type and the parameters of that type; it applies to every such bond, bend or torsion of the framework. A "
+          "group is a type (fixed, rigid or flexible) and the atoms of the framework it holds.")
+      .def("__repr__", [](const FrameworkDefinition& definition) { return definition.data.dump(2); });
+
   nanobind::class_<Framework> framework(m, "Framework");
 
   nanobind::enum_<CIFReader::UseChargesFrom>(framework, "UseChargesFrom", nanobind::is_arithmetic())
@@ -1294,17 +1467,119 @@ EXPAND_MODULE(MODULE_NAME)
       .value("CHARGE_EQUILIBRATION", CIFReader::UseChargesFrom::ChargeEquilibration);
 
   framework
-      .def(nanobind::init<const ForceField &, std::string, SimulationBox, std::size_t, 
-                          const std::vector<Atom> &, int3>(),
-           nanobind::arg("force_field"), 
-           nanobind::arg("component_name"),
-           nanobind::arg("simulation_box"), 
-           nanobind::arg("space_group_hall_number"), 
-           nanobind::arg("defined_atoms"), 
-           nanobind::arg("number_of_unit_cells"))
+      .def(
+          "__init__",
+          [](Framework* framework, const ForceField& force_field, std::string component_name,
+             SimulationBox simulation_box, std::size_t space_group_hall_number, const std::vector<Atom>& defined_atoms,
+             int3 number_of_unit_cells, const std::optional<FrameworkDefinition>& definition,
+             const std::optional<std::string>& definition_file)
+          {
+            if (definition.has_value() && definition_file.has_value())
+            {
+              throw std::invalid_argument("Framework: give either a definition or a definition_file, not both");
+            }
+            new (framework) Framework(force_field, component_name, simulation_box, space_group_hall_number,
+                                      defined_atoms, number_of_unit_cells);
+            try
+            {
+              if (definition.has_value()) framework->applyFrameworkDefinition(force_field, definition->data);
+              if (definition_file.has_value()) framework->readFrameworkDefinition(force_field, *definition_file);
+            }
+            catch (const std::runtime_error& error)
+            {
+              framework->~Framework();
+              throw std::invalid_argument(std::format("Framework: {}", error.what()));
+            }
+          },
+          nanobind::arg("force_field"), nanobind::arg("component_name"), nanobind::arg("simulation_box"),
+          nanobind::arg("space_group_hall_number"), nanobind::arg("defined_atoms"),
+          nanobind::arg("number_of_unit_cells"), nanobind::arg("definition") = nanobind::none(),
+          nanobind::arg("definition_file") = nanobind::none())
+      .def_static(
+          "from_cif",
+          [](const ForceField& force_field, const std::string& file_name, std::optional<int3> number_of_unit_cells,
+             CIFReader::UseChargesFrom use_charges_from, std::optional<std::string> component_name,
+             const std::optional<FrameworkDefinition>& definition, const std::optional<std::string>& definition_file)
+          {
+            std::string content;
+            try
+            {
+              content = readFileContent(file_name, ".cif");
+            }
+            catch (const std::runtime_error& error)
+            {
+              throw std::invalid_argument(std::format("Framework: {}", error.what()));
+            }
+            const std::string name = component_name.value_or(std::filesystem::path(file_name).stem().string());
+            return frameworkFromCIF(force_field, content, name, number_of_unit_cells, use_charges_from, definition,
+                                    definition_file);
+          },
+          nanobind::arg("force_field"), nanobind::arg("file_name"),
+          nanobind::arg("number_of_unit_cells") = nanobind::none(),
+          nanobind::arg("use_charges_from") = CIFReader::UseChargesFrom::PseudoAtoms,
+          nanobind::arg("component_name") = nanobind::none(), nanobind::arg("definition") = nanobind::none(),
+          nanobind::arg("definition_file") = nanobind::none(),
+          "A framework from a CIF file ('.cif' may be left out; the file is also looked for in RASPA_DIR). Without "
+          "a number of unit cells the smallest supercell is taken in which the cutoffs of the force field fit. The "
+          "name is that of the file unless one is given.")
+      .def_static(
+          "from_cif_string",
+          [](const ForceField& force_field, const std::string& cif, const std::string& component_name,
+             std::optional<int3> number_of_unit_cells, CIFReader::UseChargesFrom use_charges_from,
+             const std::optional<FrameworkDefinition>& definition, const std::optional<std::string>& definition_file)
+          {
+            return frameworkFromCIF(force_field, cif, component_name, number_of_unit_cells, use_charges_from,
+                                    definition, definition_file);
+          },
+          nanobind::arg("force_field"), nanobind::arg("cif"), nanobind::arg("component_name"),
+          nanobind::arg("number_of_unit_cells") = nanobind::none(),
+          nanobind::arg("use_charges_from") = CIFReader::UseChargesFrom::PseudoAtoms,
+          nanobind::arg("definition") = nanobind::none(), nanobind::arg("definition_file") = nanobind::none(),
+          "A framework from the content of a CIF file, as 'from_cif' makes it from a file.")
       .def_ro("name", &Framework::name)
+      .def_ro("rigid", &Framework::rigid, "Whether no atom of the framework moves.")
+      .def_ro("simulation_box", &Framework::simulationBox, "The unit cell.")
+      .def_ro("space_group_hall_number", &Framework::spaceGroupHallNumber)
+      .def_ro("number_of_unit_cells", &Framework::numberOfUnitCells)
+      .def_ro("mass", &Framework::mass, "The mass of the framework [amu].")
+      .def_ro("unit_cell_mass", &Framework::unitCellMass, "The mass of one unit cell [amu].")
+      .def_ro("net_charge", &Framework::netCharge, "The net charge of the framework [e].")
+      .def_ro("defined_atoms", &Framework::definedAtoms, "The atoms of the asymmetric unit, in fractional positions.")
+      .def_ro("unit_cell_atoms", &Framework::unitCellAtoms, "The atoms of one unit cell, in Cartesian positions.")
+      .def_ro("atoms", &Framework::atoms, "The atoms of the supercell, in Cartesian positions.")
+      .def_prop_ro("number_of_atoms", [](const Framework& f) { return f.atoms.size(); })
+      .def_prop_ro("number_of_fixed_atoms", &Framework::numberOfFixedAtoms)
+      .def_prop_ro("number_of_mobile_atoms", &Framework::numberOfMobileAtoms)
+      .def_prop_ro("number_of_rigid_groups", &Framework::numberOfRigidGroups)
+      .def_ro("connectivity_table", &Framework::connectivityTable, "The bonds of a flexible framework.")
+      .def_ro("intra_molecular_potentials", &Framework::intraMolecularPotentials,
+              "The bonded terms of a flexible framework, one for every bond, bend and torsion.")
       .def("print", &Framework::printStatus)
       .def("__repr__", &Framework::repr);
+
+  // the zeolites that are built in: the force field needs the pseudo-atoms 'Si' and 'O'
+  for (const auto& [name, maker] :
+       std::initializer_list<std::pair<const char*, Framework (*)(const ForceField&, int3)>>{
+           {"make_mfi", &Framework::makeMFI},
+           {"make_itq_29", &Framework::makeITQ29},
+           {"make_fau", &Framework::makeFAU},
+           {"make_cha", &Framework::makeCHA}})
+  {
+    framework.def_static(
+        name,
+        [maker](const ForceField& force_field, int3 number_of_unit_cells)
+        {
+          try
+          {
+            return maker(force_field, number_of_unit_cells);
+          }
+          catch (const std::runtime_error& error)
+          {
+            throw std::invalid_argument(std::format("Framework: {}", error.what()));
+          }
+        },
+        nanobind::arg("force_field"), nanobind::arg("number_of_unit_cells") = int3{1, 1, 1});
+  }
 
   // one keyword for every move of Move.Types. The constructor took twenty positional numbers before, of which the
   // last five were handed to the wrong moves ('widom_probability' set the Gibbs identity change, and so on).
@@ -1403,19 +1678,19 @@ EXPAND_MODULE(MODULE_NAME)
   // Two terms of the molecule files are left out: the out-of-plane bend, which has no energy yet (it evaluates to
   // zero), and the in-plane MM3 bend, which the bend potential refuses.
   bindIntraMolecularPotential<BondPotential, BondType>(m, "BondPotential", "BondType",
-      {{"NONE", BondType::None}, {"FIXED", BondType::Fixed}, {"HARMONIC", BondType::Harmonic}, {"CORE_SHELL_SPRING", BondType::CoreShellSpring}, {"MORSE", BondType::Morse}, {"LJ_12_6", BondType::LJ_12_6}, {"LENNARD_JONES", BondType::LennardJones}, {"BUCKINGHAM", BondType::Buckingham}, {"RESTRAINED_HARMONIC", BondType::RestrainedHarmonic}, {"QUARTIC", BondType::Quartic}, {"CFF_QUARTIC", BondType::CFF_Quartic}, {"MM3", BondType::MM3}},
+      bondTypeNames,
       BondPotential::numberOfBondParameters);
   bindIntraMolecularPotential<UreyBradleyPotential, UreyBradleyType>(m, "UreyBradleyPotential", "UreyBradleyType",
       {{"FIXED", UreyBradleyType::Fixed}, {"HARMONIC", UreyBradleyType::Harmonic}, {"CORE_SHELL_SPRING", UreyBradleyType::CoreShellSpring}, {"MORSE", UreyBradleyType::Morse}, {"LJ_12_6", UreyBradleyType::LJ_12_6}, {"LENNARD_JONES", UreyBradleyType::LennardJones}, {"BUCKINGHAM", UreyBradleyType::Buckingham}, {"RESTRAINED_HARMONIC", UreyBradleyType::RestrainedHarmonic}, {"QUARTIC", UreyBradleyType::Quartic}, {"CFF_QUARTIC", UreyBradleyType::CFF_Quartic}, {"MM3", UreyBradleyType::MM3}},
       UreyBradleyPotential::numberOfUreyBradleyParameters);
   bindIntraMolecularPotential<BendPotential, BendType>(m, "BendPotential", "BendType",
-      {{"RIGID", BendType::Rigid}, {"FIXED", BendType::Fixed}, {"HARMONIC", BendType::Harmonic}, {"CORE_SHELL", BendType::CoreShell}, {"QUARTIC", BendType::Quartic}, {"CFF_QUARTIC", BendType::CFF_Quartic}, {"HARMONIC_COSINE", BendType::HarmonicCosine}, {"COSINE", BendType::Cosine}, {"TAFIPOLSKY", BendType::Tafipolsky}, {"MM3", BendType::MM3}},
+      bendTypeNames,
       BendPotential::numberOfBendParameters);
   bindIntraMolecularPotential<InversionBendPotential, InversionBendType>(m, "InversionBendPotential", "InversionBendType",
       {{"HARMONIC", InversionBendType::Harmonic}, {"HARMONIC_COSINE", InversionBendType::HarmonicCosine}, {"PLANAR", InversionBendType::Planar}, {"HARMONIC2", InversionBendType::Harmonic2}, {"HARMONIC_COSINE2", InversionBendType::HarmonicCosine2}, {"PLANAR2", InversionBendType::Planar2}, {"MM3", InversionBendType::MM3}},
       InversionBendPotential::numberOfInversionBendParameters);
   bindIntraMolecularPotential<TorsionPotential, TorsionType>(m, "TorsionPotential", "TorsionType",
-      {{"FIXED", TorsionType::Fixed}, {"HARMONIC", TorsionType::Harmonic}, {"HARMONIC_COSINE", TorsionType::HarmonicCosine}, {"THREE_COSINE", TorsionType::ThreeCosine}, {"RYCKAERT_BELLEMANS", TorsionType::RyckaertBellemans}, {"TRAPPE", TorsionType::TraPPE}, {"TRAPPE_EXTENDED", TorsionType::TraPPE_Extended}, {"MOD_TRAPPE", TorsionType::ModifiedTraPPE}, {"CVFF", TorsionType::CVFF}, {"CFF", TorsionType::CFF}, {"CFF2", TorsionType::CFF2}, {"OPLS", TorsionType::OPLS}, {"MM3", TorsionType::MM3}, {"FOURIER_SERIES", TorsionType::FourierSeries}, {"FOURIER_SERIES2", TorsionType::FourierSeries2}, {"CVFF_BLOCKED", TorsionType::CVFFBlocked}, {"POLYNOMIAL", TorsionType::Polynomial}},
+      torsionTypeNames,
       TorsionPotential::numberOfTorsionParameters);
   bindIntraMolecularPotential<BondBondPotential, BondBondType>(m, "BondBondPotential", "BondBondType",
       {{"CVFF", BondBondType::CVFF}, {"CFF", BondBondType::CFF}},

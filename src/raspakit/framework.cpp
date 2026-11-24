@@ -393,6 +393,12 @@ void Framework::readFrameworkDefinition(const ForceField& forceField, const std:
         std::format("[Framework reader]: JSON parse error in '{}' at byte {}\n", path.string(), error.byte));
   }
 
+  applyFrameworkDefinition(forceField, data);
+}
+
+void Framework::applyFrameworkDefinition(const ForceField& forceField,
+                                         const nlohmann::basic_json<nlohmann::raspa_map>& data)
+{
   rigid = true;
   if (data.contains("Type"))
   {

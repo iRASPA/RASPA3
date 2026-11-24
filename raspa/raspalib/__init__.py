@@ -161,6 +161,8 @@ __all__ = [
     "CMAPMap",
     "CMAPPotential",
     "ChiralCenter",
+    "FrameworkDefinition",
+    "FrameworkGroupType",
     "set_number_of_threads",
     "number_of_threads",
 ]

@@ -37,3 +37,41 @@ class Atom():
                 (``False``).
         """
 
+    @property
+    def charge(self) -> float:
+        """The charge of the atom [e]."""
+        ...
+
+    @charge.setter
+    def charge(self, value: float) -> None:
+        ...
+
+    @property
+    def type(self) -> int:
+        """The index of the pseudo-atom of the atom."""
+        ...
+
+    @type.setter
+    def type(self, value: int) -> None:
+        ...
+
+    @property
+    def molecule_id(self) -> int: ...
+
+    @property
+    def component_id(self) -> int: ...
+
+    @property
+    def scaling_vdw(self) -> float:
+        """The scaling of the Van der Waals interactions of the atom."""
+        ...
+
+    @property
+    def scaling_coulomb(self) -> float:
+        """The scaling of the Coulomb interactions of the atom."""
+        ...
+
+    @property
+    def is_fractional(self) -> bool:
+        """Whether the atom is of a fractional molecule."""
+        ...
