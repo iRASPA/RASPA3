@@ -100,6 +100,9 @@ import property_end_to_end_acf;
 import property_elastic_constants_fluctuation;
 import property_radical_waiting_times;
 import write_lammps_data;
+import reaction;
+import reactions;
+import partition_function;
 
 template <typename T>
 std::pair<T, T>& operator*=(std::pair<T, T>& p, const double& s)
@@ -899,6 +902,87 @@ void describeFlexibleComponent(Component& component, const std::vector<std::arra
   {
     throw std::invalid_argument(std::format("Component: {}", error.what()));
   }
+}
+
+// A reaction that has not been given a move takes the one reaction move of its system that has a probability.
+const Move::Types reactionMoveNotGiven = Move::Types::Count;
+
+// Gives a system its reactions, as the input reader does for 'Reactions': a reaction is driven by one reaction move,
+// the one it names or the only one of the system that has a probability; its stoichiometry has an entry for every
+// component; and the reactions of the fractional-molecule moves have their fractional molecules made.
+void setReactions(System& system, std::vector<Reaction> reactions)
+{
+  if (reactions.empty()) return;
+
+  const std::array reactionMoves{Move::Types::ReactionCBMC, Move::Types::ReactionCFCMC, Move::Types::ReactionCBCFCMC,
+                                 Move::Types::ReactionConventionalCFCMC, Move::Types::ReactionConventionalCBCFCMC};
+  std::vector<Move::Types> enabled;
+  for (const Move::Types move : reactionMoves)
+  {
+    if (system.mc_moves_probabilities.getProbability(move) > 0.0) enabled.push_back(move);
+  }
+  if (enabled.empty())
+  {
+    throw std::invalid_argument("System: reactions are given, but no reaction move has a probability in "
+                                "system_probabilities (reaction_cbmc_probability, for instance)");
+  }
+
+  const std::size_t numberOfComponents = system.components.size();
+  for (std::size_t id = 0; id < reactions.size(); ++id)
+  {
+    Reaction& reaction = reactions[id];
+    reaction.id = id;
+    if (reaction.reactantStoichiometry.size() != numberOfComponents ||
+        reaction.productStoichiometry.size() != numberOfComponents)
+    {
+      throw std::invalid_argument(std::format("System: reaction {} has {} reactants and {} products; both lists have "
+                                              "an entry for each of the {} components",
+                                              id, reaction.reactantStoichiometry.size(),
+                                              reaction.productStoichiometry.size(), numberOfComponents));
+    }
+    if (reaction.reactionMove == reactionMoveNotGiven)
+    {
+      if (enabled.size() > 1)
+      {
+        throw std::invalid_argument(std::format("System: several reaction moves have a probability; reaction {} has "
+                                                "to name the move that drives it",
+                                                id));
+      }
+      reaction.reactionMove = enabled.front();
+    }
+    else if (!std::ranges::contains(enabled, reaction.reactionMove))
+    {
+      throw std::invalid_argument(std::format("System: the move of reaction {} has no probability in "
+                                              "system_probabilities",
+                                              id));
+    }
+  }
+
+  // a lambda coordinate that is followed takes a dU/dlambda group: those of the components and those of the reactions
+  std::size_t numberOfDUDlambda{0};
+  for (const Component& component : system.components)
+  {
+    for (const PropertyLambdaProbabilityHistogram* histogram :
+         {&component.lambdaGC, &component.lambdaGibbs, &component.lambdaPairSwap, &component.lambdaPairSwapCB,
+          &component.lambdaGroupSwap, &component.lambdaGroupSwapCB})
+    {
+      if (histogram->computeDUdlambda) ++numberOfDUDlambda;
+    }
+  }
+  for (const Reaction& reaction : reactions)
+  {
+    if (reaction.isSerialRxCFC()) numberOfDUDlambda += 1;
+    if (reaction.isParallelRxCFC()) numberOfDUDlambda += 2;
+  }
+  if (numberOfDUDlambda > maximumNumberOfDUDlambdaGroups)
+  {
+    throw std::invalid_argument(std::format("System: {} lambda coordinates are asked for, at most {} can be followed "
+                                            "at the same time",
+                                            numberOfDUDlambda, maximumNumberOfDUDlambdaGroups));
+  }
+
+  system.reactions.list = std::move(reactions);
+  if (system.usesReactionConventionalCFCMC()) system.createReactionFractionalMolecules();
 }
 
 // The component of an analysis of molecules: one the system has and that asked for the analysis.
@@ -1945,6 +2029,31 @@ EXPAND_MODULE(MODULE_NAME)
             { return Units::PressureConversionFactor * p.fugacityResult(1.0 / (Units::KB * T)); },
             nanobind::arg("temperature"));
 
+    // (bound before the component, which has it as a default)
+  nanobind::enum_<PartitionFunction::Source>(m, "ThermochemicalDatabase", nanobind::is_arithmetic())
+      .value("NASA", PartitionFunction::Source::NASA)
+      .value("JANAF", PartitionFunction::Source::JANAF);
+  m.def(
+      "ln_partition_function",
+      [](const std::string& species, double temperature, PartitionFunction::Source database)
+      {
+        if (!PartitionFunction::contains(species, database))
+        {
+          throw std::invalid_argument(std::format("no thermochemical data for species '{}' in the database", species));
+        }
+        if (!(temperature > 0.0)) throw std::invalid_argument("ln_partition_function: the temperature must be positive");
+        return PartitionFunction::logPartitionFunction(species, temperature, database);
+      },
+      nanobind::arg("species"), nanobind::arg("temperature"),
+      nanobind::arg("database") = PartitionFunction::Source::NASA,
+      "The logarithm of the partition function of an isolated molecule of the species at the temperature [K], from "
+      "the NASA polynomials (with the JANAF tables behind them) or from the JANAF tables only.");
+  m.def(
+      "has_thermochemical_data",
+      [](const std::string& species, PartitionFunction::Source database)
+      { return PartitionFunction::contains(species, database); },
+      nanobind::arg("species"), nanobind::arg("database") = PartitionFunction::Source::NASA);
+
     nanobind::class_<MoleculePropertiesSettings>(m, "MoleculePropertiesSettings")
         .def(
             "__init__",
@@ -2218,6 +2327,32 @@ EXPAND_MODULE(MODULE_NAME)
             },
             nanobind::for_setter(nanobind::arg("value").none()),
             "The fugacity coefficient [-]; None takes it from the equation of state.")
+        .def_prop_rw(
+            "ln_partition_function", [](const Component& c) { return c.lnPartitionFunction; },
+            [](Component& c, double value)
+            {
+              // a number that is given is not one of a species
+              c.lnPartitionFunction = value;
+              c.lnPartitionFunctionSpecies.reset();
+              c.lnPartitionFunctionFromJANAF = false;
+            },
+            "The logarithm of the partition function of the isolated molecule, for the reaction moves.")
+        .def(
+            "set_ln_partition_function_species",
+            [](Component& c, const std::string& species, PartitionFunction::Source database)
+            {
+              if (!PartitionFunction::contains(species, database))
+              {
+                throw std::invalid_argument(std::format("no thermochemical data for species '{}' in the database",
+                                                        species));
+              }
+              c.lnPartitionFunctionSpecies = species;
+              c.lnPartitionFunctionFromJANAF = database == PartitionFunction::Source::JANAF;
+            },
+            nanobind::arg("species"), nanobind::arg("database") = PartitionFunction::Source::NASA,
+            "Takes the partition function from the thermochemical data of a species, at the temperature of the "
+            "system the component is given to.")
+        .def_ro("ln_partition_function_species", &Component::lnPartitionFunctionSpecies)
         .def_ro("critical_temperature", &Component::criticalTemperature, "[K]")
         .def_ro("critical_pressure", &Component::criticalPressure, "[Pa]")
         .def_ro("acentric_factor", &Component::acentricFactor, "[-]")
@@ -2587,6 +2722,82 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("number_of_respa_steps", &Thermobarostat::numberOfRespaSteps)
       .def_ro("time_scale_parameter", &Thermobarostat::timeScaleParameterBarostat);
 
+  // A reaction of the reaction-ensemble moves: how many molecules of each component it takes and gives. It is
+  // driven by one reaction move; without one it takes the reaction move of its system that has a probability.
+  nanobind::class_<Reaction>(m, "Reaction")
+      .def(
+          "__init__",
+          [](Reaction* reaction, std::vector<std::size_t> reactants, std::vector<std::size_t> products,
+             std::optional<Move::Types> move, double maximum_lambda_change, double maximum_lambda_change_products,
+             double lambda_switch_point)
+          {
+            if (move.has_value() && *move != Move::Types::ReactionCBMC && *move != Move::Types::ReactionCFCMC &&
+                *move != Move::Types::ReactionCBCFCMC && *move != Move::Types::ReactionConventionalCFCMC &&
+                *move != Move::Types::ReactionConventionalCBCFCMC)
+            {
+              throw std::invalid_argument("Reaction: the move is one of the reaction moves of Move.Types");
+            }
+            if (reactants.size() != products.size())
+            {
+              throw std::invalid_argument("Reaction: reactants and products have an entry for every component");
+            }
+            if (std::ranges::all_of(reactants, [](std::size_t n) { return n == 0; }) ||
+                std::ranges::all_of(products, [](std::size_t n) { return n == 0; }))
+            {
+              throw std::invalid_argument("Reaction: a reaction takes at least one molecule and gives at least one");
+            }
+            if (!(maximum_lambda_change > 0.0 && maximum_lambda_change <= 1.0) ||
+                !(maximum_lambda_change_products > 0.0 && maximum_lambda_change_products <= 1.0) ||
+                !(lambda_switch_point >= 0.0 && lambda_switch_point <= 1.0))
+            {
+              throw std::invalid_argument("Reaction: the maximum lambda changes are in (0, 1] and the switch point "
+                                          "in [0, 1]");
+            }
+            new (reaction) Reaction(0, std::move(reactants), std::move(products));
+            reaction->reactionMove = move.value_or(reactionMoveNotGiven);
+            reaction->maximumLambdaChange = maximum_lambda_change;
+            reaction->maximumLambdaChangeProducts = maximum_lambda_change_products;
+            reaction->lambdaSwitchPoint = lambda_switch_point;
+          },
+          nanobind::arg("reactants"), nanobind::arg("products"), nanobind::arg("move") = nanobind::none(),
+          nanobind::arg("maximum_lambda_change") = 0.3, nanobind::arg("maximum_lambda_change_products") = 0.3,
+          nanobind::arg("lambda_switch_point") = 0.3,
+          "The numbers of molecules of each component the reaction takes ('reactants') and gives ('products'), in "
+          "the order of the components of the system.")
+      .def_ro("id", &Reaction::id)
+      .def_ro("reactants", &Reaction::reactantStoichiometry)
+      .def_ro("products", &Reaction::productStoichiometry)
+      .def_prop_ro(
+          "move",
+          [](const Reaction& reaction) -> std::optional<Move::Types>
+          {
+            if (reaction.reactionMove == reactionMoveNotGiven) return std::nullopt;
+            return reaction.reactionMove;
+          },
+          "The reaction move that drives the reaction.")
+      .def_ro("maximum_lambda_change", &Reaction::maximumLambdaChange)
+      .def_ro("maximum_lambda_change_products", &Reaction::maximumLambdaChangeProducts)
+      .def_ro("lambda_switch_point", &Reaction::lambdaSwitchPoint)
+      .def_ro("current_lambda", &Reaction::currentLambda, "The coupling of the fractional molecules of the reaction.")
+      .def_prop_ro(
+          "lambda_histogram", [](Reaction& reaction) -> PropertyLambdaProbabilityHistogram& { return reaction.lambda; },
+          nanobind::rv_policy::reference_internal,
+          "The lambda histogram with the fractional molecules on the side of the reactants.")
+      .def_prop_ro(
+          "lambda_product_side_histogram",
+          [](Reaction& reaction) -> PropertyLambdaProbabilityHistogram& { return reaction.lambdaProductSide; },
+          nanobind::rv_policy::reference_internal,
+          "The lambda histogram with the fractional molecules on the side of the products.")
+      .def("__repr__", [](const Reaction& reaction)
+           {
+             if (reaction.reactionMove == reactionMoveNotGiven)
+             {
+               return std::format("Reaction(reactants={}, products={})", reaction.reactantStoichiometry,
+                                  reaction.productStoichiometry);
+             }
+             return reaction.printStatus();
+           });
+
   // A histogram of a property comes as the centers of its bins, the probability density, and the error of it.
   nanobind::class_<PropertyMoleculeProperties>(m, "PropertyMoleculeProperties")
       .def_ro("number_of_bonds", &PropertyMoleculeProperties::numberOfBondsPerComponent,
@@ -2912,9 +3123,36 @@ EXPAND_MODULE(MODULE_NAME)
            "The average simulation box and its error.");
 
   nanobind::class_<System>(m, "System")
-      .def(nanobind::init<ForceField, std::optional<SimulationBox>, bool, double, std::optional<double>, double,
-                          std::optional<Framework>, std::vector<Component>, std::vector<std::vector<double3>>,
-                          std::vector<std::size_t>, std::size_t, MCMoveProbabilities>(),
+      .def("__init__",
+           [](System* system, ForceField force_field, std::optional<SimulationBox> simulation_box,
+              bool has_external_field, double external_temperature, std::optional<double> external_pressure,
+              double helium_void_fraction, std::optional<Framework> framework_components,
+              std::vector<Component> components, std::vector<std::vector<double3>> initial_positions,
+              std::vector<std::size_t> initial_number_of_molecules, std::size_t number_of_blocks,
+              MCMoveProbabilities system_probabilities, std::vector<Reaction> reactions)
+           {
+             // the partition function of a species is that of the temperature of the system
+             for (Component& component : components) component.updateLnPartitionFunction(external_temperature);
+
+             new (system) System(force_field, simulation_box, has_external_field, external_temperature,
+                                 external_pressure, helium_void_fraction, framework_components, components,
+                                 initial_positions, initial_number_of_molecules, number_of_blocks,
+                                 system_probabilities);
+             try
+             {
+               setReactions(*system, std::move(reactions));
+             }
+             catch (const std::runtime_error& error)
+             {
+               system->~System();
+               throw std::invalid_argument(std::format("System: {}", error.what()));
+             }
+             catch (...)
+             {
+               system->~System();
+               throw;
+             }
+           },
            nanobind::arg("force_field"), nanobind::arg("simulation_box") = nanobind::none(),
            nanobind::arg("has_external_field") = false, nanobind::arg("external_temperature") = 298.0,
            nanobind::arg("external_pressure") = nanobind::none(), nanobind::arg("helium_void_fraction") = 0.0,
@@ -2922,7 +3160,19 @@ EXPAND_MODULE(MODULE_NAME)
            nanobind::arg("components") = std::vector<Component>(),
            nanobind::arg("initial_positions") = std::vector<std::vector<double3>>(),
            nanobind::arg("initial_number_of_molecules") = std::vector<std::size_t>(),
-           nanobind::arg("number_of_blocks") = 5, nanobind::arg("system_probabilities") = MCMoveProbabilities())
+           nanobind::arg("number_of_blocks") = 5, nanobind::arg("system_probabilities") = MCMoveProbabilities(),
+           nanobind::arg("reactions") = std::vector<Reaction>())
+      .def_prop_ro("reactions",
+                   [](nanobind::handle self)
+                   {
+                     // the live objects, each held by the parent
+                     nanobind::list list;
+                     for (Reaction& item : nanobind::cast<System&>(self).reactions.list)
+                       list.append(nanobind::cast(&item, nanobind::rv_policy::reference_internal, self));
+                     return list;
+                   })
+      .def_ro("mc_moves_probabilities", &System::mc_moves_probabilities,
+              "The probabilities of the moves of the system (volume, Gibbs volume, reactions).")
       // (the member takes a pointer to an overlap flag, which was bound as a boolean that had to be given)
       .def("compute_total_energies", [](System& system) { return system.computeTotalEnergies(); },
            "The energies of the configuration as it is, in internal units of 10 J/mol.")

@@ -178,6 +178,10 @@ __all__ = [
     "PropertyElasticConstantsFluctuation",
     "PropertyRadicalWaitingTimes",
     "WriteLammpsData",
+    "Reaction",
+    "ThermochemicalDatabase",
+    "ln_partition_function",
+    "has_thermochemical_data",
     "set_number_of_threads",
     "number_of_threads",
 ]

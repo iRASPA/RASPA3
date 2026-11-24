@@ -38,6 +38,7 @@ from raspalib.property_conventional_radial_distribution_function import *
 from raspalib.property_mean_squared_displacement import *
 from raspalib.property_velocity_autocorrelation_function import *
 from raspalib.thermostat import *
+from raspalib.reaction import *
 from raspalib.molecule_analyses import *
 from raspalib.property_elastic_constants_fluctuation import *
 from raspalib.property_radical_waiting_times import *
@@ -144,6 +145,10 @@ __all__ = [
     "PropertyElasticConstantsFluctuation",
     "PropertyRadicalWaitingTimes",
     "WriteLammpsData",
+    "Reaction",
+    "ThermochemicalDatabase",
+    "ln_partition_function",
+    "has_thermochemical_data",
     "set_number_of_threads",
     "number_of_threads",
 ]

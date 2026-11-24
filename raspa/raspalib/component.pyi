@@ -1,3 +1,4 @@
+from raspalib.reaction import *
 from raspalib.molecule_analyses import *
 import enum
 import collections.abc
@@ -481,3 +482,22 @@ class Component():
     @end_to_end_acf_settings.setter
     def end_to_end_acf_settings(self, value: EndToEndACFSettings | None) -> None:
         ...
+
+    @property
+    def ln_partition_function(self) -> float:
+        """The logarithm of the partition function of the isolated molecule,
+        for the reaction moves."""
+        ...
+
+    @ln_partition_function.setter
+    def ln_partition_function(self, value: float) -> None:
+        ...
+
+    def set_ln_partition_function_species(self, species: str, database: ThermochemicalDatabase = ...) -> None:
+        """Take the partition function from the thermochemical data of a
+        species, at the temperature of the system the component is given
+        to."""
+        ...
+
+    @property
+    def ln_partition_function_species(self) -> str | None: ...

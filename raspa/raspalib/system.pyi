@@ -1,3 +1,4 @@
+from raspalib.reaction import *
 from raspalib.molecule_analyses import *
 from raspalib.property_elastic_constants_fluctuation import *
 from raspalib.property_radical_waiting_times import *
@@ -56,7 +57,8 @@ class System():
         initial_positions: collections.abc.Sequence[collections.abc.Sequence[tuple[float, float, float]]] = [],
         initial_number_of_molecules: collections.abc.Sequence[int] = [],
         number_of_blocks: int = 5,
-        system_probabilities: MCMoveProbabilities = MCMoveProbabilities()
+        system_probabilities: MCMoveProbabilities = MCMoveProbabilities(),
+        reactions: collections.abc.Sequence[Reaction] = []
     ) -> None:
         ...
         """
@@ -334,3 +336,14 @@ class System():
     def write_lammps_data(self) -> WriteLammpsData | None: ...
 
     def set_write_lammps_data(self, property: WriteLammpsData | None = None) -> None: ...
+
+    @property
+    def reactions(self) -> collections.abc.Sequence[Reaction]:
+        """The reactions of the system."""
+        ...
+
+    @property
+    def mc_moves_probabilities(self) -> MCMoveProbabilities:
+        """The probabilities of the moves of the system (volume, Gibbs
+        volume, reactions)."""
+        ...
