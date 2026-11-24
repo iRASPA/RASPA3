@@ -17,6 +17,8 @@ import skelement;
 SampleMovie::SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictToBox, std::optional<std::string> tag) : 
                          sampleEvery(sampleEvery), restrictToBox(restrictToBox), tag(tag)
 {
+  // an interval of zero is a division by zero at the first frame
+  if (sampleEvery == 0uz) throw std::runtime_error("SampleMovie: the sampling interval must be at least 1\n");
   // the file is started afresh with the first frame (see 'update'), not here: a run resumed from a binary restart
   // constructs the writer before the restart is read, and truncating here wiped the frames recorded so far
   std::filesystem::create_directory("movies");
@@ -90,10 +92,14 @@ void SampleMovie::update(const ForceField &forceField, std::size_t systemId, con
           bool print_to_output = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].printToPDB;
           if(print_to_output)
           {
+            // The occupancy of an atom of a fractional molecule is its coupling to the system. Such a molecule was
+            // written as any other, and one that is switched off sits where it pleases, inside the framework or on
+            // top of another molecule, with nothing in the frame to tell it apart.
+            const double occupancy = atom.isFractional ? std::clamp(atom.scalingVDW, 0.0, 1.0) : 1.0;
             std::print(stream,
                        "ATOM  {:>5} {:4}{:1}{:>3} {:1}{:>4}{:1}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}      {:<4}{:>2}\n",
                        serialNumber, name.substr(0, 4), ' ', " ", ' ', 0, ' ', position.x, position.y, position.z,
-                       1.0, 0.0, ' ', chemicalElement);
+                       occupancy, 0.0, ' ', chemicalElement);
             ++serialNumber;
           }
         }

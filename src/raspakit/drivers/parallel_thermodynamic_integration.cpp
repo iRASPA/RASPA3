@@ -369,14 +369,15 @@ void ParallelThermodynamicIntegration::runStage(SimulationStage stage, std::size
       }
       std::fill(stepsPerReplica.begin(), stepsPerReplica.end(), 0uz);
 
-      // the number of steps of a production cycle is fixed here, from the mean molecule count of the replicas
+      // the number of steps of a production cycle is fixed here, from the mean molecule count of the replicas over
+      // the second half of the equilibration (see the barrier completion), or from the current one without it
       const std::size_t totalNumberOfMolecules =
           std::transform_reduce(systems.begin(), systems.end(), 0uz, std::plus<>{},
                                 [](const System& system) { return system.numberOfMolecules(); });
-      productionCycleLength.clear();
       productionCycleLength.fix((totalNumberOfMolecules + systems.size() / 2uz) / systems.size(),
                                 systems.front().numerOfAdsorbateComponents());
     }
+    if (stage == SimulationStage::Equilibration) productionCycleLength.clear();
     sweepsThisStage = 0uz;
   }
   // a production resumed from a restart file that predates the fixed length fixes it from the counts it resumes with
@@ -415,6 +416,16 @@ void ParallelThermodynamicIntegration::runStage(SimulationStage stage, std::size
     if (lambdaExchangeEvery != 0uz && completedCycles % lambdaExchangeEvery == 0uz)
     {
       performLambdaExchangeSweep(stage, numberOfCycles);
+    }
+    // The molecule count of the second half of the equilibration sets the length of a production cycle, as in the
+    // other drivers. It was never sampled here: the length came from the count at the single instant the
+    // production started. (The replicas are parked, and the samples are in the restart file written below.)
+    if (stage == SimulationStage::Equilibration && completedCycles >= numberOfCycles / 2uz)
+    {
+      const std::size_t totalNumberOfMolecules =
+          std::transform_reduce(systems.begin(), systems.end(), 0uz, std::plus<>{},
+                                [](const System& system) { return system.numberOfMolecules(); });
+      productionCycleLength.sample((totalNumberOfMolecules + systems.size() / 2uz) / systems.size());
     }
     const bool stopRequested = GracefulShutdown::requested();
     const bool binaryRestartDue =
@@ -765,7 +776,9 @@ void ParallelThermodynamicIntegration::writeReplicaFinalReports(std::vector<Runn
     std::string status_line = std::format("Final state after {} cycles (ended at lambda-bin {})\n",
                                           numberOfProductionCycles, finalLambdaBin);
     std::print(replicaStream, "{}", system.writeProductionStatusReportMC(status_line));
-    system.writeSampledPropertiesMC(finalLambdaBin, numberOfProductionCycles);
+    // cycle zero writes whatever the interval: the number of production cycles wrote only when it is a multiple
+    // of the interval, and the samples since the last write (all of them in a run shorter than it) were lost
+    system.writeSampledPropertiesMC(finalLambdaBin, 0uz);
     std::print(replicaStream,
                "The averages below (energies, pressure, loadings) and the sampled property files with index {} are "
                "those of lambda-bin {}:\nthey follow the lambda through the exchanges, not the configuration of "

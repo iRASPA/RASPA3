@@ -59,7 +59,8 @@ export struct LoadingData
                           std::optional<int3> numberOfUnitCells) const;
   std::string printStatus(std::size_t componentId, const std::string &componentName, double componentTotalMass,
                           double componentAmountOfExcessMolecules, const LoadingData& average, const LoadingData& error,
-                          std::optional<double> frameworkMass, std::optional<int3> numberOfUnitCells) const;
+                          std::optional<double> frameworkMass, std::optional<int3> numberOfUnitCells,
+                          std::optional<std::pair<double, double>> moleFraction = std::nullopt) const;
 
   inline LoadingData& operator+=(const LoadingData& b)
   {

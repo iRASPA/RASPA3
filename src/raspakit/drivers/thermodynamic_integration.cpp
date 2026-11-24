@@ -456,7 +456,9 @@ void ThermodynamicIntegration::production()
     std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
     std::flush(stream);
 
-    system.writeSampledPropertiesMC(system_id, numberOfProductionCycles);
+    // cycle zero writes whatever the interval: the number of production cycles wrote only when it is a multiple
+    // of the interval, and the samples since the last write (all of them in a run shorter than it) were lost
+    system.writeSampledPropertiesMC(system_id, 0uz);
 
     ++system_id;
   }

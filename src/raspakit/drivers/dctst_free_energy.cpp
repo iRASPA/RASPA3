@@ -1308,6 +1308,9 @@ void DynamicallyCorrectedTSTFreeEnergy::startWindow(std::size_t replicaId, std::
                                     .moleculeId = static_cast<std::size_t>(moleculeAtoms.front().moleculeId)},
           CBMC::GrowRequest{.firstBead = CBMC::FirstBeadScheme::Pinned, .firstBeadPosition = point});
       if (!growData) continue;
+      // (as every other placement of a molecule has it: the growth refuses a bead above the overlap criterion, and
+      // the beads of a grown molecule can still add up to more than it)
+      if (growData->energies.potentialEnergy() > system.forceField.energyOverlapCriteria) continue;
       if (system.insideBlockedPockets(c, growData->atoms)) continue;
       if (cageLattice.cageOf(growData->atoms[c.startingBead].position) != targetCage) continue;
       for (std::size_t i = 0; i < moleculeAtoms.size(); ++i) moleculeAtoms[i].position = growData->atoms[i].position;

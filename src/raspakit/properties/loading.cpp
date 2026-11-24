@@ -324,7 +324,8 @@ std::string LoadingData::printStatus(std::size_t componentId, const std::string 
 
 std::string LoadingData::printStatus(std::size_t componentId, const std::string &componentName, double componentTotalMass,
                                   double componentAmountOfExcessMolecules, const LoadingData &average, const LoadingData &error,
-                                  std::optional<double> frameworkMass, std::optional<int3> numberOfUnitCells) const
+                                  std::optional<double> frameworkMass, std::optional<int3> numberOfUnitCells,
+                                  std::optional<std::pair<double, double>> moleFraction) const
 {
   std::ostringstream stream;
 
@@ -400,8 +401,15 @@ std::string LoadingData::printStatus(std::size_t componentId, const std::string 
         if (totalNumberOfMolecules > 0.0 && average.totalNumberOfMolecules > 0.0)
         {
           const double molFraction = numberOfMolecules[componentId] / totalNumberOfMolecules;
-          const double averageMolFraction = average.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
-          const double errorMolFraction = error.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
+          // The mole fraction and its error from the mole fractions of the blocks, where the caller has them. The
+          // error of the number of molecules over the total says nothing of the fraction: a pure fluid, whose
+          // fraction is one in every block, was given the relative error of its loading.
+          const double averageMolFraction =
+              moleFraction.has_value() ? moleFraction->first
+                                       : average.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
+          const double errorMolFraction =
+              moleFraction.has_value() ? moleFraction->second
+                                       : error.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
           std::print(stream, "    mol-fraction:   {:.6e} [-]        ({:.6e} +/- {:.6e})\n", molFraction,
                      averageMolFraction, errorMolFraction);
         }
@@ -416,8 +424,15 @@ std::string LoadingData::printStatus(std::size_t componentId, const std::string 
         if (totalNumberOfMolecules > 0.0 && average.totalNumberOfMolecules > 0.0)
         {
           const double molFraction = numberOfMolecules[componentId] / totalNumberOfMolecules;
-          const double averageMolFraction = average.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
-          const double errorMolFraction = error.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
+          // The mole fraction and its error from the mole fractions of the blocks, where the caller has them. The
+          // error of the number of molecules over the total says nothing of the fraction: a pure fluid, whose
+          // fraction is one in every block, was given the relative error of its loading.
+          const double averageMolFraction =
+              moleFraction.has_value() ? moleFraction->first
+                                       : average.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
+          const double errorMolFraction =
+              moleFraction.has_value() ? moleFraction->second
+                                       : error.numberOfMolecules[componentId] / average.totalNumberOfMolecules;
           std::print(stream, "    mol-fraction:   {:.6e} [-]        ({:.6e} +/- {:.6e})\n", molFraction,
                      averageMolFraction, errorMolFraction);
         }

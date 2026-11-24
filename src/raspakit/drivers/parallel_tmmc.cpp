@@ -107,6 +107,11 @@ static void writeWalkerAnalysisOutputs(System& system, std::size_t walkerId, std
   {
     system.propertyMoleculeProperties->writeOutput(walkerId, system.components, cycle);
   }
+  // (sampled with the other properties of the replica, and written by the parallel-tempering driver only)
+  if (system.propertyEndToEndACF.has_value())
+  {
+    system.propertyEndToEndACF->writeOutput(walkerId, system.components, cycle);
+  }
   if (system.propertyMoleculeShape.has_value())
   {
     system.propertyMoleculeShape->writeOutput(walkerId, system.components, cycle);

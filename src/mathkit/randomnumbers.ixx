@@ -73,7 +73,8 @@ export struct RandomNumber
 
   std::size_t integer(std::size_t i, std::size_t j)
   {
-    return i + static_cast<std::size_t>(static_cast<double>(j + 1 - i) * uniform());
+    // (clamped as below: the product can round up to the count itself)
+    return i + std::min(static_cast<std::size_t>(static_cast<double>(j + 1 - i) * uniform()), j - i);
   }
 
   std::pair<std::size_t, std::size_t> randomPairAdjacentIntegers(std::size_t size)

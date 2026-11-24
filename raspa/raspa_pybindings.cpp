@@ -1140,7 +1140,17 @@ EXPAND_MODULE(MODULE_NAME)
       .def(nanobind::init<std::size_t, std::size_t>(),
             nanobind::arg("number_of_blocks"), 
             nanobind::arg("number_of_components"))
-      .def("result", [](const PropertyEnthalpy& p) { return Units::EnergyToKelvin * p.result();});
+      // 'ideal_gas_energies': the average intramolecular energy of an isolated molecule of each swappable component
+      // [K], subtracted as in the output file (needed for flexible molecules); the list is empty where the
+      // enthalpy is undefined
+      .def("result",
+           [](const PropertyEnthalpy& p, const std::vector<double>& idealGasEnergies)
+           {
+             std::vector<double> internal(idealGasEnergies);
+             for (double& energy : internal) energy *= Units::KelvinToEnergy;
+             return Units::EnergyToKelvin * p.result(internal);
+           },
+           nanobind::arg("ideal_gas_energies") = std::vector<double>());
 
   nanobind::class_<PartialMolarPropertiesData>(m, "PartialMolarPropertiesData")
       .def(nanobind::init<std::size_t>(),

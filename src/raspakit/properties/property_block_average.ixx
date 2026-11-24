@@ -61,17 +61,21 @@ struct BlockAverage
   /// the result of Sample::compositeProperty() for composite properties.
   using Data = typename BlockAverageDataType<Sample>::type;
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
   std::size_t numberOfBlocks{};
   Sample zeroSample{};
   std::vector<std::pair<Sample, double>> bookKeeping;
+  /// The number of samples of each block (version 2): what 'filled' goes by. Empty for blocks read from a restart
+  /// file that had no counts, which then go on by their weights.
+  std::vector<std::size_t> numberOfSamples;
 
   BlockAverage() = default;
 
   explicit BlockAverage(std::size_t numberOfBlocks, Sample zero = Sample{})
       : numberOfBlocks(numberOfBlocks),
         zeroSample(zero),
-        bookKeeping(numberOfBlocks, std::make_pair(zero, 0.0))
+        bookKeeping(numberOfBlocks, std::make_pair(zero, 0.0)),
+        numberOfSamples(numberOfBlocks, 0uz)
   {
   }
 
@@ -82,6 +86,7 @@ struct BlockAverage
   {
     zeroSample = zero;
     bookKeeping = std::vector<std::pair<Sample, double>>(numberOfBlocks, std::make_pair(zero, 0.0));
+    numberOfSamples.assign(numberOfBlocks, 0uz);
   }
 
   /// The divisor of an accumulated weighted sum: the weight itself. It was max(1, weight), which is the weight
@@ -89,19 +94,29 @@ struct BlockAverage
   /// zero) are at most one, and a block whose weights add up to less than one was divided by one, pulling its
   /// average towards zero. An empty block (weight zero, sum zero) stays at zero.
   static double divisor(double weight) { return weight > 0.0 ? weight : 1.0; }
-  /// Whether a block takes part in the statistics: it holds more than half the weight of the first block (or
-  /// any weight at all when the first block is empty). The reference was max(1, first weight), which dropped
-  /// every block of a run whose weights are small.
+  /// Whether a block takes part in the statistics: it holds more than half the samples of the first block (or
+  /// any at all when the first block is empty), and some weight. The test is there for the last block of a run
+  /// that stopped part-way through it, so it is one on the number of samples. It was one on the weight: in a
+  /// biased run (exp(-bias), which spans orders of magnitude over the lambda bins) a complete block that happened
+  /// to spend its time where the bias is high weighed less than half the first and was left out of the averages
+  /// and the errors, and a single sample at zero bias let a block in. Unweighted, the two tests are the same.
   bool filled(std::size_t blockIndex) const
   {
-    const double reference = bookKeeping.empty() ? 0.0 : bookKeeping.front().second;
-    return bookKeeping[blockIndex].second > 0.0 && bookKeeping[blockIndex].second > 0.5 * reference;
+    if (!(bookKeeping[blockIndex].second > 0.0)) return false;
+    if (numberOfSamples.size() == bookKeeping.size())
+    {
+      return 2uz * numberOfSamples[blockIndex] > numberOfSamples.front();
+    }
+    // (blocks without counts: by the weight, the reference of which was once max(1, first weight) and dropped
+    // every block of a run whose weights are small)
+    return bookKeeping[blockIndex].second > 0.5 * bookKeeping.front().second;
   }
 
   void addSample(std::size_t blockIndex, const Sample &sample, const double &weight)
   {
     bookKeeping[blockIndex].first += weight * sample;
     bookKeeping[blockIndex].second += weight;
+    if (blockIndex < numberOfSamples.size()) ++numberOfSamples[blockIndex];
   }
 
   /// Average of a single block.
@@ -362,6 +377,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << p.numberOfBlocks;
   archive << p.zeroSample;
   archive << p.bookKeeping;
+  archive << p.numberOfSamples;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -386,6 +402,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Property &p)
   archive >> p.numberOfBlocks;
   archive >> p.zeroSample;
   archive >> p.bookKeeping;
+  // (before version 2 the samples were not counted: see 'filled')
+  p.numberOfSamples.clear();
+  if (versionNumber >= 2) archive >> p.numberOfSamples;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

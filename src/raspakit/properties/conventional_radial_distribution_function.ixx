@@ -24,6 +24,11 @@ export struct PropertyConventionalRadialDistributionFunction
         sampleEvery(sampleEvery),
         writeEvery(writeEvery)
   {
+    // an interval of zero is a division by zero at the first sample
+    if (sampleEvery == 0uz)
+      throw std::runtime_error("PropertyConventionalRadialDistributionFunction: the sampling interval must be at least 1\n");
+    if (writeEvery.has_value() && writeEvery.value() == 0uz)
+      throw std::runtime_error("PropertyConventionalRadialDistributionFunction: the writing interval must be at least 1\n");
   }
 
   PropertyConventionalRadialDistributionFunction(std::size_t numberOfBlocks, std::size_t numberOfPseudoAtoms,
@@ -37,11 +42,17 @@ export struct PropertyConventionalRadialDistributionFunction
         writeEvery(writeEvery),
         histogram(numberOfBlocks, numberOfPseudoAtoms * numberOfPseudoAtoms, numberOfBins),
         pairCount(numberOfPseudoAtoms * numberOfPseudoAtoms),
-        pairWeight(numberOfPseudoAtoms * numberOfPseudoAtoms)
+        pairWeight(numberOfPseudoAtoms * numberOfPseudoAtoms),
+        pairWeightPerBlock(numberOfBlocks, std::vector<double>(numberOfPseudoAtoms * numberOfPseudoAtoms))
   {
+    // an interval of zero is a division by zero at the first sample
+    if (sampleEvery == 0uz)
+      throw std::runtime_error("PropertyConventionalRadialDistributionFunction: the sampling interval must be at least 1\n");
+    if (writeEvery.has_value() && writeEvery.value() == 0uz)
+      throw std::runtime_error("PropertyConventionalRadialDistributionFunction: the writing interval must be at least 1\n");
   }
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{3};
 
   /// Channel index of an ordered pseudo-atom pair.
   std::size_t channel(std::size_t atomTypeA, std::size_t atomTypeB) const
@@ -64,6 +75,10 @@ export struct PropertyConventionalRadialDistributionFunction
     return histogram.average(channel(atomTypeA, atomTypeB));
   }
 
+  /// g(r) of a pair of types and its error, per bin, for the given volume.
+  std::pair<std::vector<double>, std::vector<double>> normalized(std::size_t atomTypeA, std::size_t atomTypeB,
+                                                                 double averageVolume) const;
+
   std::vector<std::vector<std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>>> result() const;
 
   std::size_t numberOfPseudoAtoms{};
@@ -76,6 +91,8 @@ export struct PropertyConventionalRadialDistributionFunction
   std::vector<std::size_t> pairCount;
   /// The ordered pairs sampled per channel, each with the weight of its configuration: the denominator of g(r).
   std::vector<double> pairWeight;
+  /// The same per block, [block][channel]: a block is normalized by its own pairs (see 'normalized').
+  std::vector<std::vector<double>> pairWeightPerBlock;
   double volumeCumulative{};
   double volumeSampleCount{};
 

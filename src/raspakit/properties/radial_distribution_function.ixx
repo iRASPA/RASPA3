@@ -34,6 +34,11 @@ export struct PropertyRadialDistributionFunction
         pairCount(numberOfPseudoAtoms * numberOfPseudoAtoms),
         pairCountPerBlock(numberOfBlocks, std::vector<double>(numberOfPseudoAtoms * numberOfPseudoAtoms))
   {
+    // an interval of zero is a division by zero at the first sample
+    if (sampleEvery == 0uz)
+      throw std::runtime_error("PropertyRadialDistributionFunction: the sampling interval must be at least 1\n");
+    if (writeEvery == 0uz)
+      throw std::runtime_error("PropertyRadialDistributionFunction: the writing interval must be at least 1\n");
   }
 
   std::uint64_t versionNumber{3};

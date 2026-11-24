@@ -63,6 +63,7 @@ add_executable(unit_tests_raspa3
   parallel_tempering_unsupported.cpp
   wham_and_bet_setup_fixes.cpp
   wham_overlap_and_shared_slot_fixes.cpp
+  computed_property_fixes.cpp
   tmmc_bias_and_matrix_fixes.cpp
   tmmc_bias_guards_and_driver_checks.cpp
   tmmc_chain_ceiling_and_links.cpp

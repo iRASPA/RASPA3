@@ -1844,13 +1844,19 @@ double3 Component::computeCenterOfMass(std::span<Atom> atom_list) const
     a[i].first.position = atom_list[i].position;
   }
   double3 com{};
+  double3 centroid{};
   double total_mass{};
   for (const auto &[atom, mass] : a)
   {
     com += mass * atom.position;
+    centroid += atom.position;
     total_mass += mass;
   }
-  return total_mass > 0.0 ? com / total_mass : double3{};
+  // A massless (dummy or probe) molecule has no centre of mass: the geometric centre, as the molecule record has
+  // it. The origin was returned, which every such molecule shares: a volume change scaled none of them and the
+  // movie writer moved them all by the same lattice vector.
+  if (total_mass > 0.0) return com / total_mass;
+  return a.empty() ? double3{} : centroid / static_cast<double>(a.size());
 }
 
 std::string Component::printStatus(std::size_t componentId, const ForceField &forceField, double inputPressure) const

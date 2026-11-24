@@ -45,6 +45,8 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
       pairCount[channel(typeB, typeA)]++;
       pairWeight[channel(typeA, typeB)] += weight;
       pairWeight[channel(typeB, typeA)] += weight;
+      pairWeightPerBlock[block][channel(typeA, typeB)] += weight;
+      pairWeightPerBlock[block][channel(typeB, typeA)] += weight;
 
       dr = posA - posB;
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -84,6 +86,8 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
         pairCount[channel(typeB, typeA)]++;
         pairWeight[channel(typeA, typeB)] += weight;
         pairWeight[channel(typeB, typeA)] += weight;
+        pairWeightPerBlock[block][channel(typeA, typeB)] += weight;
+        pairWeightPerBlock[block][channel(typeB, typeA)] += weight;
 
         dr = posA - posB;
         dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -103,6 +107,55 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
   histogram.addCount(block, 2.0 * weight);
 }
 
+std::pair<std::vector<double>, std::vector<double>> PropertyConventionalRadialDistributionFunction::normalized(
+    std::size_t atomTypeA, std::size_t atomTypeB, double averageVolume) const
+{
+  const std::size_t ab = channel(atomTypeA, atomTypeB);
+  const std::size_t ba = channel(atomTypeB, atomTypeA);
+
+  // g(r) of a bin is the pairs counted in it over the pairs an ideal gas of the same density has there: the pairs
+  // sampled, n_pairs, times the volume of the shell over the volume of the box.
+  // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
+  // The volume of the shell is (4 pi / 3) ((b + 1)^3 - b^3) dr^3 = 4 pi (b^2 + b + 1/3) dr^3. The mid-point value
+  // 4 pi (b + 1/2)^2 dr^3 is smaller by dr^3 pi / 3: g(r) was too large by a third in the first bin and by 3.7% in
+  // the second.
+  const double prefactor = averageVolume / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR);
+  auto shell = [](std::size_t bin)
+  {
+    const double b = static_cast<double>(bin);
+    return b * b + b + 1.0 / 3.0;
+  };
+
+  std::vector<double> mean(numberOfBins);
+  const double pairs = pairWeight[ab] + pairWeight[ba];
+  for (std::size_t bin = 0; bin != numberOfBins; ++bin)
+  {
+    double counts = 0.0;
+    for (std::size_t block = 0; block != histogram.numberOfBlocks; ++block) counts += histogram.bookKeeping[block][ab][bin];
+    mean[bin] = pairs > 0.0 ? prefactor * counts / (pairs * shell(bin)) : 0.0;
+  }
+
+  // Each block is normalized by its own pairs. The blocks were all divided by the pairs of the whole run: where the
+  // number of molecules changes (an open ensemble), a block with more of them than the average then lay above the
+  // mean in every bin, and the spread of the number of pairs was reported as the error of g(r), for an ideal gas as
+  // well.
+  std::vector<std::vector<double>> blocks;
+  for (std::size_t block = 0; block != histogram.numberOfBlocks; ++block)
+  {
+    if (!(histogram.numberOfCounts[block] > 0.0)) continue;
+    const double blockPairs = pairWeightPerBlock[block][ab] + pairWeightPerBlock[block][ba];
+    if (!(blockPairs > 0.0)) continue;
+    std::vector<double> value(numberOfBins);
+    for (std::size_t bin = 0; bin != numberOfBins; ++bin)
+    {
+      value[bin] = prefactor * histogram.bookKeeping[block][ab][bin] / (blockPairs * shell(bin));
+    }
+    blocks.push_back(std::move(value));
+  }
+
+  return {mean, blockErrorEstimate(blocks, mean)};
+}
+
 std::vector<std::vector<std::tuple<std::vector<double>, std::vector<double>, std::vector<double>>>>
 PropertyConventionalRadialDistributionFunction::result() const
 {
@@ -115,29 +168,9 @@ PropertyConventionalRadialDistributionFunction::result() const
     {
       if (pairCount[channel(atomTypeB, atomTypeA)] > 0)
       {
-        auto [average, error] = averageProbabilityHistogram(atomTypeA, atomTypeB);
-        
-        // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
-        // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
-        double avg_n_pairs = (pairWeight[channel(atomTypeA, atomTypeB)] +
-                                                 pairWeight[channel(atomTypeB, atomTypeA)]) /
-                             histogram.totalNumberOfCounts;
-        double normalization = (volumeCumulative / volumeSampleCount) / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
-        
+        const auto [y, error_y] = normalized(atomTypeA, atomTypeB, volumeCumulative / volumeSampleCount);
         std::vector<double> x(numberOfBins);
-        std::vector<double> y(numberOfBins);
-        std::vector<double> error_y(numberOfBins);
-        for (std::size_t bin = 0; bin != numberOfBins; ++bin)
-        {
-          // the volume of the shell of the bin, (4 pi / 3) ((b + 1)^3 - b^3) dr^3 = 4 pi (b^2 + b + 1/3) dr^3. The
-          // mid-point value 4 pi (b + 1/2)^2 dr^3 is smaller by dr^3 pi / 3: g(r) was too large by a third in
-          // the first bin and by 3.7% in the second.
-          const double b = static_cast<double>(bin);
-          const double shell = b * b + b + 1.0 / 3.0;
-          x[bin] = (b + 0.5) * deltaR;
-          y[bin] = average[bin] * normalization / shell;
-          error_y[bin] = error[bin] * normalization / shell;
-        }
+        for (std::size_t bin = 0; bin != numberOfBins; ++bin) x[bin] = (static_cast<double>(bin) + 0.5) * deltaR;
 
         results[atomTypeA][atomTypeB] = {x, y, error_y};
         results[atomTypeB][atomTypeA] = {x, y, error_y};
@@ -171,23 +204,14 @@ void PropertyConventionalRadialDistributionFunction::writeOutput(
         stream_rdf_output << "# column 2: normalize rdf []\n";
         stream_rdf_output << "# column 3: error normalize rdf []\n";
 
-        auto [average, error] = averageProbabilityHistogram(atomTypeA, atomTypeB);
-
-        // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
-        // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
-        double avg_n_pairs = (pairWeight[channel(atomTypeA, atomTypeB)] +
-                                                 pairWeight[channel(atomTypeB, atomTypeA)]) /
-                             histogram.totalNumberOfCounts;
         // the average volume of the samples: the current volume differs from it under NPT
         const double averageVolume = volumeSampleCount > 0.0 ? volumeCumulative / volumeSampleCount : volume;
-        double normalization = averageVolume / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
+        const auto [y, error_y] = normalized(atomTypeA, atomTypeB, averageVolume);
 
         for (std::size_t bin = 0; bin != numberOfBins; ++bin)
         {
-          stream_rdf_output << std::format(
-              "{} {} {}\n", (static_cast<double>(bin) + 0.5) * deltaR,
-              average[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5)),
-              error[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5)));
+          stream_rdf_output << std::format("{} {} {}\n", (static_cast<double>(bin) + 0.5) * deltaR, y[bin],
+                                           error_y[bin]);
         }
       }
     }
@@ -210,6 +234,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
   archive << rdf.volumeCumulative;
   archive << rdf.volumeSampleCount;
   archive << rdf.pairWeight;
+  archive << rdf.pairWeightPerBlock;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -243,6 +268,23 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyConv
   // (before version 2 every sample had the weight one)
   rdf.pairWeight.assign(rdf.pairCount.begin(), rdf.pairCount.end());
   if (versionNumber >= 2) archive >> rdf.pairWeight;
+  // (before version 3 the pairs were not kept per block: the blocks read are given their share of the pairs of the
+  // run by their number of samples, which is how they were normalized, and the ones sampled from here on their own)
+  if (versionNumber >= 3)
+  {
+    archive >> rdf.pairWeightPerBlock;
+  }
+  else
+  {
+    rdf.pairWeightPerBlock.assign(rdf.histogram.numberOfBlocks, std::vector<double>(rdf.pairWeight.size(), 0.0));
+    for (std::size_t block = 0; block != rdf.histogram.numberOfBlocks; ++block)
+    {
+      const double share = rdf.histogram.totalNumberOfCounts > 0.0
+                               ? rdf.histogram.numberOfCounts[block] / rdf.histogram.totalNumberOfCounts
+                               : 0.0;
+      for (std::size_t c = 0; c != rdf.pairWeight.size(); ++c) rdf.pairWeightPerBlock[block][c] = share * rdf.pairWeight[c];
+    }
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

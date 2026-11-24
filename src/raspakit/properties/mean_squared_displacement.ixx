@@ -27,6 +27,15 @@ export struct PropertyMeanSquaredDisplacement
         sampleEvery(sampleEvery),
         writeEvery(writeEvery)
   {
+    // an interval of zero is a division by zero at the first sample
+    if (sampleEvery == 0uz)
+      throw std::runtime_error("PropertyMeanSquaredDisplacement: the sampling interval must be at least 1\n");
+    if (writeEvery.has_value() && writeEvery.value() == 0uz)
+      throw std::runtime_error("PropertyMeanSquaredDisplacement: the writing interval must be at least 1\n");
+    // the order-n scheme divides the sample count by the number of block elements until nothing is left: one
+    // element never gets there, and none divides by zero
+    if (numberOfBlockElementsMSD < 2uz)
+      throw std::runtime_error("PropertyMeanSquaredDisplacement: 'NumberOfBlockElementsMSD' must be at least 2\n");
   }
 
   PropertyMeanSquaredDisplacement(const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::size_t numberOfParticles,
@@ -62,6 +71,15 @@ export struct PropertyMeanSquaredDisplacement
                 numberOfComponents, std::vector<std::vector<double4>>(
                                         numberOfComponents, std::vector<double4>(numberOfBlockElementsMSD, double4()))))
   {
+    // an interval of zero is a division by zero at the first sample
+    if (sampleEvery == 0uz)
+      throw std::runtime_error("PropertyMeanSquaredDisplacement: the sampling interval must be at least 1\n");
+    if (writeEvery.has_value() && writeEvery.value() == 0uz)
+      throw std::runtime_error("PropertyMeanSquaredDisplacement: the writing interval must be at least 1\n");
+    // the order-n scheme divides the sample count by the number of block elements until nothing is left: one
+    // element never gets there, and none divides by zero
+    if (numberOfBlockElementsMSD < 2uz)
+      throw std::runtime_error("PropertyMeanSquaredDisplacement: 'NumberOfBlockElementsMSD' must be at least 2\n");
   }
 
   std::uint64_t versionNumber{1};

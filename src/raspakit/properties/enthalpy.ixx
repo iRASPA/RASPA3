@@ -303,13 +303,20 @@ export struct PropertyEnthalpy : BlockAverage<EnthalpyOfAdsorptionTerms>
     BlockAverage<EnthalpyOfAdsorptionTerms>::resize(EnthalpyOfAdsorptionTerms(newNumberOfComponents));
   }
 
-  std::vector<std::pair<double, double>> result() const
+  /// The enthalpy of adsorption of each swappable component and its error. 'idealGasEnergies' is the average
+  /// intramolecular energy of an isolated molecule of each (Component::idealGasEnergy), which is subtracted, as the
+  /// output file subtracts it: without it the enthalpy of a flexible molecule carries its internal energy.
+  /// Empty where no block has a defined value (a singular particle-number covariance, as in a closed ensemble),
+  /// which was returned as an enthalpy of zero.
+  std::vector<std::pair<double, double>> result(std::span<const double> idealGasEnergies = {}) const
   {
-    std::vector<std::pair<double, double>> data(zeroSample.size);
     std::pair<EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData> enthalpy = average();
+    if (!enthalpy.first.defined) return {};
+    std::vector<std::pair<double, double>> data(zeroSample.size);
     for (std::size_t k = 0; k < zeroSample.size; k++)
     {
-      data[k] = {enthalpy.first.values[k], enthalpy.second[k]};
+      const double idealGasTerm = k < idealGasEnergies.size() ? idealGasEnergies[k] : 0.0;
+      data[k] = {enthalpy.first.values[k] - idealGasTerm, enthalpy.second[k]};
     }
     return data;
   }

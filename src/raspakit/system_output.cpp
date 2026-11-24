@@ -821,7 +821,8 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine,
     std::print(stream, "{}",
                loadings.printStatus(componentId, c.name, c.totalMass, c.amountOfExcessMolecules,
                                     loadingData.first, loadingData.second, frameworkMass(),
-                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
+                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; }),
+                                    averageLoadings.averageMoleFraction(componentId)));
     ++componentId;
   }
   if (crossLinks.enabled()) std::print(stream, "Number of cross-links: {}\n", crossLinks.links.size());
@@ -1136,7 +1137,8 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
     std::print(stream, "{}",
                loadings.printStatus(componentId, c.name, c.totalMass, c.amountOfExcessMolecules,
                                     loadingData.first, loadingData.second, frameworkMass(),
-                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
+                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; }),
+                                    averageLoadings.averageMoleFraction(componentId)));
     ++componentId;
   }
   if (crossLinks.enabled()) std::print(stream, "Number of cross-links: {}\n", crossLinks.links.size());

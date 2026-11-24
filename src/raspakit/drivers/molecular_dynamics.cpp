@@ -1332,7 +1332,11 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
         const double3x3 kineticPressure =
             computeMolecularKineticVirial(system, BarostatCoupling::Atomic) / system.simulationBox.volume;
         const double effectiveKineticEntities =
-            static_cast<double>(system.translationalDegreesOfFreedom - system.translationalCenterOfMassConstraint) /
+            // (clamped as in System::sampleProperties: the unsigned difference wrapped around for a box an open
+            // ensemble had emptied)
+            static_cast<double>(system.translationalDegreesOfFreedom -
+                                std::min(system.translationalDegreesOfFreedom,
+                                         system.translationalCenterOfMassConstraint)) /
             3.0;
         const ElasticFluctuationTerms terms(stressVoigt(atomicStress), stressVoigt(kineticPressure),
                                             computeGreenLagrangeBornTensor(system), system.beta,
@@ -1473,6 +1477,17 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
         system.propertyMoleculeBackbone->writeOutput(system_id, system.components, currentCycle);
       }
 
+      // the histograms of the energy and of the number of molecules are sampled with the other properties (see
+      // System::sampleProperties) and were written by the Monte Carlo drivers only
+      if (system.averageEnergyHistogram.has_value())
+      {
+        system.averageEnergyHistogram->writeOutput(system_id, currentCycle);
+      }
+      if (system.averageNumberOfMoleculesHistogram.has_value())
+      {
+        system.averageNumberOfMoleculesHistogram->writeOutput(system_id, system.components, currentCycle);
+      }
+
       ++system_id;
     }
 
@@ -1489,54 +1504,64 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     ++system_id;
   }
 
-  // output properties to files
+  // output properties to files; cycle zero writes whatever the interval of a property (the last cycle wrote only
+  // when it is a multiple of it, and the samples since the last write, all of them in a short run, were lost)
   for (std::size_t system_id{0}; System& system : systems)
   {
     if (system.propertyConventionalRadialDistributionFunction.has_value())
     {
       system.propertyConventionalRadialDistributionFunction->writeOutput(
-          system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms, currentCycle);
+          system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms, 0uz);
     }
 
     if (system.propertyRadialDistributionFunction.has_value())
     {
       system.propertyRadialDistributionFunction->writeOutput(system.forceField, system_id, system.simulationBox.volume,
-                                                             system.totalNumberOfPseudoAtoms, currentCycle);
+                                                             system.totalNumberOfPseudoAtoms, 0uz);
     }
     if (system.propertyDensityGrid.has_value())
     {
       system.propertyDensityGrid->writeOutput(system_id, system.simulationBox, system.forceField, system.framework,
-                                              system.components, currentCycle);
+                                              system.components, 0uz);
     }
 
     if (system.propertyMSD.has_value())
     {
-      system.propertyMSD->writeOutput(system_id, system.components, currentCycle);
+      system.propertyMSD->writeOutput(system_id, system.components, 0uz);
     }
 
     if (system.propertyVACF.has_value())
     {
-      system.propertyVACF->writeOutput(system_id, system.components, currentCycle);
+      system.propertyVACF->writeOutput(system_id, system.components, 0uz);
     }
 
     if (system.propertyEndToEndACF.has_value())
     {
-      system.propertyEndToEndACF->writeOutput(system_id, system.components, currentCycle);
+      system.propertyEndToEndACF->writeOutput(system_id, system.components, 0uz);
     }
 
     if (system.propertyMoleculeProperties.has_value())
     {
-      system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
+      system.propertyMoleculeProperties->writeOutput(system_id, system.components, 0uz);
     }
 
     if (system.propertyMoleculeShape.has_value())
     {
-      system.propertyMoleculeShape->writeOutput(system_id, system.components, currentCycle);
+      system.propertyMoleculeShape->writeOutput(system_id, system.components, 0uz);
     }
 
     if (system.propertyMoleculeBackbone.has_value())
     {
-      system.propertyMoleculeBackbone->writeOutput(system_id, system.components, currentCycle);
+      system.propertyMoleculeBackbone->writeOutput(system_id, system.components, 0uz);
+    }
+
+    if (system.averageEnergyHistogram.has_value())
+    {
+      system.averageEnergyHistogram->writeOutput(system_id, 0uz);
+    }
+    if (system.averageNumberOfMoleculesHistogram.has_value())
+    {
+      system.averageNumberOfMoleculesHistogram->writeOutput(system_id, system.components, 0uz);
     }
 
     ++system_id;

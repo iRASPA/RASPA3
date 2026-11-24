@@ -1382,6 +1382,13 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
       if (energy)
       {
         selectedSystem.runningEnergies = energy.value();
+        // The move returns the kinetic energy of its trajectory with the energy of the new configuration. The
+        // momenta are drawn anew for every trajectory and are no part of the state of the chain: kept here, that
+        // kinetic energy stayed in the running energies through every other move (insertions and deletions among
+        // them) until the next accepted trajectory, was printed and averaged as the kinetic energy of the system,
+        // and came out as a drift at the end, where the recomputed energy has none.
+        selectedSystem.runningEnergies.translationalKineticEnergy = 0.0;
+        selectedSystem.runningEnergies.rotationalKineticEnergy = 0.0;
       }
       break;
     }
@@ -2377,6 +2384,9 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
       if (energy)
       {
         selectedSystem.runningEnergies = energy.value();
+        // (without the kinetic energy of the trajectory: see the first of these)
+        selectedSystem.runningEnergies.translationalKineticEnergy = 0.0;
+        selectedSystem.runningEnergies.rotationalKineticEnergy = 0.0;
       }
       break;
     }
@@ -3442,6 +3452,9 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
       if (energy)
       {
         selectedSystem.runningEnergies = energy.value();
+        // (without the kinetic energy of the trajectory: see the first of these)
+        selectedSystem.runningEnergies.translationalKineticEnergy = 0.0;
+        selectedSystem.runningEnergies.rotationalKineticEnergy = 0.0;
       }
       break;
     }
