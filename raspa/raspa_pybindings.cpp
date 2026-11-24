@@ -3383,7 +3383,21 @@ EXPAND_MODULE(MODULE_NAME)
       .def(nanobind::init<std::size_t, std::size_t, double>(),
             nanobind::arg("thermostat_chain_length") = 5, 
             nanobind::arg("number_of_yoshida_suzuki_steps") = 5,
-            nanobind::arg("time_scale_parameter") = 0.15);
+            nanobind::arg("time_scale_parameter") = 0.15)
+      .def_prop_rw(
+          "langevin", [](const Thermostat& t) { return t.isLangevin(); },
+          [](Thermostat& t, bool langevin)
+          { t.type = langevin ? Thermostat::Type::Langevin : Thermostat::Type::NoseHoover; },
+          "Whether the temperature is held by a Langevin thermostat (friction and random kicks) instead of the "
+          "Nose-Hoover chain.")
+      .def_prop_rw(
+          "langevin_friction", [](const Thermostat& t) { return t.langevinFriction; },
+          [](Thermostat& t, double friction)
+          {
+            if (!(friction > 0.0)) throw std::invalid_argument("langevin_friction must be positive");
+            t.langevinFriction = friction;
+          },
+          "The friction coefficient of the Langevin thermostat [1/ps].");
 
   nanobind::class_<EnthalpyOfAdsorptionData>(m, "EnthalpyOfAdsorptionData")
       .def(nanobind::init<std::size_t>(), nanobind::arg("number_of_components"))

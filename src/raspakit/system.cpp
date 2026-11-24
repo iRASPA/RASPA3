@@ -1038,6 +1038,8 @@ void System::requireSupportedDynamicsConstraints() const
 
 bool System::conservesCenterOfMassMomentum() const noexcept
 {
+  // the random kicks and the friction of a Langevin thermostat act on every atom on its own
+  if (thermostat.has_value() && thermostat->isLangevin()) return false;
   if (hasExternalField) return false;
   if (framework.has_value())
   {
@@ -1821,6 +1823,10 @@ void System::setThermostat(const std::optional<Thermostat>& thermo)
     thermostat = Thermostat(temperature, timeStep, translationalDegreesOfFreedom, rotationalDegreesOfFreedom,
                             thermo->thermostatChainLength, thermo->numberOfYoshidaSuzukiSteps,
                             thermo->timeScaleParameterThermostat);
+    thermostat->type = thermo->type;
+    thermostat->langevinFriction = thermo->langevinFriction;
+    // a Langevin thermostat does not conserve the momentum of the system: the count of its constraint follows
+    updateCenterOfMassConstraint();
   }
 }
 

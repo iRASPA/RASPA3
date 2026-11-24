@@ -496,3 +496,178 @@ TEST(constraints, restart_reconciles_the_degrees_of_freedom_with_the_components)
     EXPECT_EQ(restored.thermostat->translationalDegreesOfFreedom, constrained);
   }
 }
+
+// The Langevin thermostat: friction and random kicks on every thermostatted velocity, half a time step before and
+// after each step of the dynamics. It holds the temperature of rigid, flexible and constrained molecules with all
+// their degrees of freedom (the momentum of the system is not conserved), keeps the constraints, and the energy
+// of the system less the heat taken from the bath is conserved.
+TEST(langevin_thermostat, holds_the_temperature_and_accounts_for_the_heat_of_the_bath)
+{
+  const ForceField forceField = makeForceField();
+  for (const Component& component : {makeDimer(forceField, false), makeDimer(forceField, true), makeTrimer(forceField)})
+  {
+    System system = makeSystem(forceField, component, 4, 5.5, 73);
+    system.timeStep = 0.002;
+    // start cold: the bath has to bring the system to its temperature
+    system.temperature = 300.0;
+    system.precomputeTotalGradients();
+    system.thermostat = Thermostat(system.temperature, system.timeStep, system.translationalDegreesOfFreedom,
+                                   system.rotationalDegreesOfFreedom, 3, 1, 0.15);
+    system.thermostat->type = Thermostat::Type::Langevin;
+    system.thermostat->langevinFriction = 5.0;
+    system.updateCenterOfMassConstraint();
+    EXPECT_EQ(system.translationalCenterOfMassConstraint, 0uz);
+    RandomNumber random(79);
+    system.thermostat->initialize(random);
+
+    const std::size_t degreesOfFreedom = system.translationalDegreesOfFreedom + system.rotationalDegreesOfFreedom;
+    double kinetic{}, first{}, largest{};
+    std::size_t samples{};
+    for (std::size_t i = 0; i != 8000; ++i)
+    {
+      const RunningEnergy energy = molecularDynamicsStep(system);
+      if (i == 0) first = energy.conservedEnergy();
+      largest = std::max(largest, std::abs(energy.conservedEnergy() - first));
+      if (i < 2000) continue;
+      kinetic += energy.translationalKineticEnergy + energy.rotationalKineticEnergy;
+      ++samples;
+    }
+    const double temperature =
+        2.0 * kinetic / (static_cast<double>(samples) * Units::KB * static_cast<double>(degreesOfFreedom));
+    EXPECT_NEAR(temperature, system.temperature, 0.03 * system.temperature) << component.name << component.rigid;
+    // the bath did work on the system (it started at rest), and the books balance
+    EXPECT_GT(system.thermostat->langevinHeat, 0.0);
+    EXPECT_LT(largest, 2e-3 * 0.5 * static_cast<double>(degreesOfFreedom) * Units::KB * system.temperature)
+        << component.name << component.rigid;
+    EXPECT_LT(residuals(system).length, 1e-7);
+    EXPECT_LT(residuals(system).velocity, 1e-7);
+  }
+}
+
+// The domain-decomposed step and the barostat step apply the same thermostat.
+TEST(langevin_thermostat, acts_in_the_barostat_and_the_domain_decomposed_steps)
+{
+  const ForceField forceField = makeForceField();
+  const auto withLangevin = [](System& system, std::size_t seed)
+  {
+    system.timeStep = 0.002;
+    system.thermostat = Thermostat(system.temperature, system.timeStep, system.translationalDegreesOfFreedom,
+                                   system.rotationalDegreesOfFreedom, 3, 1, 0.15);
+    system.thermostat->type = Thermostat::Type::Langevin;
+    system.thermostat->langevinFriction = 5.0;
+    system.updateCenterOfMassConstraint();
+    RandomNumber random(seed);
+    system.thermostat->initialize(random);
+  };
+  const auto temperatureOf = [](const System& system, double kinetic, std::size_t samples)
+  {
+    return 2.0 * kinetic /
+           (static_cast<double>(samples) * Units::KB *
+            static_cast<double>(system.translationalDegreesOfFreedom + system.rotationalDegreesOfFreedom));
+  };
+
+  // the same seed and start: the serial and the domain-decomposed steps give the same trajectory
+  {
+    System serial = makeSystem(forceField, makeTrimer(forceField), 5, 6.0, 83);
+    System decomposed = serial;
+    withLangevin(serial, 89);
+    withLangevin(decomposed, 89);
+    serial.precomputeTotalGradients();
+    SpatialDecompositionSettings settings;
+    settings.numberOfThreads = 4;
+    settings.verletSkin = 1.0;
+    ForceEngine engine(settings);
+    engine.initialize(decomposed);
+    engine.computeGradients(decomposed, true);
+    for (std::size_t i = 0; i != 50; ++i)
+    {
+      step(serial, serial.thermostat);
+      SpatialDecompositionIntegrator::engineVelocityVerlet(decomposed, engine);
+    }
+    double difference{};
+    for (std::size_t i = 0; i != serial.spanOfMoleculeAtoms().size(); ++i)
+    {
+      difference = std::max(difference, (serial.spanOfMoleculeAtoms()[i].position -
+                                         decomposed.spanOfMoleculeAtoms()[i].position).length());
+    }
+    EXPECT_LT(difference, 1e-9);
+    EXPECT_GT(decomposed.thermostat->langevinHeat, 0.0);
+  }
+
+  // under a barostat the particles are thermostatted by the bath, the cell by its chain
+  {
+    System system = makeSystem(forceField, makeDimer(forceField, true), 4, 6.0, 97);
+    withLangevin(system, 101);
+    system.precomputeTotalGradients();
+    system.thermobarostat =
+        Thermobarostat(MolecularDynamicsEnsemble::NPT, CellMinimizationType::Isotropic, MonoclinicAngleType::Beta,
+                       system.temperature, system.pressure, system.timeStep, 3 * system.moleculeData.size(), 3, 1,
+                       1.0);
+    RandomNumber random(103);
+    system.thermobarostat->initialize(random);
+    double kinetic{};
+    std::size_t samples{};
+    for (std::size_t i = 0; i != 6000; ++i)
+    {
+      const RunningEnergy energy = molecularDynamicsStep(system);
+      if (i < 2000) continue;
+      kinetic += energy.translationalKineticEnergy + energy.rotationalKineticEnergy;
+      ++samples;
+    }
+    EXPECT_NEAR(temperatureOf(system, kinetic, samples), system.temperature, 0.03 * system.temperature);
+    EXPECT_LT(residuals(system).length, 1e-7);
+  }
+}
+
+// The thermostat type, the friction, the heat taken from the bath and the stream of its random numbers are part
+// of the restart: a run continued from it draws the kicks the uninterrupted run would have drawn.
+TEST(langevin_thermostat, restart_continues_the_same_trajectory)
+{
+  const ForceField forceField = makeForceField();
+  System system = makeSystem(forceField, makeDimer(forceField, true), 3, 5.5, 107);
+  system.timeStep = 0.002;
+  system.precomputeTotalGradients();
+  system.thermostat = Thermostat(system.temperature, system.timeStep, system.translationalDegreesOfFreedom, 0, 3, 1,
+                                 0.15);
+  system.thermostat->type = Thermostat::Type::Langevin;
+  system.thermostat->langevinFriction = 2.5;
+  system.updateCenterOfMassConstraint();
+  RandomNumber random(109);
+  system.thermostat->initialize(random);
+  for (std::size_t i = 0; i != 20; ++i) molecularDynamicsStep(system);
+
+  const std::filesystem::path path = std::filesystem::temp_directory_path() /
+                                     std::format("raspa3_langevin_restart_{}.bin", test_support::uniqueSuffix());
+  {
+    std::ofstream stream(path, std::ios::binary);
+    Archive<std::ofstream> archive(stream);
+    archive << system;
+  }
+  System restored;
+  {
+    std::ifstream stream(path, std::ios::binary);
+    Archive<std::ifstream> archive(stream);
+    archive >> restored;
+  }
+  std::filesystem::remove(path);
+
+  ASSERT_TRUE(restored.thermostat.has_value());
+  EXPECT_TRUE(restored.thermostat->isLangevin());
+  EXPECT_DOUBLE_EQ(restored.thermostat->langevinFriction, 2.5);
+  EXPECT_DOUBLE_EQ(restored.thermostat->langevinHeat, system.thermostat->langevinHeat);
+  EXPECT_EQ(restored.translationalCenterOfMassConstraint, 0uz);
+
+  restored.precomputeTotalGradients();
+  for (std::size_t i = 0; i != 20; ++i)
+  {
+    molecularDynamicsStep(system);
+    molecularDynamicsStep(restored);
+  }
+  double difference{};
+  for (std::size_t i = 0; i != system.spanOfMoleculeAtoms().size(); ++i)
+  {
+    difference = std::max(difference, (system.spanOfMoleculeAtoms()[i].position -
+                                       restored.spanOfMoleculeAtoms()[i].position).length());
+  }
+  EXPECT_LT(difference, 1e-9);
+}

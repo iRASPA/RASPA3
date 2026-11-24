@@ -53,7 +53,25 @@ export struct Thermostat
              std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps,
              double timeScaleParameterThermostat);
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization (2: the Langevin thermostat).
+
+  /// How the temperature is held. Nose-Hoover: a deterministic chain of thermostat variables that scales the
+  /// velocities. Langevin: friction and random kicks on every thermostatted degree of freedom, an exact
+  /// Ornstein-Uhlenbeck step of the velocities over half a time step before and after the step of the dynamics
+  /// ('Integrators::langevinVelocityStep'); it does not conserve the momentum of the system.
+  enum class Type : std::uint8_t
+  {
+    NoseHoover = 0,
+    Langevin = 1
+  };
+  Type type{Type::NoseHoover};
+  double langevinFriction{1.0};  ///< The friction coefficient of the Langevin thermostat [1/ps].
+  /// The kinetic energy the Langevin bath has given to the system so far: the conserved quantity is the energy
+  /// of the system less this heat ('getEnergy' returns its negative).
+  double langevinHeat{0.0};
+  RandomNumber langevinRandom{};  ///< The random numbers of the Langevin kicks (seeded by 'initialize').
+
+  bool isLangevin() const { return type == Type::Langevin; }
 
   double temperature{};                       ///< The target temperature for the thermostat.
   double timeStep{};                          ///< The simulation time step.

@@ -92,6 +92,11 @@ bool DeviceResident::supports(const System& system, std::string& reason)
     reason = "no molecules to integrate";
     return false;
   }
+  if (system.thermostat.has_value() && system.thermostat->isLangevin())
+  {
+    reason = "a Langevin thermostat (its random kicks are drawn on the host)";
+    return false;
+  }
   if (system.thermobarostat.has_value())
   {
     const Thermobarostat& barostat = *system.thermobarostat;

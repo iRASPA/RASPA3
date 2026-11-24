@@ -1660,6 +1660,31 @@ reported separately at the end of the simulation.
     the start of production (the bias is kept), so that ln Π is built from
     production configurations only. Default: `false`.
 
+-   `"Thermostat" : string`\
+    How molecular dynamics holds the temperature in the thermostatted
+    ensembles (`"NVT"`, `"NPT"`, `"NPTPR"` and their particle-exchange
+    variants). `"NoseHoover"` (the default) attaches a Nosé-Hoover chain,
+    which is deterministic and conserves the momentum of the system.
+    `"Langevin"` applies friction and random kicks to every thermostatted
+    velocity (centres of mass and angular velocities of rigid molecules and
+    rigid groups, flexible atoms, the mobile atoms of a framework): an exact
+    Ornstein-Uhlenbeck step over half a time step before and after each
+    step of the dynamics. It thermalizes every degree of freedom on its own,
+    which helps for stiff or weakly coupled modes, at the price of
+    dynamics that are no longer those of the isolated system: diffusion
+    coefficients and time correlation functions depend on the friction. The
+    momentum of the system is not conserved, so the centre-of-mass drift is
+    not removed and its three degrees of freedom count in the temperature.
+    The conserved energy reported is the energy of the system less the heat
+    taken from the bath. With a barostat the cell keeps its Nosé-Hoover
+    chain. The integrator that keeps the whole step on a GPU is not used
+    with a Langevin thermostat; the forces still are.
+
+-   `"LangevinFriction" : floating-point-number`\
+    The friction coefficient of the Langevin thermostat in 1/ps, the
+    inverse of the time over which a velocity is forgotten (the `damp`
+    time of the LAMMPS `fix langevin`). Default: `1.0`.
+
 -   `"ThermostatChainLength" : integer`\
     The length of the Nosé-Hoover chain used to thermostat the system. Default:
     `5`.

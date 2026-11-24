@@ -117,6 +117,12 @@ void Thermostat::refreshDegreesOfFreedom(std::size_t newTranslationalDegreesOfFr
 
 void Thermostat::initialize(RandomNumber &random)
 {
+  if (isLangevin())
+  {
+    // its own stream of random numbers, so that the kicks do not depend on what else draws from the driver's
+    langevinRandom = RandomNumber(static_cast<std::size_t>(random.uniform() * 9007199254740992.0));
+    langevinHeat = 0.0;
+  }
   refreshDegreesOfFreedom(translationalDegreesOfFreedom, rotationalDegreesOfFreedom,
                           translationalCenterOfMassConstraint);
   const std::size_t effectiveTranslationalDegreesOfFreedom =
@@ -154,6 +160,9 @@ void Thermostat::initialize(RandomNumber &random)
 
 std::pair<double, double> Thermostat::NoseHooverNVT(double UKineticTranslation, double UKineticRotation)
 {
+  // the Langevin thermostat acts on the velocities itself ('Integrators::langevinVelocityStep'): no scaling
+  if (isLangevin()) return {1.0, 1.0};
+
   double AA;
 
   std::size_t M = thermostatChainLength;
@@ -270,6 +279,8 @@ std::pair<double, double> Thermostat::NoseHooverNVT(double UKineticTranslation, 
 
 double Thermostat::getEnergy()
 {
+  if (isLangevin()) return -langevinHeat;
+
   double energy{};
 
   if (translationalDegreesOfFreedom > translationalCenterOfMassConstraint)
@@ -332,6 +343,11 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Thermo
 
   archive << t.w;
 
+  archive << static_cast<std::uint8_t>(t.type);
+  archive << t.langevinFriction;
+  archive << t.langevinHeat;
+  archive << t.langevinRandom;
+
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
@@ -374,6 +390,18 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Thermostat &
   archive >> t.thermostatMassRotation;
 
   archive >> t.w;
+
+  if (versionNumber >= 2)
+  {
+    std::uint8_t type{};
+    archive >> type;
+    if (type > static_cast<std::uint8_t>(Thermostat::Type::Langevin))
+      throw std::runtime_error("Invalid thermostat type reading 'Thermostat'\n");
+    t.type = static_cast<Thermostat::Type>(type);
+    archive >> t.langevinFriction;
+    archive >> t.langevinHeat;
+    archive >> t.langevinRandom;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

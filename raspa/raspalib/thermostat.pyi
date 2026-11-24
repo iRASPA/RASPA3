@@ -19,3 +19,24 @@ class Thermostat:
                 steps.
             time_scale_parameter: Thermostat time-scale parameter.
         """
+
+    @property
+    def langevin(self) -> bool:
+        """Whether the temperature is held by a Langevin thermostat (friction
+        and random kicks on every thermostatted velocity) instead of the
+        Nose-Hoover chain. Default False."""
+        ...
+
+    @langevin.setter
+    def langevin(self, value: bool) -> None:
+        ...
+
+    @property
+    def langevin_friction(self) -> float:
+        """The friction coefficient of the Langevin thermostat [1/ps].
+        Default 1.0."""
+        ...
+
+    @langevin_friction.setter
+    def langevin_friction(self, value: float) -> None:
+        ...

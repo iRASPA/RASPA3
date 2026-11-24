@@ -46,6 +46,12 @@ RunningEnergy Integrators::velocityVerlet(
     std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
     scaleVelocities(moleculeData, moleculeAtomPositions, moleculeDynamics, components, scaling, framework,
                     frameworkDynamics, groupData, frameworkGroupData);
+    if (thermostat->isLangevin())
+    {
+      langevinVelocityStep(*thermostat, 0.5 * dt, moleculeData, moleculeAtomPositions, moleculeDynamics, components,
+                           framework, frameworkAtomPositions, frameworkDynamics, &forceField, groupData,
+                           frameworkGroupData);
+    }
   }
 
   // Start timing the integration step
@@ -100,6 +106,12 @@ RunningEnergy Integrators::velocityVerlet(
     std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
     scaleVelocities(moleculeData, moleculeAtomPositions, moleculeDynamics, components, scaling, framework,
                     frameworkDynamics, groupData, frameworkGroupData);
+    if (thermostat->isLangevin())
+    {
+      langevinVelocityStep(*thermostat, 0.5 * dt, moleculeData, moleculeAtomPositions, moleculeDynamics, components,
+                           framework, frameworkAtomPositions, frameworkDynamics, &forceField, groupData,
+                           frameworkGroupData);
+    }
   }
 
   // Update the running energies with current kinetic energies

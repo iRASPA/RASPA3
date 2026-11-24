@@ -131,5 +131,9 @@ void forEachRange(ForceEngine& engine, IntegratorWorkspace& w, Body&& body)
 /// of `system.timeStep`, with the Nose-Hoover thermostat of the system when it has one (NVE otherwise). The
 /// returned energies are those of the engine (pair, reciprocal, bonded terms; no tail correction) plus the kinetic
 /// energies after the step.
+/// The Langevin thermostat of the system over half a time step, on the calling thread (the kicks draw from one
+/// stream of random numbers), and the kinetic energies after it.
+std::pair<double, double> langevinHalfStep(System& system);
+
 RunningEnergy engineVelocityVerlet(System& system, ForceEngine& engine);
 }  // namespace SpatialDecompositionIntegrator

@@ -395,6 +395,10 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, ForceEngine& en
   const bool molecular = coupling == BarostatCoupling::Molecular;
   const bool thermostat = system.thermostat.has_value();
 
+  // The Langevin thermostat acts before the pass below takes the centre-of-mass velocities and the kinetic virial
+  // of the thermostatted velocities (it commutes with the barostat chain, which sees the cell only).
+  if (thermostat && system.thermostat->isLangevin()) SpatialDecompositionIntegrator::langevinHalfStep(system);
+
   const double3x3 pressureBefore = computeBarostatVirial(system, engine.molecularPressureTensor(), coupling);
   // one pass: the centre-of-mass velocities of the molecules and their kinetic virial (molecular coupling), the
   // kinetic energies for the thermostat
@@ -561,6 +565,11 @@ RunningEnergy engineThermobarostatVelocityVerlet(System& system, ForceEngine& en
     // (as in the NVT step)
     energies.translationalKineticEnergy *= scaling.first * scaling.first;
     energies.rotationalKineticEnergy *= scaling.second * scaling.second;
+    if (system.thermostat->isLangevin())
+    {
+      std::tie(energies.translationalKineticEnergy, energies.rotationalKineticEnergy) =
+          SpatialDecompositionIntegrator::langevinHalfStep(system);
+    }
     energies.NoseHooverEnergy = system.thermostat->getEnergy();
   }
   const double finalBarostatKinetic = barostat.barostatKineticEnergy();

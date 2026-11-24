@@ -17,6 +17,7 @@ import forcefield;
 import randomnumbers;
 import interpolation_energy_grid;
 import framework;
+import thermostat;
 import cross_links;
 import polymer_links;
 
@@ -138,6 +139,24 @@ void applyPositionConstraints(std::span<const Molecule> moleculeData, std::span<
  */
 void applyVelocityConstraints(std::span<const Molecule> moleculeData, std::span<const Atom> moleculeAtomPositions,
                               std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components);
+
+/**
+ * \brief The Langevin thermostat: an exact Ornstein-Uhlenbeck step of all thermostatted velocities over 'dt',
+ *        v -> c v + sqrt(1 - c^2) sqrt(k_B T / m) xi with c = exp(-friction dt) and xi a unit Gaussian.
+ *
+ * It acts on the centre-of-mass velocity and the body-frame angular velocity of rigid molecules, rigid groups and
+ * rigid framework groups, and on the velocities of flexible atoms (of molecules and of the framework); what the
+ * distance constraints of a molecule do not allow is taken out of the kicks again. The kinetic energy the step
+ * adds is accumulated in 'Thermostat::langevinHeat'. A molecular-dynamics step applies it over half a time step
+ * before and after the velocity-Verlet step, where the Nose-Hoover chain scales the velocities.
+ */
+void langevinVelocityStep(Thermostat& thermostat, double dt, std::span<Molecule> moleculeData,
+                          std::span<const Atom> moleculeAtomPositions, std::span<AtomDynamics> moleculeDynamics,
+                          const std::vector<Component>& components,
+                          const std::optional<Framework>& framework = std::nullopt,
+                          std::span<const Atom> frameworkAtomPositions = {},
+                          std::span<AtomDynamics> frameworkDynamics = {}, const ForceField* forceField = nullptr,
+                          std::span<GroupState> groupData = {}, std::span<GroupState> frameworkGroupData = {});
 
 /// The velocity stage of RATTLE for the atoms of one molecule of 'component'.
 void constrainMoleculeVelocities(const Component& component, std::span<const Atom> moleculeAtoms,

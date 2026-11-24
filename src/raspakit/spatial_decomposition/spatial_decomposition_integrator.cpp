@@ -153,6 +153,19 @@ std::pair<double, double> rangeKineticEnergies(System& system, const MoleculeRan
   return {translational, rotational};
 }
 
+std::pair<double, double> langevinHalfStep(System& system)
+{
+  Integrators::langevinVelocityStep(*system.thermostat, 0.5 * system.timeStep, system.moleculeData,
+                                    system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+                                    std::nullopt, {}, {}, &system.forceField, system.spanOfGroupData(), {});
+  return {Integrators::computeTranslationalKineticEnergy(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                                         system.spanOfMoleculeDynamics(), system.components,
+                                                         std::nullopt, {}, {}, &system.forceField,
+                                                         system.spanOfGroupData(), {}),
+          Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
+                                                      std::nullopt, {})};
+}
+
 // Velocity Verlet with the engine forces (Integrators::velocityVerlet with updateGradients replaced)
 RunningEnergy engineVelocityVerlet(System& system, ForceEngine& engine)
 {
@@ -181,6 +194,7 @@ RunningEnergy engineVelocityVerlet(System& system, ForceEngine& engine)
                  { w.kinetic[r] = rangeKineticEnergies(system, range); });
     const auto [translational, rotational] = w.totalKinetic();
     scaling = system.thermostat->NoseHooverNVT(translational, rotational);
+    if (system.thermostat->isLangevin()) langevinHalfStep(system);
   }
 
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -233,6 +247,7 @@ RunningEnergy engineVelocityVerlet(System& system, ForceEngine& engine)
     // scaling.second: the kinetic energies after it follow without another pass over the atoms
     translational *= scaling.first * scaling.first;
     rotational *= scaling.second * scaling.second;
+    if (system.thermostat->isLangevin()) std::tie(translational, rotational) = langevinHalfStep(system);
     runningEnergies.NoseHooverEnergy = system.thermostat->getEnergy();
   }
   runningEnergies.translationalKineticEnergy = translational;

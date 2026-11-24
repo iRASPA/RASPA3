@@ -5375,6 +5375,36 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                          thermostatChainLength, numberOfYoshidaSuzukiSteps, timeScaleParameterThermostat);
           systems[systemId].thermostat->numberOfRespaSteps = numberOfRespaSteps;
         }
+        // how the temperature is held: the Nose-Hoover chain (the default) or a Langevin thermostat
+        if (value.contains("Thermostat"))
+        {
+          if (!value["Thermostat"].is_string())
+            throw std::runtime_error("[Input reader]: 'Thermostat' must be a string (\"NoseHoover\" or \"Langevin\")\n");
+          const std::string thermostatString = value["Thermostat"].get<std::string>();
+          const bool langevin = caseInSensStringCompare(thermostatString, "Langevin");
+          if (!langevin && !caseInSensStringCompare(thermostatString, "NoseHoover"))
+            throw std::runtime_error(std::format(
+                "[Input reader]: unknown 'Thermostat' '{}'; expected \"NoseHoover\" or \"Langevin\"\n",
+                thermostatString));
+          if (langevin)
+          {
+            if (!systems[systemId].thermostat.has_value())
+              throw std::runtime_error(std::format(
+                  "[Input reader]: 'Thermostat' : \"Langevin\" needs a thermostatted 'Ensemble' (not '{}')\n",
+                  ensembleString));
+            double friction{1.0};
+            if (value.contains("LangevinFriction"))
+            {
+              if (!value["LangevinFriction"].is_number() || !(value["LangevinFriction"].get<double>() > 0.0))
+                throw std::runtime_error("[Input reader]: 'LangevinFriction' must be a positive number [1/ps]\n");
+              friction = value["LangevinFriction"].get<double>();
+            }
+            systems[systemId].thermostat->type = Thermostat::Type::Langevin;
+            systems[systemId].thermostat->langevinFriction = friction;
+            // a Langevin thermostat does not conserve the momentum of the system
+            systems[systemId].updateCenterOfMassConstraint();
+          }
+        }
         if (molecularDynamicsHasParticleExchange(ensemble.value()))
         {
           const bool hasChemicalPotentials = std::ranges::any_of(
@@ -6954,6 +6984,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "WriteLammpsDataEvery",
     "Ensemble",
     "ThermostatChainLength",
+    "Thermostat",
+    "LangevinFriction",
     "BarostatChainLength",
     "NumberOfRespaSteps",
     "NumberOfYoshidaSuzukiSteps",

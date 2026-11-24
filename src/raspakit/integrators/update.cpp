@@ -32,6 +32,7 @@ import cross_links;
 import interactions_cross_link;
 import polymer_links;
 import interactions_polymer_link;
+import thermostat;
 
 // molecule.velocity / centerOfMassPosition are what VACF and MSD read. Rigid molecules integrate
 // those fields directly. Semi-flexible and flexible molecules integrate groups and atoms; the
@@ -621,6 +622,140 @@ void Integrators::applyVelocityConstraints(std::span<const Molecule> moleculeDat
   }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.updateVelocities += end - begin;
+}
+
+namespace
+{
+// Body-frame angular velocity from the orientation momentum (the convention of the free rotor).
+double3 bodyAngularVelocity(const simd_quatd& orientation, const simd_quatd& orientationMomentum,
+                            const double3& inverseInertia)
+{
+  simd_quatd p = orientationMomentum;
+  p.r = -p.r;
+  const simd_quatd pq = p * orientation;
+  return 0.5 * double3(pq.ix, pq.iy, pq.iz) * inverseInertia;
+}
+
+// Orientation momentum from the body-frame angular velocity (the inverse of 'bodyAngularVelocity', as the
+// velocities are drawn).
+simd_quatd orientationMomentumFromBodyAngularVelocity(const simd_quatd& q, const double3& I, const double3& w)
+{
+  simd_quatd p(0.0, 0.0, 0.0, 0.0);
+  p.ix = 2.0 * (q.r * (I.x * w.x) - q.iz * (I.y * w.y) + q.iy * (I.z * w.z));
+  p.iy = 2.0 * (q.iz * (I.x * w.x) + q.r * (I.y * w.y) - q.ix * (I.z * w.z));
+  p.iz = 2.0 * (-q.iy * (I.x * w.x) + q.ix * (I.y * w.y) + q.r * (I.z * w.z));
+  p.r = 2.0 * (-q.ix * (I.x * w.x) - q.iy * (I.y * w.y) - q.iz * (I.z * w.z));
+  return p;
+}
+}  // namespace
+
+void Integrators::langevinVelocityStep(Thermostat& thermostat, double dt, std::span<Molecule> moleculeData,
+                                       std::span<const Atom> moleculeAtomPositions,
+                                       std::span<AtomDynamics> moleculeDynamics,
+                                       const std::vector<Component>& components,
+                                       const std::optional<Framework>& framework,
+                                       std::span<const Atom> frameworkAtomPositions,
+                                       std::span<AtomDynamics> frameworkDynamics, const ForceField* forceField,
+                                       std::span<GroupState> groupData, std::span<GroupState> frameworkGroupData)
+{
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+  const auto kineticEnergy = [&]()
+  {
+    return computeTranslationalKineticEnergy(moleculeData, moleculeAtomPositions, moleculeDynamics, components,
+                                             framework, frameworkAtomPositions, frameworkDynamics, forceField,
+                                             groupData, frameworkGroupData) +
+           computeRotationalKineticEnergy(moleculeData, components, groupData, framework, frameworkGroupData);
+  };
+  const double kineticBefore = kineticEnergy();
+
+  RandomNumber& random = thermostat.langevinRandom;
+  const double kT = Units::KB * thermostat.temperature;
+  const double c1 = std::exp(-thermostat.langevinFriction * dt);
+  const double c2 = std::sqrt(std::max(0.0, 1.0 - c1 * c1));
+  const auto gaussian3 = [&]() { return double3(random.Gaussian(), random.Gaussian(), random.Gaussian()); };
+  // a rigid body: its centre of mass, and its angular velocity in the body frame with the principal inertia
+  const auto kickBody = [&](double3& velocity, simd_quatd& orientationMomentum, const simd_quatd& orientation,
+                            double mass, const double3& inertia, const double3& inverseInertia, bool rotates)
+  {
+    velocity = c1 * velocity + c2 * std::sqrt(kT / mass) * gaussian3();
+    if (!rotates) return;
+    const double3 omega = c1 * bodyAngularVelocity(orientation, orientationMomentum, inverseInertia) +
+                          c2 * sqrt(inverseInertia * kT) * gaussian3();
+    orientationMomentum = orientationMomentumFromBodyAngularVelocity(orientation, inertia, omega);
+  };
+
+  std::size_t index{};
+  std::size_t groupIndex{};
+  for (Molecule& molecule : moleculeData)
+  {
+    const Component& component = components[molecule.componentId];
+    std::span<AtomDynamics> dynamics = moleculeDynamics.subspan(index, molecule.numberOfAtoms);
+    std::span<const Atom> atoms = moleculeAtomPositions.subspan(index, molecule.numberOfAtoms);
+
+    if (component.rigid)
+    {
+      kickBody(molecule.velocity, molecule.orientationMomentum, molecule.orientation, molecule.mass,
+               component.inertiaVector, component.inverseInertiaVector, molecule.numberOfAtoms > 1);
+    }
+    else
+    {
+      const bool semiFlexible = component.isSemiFlexible();
+      if (semiFlexible)
+      {
+        std::size_t rigidRank{};
+        for (const Fragment& group : component.fragmentGraph.fragments)
+        {
+          if (!group.isRigidBody()) continue;
+          GroupState& state = groupData[groupIndex + rigidRank];
+          kickBody(state.velocity, state.orientationMomentum, state.orientation, group.mass, group.inertiaVector,
+                   group.inverseInertiaVector, true);
+          ++rigidRank;
+        }
+      }
+      for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+      {
+        if (semiFlexible && component.rigidFragmentContaining(i).has_value()) continue;
+        const double mass = component.atomMass(i, atoms[i]);
+        if (!(mass > 0.0)) continue;
+        dynamics[i].velocity = c1 * dynamics[i].velocity + c2 * std::sqrt(kT / mass) * gaussian3();
+      }
+      // the kicks are drawn for free atoms: keep the part the constraints allow
+      constrainMoleculeVelocities(component, atoms, dynamics);
+      syncNonRigidMoleculeCenterOfMass(molecule, atoms, dynamics, component, groupData, groupIndex);
+      if (semiFlexible) groupIndex += component.numberOfRigidFragments();
+    }
+    index += molecule.numberOfAtoms;
+  }
+
+  if (framework && framework->hasMobileAtoms())
+  {
+    if (forceField == nullptr || frameworkDynamics.size() != frameworkAtomPositions.size())
+    {
+      throw std::runtime_error("Flexible-framework Langevin thermostat requires force-field and dynamics data");
+    }
+    std::size_t rigidRank{};
+    for (const FrameworkGroup& group : framework->groups)
+    {
+      if (!group.isRigidBody()) continue;
+      GroupState& state = frameworkGroupData[rigidRank];
+      kickBody(state.velocity, state.orientationMomentum, state.orientation, group.mass, group.inertiaVector,
+               group.inverseInertiaVector, true);
+      ++rigidRank;
+    }
+    for (std::size_t i = 0; i != frameworkAtomPositions.size(); ++i)
+    {
+      if (!framework->isFlexibleAtom(i)) continue;
+      const double mass = forceField->pseudoAtoms[frameworkAtomPositions[i].type].mass;
+      if (!(mass > 0.0)) continue;
+      frameworkDynamics[i].velocity = c1 * frameworkDynamics[i].velocity + c2 * std::sqrt(kT / mass) * gaussian3();
+    }
+  }
+
+  thermostat.langevinHeat += kineticEnergy() - kineticBefore;
+
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+  integratorsCPUTime.scaleVelocities += end - begin;
 }
 
 void Integrators::initializeMoleculeVelocity(RandomNumber& random, Molecule& molecule,

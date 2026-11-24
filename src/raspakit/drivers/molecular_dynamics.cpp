@@ -450,6 +450,15 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
 // The barostat is driven by the virial of the points it couples to (molecular coupling: the centres of mass of
 // all molecules; atomic coupling: centers of mass of rigid molecules and rigid groups, flexible atoms
 // individually): see 'computeBarostatVirial'. Its kinetic partner is 'computeMolecularKineticVirial'.
+// The Langevin thermostat over half a time step (see 'Integrators::langevinVelocityStep').
+void langevinHalfStep(System& system)
+{
+  Integrators::langevinVelocityStep(*system.thermostat, 0.5 * system.timeStep, system.moleculeData,
+                                    system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+                                    system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(),
+                                    &system.forceField, system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+}
+
 RunningEnergy thermobarostatVelocityVerlet(System& system)
 {
   Thermobarostat& barostat = *system.thermobarostat;
@@ -482,6 +491,7 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
     Integrators::scaleVelocities(system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(),
                                  system.components, scaling, system.framework, system.spanOfFrameworkDynamics(),
                                  system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+    if (system.thermostat->isLangevin()) langevinHalfStep(system);
   }
   // the barostat kick follows the particle chain (the mirror image of the closing half-step): it takes the kinetic
   // virial of the scaled velocities
@@ -609,6 +619,17 @@ RunningEnergy thermobarostatVelocityVerlet(System& system)
     // (as in Integrators::velocityVerlet)
     energies.translationalKineticEnergy *= scaling.first * scaling.first;
     energies.rotationalKineticEnergy *= scaling.second * scaling.second;
+    if (system.thermostat->isLangevin())
+    {
+      langevinHalfStep(system);
+      energies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+          system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+          system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
+          system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+      energies.rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(
+          system.moleculeData, system.components, system.spanOfGroupData(), system.framework,
+          system.spanOfFrameworkGroupData());
+    }
     energies.NoseHooverEnergy = system.thermostat->getEnergy();
   }
   const double finalBarostatKinetic = barostat.barostatKineticEnergy();
