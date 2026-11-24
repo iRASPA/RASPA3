@@ -5,7 +5,7 @@ RUN \
   dnf install -y 'dnf-command(config-manager)' && \
   dnf config-manager --set-enabled powertools && \
   dnf install -y --setopt=install_weak_deps=False clang libomp-devel libomp make python3-lit && \
-  dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3.12-pybind11-devel && \
+  dnf install -y --setopt=install_weak_deps=False python3 python3-devel && \
   dnf install -y --setopt=install_weak_deps=False lapack-devel && \
   dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64  && \
   dnf install -y --setopt=install_weak_deps=False openssl-devel && \

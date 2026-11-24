@@ -12,8 +12,7 @@ RUN \
   dnf install -y --setopt=install_weak_deps=False llvm-devel clang-devel lldb && \
   dnf install -y perl && \
   dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64 && \
-  dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 && \
-  dnf install -y --setopt=install_weak_deps=False pybind11-devel && \
+  dnf install -y --setopt=install_weak_deps=False python3 python3-devel && \
   dnf install -y --setopt=install_weak_deps=False ocl-icd-devel && \
   dnf install -y --setopt=install_weak_deps=False fftw-devel && \
   wget https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6.tar.gz && \

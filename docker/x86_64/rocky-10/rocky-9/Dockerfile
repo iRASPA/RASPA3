@@ -12,8 +12,7 @@ RUN \
   dnf install -y --setopt=install_weak_deps=False  llvm-devel clang-devel lldb && \
   dnf install -y perl && \
   dnf install -y --setopt=install_weak_deps=False  lapack-devel lapack64 blas64 && \
-  dnf --enablerepo=devel install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 && \
-  dnf --enablerepo=devel install -y --setopt=install_weak_deps=False pybind11-devel && \
+  dnf --enablerepo=devel install -y --setopt=install_weak_deps=False python3 python3-devel && \
   dnf --enablerepo=devel install -y --setopt=install_weak_deps=False fftw-devel && \
   dnf --enablerepo=devel install -y --setopt=install_weak_deps=False ocl-icd-devel && \
   wget https://github.com/Kitware/CMake/releases/download/v4.3.0/cmake-4.3.0.tar.gz && \

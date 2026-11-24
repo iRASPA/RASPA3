@@ -11,8 +11,7 @@ RUN \
   dnf install -y --setopt=install_weak_deps=False  libomp zlib-static && \
   dnf install -y perl && \
   dnf install -y --setopt=install_weak_deps=False  lapack-devel lapack64 blas64 && \
-  dnf --enablerepo=devel install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 && \
-  dnf --enablerepo=devel install -y --setopt=install_weak_deps=False pybind11-devel && \
+  dnf --enablerepo=devel install -y --setopt=install_weak_deps=False python3 python3-devel && \
   dnf --enablerepo=devel install -y --setopt=install_weak_deps=False fftw-devel && \
   dnf --enablerepo=devel install -y --setopt=install_weak_deps=False ocl-icd-devel && \
   wget https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.1/LLVM-22.1.1-Linux-ARM64.tar.xz && \

@@ -177,9 +177,7 @@ mypy_cache/
 .pyre/
 .pytype/
 
-# pybind11
 CMakeLists.txt.user
-pybind11/
 .build/
 .venv/
 .env/

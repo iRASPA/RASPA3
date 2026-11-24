@@ -59,7 +59,7 @@ based on the following ideas:
 
 -   Integrated simulation environment\
     The `RASPA3` `C++` simulation engine is made available to `Python`
-    via a `Pybind11` interface. For use in `Python`, `RASPA3` is built
+    via a `nanobind` interface. For use in `Python`, `RASPA3` is built
     as a shared library, allowing its functions to be used by `Python`
     users and enabling seamless interactions with the simulation
     routines. Through the API, the library allows for invocation of

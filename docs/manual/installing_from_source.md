@@ -12,7 +12,6 @@
 | cmake                  | 4.3.0        |
 | ninja                  | 1.11         |
 | python                 | 3.10         |
-| pybind11               | 2.12         |
 | BLAS + LAPACK          | 64‑bit ints  |
 | HDF5                   | 1.12         |
 | OpenCL                 | latest       |
@@ -40,7 +39,7 @@ ninja -C build install      # optional
 ```bash
 sudo apt install -y git ca-certificates cmake ninja-build \
   llvm lld clang clang-tidy libc++-dev libc++abi-dev \
-  libclang-rt-dev python3 python3-dev pybind11-dev \
+  libclang-rt-dev python3 python3-dev \
   liblapack64-dev libblas64-dev
 
 git clone https://github.com/raspa3/raspa3.git
@@ -55,7 +54,7 @@ ninja -C build install
 ```bash
 sudo dnf install -y git llvm lld cmake clang clang-tools-extra ninja-build \
   libcxx libcxx-devel libcxxabi libcxxabi-devel \
-  lapack64 blas64 python3 python3-devel pybind11-devel
+  lapack64 blas64 python3 python3-devel
 
 git clone https://github.com/raspa3/raspa3.git
 cd raspa3
@@ -67,7 +66,7 @@ ninja -C build install
 ### 1.4 macOS (Homebrew)
 
 ```zsh
-brew install llvm lld hdf5 libaec ninja cmake doxygen graphviz lapack pybind11
+brew install llvm lld hdf5 libaec ninja cmake doxygen graphviz lapack
 export PATH="$(brew --prefix llvm)/bin:$PATH"  # clang‑18
 export HDF5_ROOT="$(brew --prefix hdf5)"
 git clone https://github.com/raspa3/raspa3.git

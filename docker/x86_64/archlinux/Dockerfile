@@ -4,7 +4,7 @@ RUN \
   pacman -Sy --noconfirm && \
   pacman -Syu --noconfirm archlinux-keyring && \
   pacman -S --noconfirm vi vim git wget debugedit unzip && \
-  pacman -S --noconfirm python3 pybind11 && \
+  pacman -S --noconfirm python3 && \
   pacman -S --noconfirm gcc make openmp && \
   pacman -S --noconfirm blas64 lapack64 && \
   pacman -S --noconfirm fftw ocl-icd opencl-headers && \

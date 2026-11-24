@@ -3,7 +3,7 @@ FROM quay.io/pypa/manylinux_2_28_x86_64
 RUN \
   dnf update -y && \
   dnf install -y --setopt=install_weak_deps=False clang libomp-devel libomp make python3-lit && \
-  dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3.11-pybind11-devel && \
+  dnf install -y --setopt=install_weak_deps=False python3 python3-devel && \
   dnf install -y --setopt=install_weak_deps=False lapack-devel && \
   dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64  && \
   dnf install -y --setopt=install_weak_deps=False wget git rpm-build && \

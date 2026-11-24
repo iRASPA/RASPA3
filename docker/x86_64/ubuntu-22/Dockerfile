@@ -5,7 +5,7 @@ RUN \
   DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata && \
   apt-get install -y --no-install-recommends git ca-certificates openssl libssl-dev binutils binutils-dev && \
   apt-get install -y --no-install-recommends lsb-release wget software-properties-common gnupg && \
-  apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev && \
+  apt-get install -y --no-install-recommends python3 python3-dev && \
   apt-get install -y --no-install-recommends liblapack-dev libomp5 && \
   apt-get install -y --no-install-recommends clang make zlib-static && \
   apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev && \

@@ -21,7 +21,7 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           sudo apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build
           sudo apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev
-          sudo apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11
+          sudo apt-get install -y --no-install-recommends python3 python3-dev
           sudo apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev
           sudo apt-get install -y --no-install-recommends libhdf5-cpp-103-1t64 libhdf5-103-1t64 libhdf5-dev
           sudo apt-get install -y --no-install-recommends doxygen graphviz
