@@ -1815,6 +1815,63 @@ void System::checkCartesianPositions()
   }
 }
 
+bool System::hasNumberOfBlocks(std::size_t blocks) const
+{
+  return averageEnergies.numberOfBlocks == blocks &&
+         std::ranges::all_of(components, [&](const Component& component)
+                             {
+                               return component.numberOfBlocks() == blocks &&
+                                      component.averageRosenbluthWeights.numberOfBlocks == blocks &&
+                                      component.averageGibbsRosenbluthWeights.numberOfBlocks == blocks;
+                             }) &&
+         std::ranges::all_of(reactions.list, [&](const Reaction& reaction)
+                             {
+                               // (a histogram without sample points is not in use)
+                               auto sized = [&](const PropertyLambdaProbabilityHistogram& histogram)
+                               { return histogram.numberOfSamplePoints == 0uz || histogram.numberOfBlocks == blocks; };
+                               return sized(reaction.lambda) && sized(reaction.lambdaProductSide);
+                             });
+}
+
+void System::setNumberOfBlocks(std::size_t blocks)
+{
+  if (blocks == 0uz) throw std::invalid_argument("System: the number of blocks must be positive");
+
+  for (Component& component : components) component.setNumberOfBlocks(blocks);
+  for (Reaction& reaction : reactions.list)
+  {
+    if (reaction.lambda.numberOfSamplePoints != 0uz) reaction.lambda.setNumberOfBlocks(blocks);
+    if (reaction.lambdaProductSide.numberOfSamplePoints != 0uz) reaction.lambdaProductSide.setNumberOfBlocks(blocks);
+  }
+
+  if (averageEnergies.numberOfBlocks == blocks) return;
+
+  averageEnergies = PropertyEnergy(blocks, 1, framework.has_value() ? 1 : 0, components.size());
+  averageLoadings = PropertyLoading(blocks, components.size());
+  averageEnthalpiesOfAdsorption = PropertyEnthalpy(blocks, components.size());
+  averagePartialMolarProperties = PropertyPartialMolarProperties(blocks, components.size());
+  // (as the constructor leaves them: over the components that can be exchanged)
+  averageEnthalpiesOfAdsorption.resize(swappableComponents.size());
+  averagePartialMolarProperties.resize(swappableComponents.size());
+  averageTemperature = PropertyTemperature(blocks);
+  averageTranslationalTemperature = PropertyTemperature(blocks);
+  averageRotationalTemperature = PropertyTemperature(blocks);
+  averagePressure = PropertyPressure(blocks);
+  averageSimulationBox = PropertySimulationBox(blocks);
+
+  // the sampled properties that keep blocks: their setters size them for the blocks of the system (given a copy,
+  // as a setter clears the property before it reads the settings)
+  if (averageNumberOfMoleculesHistogram.has_value())
+    setNumberOfMoleculesHistogram(std::optional(*averageNumberOfMoleculesHistogram));
+  if (averageEnergyHistogram.has_value()) setAverageEnergyHistogram(std::optional(*averageEnergyHistogram));
+  if (propertyConventionalRadialDistributionFunction.has_value())
+    setPropertyConventionalRDF(std::optional(*propertyConventionalRadialDistributionFunction));
+  if (propertyRadialDistributionFunction.has_value())
+    setPropertyRDF(std::optional(*propertyRadialDistributionFunction));
+  if (propertyElasticConstantsFluctuation.has_value())
+    propertyElasticConstantsFluctuation = PropertyElasticConstantsFluctuation(blocks);
+}
+
 void System::setThermostat(const std::optional<Thermostat>& thermo)
 {
   thermostat.reset();  // None clears the property

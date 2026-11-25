@@ -1,4 +1,5 @@
 import collections.abc
+import typing
 
 from raspalib.average_energy_type import *
 
@@ -10,6 +11,17 @@ class PropertyEnergyHistogram():
     cycles and exposes averaged energy contributions per histogram bin.
     """
 
+    @typing.overload
+    def __init__(
+        self,
+        number_of_bins: int,
+        value_range: tuple[float, float],
+        sample_every: int = 1,
+        write_every: int | None = None
+    ) -> None:
+        ...
+
+    @typing.overload
     def __init__(
         self,
         number_of_blocks: int,
@@ -23,7 +35,8 @@ class PropertyEnergyHistogram():
         Initialize a :class:`PropertyEnergyHistogram`.
 
         Args:
-            number_of_blocks: Number of blocks used for block averaging.
+            number_of_blocks: Not needed: the system sizes the histogram for
+                its blocks when the property is set.
             number_of_bins: Number of histogram bins.
             value_range: Inclusive energy range ``(min_value, max_value)``
                 covered by the histogram.

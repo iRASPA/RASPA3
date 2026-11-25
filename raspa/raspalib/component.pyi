@@ -66,7 +66,8 @@ class Component():
             intra_molecular_potentials: Intra-molecular potential settings.
                 Defaults to an empty :class:`IntraMolecularPotentials`.
             number_of_blocks: Number of sampling blocks used for statistics.
-                Defaults to ``5``.
+                Defaults to ``5``. Not needed: a system sizes its components
+                for its number of blocks, and a driver its systems.
             number_of_lambda_bins: Number of bins in lambda histograms.
                 Defaults to ``41``.
             particle_probabilities: Monte Carlo move probabilities for this
@@ -400,6 +401,11 @@ class Component():
     @property
     def lambda_group_swap_histogram(self) -> PropertyLambdaProbabilityHistogram:
         """(self) -> raspalib._raspalib.PropertyLambdaProbabilityHistogram"""
+        ...
+
+    @property
+    def number_of_blocks(self) -> int:
+        """The number of blocks the statistics of the component are kept in."""
         ...
 
     @property

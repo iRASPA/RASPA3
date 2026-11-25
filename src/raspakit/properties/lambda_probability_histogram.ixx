@@ -85,6 +85,17 @@ export struct PropertyLambdaProbabilityHistogram
   std::size_t occupancyCount{0};
   std::size_t occupancyTotal{0};
 
+  /// Sizes the statistics for another number of blocks: the samples taken so far are dropped, the settings, the
+  /// biasing factors and the visits of the Wang-Landau scheme are kept.
+  void setNumberOfBlocks(std::size_t blocks)
+  {
+    if (blocks == numberOfBlocks) return;
+    numberOfBlocks = blocks;
+    bookKeepingLambda.assign(blocks, std::vector<double>(numberOfSamplePoints));
+    bookKeepingDUdlambda.assign(blocks, std::vector<std::pair<double, double>>(numberOfSamplePoints));
+    density = BlockAverage<double>(blocks);
+  }
+
   void clear()
   {
     std::fill(histogram.begin(), histogram.end(), 0.0);

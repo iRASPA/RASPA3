@@ -1,3 +1,5 @@
+import typing
+
 class PropertyNumberOfMoleculesHistogram():
     """
     Store number-of-molecules histogram statistics from RASPA.
@@ -6,6 +8,16 @@ class PropertyNumberOfMoleculesHistogram():
     molecule-number states.
     """
 
+    @typing.overload
+    def __init__(
+        self,
+        value_range: tuple[int, int],
+        sample_every: int = 1,
+        write_every: int | None = None
+    ) -> None:
+        ...
+
+    @typing.overload
     def __init__(
         self,
         number_of_blocks: int,
@@ -14,6 +26,10 @@ class PropertyNumberOfMoleculesHistogram():
         write_every: int | None = None
     ) -> None:
         ...
+        """
+        ``number_of_blocks`` is not needed: the system sizes the histogram for
+        its blocks and components when the property is set.
+        """
 
 
     def result(self) -> list[tuple[list[float], list[float], list[float]]]:

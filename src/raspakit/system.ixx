@@ -1689,6 +1689,18 @@ export struct System
   void createExternalFieldInterpolationGrid(std::ostream& stream, std::size_t systemId);
   void createFrameworkInterpolationGrids(std::ostream& stream);
 
+  /// The number of blocks the averages of the system are kept in.
+  std::size_t numberOfBlocks() const { return averageEnergies.numberOfBlocks; }
+
+  /// Whether the system, its components and its reactions all keep their statistics in this number of blocks.
+  bool hasNumberOfBlocks(std::size_t numberOfBlocks) const;
+
+  /// Sizes the averages and the sampled properties of the system, of its components and of its reactions for
+  /// another number of blocks. What is not sized for it yet is made anew, without the samples taken so far; the
+  /// settings are kept. A driver has one number of blocks, and a sample of a later block written to statistics
+  /// of fewer blocks went past their end.
+  void setNumberOfBlocks(std::size_t numberOfBlocks);
+
   void setThermostat(const std::optional<Thermostat>& thermo);
   void setThermobarostat(const std::optional<Thermobarostat>& barostat);
 

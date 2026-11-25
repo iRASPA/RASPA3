@@ -35,6 +35,7 @@ from raspalib.property_density_grid import *
 from raspalib.property_lambda_probability_histogram import *
 from raspalib.property_widom import *
 from raspalib.property_conventional_radial_distribution_function import *
+from raspalib.property_radial_distribution_function import *
 from raspalib.property_mean_squared_displacement import *
 from raspalib.property_velocity_autocorrelation_function import *
 from raspalib.thermostat import *
@@ -92,6 +93,7 @@ __all__ = [
     "PropertyConservedEnergyEvolution",
     "Thermostat",
     "PropertyConventionalRadialDistributionFunction",
+    "PropertyRadialDistributionFunction",
     "PropertyMeanSquaredDisplacement",
     "PropertyVelocityAutoCorrelationFunction",
     "PropertyEnthalpy",

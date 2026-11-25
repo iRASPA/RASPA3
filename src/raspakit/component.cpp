@@ -4773,3 +4773,21 @@ Component Component::makeIon(const ForceField &forceField, std::size_t id, std::
                    {Atom({0, 0, 0}, q, 1.0, 0, static_cast<std::uint16_t>(type), static_cast<std::uint8_t>(id), false, false)}, {},
                    {}, 5, 21);
 }
+
+void Component::setNumberOfBlocks(std::size_t blocks)
+{
+  if (blocks == numberOfBlocks() && averageRosenbluthWeights.numberOfBlocks == blocks &&
+      averageGibbsRosenbluthWeights.numberOfBlocks == blocks)
+  {
+    return;
+  }
+
+  lambdaGC.setNumberOfBlocks(blocks);
+  lambdaGibbs.setNumberOfBlocks(blocks);
+  lambdaPairSwap.setNumberOfBlocks(blocks);
+  lambdaPairSwapCB.setNumberOfBlocks(blocks);
+  lambdaGroupSwap.setNumberOfBlocks(blocks);
+  lambdaGroupSwapCB.setNumberOfBlocks(blocks);
+  averageRosenbluthWeights = PropertyWidom(blocks);
+  averageGibbsRosenbluthWeights = PropertyGibbsWidom(blocks);
+}

@@ -24,7 +24,7 @@ class MolecularDynamics():
         optimize_mc_moves_every: int = 100,
         systems: collections.abc.Sequence[System] = [],
         random_seed: int | None = None,
-        number_of_blocks: int = 5,
+        number_of_blocks: int | None = None,
         output_to_files: bool = False
     ) -> None:
         ...
@@ -42,7 +42,7 @@ class MolecularDynamics():
         optimize_mc_moves_every: int = 100,
         systems: collections.abc.Sequence[System] = [],
         random_seed: int | None = None,
-        number_of_blocks: int = 5,
+        number_of_blocks: int | None = None,
         output_to_files: bool = False
     ) -> None:
         ...
@@ -70,11 +70,18 @@ class MolecularDynamics():
                 empty sequence. The driver works on its own copy of them;
                 when ``run`` or a phase returns, its systems are assigned
                 back to the objects given here (not to an object that
-                was given more than once).
+                was given more than once). The properties that were
+                given to the setters of those systems are brought up to
+                date as well. An evolution property made without a number
+                of cycles records the cycles of all phases of this driver.
             random_seed: Optional random seed. If ``None``, the backend selects
                 a seed.
             number_of_blocks: Number of blocks used for block averaging.
-                Defaults to ``5``.
+                This is the one place to give it: the driver sizes its
+                copies of the systems, their components and their sampled
+                properties for it (statistics that were kept in another
+                number of blocks start anew). Without it the driver takes
+                the number of its systems, which then have to agree.
             output_to_files: Whether output should be written to files.
                 Defaults to ``False``.
         """
@@ -104,6 +111,11 @@ class MolecularDynamics():
         Args:
             call_back_function: Optional callback invoked during execution.
         """
+        ...
+
+    @property
+    def number_of_blocks(self) -> int:
+        """The number of blocks the averages and their errors are computed over."""
         ...
 
     @property

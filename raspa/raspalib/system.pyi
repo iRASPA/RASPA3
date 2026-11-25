@@ -27,6 +27,7 @@ from raspalib.property_density_grid import *
 from raspalib.property_energy_histogram import *
 from raspalib.property_number_of_molecules_histogram import *
 from raspalib.property_conventional_radial_distribution_function import *
+from raspalib.property_radial_distribution_function import *
 from raspalib.property_mean_squared_displacement import *
 from raspalib.property_velocity_autocorrelation_function import *
 from raspalib.thermostat import *
@@ -56,7 +57,7 @@ class System():
         components: collections.abc.Sequence[Component] = [],
         initial_positions: collections.abc.Sequence[collections.abc.Sequence[tuple[float, float, float]]] = [],
         initial_number_of_molecules: collections.abc.Sequence[int] = [],
-        number_of_blocks: int = 5,
+        number_of_blocks: int | None = None,
         system_probabilities: MCMoveProbabilities = MCMoveProbabilities(),
         reactions: collections.abc.Sequence[Reaction] = []
     ) -> None:
@@ -77,7 +78,11 @@ class System():
             initial_positions: Optional initial positions, per component the
                 atom positions of its initial molecules.
             initial_number_of_molecules: Initial molecule counts per component.
-            number_of_blocks: Number of blocks used for block averaging.
+            number_of_blocks: Number of blocks used for block averaging. Not
+                needed: without it the system takes the number of its
+                components (which then have to agree), and a driver sizes its
+                systems for its own. When given, the components are sized
+                for it.
             system_probabilities: Monte Carlo move probabilities at the system
                 level.
         """
@@ -189,44 +194,60 @@ class System():
         """Attach thermostat settings to the system."""
         ...
 
+    # The setters of the properties. The system builds its own property from the
+    # settings of the one given, sized for its molecules, components and blocks.
+    # The given object is brought up to date when it is set and whenever a phase
+    # of a driver returns, so the results can be read from it as well as from
+    # ``system.property_...``. An object given to more than one system of a
+    # driver is left as it was. None removes the property.
+
     def set_sample_pdb_movie(self, property: SampleMovie | None = None) -> None:
         """Enable/configure PDB-movie sampling."""
         ...
 
-    def set_number_of_molecules_histogram(self, property: PropertyNumberOfMoleculesHistogram) -> None:
+    def set_number_of_molecules_histogram(self, property: PropertyNumberOfMoleculesHistogram | None = None) -> None:
         """Attach a number of molecules-histogram property configuration."""
         ...
 
-    def set_average_energy_histogram(self, property: PropertyEnergyHistogram) -> None:
+    def set_average_energy_histogram(self, property: PropertyEnergyHistogram | None = None) -> None:
         """Attach an energy-histogram property configuration."""
         ...
 
-    def set_property_density_grid(self, property: PropertyDensityGrid) -> None:
+    def set_property_density_grid(self, property: PropertyDensityGrid | None = None) -> None:
         """Attach a density-grid property configuration."""
         ...
 
-    def set_property_number_of_molecules_evolution(self, property: PropertyNumberOfMoleculesEvolution) -> None:
+    def set_property_number_of_molecules_evolution(self, property: PropertyNumberOfMoleculesEvolution | None = None) -> None:
         """Attach molecule-count evolution property configuration."""
         ...
 
-    def set_property_volume_evolution(self, property: PropertyVolumeEvolution) -> None:
+    def set_property_volume_evolution(self, property: PropertyVolumeEvolution | None = None) -> None:
         """Attach volume-evolution property configuration."""
         ...
 
-    def set_property_conserved_energy_evolution(self, property: PropertyConservedEnergyEvolution) -> None:
+    def set_property_conserved_energy_evolution(self, property: PropertyConservedEnergyEvolution | None = None) -> None:
         """Attach conserved-energy evolution property configuration."""
         ...
 
-    def set_property_conventional_rdf(self, property: PropertyConventionalRadialDistributionFunction) -> None:
+    def set_property_conventional_rdf(self, property: PropertyConventionalRadialDistributionFunction | None = None) -> None:
         """Attach conventional RDF property configuration."""
         ...
 
-    def set_property_msd(self, property: PropertyMeanSquaredDisplacement) -> None:
+    def set_property_msd(self, property: PropertyMeanSquaredDisplacement | None = None) -> None:
         """Attach mean-squared-displacement property configuration."""
         ...
 
     def set_property_vacf(self, property: PropertyVelocityAutoCorrelationFunction | None = None) -> None:
         """Attach velocity-autocorrelation property configuration."""
+        ...
+
+    @property
+    def property_rdf(self) -> PropertyRadialDistributionFunction | None:
+        """Return the force-based RDF property, if configured."""
+        ...
+
+    def set_property_rdf(self, property: PropertyRadialDistributionFunction | None = None) -> None:
+        """Attach force-based RDF property configuration."""
         ...
 
     @property
@@ -340,6 +361,11 @@ class System():
     @property
     def reactions(self) -> collections.abc.Sequence[Reaction]:
         """The reactions of the system."""
+        ...
+
+    @property
+    def number_of_blocks(self) -> int:
+        """The number of blocks the averages of the system are kept in."""
         ...
 
     @property

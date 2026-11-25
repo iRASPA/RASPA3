@@ -1022,6 +1022,13 @@ export struct Component
    *
    * \return A string representing the Component.
    */
+  /// The number of blocks the statistics of the component are kept in.
+  std::size_t numberOfBlocks() const { return lambdaGC.numberOfBlocks; }
+
+  /// Sizes the statistics of the component (the lambda histograms and the Rosenbluth weights) for another number of
+  /// blocks. The samples taken so far are dropped; the settings and the biasing factors are kept.
+  void setNumberOfBlocks(std::size_t numberOfBlocks);
+
   std::string repr() const;
 
   static Component makeMethane(const ForceField &forceField, std::size_t id = 0);

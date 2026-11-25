@@ -995,10 +995,80 @@ void checkSampledComponent(const Property& property, std::size_t component, cons
   }
 }
 
+// A system builds its own property from the settings of the one it is given ('set_property_msd' and the like), sized
+// for its molecules, components and blocks: the object of the caller is not the one that samples. To let that object
+// hold the results nevertheless, the binding remembers which Python object was given to which Python system, and
+// assigns the property of the system to it when it is set and whenever a system is copied out of a driver. The
+// references are kept here, in a table of the module with the systems as weak keys; the systems themselves know
+// nothing of them.
+nanobind::handle givenPropertiesTable;
+
+using CopyOfGivenProperty = void (*)(const System&, nanobind::handle);
+std::vector<std::pair<const char*, CopyOfGivenProperty>> copiesOfGivenProperties;
+
+template <auto member>
+using PropertyOfMember = typename std::remove_cvref_t<decltype(std::declval<System&>().*member)>::value_type;
+
+template <auto member>
+void copyPropertyTo(const System& system, nanobind::handle given)
+{
+  if ((system.*member).has_value()) nanobind::cast<PropertyOfMember<member>&>(given) = *(system.*member);
+}
+
+// The properties given to a system, by the name of their setter; none when nothing was given.
+nanobind::object givenPropertiesOf(nanobind::handle system) { return givenPropertiesTable.attr("get")(system); }
+
+// Remembers the object given to the setter 'name' of a system (or forgets it, for None), and brings it up to date.
+template <auto member>
+void attachGivenProperty(nanobind::handle system, const char* name, nanobind::handle property)
+{
+  nanobind::object given = givenPropertiesOf(system);
+  if (property.is_none())
+  {
+    if (!given.is_none()) given.attr("pop")(name, nanobind::none());
+    return;
+  }
+  if (given.is_none())
+  {
+    given = nanobind::dict();
+    givenPropertiesTable.attr("__setitem__")(system, given);
+  }
+  given.attr("__setitem__")(name, property);
+  copyPropertyTo<member>(nanobind::cast<const System&>(system), property);
+}
+
+template <auto member>
+std::optional<PropertyOfMember<member>> givenPropertyOrNone(nanobind::handle property, const char* name)
+{
+  using Property = PropertyOfMember<member>;
+  if (property.is_none()) return std::nullopt;
+  if (!nanobind::isinstance<Property>(property))
+  {
+    throw nanobind::type_error(std::format("{}: the property is of another type", name).c_str());
+  }
+  return nanobind::cast<const Property&>(property);
+}
+
+// Binds a setter of a property of the system that remembers the object it is given.
+template <auto member, typename Setter>
+void bindGivenProperty(nanobind::class_<System>& system, const char* name, Setter setter)
+{
+  copiesOfGivenProperties.emplace_back(name, &copyPropertyTo<member>);
+  system.def(
+      name,
+      [name, setter](nanobind::handle self, nanobind::handle property)
+      {
+        std::invoke(setter, nanobind::cast<System&>(self), givenPropertyOrNone<member>(property, name));
+        attachGivenProperty<member>(self, name, property);
+      },
+      nanobind::arg("property") = nanobind::none());
+}
+
 // A driver works on its own copy of the systems it is given: the kits are value-based and keep no references to the
 // objects of the caller. To let those objects hold the results nevertheless, the systems of the driver are assigned
-// back to the Python objects they were copied from whenever a phase returns (copy in, copy out). Inside a call-back
-// the phase has not returned yet, and the systems of the driver itself ('systems') are the ones to read.
+// back to the Python objects they were copied from whenever a phase returns (copy in, copy out), and their properties
+// to the objects that were given to the setters of those systems. Inside a call-back the phase has not returned yet,
+// and the systems of the driver itself ('systems') are the ones to read.
 template <typename Driver>
 struct DriverOfGivenSystems : Driver
 {
@@ -1009,18 +1079,95 @@ struct DriverOfGivenSystems : Driver
   void copyOut()
   {
     if (givenSystems.size() != this->systems.size()) return;
+
+    // an object that was given more than once, a system to the driver or a property to its systems, has no single
+    // one to take and is left as it was
+    auto once = [](const std::vector<nanobind::object>& objects, nanobind::handle object)
+    { return std::ranges::count_if(objects, [&](const nanobind::object& item) { return item.is(object); }) == 1; };
+
+    std::vector<nanobind::object> givenProperties;
     for (std::size_t i = 0; i < givenSystems.size(); ++i)
     {
-      // an object that was given more than once has no single system to take
-      if (std::ranges::count_if(givenSystems,
-                                [&](const nanobind::object& given) { return given.is(givenSystems[i]); }) != 1)
+      if (std::ranges::find_if(givenSystems.begin(), givenSystems.begin() + static_cast<std::ptrdiff_t>(i),
+                               [&](const nanobind::object& item) { return item.is(givenSystems[i]); }) !=
+          givenSystems.begin() + static_cast<std::ptrdiff_t>(i))
       {
         continue;
       }
+      nanobind::object given = givenPropertiesOf(givenSystems[i]);
+      if (given.is_none()) continue;
+      for (nanobind::handle property : given.attr("values")()) givenProperties.push_back(nanobind::borrow(property));
+    }
+
+    for (std::size_t i = 0; i < givenSystems.size(); ++i)
+    {
+      if (!once(givenSystems, givenSystems[i])) continue;
       nanobind::cast<System&>(givenSystems[i]) = this->systems[i];
+
+      nanobind::object given = givenPropertiesOf(givenSystems[i]);
+      if (given.is_none()) continue;
+      for (const auto& [name, copy] : copiesOfGivenProperties)
+      {
+        nanobind::object property = given.attr("get")(name);
+        if (!property.is_none() && once(givenProperties, property)) copy(this->systems[i], property);
+      }
     }
   }
 };
+
+// The constructors of an evolution of one value per cycle: over the cycles given (those of all phases, by either
+// keyword), or over those of the driver when none are given.
+template <typename Property>
+void bindEvolutionConstructors(nanobind::class_<Property>& evolution)
+{
+  auto construct =
+      [](Property* property, std::size_t number_of_cycles, std::size_t sample_every,
+         std::optional<std::size_t> write_every)
+  {
+    if (sample_every == 0) throw std::invalid_argument("sample_every must be positive");
+    new (property) Property(number_of_cycles, sample_every, write_every);
+  };
+  // 'number_of_cycles' is the keyword of the 3.1.0 release
+  for (const char* cycles : {"number_of_production_cycles", "number_of_cycles"})
+  {
+    evolution.def("__init__", construct, nanobind::arg(cycles), nanobind::arg("sample_every") = 1,
+                  nanobind::arg("write_every") = nanobind::none());
+  }
+  evolution
+      .def(
+          "__init__",
+          [construct](Property* property, std::size_t sample_every, std::optional<std::size_t> write_every)
+          { construct(property, 0, sample_every, write_every); },
+          nanobind::arg("sample_every") = 1, nanobind::arg("write_every") = nanobind::none())
+      .def_ro("sample_every", &Property::sampleEvery)
+      .def_ro("write_every", &Property::writeEvery);
+}
+
+// What only the driver knows is filled in on its copy of a system: the cycles an evolution is recorded over (all
+// phases, as the input reader sizes them) when the property was made without them, and the index of the system in
+// the names of the LAMMPS files.
+const std::size_t systemIdNotGiven = std::numeric_limits<std::size_t>::max();
+
+void completeProperties(System& system, std::size_t systemId, std::size_t numberOfCycles)
+{
+  if (auto& property = system.propertyNumberOfMoleculesEvolution; property.has_value() && property->totalSamples == 0)
+  {
+    property = PropertyNumberOfMoleculesEvolution(numberOfCycles, system.components.size(), property->sampleEvery,
+                                                  property->writeEvery);
+  }
+  if (auto& property = system.propertyVolumeEvolution; property.has_value() && property->totalSamples == 0)
+  {
+    property = PropertyVolumeEvolution(numberOfCycles, property->sampleEvery, property->writeEvery);
+  }
+  if (auto& property = system.propertyConservedEnergyEvolution; property.has_value() && property->totalSamples == 0)
+  {
+    property = PropertyConservedEnergyEvolution(numberOfCycles, property->sampleEvery, property->writeEvery);
+  }
+  if (auto& writer = system.writeLammpsData; writer.has_value() && writer->systemId == systemIdNotGiven)
+  {
+    writer = WriteLammpsData(systemId, writer->sampleEvery);
+  }
+}
 
 template <typename Driver>
 void bindDriver(nanobind::module_& m, const char* name)
@@ -1033,22 +1180,47 @@ void bindDriver(nanobind::module_& m, const char* name)
          std::size_t number_of_initialization_cycles, std::size_t number_of_equilibration_cycles,
          std::size_t print_every, std::size_t write_binary_restart_every, std::size_t rescale_wang_landau_every,
          std::size_t optimize_mc_moves_every, nanobind::typed<nanobind::sequence, System> systems,
-         std::optional<std::size_t> random_seed, std::size_t number_of_blocks, bool output_to_files)
+         std::optional<std::size_t> random_seed, std::optional<std::size_t> blocks_given, bool output_to_files)
   {
     std::vector<nanobind::object> given;
-    std::vector<System> copies;
     for (nanobind::handle item : systems)
     {
       if (!nanobind::isinstance<System>(item)) throw nanobind::type_error("systems: a sequence of System is expected");
       given.push_back(nanobind::borrow(item));
+    }
+
+    // The driver has one number of blocks. Given here, its copies of the systems are sized for it; otherwise it
+    // is that of the systems, which then have to agree.
+    if (blocks_given == 0uz) throw std::invalid_argument("number_of_blocks must be positive");
+    std::size_t number_of_blocks = blocks_given.value_or(5);
+    if (!blocks_given.has_value() && !given.empty())
+    {
+      number_of_blocks = nanobind::cast<const System&>(given.front()).numberOfBlocks();
+      for (const nanobind::object& item : given)
+      {
+        if (nanobind::cast<const System&>(item).numberOfBlocks() != number_of_blocks)
+        {
+          throw std::invalid_argument("the systems differ in their number of blocks: give 'number_of_blocks' to "
+                                      "the driver");
+        }
+      }
+    }
+
+    std::vector<System> copies;
+    for (const nanobind::object& item : given)
+    {
       copies.push_back(nanobind::cast<const System&>(item));
+      if (!copies.back().hasNumberOfBlocks(number_of_blocks)) copies.back().setNumberOfBlocks(number_of_blocks);
 
       // The analyses of the molecules that the components ask for (their histograms, shape, backbone statistics and
       // end-to-end autocorrelation function) are created here, as the input reader creates them once the driver is
       // known: the autocorrelation function has its lags in picoseconds for molecular dynamics and in cycles for
       // Monte Carlo.
       System& system = copies.back();
-      const bool asked = std::ranges::any_of(system.components, [](const Component& component)
+      completeProperties(system, copies.size() - 1,
+                         number_of_pre_initialization_cycles + number_of_initialization_cycles +
+                             number_of_equilibration_cycles + number_of_production_cycles);
+      const bool asked =std::ranges::any_of(system.components, [](const Component& component)
                                              {
                                                return component.moleculePropertiesSettings.has_value() ||
                                                       component.moleculeShapeSettings.has_value() ||
@@ -1085,7 +1257,7 @@ void bindDriver(nanobind::module_& m, const char* name)
                nanobind::arg("number_of_equilibration_cycles") = 0, nanobind::arg("print_every") = 5000,
                nanobind::arg("write_binary_restart_every") = 5000, nanobind::arg("rescale_wang_landau_every") = 1000,
                nanobind::arg("optimize_mc_moves_every") = 100, nanobind::arg("systems") = nanobind::list(),
-               nanobind::arg("random_seed") = nanobind::none(), nanobind::arg("number_of_blocks") = 5,
+               nanobind::arg("random_seed") = nanobind::none(), nanobind::arg("number_of_blocks") = nanobind::none(),
                nanobind::arg("output_to_files") = false);
   }
 
@@ -1147,6 +1319,10 @@ void bindDriver(nanobind::module_& m, const char* name)
   {
     driver.def("cycle", [](Bound& d) { d.performCycle(); });
   }
+
+  driver.def_prop_ro(
+      "number_of_blocks", [](const Bound& d) { return d.estimation.numberOfBins; },
+      "The number of blocks the averages and their errors are computed over.");
 
   driver.def_prop_ro("systems",
                      [](nanobind::handle self)
@@ -2252,6 +2428,10 @@ EXPAND_MODULE(MODULE_NAME)
         .def_ro("name", &Component::name)
         .def_ro("rigid", &Component::rigid, "Whether the molecule is a single rigid body.")
         .def_prop_ro(
+            "number_of_blocks", [](const Component& c) { return c.numberOfBlocks(); },
+            "The number of blocks the statistics of the component are kept in. A system sizes its components for "
+            "its own.")
+        .def_prop_ro(
             "rigid_bodies",
             [](const Component& c)
             {
@@ -2495,7 +2675,20 @@ EXPAND_MODULE(MODULE_NAME)
     nanobind::class_<SampleMovie>(m, "SampleMovie")
         .def(nanobind::init<std::size_t, std::size_t, bool, std::optional<std::string>>(), nanobind::arg("system_id"),
              nanobind::arg("sample_every"), nanobind::arg("restrict_to_box") = true,
-             nanobind::arg("tag") = std::nullopt);
+             nanobind::arg("tag") = std::nullopt)
+        // the movie is written under the index the system has in its driver: 'system_id' is not used
+        .def(
+            "__init__",
+            [](SampleMovie* movie, std::size_t sample_every, bool restrict_to_box, std::optional<std::string> tag)
+            {
+              if (sample_every == 0) throw std::invalid_argument("SampleMovie: sample_every must be positive");
+              new (movie) SampleMovie(0, sample_every, restrict_to_box, tag);
+            },
+            nanobind::arg("sample_every") = 1, nanobind::arg("restrict_to_box") = true,
+            nanobind::arg("tag") = std::nullopt)
+        .def_ro("sample_every", &SampleMovie::sampleEvery)
+        .def_ro("restrict_to_box", &SampleMovie::restrictToBox)
+        .def_ro("tag", &SampleMovie::tag);
 
     nanobind::class_<PropertyLoading>(m, "PropertyLoading")
         .def(nanobind::init<std::size_t, std::size_t>(), nanobind::arg("number_of_blocks"),
@@ -2556,6 +2749,23 @@ EXPAND_MODULE(MODULE_NAME)
         nanobind::arg("density_grid_pseudo_atoms_list"),
         nanobind::arg("normalization_type") = PropertyDensityGrid::Normalization::Max,
         nanobind::arg("binning_mode") = PropertyDensityGrid::Binning::Standard);
+    // the system sizes the grid for its framework and components
+    property_energy_grid.def(
+        "__init__",
+        [](PropertyDensityGrid* grid, int3 number_of_grid_points, std::size_t sample_every, std::size_t write_every,
+           std::vector<std::size_t> density_grid_pseudo_atoms_list, PropertyDensityGrid::Normalization normalization,
+           PropertyDensityGrid::Binning binning_mode)
+        {
+          if (sample_every == 0 || write_every == 0)
+            throw std::invalid_argument("PropertyDensityGrid: sample_every and write_every must be positive");
+          new (grid) PropertyDensityGrid(0, 0, number_of_grid_points, sample_every, write_every,
+                                         density_grid_pseudo_atoms_list, normalization, binning_mode);
+        },
+        nanobind::arg("number_of_grid_points"), nanobind::arg("sample_every") = 10,
+        nanobind::arg("write_every") = 5000,
+        nanobind::arg("density_grid_pseudo_atoms_list") = std::vector<std::size_t>(),
+        nanobind::arg("normalization_type") = PropertyDensityGrid::Normalization::Max,
+        nanobind::arg("binning_mode") = PropertyDensityGrid::Binning::Standard);
 
     nanobind::class_<PropertyEnergyHistogram> energy_histogram(m, "PropertyEnergyHistogram");
     energy_histogram
@@ -2565,6 +2775,16 @@ EXPAND_MODULE(MODULE_NAME)
                  nanobind::arg("value_range"),
                  nanobind::arg("sample_every"), 
                  nanobind::arg("write_every") = nanobind::none())
+      // the system sizes the histogram for its blocks
+      .def("__init__",
+           [](PropertyEnergyHistogram* histogram, std::size_t number_of_bins, std::pair<double, double> value_range,
+              std::size_t sample_every, std::optional<std::size_t> write_every)
+           {
+             if (sample_every == 0) throw std::invalid_argument("PropertyEnergyHistogram: sample_every must be positive");
+             new (histogram) PropertyEnergyHistogram(1, number_of_bins, value_range, sample_every, write_every);
+           },
+           nanobind::arg("number_of_bins"), nanobind::arg("value_range"), nanobind::arg("sample_every") = 1,
+           nanobind::arg("write_every") = nanobind::none())
       // convert result to units of Kelvin
       .def("result", [](PropertyEnergyHistogram& p) { auto [bins, average, error] = p.result(); 
            return std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<AverageEnergyType>>
@@ -2576,6 +2796,17 @@ EXPAND_MODULE(MODULE_NAME)
                  nanobind::arg("value_range"),
                  nanobind::arg("sample_every"), 
                  nanobind::arg("write_every") = nanobind::none())
+      // the system sizes the histogram for its blocks and components
+      .def("__init__",
+           [](PropertyNumberOfMoleculesHistogram* histogram, std::pair<std::size_t, std::size_t> value_range,
+              std::size_t sample_every, std::optional<std::size_t> write_every)
+           {
+             if (sample_every == 0)
+               throw std::invalid_argument("PropertyNumberOfMoleculesHistogram: sample_every must be positive");
+             new (histogram) PropertyNumberOfMoleculesHistogram(1, value_range, sample_every, write_every);
+           },
+           nanobind::arg("value_range"), nanobind::arg("sample_every") = 1,
+           nanobind::arg("write_every") = nanobind::none())
        .def("result", &PropertyNumberOfMoleculesHistogram::result);
 
   nanobind::class_<PropertyConventionalRadialDistributionFunction>(m, "PropertyConventionalRadialDistributionFunction")
@@ -2594,6 +2825,18 @@ EXPAND_MODULE(MODULE_NAME)
             nanobind::arg("range"),
             nanobind::arg("sample_every"), 
             nanobind::arg("write_every"))
+       // the system sizes the histograms for its blocks and the pseudo-atoms of its force field
+       .def("__init__",
+            [](PropertyRadialDistributionFunction* rdf, std::size_t number_of_bins, double range,
+               std::size_t sample_every, std::size_t write_every)
+            {
+              if (sample_every == 0 || write_every == 0)
+                throw std::invalid_argument("PropertyRadialDistributionFunction: sample_every and write_every must "
+                                            "be positive");
+              new (rdf) PropertyRadialDistributionFunction(1, 0, number_of_bins, range, sample_every, write_every);
+            },
+            nanobind::arg("number_of_bins"), nanobind::arg("range"), nanobind::arg("sample_every") = 10,
+            nanobind::arg("write_every") = 5000)
        .def("result", &PropertyRadialDistributionFunction::result);
 
 
@@ -2629,31 +2872,41 @@ EXPAND_MODULE(MODULE_NAME)
        .def("result", &PropertyVelocityAutoCorrelationFunction::result);
 
 
-  nanobind::class_<PropertyNumberOfMoleculesEvolution>(m, "PropertyNumberOfMoleculesEvolution")
-      .def(nanobind::init<std::size_t, std::size_t, std::size_t, std::optional<std::size_t>>(),
-            nanobind::arg("number_of_production_cycles"), 
-            nanobind::arg("number_of_components"),
-            nanobind::arg("sample_every"), 
-            nanobind::arg("write_every") = nanobind::none())
-      // the keyword 'number_of_cycles' of the 3.1.0 release
-      .def(nanobind::init<std::size_t, std::size_t, std::size_t, std::optional<std::size_t>>(),
-            nanobind::arg("number_of_cycles"), 
-            nanobind::arg("number_of_components"),
-            nanobind::arg("sample_every"), 
-            nanobind::arg("write_every") = nanobind::none())
-      .def_ro("result", &PropertyNumberOfMoleculesEvolution::result);
+  // The number of molecules per component over the cycles of all phases. The system sizes it for its components
+  // (the number given here was never used), and the driver for its cycles when none are given.
+  {
+    auto construct = [](PropertyNumberOfMoleculesEvolution* property, std::size_t number_of_cycles,
+                        std::optional<std::size_t> number_of_components, std::size_t sample_every,
+                        std::optional<std::size_t> write_every)
+    {
+      if (sample_every == 0)
+        throw std::invalid_argument("PropertyNumberOfMoleculesEvolution: sample_every must be positive");
+      new (property) PropertyNumberOfMoleculesEvolution(number_of_cycles, number_of_components.value_or(0),
+                                                        sample_every, write_every);
+    };
+    nanobind::class_<PropertyNumberOfMoleculesEvolution> evolution(m, "PropertyNumberOfMoleculesEvolution");
+    // 'number_of_cycles' is the keyword of the 3.1.0 release
+    for (const char* cycles : {"number_of_production_cycles", "number_of_cycles"})
+    {
+      evolution.def("__init__", construct, nanobind::arg(cycles),
+                    nanobind::arg("number_of_components") = nanobind::none(), nanobind::arg("sample_every") = 1,
+                    nanobind::arg("write_every") = nanobind::none());
+    }
+    evolution
+        .def(
+            "__init__",
+            [construct](PropertyNumberOfMoleculesEvolution* property, std::size_t sample_every,
+                        std::optional<std::size_t> write_every)
+            { construct(property, 0, std::nullopt, sample_every, write_every); },
+            nanobind::arg("sample_every") = 1, nanobind::arg("write_every") = nanobind::none())
+        .def_ro("sample_every", &PropertyNumberOfMoleculesEvolution::sampleEvery)
+        .def_ro("write_every", &PropertyNumberOfMoleculesEvolution::writeEvery)
+        .def_ro("result", &PropertyNumberOfMoleculesEvolution::result);
+  }
 
-  nanobind::class_<PropertyVolumeEvolution>(m, "PropertyVolumeEvolution")
-    .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
-            nanobind::arg("number_of_production_cycles"), 
-            nanobind::arg("sample_every"), 
-            nanobind::arg("write_every") = nanobind::none())
-    // the keyword 'number_of_cycles' of the 3.1.0 release
-    .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
-            nanobind::arg("number_of_cycles"), 
-            nanobind::arg("sample_every"), 
-            nanobind::arg("write_every") = nanobind::none())
-      .def_ro("result", &PropertyVolumeEvolution::result);
+  nanobind::class_<PropertyVolumeEvolution> volumeEvolution(m, "PropertyVolumeEvolution");
+  bindEvolutionConstructors<PropertyVolumeEvolution>(volumeEvolution);
+  volumeEvolution.def_ro("result", &PropertyVolumeEvolution::result);
 
   nanobind::class_<RunningEnergy>(m, "RunningEnergy")
       .def("conserved_energy", &RunningEnergy::conservedEnergy)
@@ -3131,13 +3384,28 @@ EXPAND_MODULE(MODULE_NAME)
   nanobind::class_<WriteLammpsData>(m, "WriteLammpsData")
       .def(
           "__init__",
-          [](WriteLammpsData* writer, std::size_t system_id, std::size_t sample_every)
+          [](WriteLammpsData* writer, std::optional<std::size_t> system_id, std::size_t sample_every)
           {
             if (sample_every == 0) throw std::invalid_argument("WriteLammpsData: sample_every must be positive");
-            new (writer) WriteLammpsData(system_id, sample_every);
+            if (system_id.has_value())
+            {
+              new (writer) WriteLammpsData(*system_id, sample_every);
+              return;
+            }
+            // the files are named when the driver gives the index of the system
+            new (writer) WriteLammpsData();
+            writer->sampleEvery = sample_every;
+            writer->systemId = systemIdNotGiven;
           },
-          nanobind::arg("system_id") = 0, nanobind::arg("sample_every") = 10)
-      .def_ro("system_id", &WriteLammpsData::systemId)
+          nanobind::arg("system_id") = nanobind::none(), nanobind::arg("sample_every") = 10)
+      .def_prop_ro(
+          "system_id",
+          [](const WriteLammpsData& writer) -> std::optional<std::size_t>
+          {
+            if (writer.systemId == systemIdNotGiven) return std::nullopt;
+            return writer.systemId;
+          },
+          "The index in the names of the files; None until a driver gives the index of the system.")
       .def_ro("sample_every", &WriteLammpsData::sampleEvery);
 
   nanobind::class_<PropertyTemperature>(m, "PropertyTemperature")
@@ -3148,15 +3416,39 @@ EXPAND_MODULE(MODULE_NAME)
       .def("result", [](const PropertySimulationBox& p) { return p.average(); },
            "The average simulation box and its error.");
 
-  nanobind::class_<System>(m, "System")
+  // the objects given to the setters of the properties of a system, per system (see 'attachGivenProperty')
+  m.attr("_given_properties") = nanobind::module_::import_("weakref").attr("WeakKeyDictionary")();
+  givenPropertiesTable = m.attr("_given_properties");
+  copiesOfGivenProperties.clear();
+
+  nanobind::class_<System> system(m, "System", nanobind::is_weak_referenceable());
+  system
       .def("__init__",
            [](System* system, ForceField force_field, std::optional<SimulationBox> simulation_box,
               bool has_external_field, double external_temperature, std::optional<double> external_pressure,
               double helium_void_fraction, std::optional<Framework> framework_components,
               std::vector<Component> components, std::vector<std::vector<double3>> initial_positions,
-              std::vector<std::size_t> initial_number_of_molecules, std::size_t number_of_blocks,
+              std::vector<std::size_t> initial_number_of_molecules, std::optional<std::size_t> blocks_given,
               MCMoveProbabilities system_probabilities, std::vector<Reaction> reactions)
            {
+             // The number of blocks is that of the components when it is not given (they then have to agree), and
+             // the components are sized for it when it is.
+             if (blocks_given == 0uz) throw std::invalid_argument("System: number_of_blocks must be positive");
+             std::size_t number_of_blocks = blocks_given.value_or(5);
+             if (!blocks_given.has_value() && !components.empty())
+             {
+               number_of_blocks = components.front().numberOfBlocks();
+               for (const Component& component : components)
+               {
+                 if (component.numberOfBlocks() != number_of_blocks)
+                 {
+                   throw std::invalid_argument("System: the components differ in their number of blocks: give "
+                                               "'number_of_blocks' to the system");
+                 }
+               }
+             }
+             for (Component& component : components) component.setNumberOfBlocks(number_of_blocks);
+
              // the partition function of a species is that of the temperature of the system
              for (Component& component : components) component.updateLnPartitionFunction(external_temperature);
 
@@ -3186,7 +3478,8 @@ EXPAND_MODULE(MODULE_NAME)
            nanobind::arg("components") = std::vector<Component>(),
            nanobind::arg("initial_positions") = std::vector<std::vector<double3>>(),
            nanobind::arg("initial_number_of_molecules") = std::vector<std::size_t>(),
-           nanobind::arg("number_of_blocks") = 5, nanobind::arg("system_probabilities") = MCMoveProbabilities(),
+           nanobind::arg("number_of_blocks") = nanobind::none(),
+           nanobind::arg("system_probabilities") = MCMoveProbabilities(),
            nanobind::arg("reactions") = std::vector<Reaction>())
       .def_prop_ro("reactions",
                    [](nanobind::handle self)
@@ -3197,6 +3490,9 @@ EXPAND_MODULE(MODULE_NAME)
                        list.append(nanobind::cast(&item, nanobind::rv_policy::reference_internal, self));
                      return list;
                    })
+      .def_prop_ro(
+          "number_of_blocks", [](const System& s) { return s.numberOfBlocks(); },
+          "The number of blocks the averages of the system are kept in. A driver sizes its systems for its own.")
       .def_ro("mc_moves_probabilities", &System::mc_moves_probabilities,
               "The probabilities of the moves of the system (volume, Gibbs volume, reactions).")
       // (the member takes a pointer to an overlap flag, which was bound as a boolean that had to be given)
@@ -3239,27 +3535,14 @@ EXPAND_MODULE(MODULE_NAME)
           },
           nanobind::arg("thermostat") = nanobind::none())
       .def_ro("property_density_grid", &System::propertyDensityGrid)
-      .def("set_property_density_grid", &System::setPropertyDensityGrid, nanobind::arg("property") = nanobind::none())
       .def_ro("average_energy_histogram", &System::averageEnergyHistogram)
-      .def("set_average_energy_histogram", &System::setAverageEnergyHistogram,
-           nanobind::arg("property") = nanobind::none())
       .def_ro("property_number_of_molecules_histogram", &System::averageNumberOfMoleculesHistogram)
-      .def("set_number_of_molecules_histogram", &System::setNumberOfMoleculesHistogram,
-           nanobind::arg("property") = nanobind::none())
       .def_ro("sample_pdb_movie", &System::samplePDBMovie)
-      .def("set_sample_pdb_movie", &System::setSamplePDBMovie, nanobind::arg("property") = nanobind::none())
       .def_ro("property_conventional_rdf", &System::propertyConventionalRadialDistributionFunction)
-      .def("set_property_conventional_rdf", &System::setPropertyConventionalRDF,
-           nanobind::arg("property") = nanobind::none())
       .def_ro("property_msd", &System::propertyMSD)
-      .def("set_property_msd", &System::setPropertyMSD, nanobind::arg("property") = nanobind::none())
       .def_ro("property_vacf", &System::propertyVACF)
-      .def("set_property_vacf", &System::setPropertyVACF, nanobind::arg("property") = nanobind::none())
       .def_ro("property_rdf", &System::propertyRadialDistributionFunction)
-      .def("set_property_rdf", &System::setPropertyRDF, nanobind::arg("property") = nanobind::none())
       .def_ro("property_number_of_molecules_evolution", &System::propertyNumberOfMoleculesEvolution)
-      .def("set_property_number_of_molecules_evolution", &System::setPropertyNumberOfMoleculesEvolution,
-           nanobind::arg("property") = nanobind::none())
       .def_ro("property_molecule_properties", &System::propertyMoleculeProperties,
               "The histograms of the molecules of the components that have 'molecule_properties_settings'.")
       .def_ro("property_molecule_shape", &System::propertyMoleculeShape)
@@ -3268,12 +3551,15 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("property_elastic_constants_fluctuation", &System::propertyElasticConstantsFluctuation)
       .def(
           "set_property_elastic_constants_fluctuation",
-          [](System& system, const std::optional<PropertyElasticConstantsFluctuation>& property,
-             std::size_t sample_every)
+          [](nanobind::handle self, nanobind::handle given, std::size_t sample_every)
           {
+            const char* name = "set_property_elastic_constants_fluctuation";
+            System& system = nanobind::cast<System&>(self);
+            const auto property = givenPropertyOrNone<&System::propertyElasticConstantsFluctuation>(given, name);
             if (!property.has_value())
             {
               system.propertyElasticConstantsFluctuation.reset();
+              attachGivenProperty<&System::propertyElasticConstantsFluctuation>(self, name, given);
               return;
             }
             if (sample_every == 0) throw std::invalid_argument("sample_every must be positive");
@@ -3284,24 +3570,15 @@ EXPAND_MODULE(MODULE_NAME)
             }
             system.propertyElasticConstantsFluctuation = property;
             system.elasticConstantsSampleEvery = sample_every;
+            attachGivenProperty<&System::propertyElasticConstantsFluctuation>(self, name, given);
           },
           nanobind::arg("property") = nanobind::none(), nanobind::arg("sample_every") = 100,
           "Samples the elastic constants from the fluctuations of the stress, every 'sample_every' steps of "
           "molecular dynamics at constant volume and temperature.")
       .def_ro("property_radical_waiting_times", &System::propertyRadicalWaitingTimes)
-      .def("set_property_radical_waiting_times", &System::setPropertyRadicalWaitingTimes,
-           nanobind::arg("property") = nanobind::none())
       .def_ro("write_lammps_data", &System::writeLammpsData)
-      .def(
-          "set_write_lammps_data",
-          [](System& system, const std::optional<WriteLammpsData>& writer) { system.writeLammpsData = writer; },
-          nanobind::arg("property") = nanobind::none())
       .def_ro("property_volume_evolution", &System::propertyVolumeEvolution)
-      .def("set_property_volume_evolution", &System::setPropertyVolumeEvolution,
-           nanobind::arg("property") = nanobind::none())
       .def_ro("property_conserved_energy_evolution", &System::propertyConservedEnergyEvolution)
-      .def("set_property_conserved_energy_evolution", &System::setPropertyConservedEnergyEvolution,
-           nanobind::arg("property") = nanobind::none())
       .def_rw("average_enthalpies_of_adsorption", &System::averageEnthalpiesOfAdsorption)
       .def_rw("average_partial_molar_properties", &System::averagePartialMolarProperties)
       // read only: the atoms are kept in step with their dynamics, molecules and groups
@@ -3340,6 +3617,33 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("average_simulation_box", &System::averageSimulationBox)
       .def("__repr__", &System::repr);
 
+  // the setters of the properties: the system builds its own from the settings of the one given, and the given one
+  // holds the results when a driver returns
+  bindGivenProperty<&System::propertyDensityGrid>(system, "set_property_density_grid",
+                                                  &System::setPropertyDensityGrid);
+  bindGivenProperty<&System::averageEnergyHistogram>(system, "set_average_energy_histogram",
+                                                     &System::setAverageEnergyHistogram);
+  bindGivenProperty<&System::averageNumberOfMoleculesHistogram>(system, "set_number_of_molecules_histogram",
+                                                                &System::setNumberOfMoleculesHistogram);
+  bindGivenProperty<&System::samplePDBMovie>(system, "set_sample_pdb_movie", &System::setSamplePDBMovie);
+  bindGivenProperty<&System::propertyConventionalRadialDistributionFunction>(
+      system, "set_property_conventional_rdf", &System::setPropertyConventionalRDF);
+  bindGivenProperty<&System::propertyMSD>(system, "set_property_msd", &System::setPropertyMSD);
+  bindGivenProperty<&System::propertyVACF>(system, "set_property_vacf", &System::setPropertyVACF);
+  bindGivenProperty<&System::propertyRadialDistributionFunction>(system, "set_property_rdf",
+                                                                 &System::setPropertyRDF);
+  bindGivenProperty<&System::propertyNumberOfMoleculesEvolution>(system, "set_property_number_of_molecules_evolution",
+                                                                 &System::setPropertyNumberOfMoleculesEvolution);
+  bindGivenProperty<&System::propertyVolumeEvolution>(system, "set_property_volume_evolution",
+                                                      &System::setPropertyVolumeEvolution);
+  bindGivenProperty<&System::propertyConservedEnergyEvolution>(system, "set_property_conserved_energy_evolution",
+                                                               &System::setPropertyConservedEnergyEvolution);
+  bindGivenProperty<&System::propertyRadicalWaitingTimes>(system, "set_property_radical_waiting_times",
+                                                          &System::setPropertyRadicalWaitingTimes);
+  bindGivenProperty<&System::writeLammpsData>(
+      system, "set_write_lammps_data",
+      [](System& s, const std::optional<WriteLammpsData>& writer) { s.writeLammpsData = writer; });
+
   // The thread pool is one for the process. It is started once: a later call with another number of threads keeps
   // the threads that are running, and one thread switches to serial work.
   m.def(
@@ -3367,14 +3671,9 @@ EXPAND_MODULE(MODULE_NAME)
   bindDriver<MonteCarlo>(m, "MonteCarlo");
   bindDriver<MolecularDynamics>(m, "MolecularDynamics");
 
-  nanobind::class_<PropertyConservedEnergyEvolution>(m, "PropertyConservedEnergyEvolution")
-      .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
-           nanobind::arg("number_of_production_cycles"), nanobind::arg("sample_every"),
-           nanobind::arg("write_every") = nanobind::none())
-      // the keyword 'number_of_cycles' of the 3.1.0 release
-      .def(nanobind::init<std::size_t, std::size_t, std::optional<std::size_t>>(),
-           nanobind::arg("number_of_cycles"), nanobind::arg("sample_every"),
-           nanobind::arg("write_every") = nanobind::none())
+  nanobind::class_<PropertyConservedEnergyEvolution> conservedEnergyEvolution(m, "PropertyConservedEnergyEvolution");
+  bindEvolutionConstructors<PropertyConservedEnergyEvolution>(conservedEnergyEvolution);
+  conservedEnergyEvolution
       // the running energies as they are, in internal units like every RunningEnergy (System.compute_total_energies);
       // their __repr__ prints Kelvin (multiplying here as well printed EnergyToKelvin squared)
       .def("result", &PropertyConservedEnergyEvolution::result);
