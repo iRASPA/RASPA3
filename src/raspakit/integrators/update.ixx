@@ -7,7 +7,7 @@ import std;
 import ewald_structure_factor;
 
 import molecule;
-import molecule;
+import double3;
 import atom;
 import atom_dynamics;
 import component;
@@ -139,6 +139,18 @@ void applyPositionConstraints(std::span<const Molecule> moleculeData, std::span<
  */
 void applyVelocityConstraints(std::span<const Molecule> moleculeData, std::span<const Atom> moleculeAtomPositions,
                               std::span<AtomDynamics> moleculeDynamics, const std::vector<Component>& components);
+
+/**
+ * \brief Sets the velocities of one molecule from a velocity per atom [Angstrom/ps].
+ *
+ * A rigid molecule, and every rigid group of a semi-flexible one (its state in 'groupData' from 'groupIndex'),
+ * takes the rigid motion with the momentum and the angular momentum of its atomic velocities; flexible atoms take
+ * their velocity, less what the distance constraints of the molecule do not allow. The positions (and the
+ * orientations of the rigid bodies) must be current.
+ */
+void setMoleculeVelocities(Molecule& molecule, std::span<const Atom> atoms, std::span<AtomDynamics> dynamics,
+                           const Component& component, std::span<GroupState> groupData, std::size_t groupIndex,
+                           std::span<const double3> velocities);
 
 /**
  * \brief The Langevin thermostat: an exact Ornstein-Uhlenbeck step of all thermostatted velocities over 'dt',

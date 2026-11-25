@@ -671,3 +671,101 @@ TEST(langevin_thermostat, restart_continues_the_same_trajectory)
   }
   EXPECT_LT(difference, 1e-9);
 }
+
+// A configuration read with its velocities ('"Velocities"' of the restart file) starts molecular dynamics from them.
+
+TEST(initial_velocities, a_rigid_molecule_takes_the_rigid_motion_of_its_atomic_velocities)
+{
+  const ForceField forceField = makeForceField();
+  System system = makeSystem(forceField, makeDimer(forceField, false), 2, 6.0, 31);
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+  const double mass = 15.03452;
+
+  // every molecule translating and turning about its centre: the velocities of a rigid motion
+  RandomNumber random(7);
+  std::vector<double3> velocities(atoms.size());
+  double kineticEnergy{};
+  for (const Molecule& molecule : system.moleculeData)
+  {
+    const double3 translation(random.Gaussian(), random.Gaussian(), random.Gaussian());
+    const double3 rotation(random.Gaussian(), random.Gaussian(), random.Gaussian());
+    for (std::size_t k = 0; k != molecule.numberOfAtoms; ++k)
+    {
+      const std::size_t i = molecule.atomIndex + k;
+      velocities[i] = translation + double3::cross(rotation, atoms[i].position - molecule.centerOfMassPosition);
+      kineticEnergy += 0.5 * mass * double3::dot(velocities[i], velocities[i]);
+    }
+  }
+  system.initialVelocities = {velocities};
+  drawVelocities(system, 3);
+  EXPECT_TRUE(system.applyInitialVelocities());
+
+  const double translational = Integrators::computeTranslationalKineticEnergy(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components);
+  const double rotational = Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components);
+  EXPECT_NEAR(translational + rotational, kineticEnergy, 1e-10 * kineticEnergy);
+  EXPECT_GT(rotational, 0.1 * kineticEnergy);
+
+  // the molecules move as the velocities say: one step from rest of forces changes the positions by dt v
+  system.timeStep = 1e-6;
+  system.precomputeTotalGradients();
+  const std::vector<Atom> before(atoms.begin(), atoms.end());
+  std::optional<Thermostat> thermostat{};
+  step(system, thermostat);
+  for (std::size_t i = 0; i != before.size(); ++i)
+  {
+    const double3 moved = (system.spanOfMoleculeAtoms()[i].position - before[i].position) / system.timeStep;
+    EXPECT_LT((moved - velocities[i]).length(), 1e-4 * (1.0 + velocities[i].length()));
+  }
+
+  // used once: a second call finds none
+  EXPECT_FALSE(system.applyInitialVelocities());
+}
+
+TEST(initial_velocities, flexible_atoms_take_their_velocities_less_what_the_constraints_do_not_allow)
+{
+  const ForceField forceField = makeForceField();
+  System system = makeSystem(forceField, makeDimer(forceField, true), 2, 6.0, 31);
+  const std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+
+  RandomNumber random(11);
+  std::vector<double3> velocities(atoms.size());
+  for (double3& velocity : velocities) velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian());
+  // the velocities of the first molecule only: the others keep the drawn ones
+  system.initialVelocities = {{velocities[0], velocities[1]}};
+  drawVelocities(system, 3);
+  const std::vector<AtomDynamics> drawn(system.spanOfMoleculeDynamics().begin(), system.spanOfMoleculeDynamics().end());
+  EXPECT_TRUE(system.applyInitialVelocities());
+  const std::span<const AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
+
+  // the momentum of the molecule is kept, the velocity along the bond is gone
+  EXPECT_LT((dynamics[0].velocity + dynamics[1].velocity - velocities[0] - velocities[1]).length(), 1e-12);
+  EXPECT_LT(residuals(system).velocity, 1e-10);
+  const double3 bond = (atoms[0].position - atoms[1].position).normalized();
+  const double3 relative = velocities[0] - velocities[1];
+  const double3 allowed = relative - double3::dot(relative, bond) * bond;
+  EXPECT_LT((dynamics[0].velocity - dynamics[1].velocity - allowed).length(), 1e-10);
+  for (std::size_t i = 2; i != dynamics.size(); ++i) EXPECT_EQ(dynamics[i].velocity, drawn[i].velocity);
+}
+
+TEST(initial_velocities, are_kept_in_the_binary_restart_until_they_are_used)
+{
+  const ForceField forceField = makeForceField();
+  System system = makeSystem(forceField, makeDimer(forceField, true), 2, 6.0, 31);
+  system.initialVelocities = {std::vector<double3>(system.spanOfMoleculeAtoms().size(), double3(1.0, 2.0, 3.0))};
+
+  const std::filesystem::path path = std::filesystem::temp_directory_path() / "raspa_initial_velocities.bin";
+  {
+    std::ofstream stream(path, std::ios::binary);
+    Archive<std::ofstream> archive(stream);
+    archive << system;
+  }
+  System restored;
+  {
+    std::ifstream stream(path, std::ios::binary);
+    Archive<std::ifstream> archive(stream);
+    archive >> restored;
+  }
+  std::filesystem::remove(path);
+  EXPECT_EQ(restored.initialVelocities, system.initialVelocities);
+}

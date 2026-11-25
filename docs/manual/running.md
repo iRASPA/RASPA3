@@ -119,8 +119,11 @@ script (optional) names the styles, `special_bonds` and `pair_modify` settings.
 The configuration of the data file is kept: the positions of all atoms are written per component to
 `initial_configuration.json`, each molecule in one piece, and the simulation names that file as its
 `"RestartFileName"`, so the converted run starts from the configuration LAMMPS had (with
-`"CreateNumberOfMolecules" : 0`, since no molecules are created next to those read). The velocities of the data
-file are not carried over; molecular dynamics draws them at the temperature of the run.
+`"CreateNumberOfMolecules" : 0`, since no molecules are created next to those read). The `Velocities` section of
+the data file, when it has one, is written next to the positions (as `"Velocities"`, in Å/ps), and molecular
+dynamics starts from those velocities instead of drawing them at the temperature of the run. A script that draws
+its own (`velocity ... create`) does not start from the velocities of the file, so they are left out and
+reported; other `velocity` commands (`set`, `scale`, `ramp`) are not applied and reported.
 
 A `fix shake` (or `fix rattle`) in the input script is read as well: the bonds it names by bond type (`b`), by
 atom type (`t`) or by atom mass (`m`) become `FIXED` bonds at the equilibrium length of their harmonic style (the

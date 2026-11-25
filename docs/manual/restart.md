@@ -87,6 +87,9 @@ The contents of the restart files look like
 ```
 So, the component-name as the key, and the value is an array of positions,
 and information on the simulation-box (during NPT or Gibbs the box changes).
+A file written by hand or by a converter may also hold `"Velocities"`: an object with, per component-name,
+a velocity in Å/ps for every position, in the same order. Molecular dynamics starts the molecules read from
+the file with these velocities; the restart-files `RASPA` writes hold positions only.
 CO<sub>2</sub> molecules are usually modeled as `rigid` and implemented using quaternions.
 ```json
 {

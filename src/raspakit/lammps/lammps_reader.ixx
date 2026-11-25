@@ -26,7 +26,8 @@ import json;
  *
  * Coordinates of all molecules are kept in 'positions' (Angstrom, unwrapped, in the order of the file) and,
  * sorted per component, in 'configuration': the restart file that the simulation written here starts from, so
- * a converted run begins at the configuration of the data file. Velocities are not carried over.
+ * a converted run begins at the configuration of the data file. The 'Velocities' section of the data file is
+ * written next to the positions (Angstrom/ps), unless the script draws new ones ('velocity ... create').
  */
 export namespace LAMMPS
 {
@@ -44,7 +45,8 @@ struct ReadResult
   std::vector<ReadComponent> components{};
   nlohmann::json simulation{};
   /// The configuration of the data file, as the restart file the simulation names ('RestartFileName'): for every
-  /// component the positions of its atoms, molecule after molecule, each molecule in one piece [Angstrom].
+  /// component the positions of its atoms, molecule after molecule, each molecule in one piece [Angstrom], and
+  /// under 'Velocities' their velocities in the same order [Angstrom/ps] when the data file has them.
   nlohmann::json configuration{};
   std::array<double, 3> boxLengths{};
   std::array<double, 3> boxAngles{90.0, 90.0, 90.0};

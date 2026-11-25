@@ -2272,6 +2272,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   // version 3
   archive << s.atomTags;
 
+  // version 5
+  archive << s.initialVelocities;
+
   // 'interpolationGrids' and 'externalFieldInterpolationGrid' are intentionally not serialized:
   // they are derived data that can dominate the checkpoint size and are rebuilt deterministically
   // on restart (MonteCarlo/MolecularDynamics::createInterpolationGrids).
@@ -2481,6 +2484,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
     s.resetAtomTags();
   }
 
+  if (versionNumber >= 5)
+  {
+    archive >> s.initialVelocities;
+  }
+
   // archive >> s.columnNumberOfGridPoints;
   // archive >> s.columnTotalPressure;
   // archive >> s.columnPressureGradient;
@@ -2535,6 +2543,40 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
 #endif
 
   return archive;
+}
+
+bool System::applyInitialVelocities()
+{
+  bool applied{false};
+  std::vector<std::size_t> moleculeOfComponent(components.size(), 0uz);
+  std::span<const Atom> atoms = spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamics = spanOfMoleculeDynamics();
+  std::size_t index{};
+  std::size_t groupIndex{};
+  for (Molecule& molecule : moleculeData)
+  {
+    const std::size_t componentId = molecule.componentId;
+    const Component& component = components[componentId];
+    // the molecules read from the file are the first integer molecules of their component
+    const std::size_t slot = moleculeOfComponent[componentId]++;
+    const std::size_t numberOfFractional = numberOfFractionalMoleculesPerComponent[componentId];
+    if (componentId < initialVelocities.size() && slot >= numberOfFractional)
+    {
+      const std::size_t first = (slot - numberOfFractional) * molecule.numberOfAtoms;
+      if (first + molecule.numberOfAtoms <= initialVelocities[componentId].size())
+      {
+        Integrators::setMoleculeVelocities(
+            molecule, atoms.subspan(index, molecule.numberOfAtoms), dynamics.subspan(index, molecule.numberOfAtoms),
+            component, spanOfGroupData(), groupIndex,
+            std::span<const double3>(initialVelocities[componentId]).subspan(first, molecule.numberOfAtoms));
+        applied = true;
+      }
+    }
+    if (component.isSemiFlexible()) groupIndex += component.numberOfRigidFragments();
+    index += molecule.numberOfAtoms;
+  }
+  initialVelocities.clear();
+  return applied;
 }
 
 void System::writeRestartFile(std::size_t systemId)

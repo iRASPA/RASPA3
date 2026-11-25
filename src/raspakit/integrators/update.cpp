@@ -649,6 +649,79 @@ simd_quatd orientationMomentumFromBodyAngularVelocity(const simd_quatd& q, const
 }
 }  // namespace
 
+void Integrators::setMoleculeVelocities(Molecule& molecule, std::span<const Atom> atoms,
+                                        std::span<AtomDynamics> dynamics, const Component& component,
+                                        std::span<GroupState> groupData, std::size_t groupIndex,
+                                        std::span<const double3> velocities)
+{
+  if (velocities.size() != molecule.numberOfAtoms || atoms.size() != molecule.numberOfAtoms ||
+      dynamics.size() != molecule.numberOfAtoms)
+  {
+    throw std::runtime_error("Setting the velocities of a molecule requires one velocity per atom");
+  }
+
+  // The rigid motion closest to the atomic velocities: the momentum and the angular momentum about the centre of
+  // mass are kept, so velocities that are those of a rigid body are reproduced exactly.
+  const auto setBody = [&](std::span<const std::size_t> members, const auto& massOf, double3& velocity,
+                           simd_quatd& orientationMomentum, const simd_quatd& orientation, const double3& inertia,
+                           const double3& inverseInertia)
+  {
+    double3 com{}, momentum{};
+    double mass{};
+    for (std::size_t k = 0; k != members.size(); ++k)
+    {
+      const double m = massOf(k);
+      com += m * atoms[members[k]].position;
+      momentum += m * velocities[members[k]];
+      mass += m;
+    }
+    if (!(mass > 0.0)) return;
+    com = com / mass;
+    velocity = momentum / mass;
+    if (members.size() < 2) return;
+    double3 angularMomentum{};
+    for (std::size_t k = 0; k != members.size(); ++k)
+    {
+      angularMomentum += massOf(k) * double3::cross(atoms[members[k]].position - com, velocities[members[k]] - velocity);
+    }
+    // space-fixed to body-fixed (principal axes), where the inertia is diagonal
+    const double3 omega = (double3x3::buildRotationMatrix(orientation) * angularMomentum) * inverseInertia;
+    orientationMomentum = orientationMomentumFromBodyAngularVelocity(orientation, inertia, omega);
+  };
+
+  if (component.rigid)
+  {
+    std::vector<std::size_t> members(molecule.numberOfAtoms);
+    std::iota(members.begin(), members.end(), 0uz);
+    setBody(members, [&](std::size_t k) { return component.atomMass(k, atoms[k]); }, molecule.velocity,
+            molecule.orientationMomentum, molecule.orientation, component.inertiaVector,
+            component.inverseInertiaVector);
+    return;
+  }
+
+  const bool semiFlexible = component.isSemiFlexible() && !groupData.empty();
+  if (semiFlexible)
+  {
+    std::size_t rigidRank{};
+    for (const Fragment& group : component.fragmentGraph.fragments)
+    {
+      if (!group.isRigidBody()) continue;
+      GroupState& state = groupData[groupIndex + rigidRank];
+      setBody(group.atoms, [&](std::size_t k) { return group.atomMasses[k]; }, state.velocity,
+              state.orientationMomentum, state.orientation, group.inertiaVector, group.inverseInertiaVector);
+      ++rigidRank;
+    }
+  }
+  for (std::size_t i = 0; i != molecule.numberOfAtoms; ++i)
+  {
+    dynamics[i].velocity =
+        semiFlexible && component.rigidFragmentContaining(i).has_value() ? double3(0.0, 0.0, 0.0) : velocities[i];
+  }
+  // velocities along a constrained bond are not those of the model: keep the part the constraints allow
+  constrainMoleculeVelocities(component, atoms, dynamics);
+  syncNonRigidMoleculeCenterOfMass(molecule, atoms, dynamics, component, groupData, groupIndex);
+}
+
 void Integrators::langevinVelocityStep(Thermostat& thermostat, double dt, std::span<Molecule> moleculeData,
                                        std::span<const Atom> moleculeAtomPositions,
                                        std::span<AtomDynamics> moleculeDynamics,

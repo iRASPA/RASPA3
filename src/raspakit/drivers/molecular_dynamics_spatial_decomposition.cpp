@@ -1190,6 +1190,8 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
                                       system.spanOfMoleculeDynamics(), system.components, system.temperature,
                                       system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(),
                                       &system.forceField, system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+    // a configuration read with its velocities starts from those
+    system.applyInitialVelocities();
 
     // Only a conserved momentum can be removed, and then its degrees of freedom go with it, with or without a
     // thermostat; a single molecule would freeze.

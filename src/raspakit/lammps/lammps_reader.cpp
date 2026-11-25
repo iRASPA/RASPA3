@@ -128,6 +128,7 @@ struct DataFile
   double xy{}, xz{}, yz{};
   bool triclinic{false};
   std::string atomStyle{"full"};
+  std::map<std::size_t, std::array<double, 3>> velocities{};  ///< 'Velocities' section: by atom id, units of the file
   std::map<std::size_t, double> masses{};
   std::map<std::size_t, std::string> typeNames{};
   std::map<std::size_t, CoefficientLine> pairCoefficients{};
@@ -179,6 +180,8 @@ struct InputScript
     std::optional<double> langevinTemperature{}, langevinDamping{};
   };
   Dynamics dynamics{};
+  /// 'velocity ... create': the script draws new velocities, so those of the data file are not what it starts from
+  bool createsVelocities{false};
 };
 
 CoefficientLine parseCoefficientLine(const std::vector<std::string> &words, std::size_t firstValue)
@@ -357,6 +360,20 @@ InputScript readInputScript(const std::filesystem::path &path, std::vector<std::
       continue;
     }
     if (command == "fix" && words.size() > 3 && readDynamicsFix(words, script.dynamics, warnings)) continue;
+    if (command == "velocity" && words.size() > 2)
+    {
+      if (words[2] == "create")
+      {
+        script.createsVelocities = true;
+      }
+      else if (words[2] != "zero")  // RASPA takes the drift of the centre of mass out itself
+      {
+        warnings.push_back(std::format(
+            "[LAMMPS reader] 'velocity {} {}' is not applied: the velocities of the data file are kept as they are",
+            words[1], words[2]));
+      }
+      continue;
+    }
 
     if (command == "units" && words.size() > 1)
     {
@@ -713,10 +730,20 @@ DataFile readData(const std::filesystem::path &path, std::vector<std::string> &w
                                   target.push_back(entry);
                                 });
     }
+    else if (section == "Velocities")
+    {
+      // 'id vx vy vz', followed by the angular velocities of the extended particles of some atom styles
+      nextSection = readSection(section, sectionComment,
+                                [&](const std::vector<std::string> &words, const std::string &)
+                                {
+                                  if (words.size() < 4) return;
+                                  data.velocities[static_cast<std::size_t>(std::stoul(words[0]))] = {
+                                      toDouble(words[1]), toDouble(words[2]), toDouble(words[3])};
+                                });
+    }
     else
     {
-      if (section != "Velocities")
-        warnings.push_back(std::format("[LAMMPS reader] section '{}' is ignored", section));
+      warnings.push_back(std::format("[LAMMPS reader] section '{}' is ignored", section));
       nextSection = readSection(section, sectionComment, [](const std::vector<std::string> &, const std::string &) {});
     }
     section = nextSection.first;
@@ -1551,6 +1578,44 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
     result.configuration[component.name] = std::move(positions);
 
     result.components.push_back(component);
+  }
+
+  // The velocities of the data file, in the same order, next to the positions: molecular dynamics starts from
+  // them. LAMMPS 'real' units have Angstrom per femtosecond, 'metal' units Angstrom per picosecond, as RASPA.
+  if (!data.velocities.empty())
+  {
+    const bool complete = std::ranges::all_of(
+        data.atoms, [&](const DataAtom &atom) { return data.velocities.contains(atom.id); });
+    if (script.createsVelocities)
+    {
+      result.warnings.push_back(
+          "[LAMMPS reader] the script draws new velocities ('velocity ... create'): those of the data file are not "
+          "carried over, molecular dynamics draws them at the temperature of the run");
+    }
+    else if (!complete)
+    {
+      result.warnings.push_back(
+          "[LAMMPS reader] the 'Velocities' section does not list every atom: the velocities are not carried over");
+    }
+    else
+    {
+      const double perPicosecond = script.units == "metal" ? 1.0 : 1.0e3;
+      nlohmann::json velocities = nlohmann::json::object();
+      for (std::size_t c = 0; c < templates.size(); ++c)
+      {
+        nlohmann::json list = nlohmann::json::array();
+        for (const std::vector<std::size_t> &instance : templates[c].instances)
+        {
+          for (const std::size_t atom : instance)
+          {
+            const std::array<double, 3> &v = data.velocities.at(data.atoms[atom].id);
+            list.push_back({v[0] * perPicosecond, v[1] * perPicosecond, v[2] * perPicosecond});
+          }
+        }
+        velocities[result.components[c].name] = std::move(list);
+      }
+      result.configuration["Velocities"] = std::move(velocities);
+    }
   }
 
   // simulation skeleton

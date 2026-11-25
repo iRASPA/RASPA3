@@ -4000,6 +4000,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
 
       std::optional<SimulationBox> restart_simulation_box{};
+      std::vector<std::vector<double3>> restart_velocities{};
       if (value.contains("RestartFileName") && value["RestartFileName"].is_string())
       {
         std::string restartFileName = value["RestartFileName"].get<std::string>();
@@ -4035,6 +4036,32 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           {
             std::vector<double3> restart_positions = restart_data[component_name].get<std::vector<double3>>();
             jsonRestartFilePositions[systemId][i] = restart_positions;
+          }
+        }
+
+        // the velocities of those atoms, when the file has them: molecular dynamics starts from them
+        if (restart_data.contains("Velocities"))
+        {
+          if (!restart_data["Velocities"].is_object())
+          {
+            throw std::runtime_error(std::format(
+                "[Input reader]: 'Velocities' in restart file '{}' must be an object with the velocities of the "
+                "atoms per component\n",
+                restartFileName));
+          }
+          restart_velocities.resize(jsonComponents[systemId].size());
+          for (std::size_t i = 0; i < jsonComponents[systemId].size(); ++i)
+          {
+            std::string component_name = jsonComponents[systemId][i].name;
+            if (!restart_data["Velocities"].contains(component_name)) continue;
+            restart_velocities[i] = restart_data["Velocities"][component_name].get<std::vector<double3>>();
+            if (restart_velocities[i].size() != jsonRestartFilePositions[systemId][i].size())
+            {
+              throw std::runtime_error(std::format(
+                  "[Input reader]: restart file '{}' has {} velocities for the {} positions of component '{}'\n",
+                  restartFileName, restart_velocities[i].size(), jsonRestartFilePositions[systemId][i].size(),
+                  component_name));
+            }
           }
         }
 
@@ -4224,6 +4251,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         throw std::runtime_error(
             std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
       }
+      systems[systemId].initialVelocities = std::move(restart_velocities);
 
       // the system renormalizes the mole fractions over its swappable components (and copies a pair driver's to
       // its partner), so the imposed fugacities survive only when every such component has a chemical potential

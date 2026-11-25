@@ -1337,7 +1337,15 @@ reported separately at the end of the simulation.
     JSON restart file for that system. Any molecules requested with
     `"CreateNumberOfMolecules"` are created *in addition* to, and after, the
     positions read from this file. This is convenient for loading a fixed set of
-    positions (for example cations) and then creating adsorbates on top of them.
+    positions (for example cations) and then creating adsorbates on top of them.\
+    The file may also hold `"Velocities"`: per component name a velocity for every
+    position, in the same order, in Å/ps. Molecular dynamics then starts the
+    molecules read from the file with those velocities instead of drawing them
+    at the temperature of the run (molecules created next to them are still
+    drawn). A rigid molecule takes the translation and rotation with the
+    momentum and angular momentum of its atomic velocities; a molecule with
+    `FIXED` bonds loses the part of the velocities along its constraints; the
+    drift of the centre of mass is removed as for drawn velocities.
 
 ### Printing options <a name="printing-options"></a>
 

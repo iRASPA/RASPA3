@@ -1982,3 +1982,101 @@ Bonds
   LAMMPS::writeRaspaInput(result, directory.path / "converted");
   EXPECT_TRUE(std::filesystem::exists(directory.path / "converted" / "initial_configuration.json"));
 }
+
+TEST(lammps_export, reader_carries_the_velocities_of_the_data_file_next_to_the_positions)
+{
+  // a dimer and a single atom, the atoms out of order; velocities in Angstrom per femtosecond ('real')
+  const std::string data = R"(LAMMPS data file
+
+3 atoms
+1 bonds
+2 atom types
+1 bond types
+
+0.0 20.0 xlo xhi
+0.0 20.0 ylo yhi
+0.0 20.0 zlo zhi
+
+Masses
+
+1 15.0
+2 39.948
+
+Pair Coeffs # lj/cut
+
+1 0.2 3.75
+2 0.238 3.405
+
+Bond Coeffs # harmonic
+
+1 300.0 1.54
+
+Atoms # molecular
+
+1 1 1 2.0 3.0 4.0
+3 2 2 9.0 9.0 9.0
+2 1 1 3.54 3.0 4.0
+
+Velocities
+
+3 0.007 0.008 0.009
+1 0.001 0.002 0.003
+2 -0.004 0.005 -0.006
+
+Bonds
+
+1 1 1 2
+)";
+  TemporaryDirectory directory;
+  const std::filesystem::path dataPath = directory.path / "start.data";
+  const std::filesystem::path inputPath = directory.path / "start.in";
+  std::ofstream(dataPath) << data;
+  const std::string script = "atom_style molecular\npair_style lj/cut 9.0\nbond_style harmonic\nread_data start.data\n";
+  const auto velocitiesOf = [](const LAMMPS::ReadResult& result, std::size_t atomsPerMolecule)
+  {
+    for (const LAMMPS::ReadComponent& component : result.components)
+    {
+      if (component.atomsPerMolecule == atomsPerMolecule)
+        return result.configuration["Velocities"][component.name].get<std::vector<std::array<double, 3>>>();
+    }
+    return std::vector<std::array<double, 3>>{};
+  };
+  const auto expectVelocity = [](const std::array<double, 3>& velocity, double x, double y, double z)
+  {
+    EXPECT_NEAR(velocity[0], x, 1e-12);
+    EXPECT_NEAR(velocity[1], y, 1e-12);
+    EXPECT_NEAR(velocity[2], z, 1e-12);
+  };
+
+  // 'real': Angstrom per femtosecond, a thousand times that per picosecond; one velocity per position
+  {
+    std::ofstream(inputPath) << "units real\n" << script;
+    const LAMMPS::ReadResult result = LAMMPS::readDataFile(dataPath, inputPath);
+    ASSERT_TRUE(result.configuration.contains("Velocities"));
+    const std::vector<std::array<double, 3>> dimer = velocitiesOf(result, 2);
+    ASSERT_EQ(dimer.size(), 2u);
+    expectVelocity(dimer[0], 1.0, 2.0, 3.0);
+    expectVelocity(dimer[1], -4.0, 5.0, -6.0);
+    const std::vector<std::array<double, 3>> atom = velocitiesOf(result, 1);
+    ASSERT_EQ(atom.size(), 1u);
+    expectVelocity(atom[0], 7.0, 8.0, 9.0);
+    for (const LAMMPS::ReadComponent& component : result.components)
+    {
+      EXPECT_EQ(result.configuration["Velocities"][component.name].size(), result.configuration[component.name].size());
+    }
+  }
+  // 'metal': Angstrom per picosecond already
+  {
+    std::ofstream(inputPath) << "units metal\n" << script;
+    const LAMMPS::ReadResult result = LAMMPS::readDataFile(dataPath, inputPath);
+    expectVelocity(velocitiesOf(result, 1)[0], 0.007, 0.008, 0.009);
+  }
+  // a script that draws its velocities does not start from those of the file
+  {
+    std::ofstream(inputPath) << "units real\n" << script << "velocity all create 300.0 4928459\n";
+    const LAMMPS::ReadResult result = LAMMPS::readDataFile(dataPath, inputPath);
+    EXPECT_FALSE(result.configuration.contains("Velocities"));
+    EXPECT_TRUE(std::ranges::any_of(result.warnings, [](const std::string& warning)
+                                    { return warning.contains("velocity ... create"); }));
+  }
+}

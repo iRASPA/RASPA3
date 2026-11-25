@@ -393,6 +393,8 @@ void ParallelTemperingMolecularDynamics::prepareReplicaMolecularDynamicsStage(st
                                       system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(),
                                       &system.forceField, system.spanOfGroupData(),
                                       system.spanOfFrameworkGroupData());
+    // a configuration read with its velocities starts from those
+    system.applyInitialVelocities();
     // Only a conserved momentum can be removed, and then its degrees of freedom go with it, with or without a
     // thermostat. Lab-fixed atoms or an external field exert a net force, and a single molecule would freeze.
     if (system.conservesCenterOfMassMomentum())

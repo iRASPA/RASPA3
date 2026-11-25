@@ -112,7 +112,7 @@ export struct System
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{4};
+  std::uint64_t versionNumber{5};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -510,6 +510,16 @@ export struct System
   /// differently from the file (the distance constraints of FIXED bonds take degrees of freedom off that a file
   /// of before them still has in its totals).
   void reconcileDegreesOfFreedom();
+
+  /// The atomic velocities read next to the positions of a restart file ('"Velocities"' of 'RestartFileName'), per
+  /// component for the molecules read from that file, molecule after molecule [Angstrom/ps]. Molecular dynamics
+  /// starts from them (see 'applyInitialVelocities'); empty for a component without them.
+  std::vector<std::vector<double3>> initialVelocities{};
+
+  /// Gives the molecules read from the restart file the velocities read with them, after the velocities of all
+  /// molecules were drawn: molecules created next to them keep the drawn ones. The velocities are used once.
+  /// Returns whether any velocity was set. The group data and the Cartesian positions must be current.
+  bool applyInitialVelocities();
 
   /// Throws when molecular dynamics cannot hold the FIXED terms of a component as constraints (see
   /// 'Component::distanceConstraints'), or when constrained molecules meet something that needs the atomic virial,
