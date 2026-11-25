@@ -14,6 +14,7 @@ the [Commands](\ref commands) page for the full input documentation.
 * [Move selection](#move-selection)
 * [TMMC compatibility](#tmmc-compatibility)
 * [Notation](#notation)
+* [Illustrations](#illustrations)
 * [Single-molecule moves](#single-molecule-moves)
   * [Translation](#translation)
   * [Random translation](#random-translation)
@@ -199,11 +200,32 @@ factor appears.
 
 ----------------------------------------------------------------------------------
 
+## Illustrations <a name="illustrations"></a>
+
+Every move has a schematic, two-dimensional illustration. They share the same
+conventions: grey molecules are the other molecules of the box, which the move
+leaves alone; a faded molecule with a dashed outline is the old configuration
+and a fully coloured one the new configuration; thin dashed outlines are trial
+positions or trial molecules that were generated but not chosen; a hatched
+molecule is a fractional molecule, coupled to the rest of the system with
+\f$\lambda\f$, whose axis is drawn under the box. Red arrows are forces and
+torques. The figures are drawn by `docs/make_mc_move_figures.py`.
+
 ## Single-molecule moves <a name="single-molecule-moves"></a>
 
 ### Translation <a name="translation"></a>
 
 Keyword: `"TranslationProbability"` (component move)
+
+<!-- figure of the move: translation -->
+\image html mc_move_translation.png "A molecule is displaced over a small random distance along one axis; its orientation is kept." width=313px
+\image latex mc_move_translation.png "A molecule is displaced over a small random distance along one axis; its orientation is kept." width=5.3cm
+
+The faded molecule with the dashed outline is the selected molecule at its old position, the fully coloured one the
+trial position; the arrow is the displacement \f$\Delta r\f$ along the chosen axis. The bar under the molecule is
+the range \f$[-\Delta_\text{max},+\Delta_\text{max}]\f$ from which the displacement is drawn. The orientation of
+the molecule is the same before and after, and the grey molecules do not move.
+<!-- end of the figure of the move -->
 
 Displaces a single rigid-body molecule over a small random distance along one
 of the Cartesian axes, leaving its orientation and internal conformation
@@ -243,6 +265,14 @@ J. Chem. Phys. **21**, 1087-1092 (1953).
 
 Keyword: `"RandomTranslationProbability"` (component move)
 
+<!-- figure of the move: random-translation -->
+\image html mc_move_random-translation.png "A molecule is put anywhere along one axis of the box; its orientation is kept." width=313px
+\image latex mc_move_random-translation.png "A molecule is put anywhere along one axis of the box; its orientation is kept." width=5.3cm
+
+The dotted line is the chosen axis through the old position (faded). The new position (full colour) is drawn
+uniformly along the whole box length on that line, so the arrow can span any distance; the orientation is kept.
+<!-- end of the figure of the move -->
+
 Translates a single molecule to an arbitrary position along one axis of the
 box: the displacement is drawn over the full box length instead of a small
 tuned maximum displacement. In contrast to reinsertion, the orientation and
@@ -277,6 +307,15 @@ Workings of Monte Carlo Codes*, Mol. Simul. **39**, 1253-1292 (2013).
 
 Keyword: `"RotationProbability"` (component move)
 
+<!-- figure of the move: rotation -->
+\image html mc_move_rotation.png "A molecule is rotated over a small random angle around an axis through its rotation centre." width=313px
+\image latex mc_move_rotation.png "A molecule is rotated over a small random angle around an axis through its rotation centre." width=5.3cm
+
+The cross marks the rotation centre. The faded molecule is the old orientation and the fully coloured one the new
+orientation; the curved arrow is the rotation angle, drawn from
+\f$[-\Delta\theta_\text{max},+\Delta\theta_\text{max}]\f$. The position of the rotation centre does not change.
+<!-- end of the figure of the move -->
+
 Rotates a single molecule over a small random angle around one of the Cartesian
 axes through its rotation center (the starting bead). The maximum angle is
 adjusted during the run towards 50% acceptance.
@@ -310,6 +349,15 @@ calculation*, Chem. Phys. Lett. **3**, 144-145 (1969).
 
 Keyword: `"RandomRotationProbability"` (component move)
 
+<!-- figure of the move: random-rotation -->
+\image html mc_move_random-rotation.png "A molecule is given a new orientation drawn uniformly from all orientations." width=313px
+\image latex mc_move_random-rotation.png "A molecule is given a new orientation drawn uniformly from all orientations." width=5.3cm
+
+The dotted circle stands for all orientations of the molecule around its rotation centre (the cross). The new
+orientation (full colour) is drawn uniformly from them, without reference to the old one (faded), so the arrow can
+cover any angle.
+<!-- end of the figure of the move -->
+
 Left-multiplies a selected molecule by an independent Haar-uniform quaternion,
 i.e. a genuinely uniform proposal on \f$SO(3)\f$, not a uniform axis plus a
 uniform angle.
@@ -341,6 +389,15 @@ Workings of Monte Carlo Codes*, Mol. Simul. **39**, 1253-1292 (2013).
 
 Keyword: `"TranslationSmartMCProbability"` (component move; alias
 `"ForceBiasTranslationProbability"`)
+
+<!-- figure of the move: translation-smart-mc -->
+\image html mc_move_translation-smart-mc.png "The displacement is drawn around a drift along the force F on the molecule (shaded: where the proposals fall)." width=313px
+\image latex mc_move_translation-smart-mc.png "The displacement is drawn around a drift along the force F on the molecule (shaded: where the proposals fall)." width=5.3cm
+
+The red arrow is the force \f$\mathbf{F}\f$ on the molecule at its old position (faded). The shaded disc shows
+where the proposals fall: a Gaussian around a point shifted along the force. The new position (full colour) is one
+draw from that distribution, so it lies in the direction of the force but not exactly on the arrow.
+<!-- end of the figure of the move -->
 
 A "smart Monte Carlo" displacement: the trial translation of a single molecule
 is biased in the direction of the force acting on it, so that trial moves
@@ -397,6 +454,15 @@ Carlo simulation*, J. Chem. Phys. **69**, 4628-4633 (1978).
 
 Keyword: `"RotationSmartMCProbability"` (component move)
 
+<!-- figure of the move: rotation-smart-mc -->
+\image html mc_move_rotation-smart-mc.png "The rotation is drawn around a drift along the torque on the molecule." width=313px
+\image latex mc_move_rotation-smart-mc.png "The rotation is drawn around a drift along the torque on the molecule." width=5.3cm
+
+The curved red arrow is the torque \f$\boldsymbol{\tau}\f$ on the molecule. The new orientation (full colour) is
+drawn around a rotation along the torque, starting from the old orientation (faded); the centre of the molecule
+stays where it is.
+<!-- end of the figure of the move -->
+
 The rotational analogue of [translation smart MC](#translation-smart-mc): the
 trial orientation change of a single molecule is biased along the torque acting
 on it. The rotation is applied as a quaternion about the center of mass (rigid
@@ -446,6 +512,15 @@ R. Hens et al., Brick-CFCMC supporting information (smart rotations).
 ### Translation-rotation smart MC <a name="translation-rotation-smart-mc"></a>
 
 Keyword: `"TranslationRotationSmartMCProbability"` (component move)
+
+<!-- figure of the move: translation-rotation-smart-mc -->
+\image html mc_move_translation-rotation-smart-mc.png "Displacement along the force and rotation along the torque in one trial." width=313px
+\image latex mc_move_translation-rotation-smart-mc.png "Displacement along the force and rotation along the torque in one trial." width=5.3cm
+
+Both biases act in one trial: the molecule is displaced into the shaded region around a drift along the force
+\f$\mathbf{F}\f$ (straight red arrow) and rotated around a drift along the torque \f$\boldsymbol{\tau}\f$ (curved
+red arrow). The faded molecule is the old configuration, the fully coloured one the new configuration.
+<!-- end of the figure of the move -->
 
 A combined move that performs [translation smart MC](#translation-smart-mc) and
 [rotation smart MC](#rotation-smart-mc) in a single trial: the center-of-mass
@@ -521,6 +596,16 @@ Carlo simulation*, J. Chem. Phys. **69**, 4628-4633 (1978).
 
 Keyword: `"ReinsertionProbability"` (component move)
 
+<!-- figure of the move: reinsertion-cbmc -->
+\image html mc_move_reinsertion-cbmc.png "The molecule is retraced where it is and grown bead by bead at a random position; at every bead one of several trial positions (dashed) is chosen." width=313px
+\image latex mc_move_reinsertion-cbmc.png "The molecule is retraced where it is and grown bead by bead at a random position; at every bead one of several trial positions (dashed) is chosen." width=5.3cm
+
+On the left the old configuration (faded) is retraced: next to every bead the thin dashed circles are the other
+trial positions that are generated to weigh it, which gives the Rosenbluth weight \f$W(\mathbf{o})\f$. On the right
+the molecule is grown at a random position: at every bead several trial positions are generated and one is chosen
+(full colour), which gives \f$W(\mathbf{n})\f$. The arrow connects the old and the new configuration.
+<!-- end of the figure of the move -->
+
 Removes a molecule from its current position and regrows it at a random
 position in the box using Configurational-Bias Monte Carlo (CBMC). Multiple
 trial positions are generated for the first bead and for every subsequent
@@ -573,6 +658,15 @@ Matter **4**, 3053-3076 (1992). <https://doi.org/10.1088/0953-8984/4/12/006>
 
 Keyword: `"ReinsertionMultiTrialProbability"` (component move);
 `"NumberOfTrialMolecules"` sets \f$M\f$ (default 10)
+
+<!-- figure of the move: reinsertion-multi-trial-cbmc -->
+\image html mc_move_reinsertion-multi-trial-cbmc.png "M whole molecules are grown at random positions (dashed) and one of them is chosen as the new configuration." width=313px
+\image latex mc_move_reinsertion-multi-trial-cbmc.png "M whole molecules are grown at random positions (dashed) and one of them is chosen as the new configuration." width=5.3cm
+
+Each thin dashed molecule is a complete trial molecule grown with CBMC at a random position; there are \f$M\f$ of
+them in total. One is chosen with a probability proportional to its weight and becomes the new configuration (full
+colour), which replaces the old one (faded). The acceptance uses the mean weight of the whole set.
+<!-- end of the figure of the move -->
 
 Multiple-try variant of the CBMC reinsertion. Instead of one trial molecule,
 \f$M\f$ complete molecules are grown independently with CBMC at random
@@ -631,6 +725,15 @@ D. Frenkel, G.C.A.M. Mooij, and B. Smit, J. Phys.: Condens. Matter **4**,
 
 Keyword: `"PartialReinsertionProbability"` (component move)
 
+<!-- figure of the move: partial-reinsertion-cbmc -->
+\image html mc_move_partial-reinsertion-cbmc.png "A part of the molecule stays fixed (dark) and the rest is regrown with trial positions." width=313px
+\image latex mc_move_partial-reinsertion-cbmc.png "A part of the molecule stays fixed (dark) and the rest is regrown with trial positions." width=5.3cm
+
+The dark beads are the atoms that stay fixed. The faded beads are the old positions of the remaining atoms; the
+fully coloured beads are regrown from the last fixed atom, each chosen from several trial positions (thin dashed
+circles). Only the regrown part contributes to the Rosenbluth weights.
+<!-- end of the figure of the move -->
+
 Regrows only a part of the molecule with CBMC while a chosen subset of atoms
 remains fixed in place. The lists of fixed atoms per configuration are defined
 in the component file (`partialReinsertionFixedAtoms`).
@@ -673,6 +776,15 @@ Silicalite*, J. Phys. Chem. B **103**, 1102-1118 (1999).
 
 Keyword: `"IdentityChangeProbability"` (component move), together with
 `"IdentityChangesList"`
+
+<!-- figure of the move: identity-change-cbmc -->
+\image html mc_move_identity-change-cbmc.png "A molecule of component A is removed and a molecule of component B is grown in its place." width=686px
+\image latex mc_move_identity-change-cbmc.png "A molecule of component A is removed and a molecule of component B is grown in its place." width=11.6cm
+
+The dashed circle marks the selected molecule. In the left panel it is a molecule of component A (blue). In the
+right panel that molecule is removed (faded) and a molecule of component B (orange) is grown from its position,
+with trial positions shown as thin dashed circles. All other molecules, of both components, are unchanged.
+<!-- end of the figure of the move -->
 
 Transforms a molecule of one component into a molecule of another component at
 (approximately) the same position, using CBMC to grow the new identity. This
@@ -732,6 +844,15 @@ canonical (\f$\mu VT\f$) Monte Carlo.
 
 Keyword: `"SwapConventionalProbability"` (component move)
 
+<!-- figure of the move: swap-conventional -->
+\image html mc_move_swap-conventional.png "A molecule is inserted from, or deleted to, a reservoir at a random position and orientation." width=530px
+\image latex mc_move_swap-conventional.png "A molecule is inserted from, or deleted to, a reservoir at a random position and orientation." width=9.0cm
+
+The dashed panel on the left is the reservoir at the imposed chemical potential and temperature; the double arrow
+is the exchange of a molecule with the box. For an insertion the molecule is placed at a uniformly random position
+with a random orientation, as drawn; for a deletion a randomly chosen molecule of the component is removed.
+<!-- end of the figure of the move -->
+
 Inserts or deletes a molecule at a random position without any biasing.
 
 Steps:
@@ -766,6 +887,15 @@ Lennard-Jones fluid*, Mol. Phys. **29**, 307-311 (1975).
 ### Swap (CBMC) <a name="swap-cbmc"></a>
 
 Keyword: `"SwapProbability"` (component move)
+
+<!-- figure of the move: swap-cbmc -->
+\image html mc_move_swap-cbmc.png "The inserted molecule is grown bead by bead from several trial positions (dashed); a deleted molecule is retraced the same way." width=530px
+\image latex mc_move_swap-cbmc.png "The inserted molecule is grown bead by bead from several trial positions (dashed); a deleted molecule is retraced the same way." width=9.0cm
+
+As in the conventional swap a molecule is exchanged with the reservoir (dashed panel), but an inserted molecule is
+grown bead by bead: the thin dashed circles are the trial positions that were generated and not chosen at each
+bead. For a deletion the selected molecule is retraced with the same number of trial positions.
+<!-- end of the figure of the move -->
 
 Grand-canonical insertion/deletion using configurational-bias growth: molecules
 are grown atom-by-atom with multiple trial directions, which raises the
@@ -816,6 +946,15 @@ T.J.H. Vlugt, R. Krishna, and B. Smit, J. Phys. Chem. B **103**, 1102-1118
 
 Keyword: `"SwapMultiTrialProbability"` (component move);
 `"NumberOfTrialMolecules"` sets \f$M\f$ (default 10)
+
+<!-- figure of the move: swap-multi-trial-cbmc -->
+\image html mc_move_swap-multi-trial-cbmc.png "M whole trial molecules are grown (dashed) and one of them is inserted." width=530px
+\image latex mc_move_swap-multi-trial-cbmc.png "M whole trial molecules are grown (dashed) and one of them is inserted." width=9.0cm
+
+For an insertion \f$M\f$ complete trial molecules are grown at random positions; the thin dashed molecules are the
+ones not chosen and the fully coloured molecule is the one that is inserted. For a deletion the picture is read in
+reverse: the selected molecule is retraced and \f$M-1\f$ reference molecules are grown to complete the set.
+<!-- end of the figure of the move -->
 
 Multiple-try variant of the CBMC swap. For an insertion, \f$M\f$ complete
 molecules are grown independently with CBMC and one is selected with
@@ -909,6 +1048,18 @@ Academic Press (2002), Sect. 13.6 (parallel CBMC).
 
 Keyword: `"CFCMC_SwapProbability"` (component move)
 
+<!-- figure of the move: swap-cfcmc -->
+\image html mc_move_swap-cfcmc.png "A fractional molecule (hatched) is coupled to the system with lambda; a trial changes lambda, and an insertion or deletion happens when lambda leaves the interval." width=530px
+\image latex mc_move_swap-cfcmc.png "A fractional molecule (hatched) is coupled to the system with lambda; a trial changes lambda, and an insertion or deletion happens when lambda leaves the interval." width=9.0cm
+
+The hatched molecule in the box is the fractional molecule, and the axis under the box is its coupling parameter
+\f$\lambda\f$ with the present value as a dot. A trial changes \f$\lambda\f$ by a random amount (the two arrows).
+As long as the new value stays between 0 and 1 only the coupling of the fractional molecule changes. Past the
+right end the fractional molecule becomes a whole molecule and a new fractional molecule is inserted (an
+insertion); past the left end the fractional molecule is removed and a whole molecule becomes fractional (a
+deletion). The reservoir panel on the left indicates that the number of whole molecules changes this way.
+<!-- end of the figure of the move -->
+
 Continuous Fractional Component Monte Carlo insertion/deletion. Each component
 carries one *fractional* molecule whose interactions with the surroundings are
 scaled by a coupling parameter \f$\lambda \in [0,1]\f$ (\f$\lambda=0\f$: ideal gas /
@@ -960,6 +1111,15 @@ J. Chem. Theory Comput. **3**, 1451-1463 (2007).
 ### Swap (CB/CFCMC) <a name="swap-cbcfcmc"></a>
 
 Keyword: `"CFCMC_CBMC_SwapProbability"` (component move)
+
+<!-- figure of the move: swap-cbcfcmc -->
+\image html mc_move_swap-cbcfcmc.png "As the CFCMC swap, with the fractional molecule grown and retraced with trial positions (dashed)." width=530px
+\image latex mc_move_swap-cbcfcmc.png "As the CFCMC swap, with the fractional molecule grown and retraced with trial positions (dashed)." width=9.0cm
+
+The picture is that of the CFCMC swap: a hatched fractional molecule and its \f$\lambda\f$ axis. The difference is
+at the two ends of the axis, where a fractional molecule is created or removed: this is done with CBMC, and the
+thin dashed circles are the trial positions of that growth or retrace.
+<!-- end of the figure of the move -->
 
 Hybrid of CBMC and CFCMC: the insertion/deletion of the fractional molecule is
 performed with configurational-bias growth (multiple trial positions and
@@ -1022,6 +1182,16 @@ J. Chem. Theory Comput. **10**, 942-952 (2014).
 
 Keyword: `"PairSwapConventionalProbability"` (component move), together with
 the pair-partner component and `"MaximumPairDistance"` \f$R_\text{max}\f$
+
+<!-- figure of the move: pair-swap-conventional -->
+\image html mc_move_pair-swap-conventional.png "A pair of molecules is inserted or deleted together; the second is placed within R_max of the first." width=530px
+\image latex mc_move_pair-swap-conventional.png "A pair of molecules is inserted or deleted together; the second is placed within R_max of the first." width=9.0cm
+
+The two ions stand for the selected component (blue) and its partner component (orange), which are inserted or
+deleted together. The first molecule is placed at a random position; the dashed circle is the sphere of radius
+\f$R_\text{max}\f$ around it, and the second molecule is placed uniformly inside this sphere. A deletion removes
+a pair whose distance is within \f$R_\text{max}\f$.
+<!-- end of the figure of the move -->
 
 Inserts or deletes a *pair* of molecules (the selected component \f$A\f$ together
 with its defined partner component \f$B\f$) in a single move. The first molecule
@@ -1113,6 +1283,15 @@ simulations*, J. Chem. Phys. **101**, 1452-1459 (1994).
 
 Keyword: `"PairSwapProbability"` (component move)
 
+<!-- figure of the move: pair-swap-cbmc -->
+\image html mc_move_pair-swap-cbmc.png "The pair is inserted or deleted together, each molecule from several trial positions (dashed)." width=530px
+\image latex mc_move_pair-swap-cbmc.png "The pair is inserted or deleted together, each molecule from several trial positions (dashed)." width=9.0cm
+
+The pair is placed as in the conventional pair swap, inside the sphere of radius \f$R_\text{max}\f$ (dashed
+circle), but both molecules are grown with CBMC: the thin dashed circles in the colour of each molecule are its
+trial positions that were not chosen.
+<!-- end of the figure of the move -->
+
 The configurational-bias variant of the pair swap: both molecules of the pair
 are grown with CBMC (multiple trial positions and orientations). The pair
 distance is drawn uniformly in \f$r \in [0, R_\text{max}]\f$, which introduces an
@@ -1183,6 +1362,16 @@ Reference: G. Orkoulas and A.Z. Panagiotopoulos, J. Chem. Phys. **101**,
 ### Pair swap (CFCMC) <a name="pair-swap-cfcmc"></a>
 
 Keyword: `"CFCMC_PairSwapProbability"` (component move)
+
+<!-- figure of the move: pair-swap-cfcmc -->
+\image html mc_move_pair-swap-cfcmc.png "A fractional pair (hatched) shares one lambda, so that both molecules appear and disappear together." width=530px
+\image latex mc_move_pair-swap-cfcmc.png "A fractional pair (hatched) shares one lambda, so that both molecules appear and disappear together." width=9.0cm
+
+Both molecules of the pair are fractional (hatched) and share the single coupling parameter \f$\lambda\f$ of the
+axis under the box, so they are coupled and decoupled together. Past the right end of the axis the fractional pair
+becomes whole and a new fractional pair is inserted, the second molecule within \f$R_\text{max}\f$ of the first
+(dashed circle); past the left end the fractional pair is removed and a whole pair becomes fractional.
+<!-- end of the figure of the move -->
 
 The CFCMC variant of the pair swap: the pair of fractional molecules (one of
 component \f$A\f$, one of component \f$B\f$) is coupled through a *single, common*
@@ -1256,6 +1445,15 @@ Panagiotopoulos, J. Chem. Phys. **101**, 1452-1459 (1994).
 ### Pair swap (CB/CFCMC) <a name="pair-swap-cbcfcmc"></a>
 
 Keyword: `"CFCMC_CBMC_PairSwapProbability"` (component move)
+
+<!-- figure of the move: pair-swap-cbcfcmc -->
+\image html mc_move_pair-swap-cbcfcmc.png "As the CFCMC pair swap, with the fractional pair grown and retraced with trial positions (dashed)." width=530px
+\image latex mc_move_pair-swap-cbcfcmc.png "As the CFCMC pair swap, with the fractional pair grown and retraced with trial positions (dashed)." width=9.0cm
+
+The picture is that of the CFCMC pair swap, with a hatched fractional pair that shares one \f$\lambda\f$. Where a
+fractional pair is created or removed, at the ends of the axis, the molecules are grown or retraced with CBMC; the
+thin dashed circles are the trial positions.
+<!-- end of the figure of the move -->
 
 The CFCMC pair swap with configurational-bias growth: in the pair-insertion
 and pair-deletion branches the fractional molecules are grown/retraced with
@@ -1360,6 +1558,15 @@ Keyword: `"GroupSwapConventionalProbability"` (component move), together with
 the group definition `"GroupComponents"` (a list of component ids, repetitions
 allowed) and `"MaximumGroupDistance"` \f$R_\text{max}\f$
 
+<!-- figure of the move: group-swap-conventional -->
+\image html mc_move_group-swap-conventional.png "A group of molecules is inserted or deleted together; the satellites are placed within R_max of the central molecule." width=530px
+\image latex mc_move_group-swap-conventional.png "A group of molecules is inserted or deleted together; the satellites are placed within R_max of the central molecule." width=9.0cm
+
+The central molecule (blue) and its satellites (orange) form the group that is inserted or deleted as a whole; a
+divalent ion with two counter-ions is drawn as an example. The central molecule is placed at a random position and
+every satellite uniformly inside the sphere of radius \f$R_\text{max}\f$ around it (dashed circle).
+<!-- end of the figure of the move -->
+
 As for the pair swap, \f$R_\text{max}\f$ may not exceed half the smallest
 perpendicular width of the box, and the volume moves reject a trial box
 narrower than \f$2R_\text{max}\f$.
@@ -1450,6 +1657,15 @@ Reference: G. Orkoulas and A.Z. Panagiotopoulos, J. Chem. Phys. **101**,
 
 Keyword: `"GroupSwapProbability"` (component move)
 
+<!-- figure of the move: group-swap-cbmc -->
+\image html mc_move_group-swap-cbmc.png "The group is inserted or deleted together, each member from several trial positions (dashed)." width=530px
+\image latex mc_move_group-swap-cbmc.png "The group is inserted or deleted together, each member from several trial positions (dashed)." width=9.0cm
+
+The group is placed as in the conventional group swap, with the satellites inside the sphere of radius
+\f$R_\text{max}\f$ (dashed circle), and every member is grown with CBMC: the thin dashed circles are the trial
+positions of each member that were not chosen.
+<!-- end of the figure of the move -->
+
 The configurational-bias variant of the group swap: all group members are
 grown with CBMC (multiple trial positions and orientations) and the satellite
 distances are drawn uniformly in \f$r \in [0, R_\text{max}]\f$, which introduces an
@@ -1498,6 +1714,16 @@ Reference: G. Orkoulas and A.Z. Panagiotopoulos, J. Chem. Phys. **101**,
 Keyword: `"CFCMC_GroupSwapProbability"` (component move), together with the
 group definition `"GroupComponents"` and `"MaximumGroupDistance"`
 \f$R_\text{max}\f$
+
+<!-- figure of the move: group-swap-cfcmc -->
+\image html mc_move_group-swap-cfcmc.png "A fractional group (hatched) shares one lambda, so that the whole group appears and disappears together." width=530px
+\image latex mc_move_group-swap-cfcmc.png "A fractional group (hatched) shares one lambda, so that the whole group appears and disappears together." width=9.0cm
+
+All members of the group are fractional (hatched) and share the single coupling parameter \f$\lambda\f$ of the
+axis under the box. Past the right end of the axis the fractional group becomes whole and a new fractional group
+is inserted, the satellites within \f$R_\text{max}\f$ of the central molecule (dashed circle); past the left end
+the fractional group is removed and a whole group becomes fractional.
+<!-- end of the figure of the move -->
 
 The CFCMC variant of the group swap: the whole group — one fractional
 molecule of the central component plus one fractional molecule per entry of
@@ -1598,6 +1824,15 @@ Keyword: `"CFCMC_CBMC_GroupSwapProbability"` (component move), together with
 the group definition `"GroupComponents"` and `"MaximumGroupDistance"`
 \f$R_\text{max}\f$
 
+<!-- figure of the move: group-swap-cbcfcmc -->
+\image html mc_move_group-swap-cbcfcmc.png "As the CFCMC group swap, with the fractional group grown and retraced with trial positions (dashed)." width=530px
+\image latex mc_move_group-swap-cbcfcmc.png "As the CFCMC group swap, with the fractional group grown and retraced with trial positions (dashed)." width=9.0cm
+
+The picture is that of the CFCMC group swap, with a hatched fractional group that shares one \f$\lambda\f$. Where
+a fractional group is created or removed, at the ends of the axis, its members are grown or retraced with CBMC;
+the thin dashed circles are the trial positions.
+<!-- end of the figure of the move -->
+
 The CFCMC group swap with configurational-bias growth: in the group-insertion
 and group-deletion branches the fractional molecules are grown/retraced with
 CBMC, adding the Rosenbluth-weight ratio of every group member to the
@@ -1668,6 +1903,15 @@ Comput. **3**, 1451-1463 (2007). <https://doi.org/10.1021/ct7000039>
 
 Keyword: `"VolumeMoveProbability"` (system move)
 
+<!-- figure of the move: volume-change -->
+\image html mc_move_volume-change.png "The box is scaled in all directions (dashed: the old box) and the molecules move with their centres of mass." width=313px
+\image latex mc_move_volume-change.png "The box is scaled in all directions (dashed: the old box) and the molecules move with their centres of mass." width=5.3cm
+
+The dashed square is the old box and the solid square the new one; the arrows show that it changes by the same
+factor in all directions. Every molecule moves with its centre of mass from the faded to the fully coloured
+position and keeps its orientation and internal geometry, so only the distances between molecules change.
+<!-- end of the figure of the move -->
+
 Isotropic change of the box volume at constant external pressure — the basic
 move of the \f$NpT\f$ ensemble. The volume change is sampled in \f$\ln V\f$. All
 adsorbate molecules, rigid or flexible, are translated rigidly by scaling
@@ -1727,6 +1971,15 @@ phases of infinitely thin hard platelets*, Mol. Phys. **52**, 1303-1334 (1984).
 ### Anisotropic volume change <a name="anisotropic-volume-change"></a>
 
 Keyword: `"AnisotropicVolumeMoveProbability"` (system move)
+
+<!-- figure of the move: anisotropic-volume-change -->
+\image html mc_move_anisotropic-volume-change.png "The box lengths change independently (dashed: the old box) at fixed angles." width=313px
+\image latex mc_move_anisotropic-volume-change.png "The box lengths change independently (dashed: the old box) at fixed angles." width=5.3cm
+
+The dashed rectangle is the old box and the solid one the new box: here one box length grows while another
+shrinks, each by its own factor, at fixed box angles. The molecules keep the fractional position of their centre
+of mass (faded to full colour) and are not deformed.
+<!-- end of the figure of the move -->
 
 Changes the three box lengths independently at fixed box angles (the box
 shape can change while a diagonal pressure tensor is imposed). Molecules are
@@ -1798,6 +2051,15 @@ new molecular dynamics method*, J. Appl. Phys. **52**, 7182-7190 (1981).
 Keyword: `"HybridMCProbability"` (system move), with
 `"HybridMCMoveNumberOfSteps"` for the trajectory length
 
+<!-- figure of the move: hybrid-mc -->
+\image html mc_move_hybrid-mc.png "All molecules follow a short molecular-dynamics trajectory, which is accepted or rejected as one move." width=313px
+\image latex mc_move_hybrid-mc.png "All molecules follow a short molecular-dynamics trajectory, which is accepted or rejected as one move." width=5.3cm
+
+Every molecule moves at the same time: the red arrows are the short molecular-dynamics trajectories that take the
+old configuration (faded) to the new one (full colour), with translation and rotation together. The whole
+trajectory is accepted or rejected as a single move on the change of the total energy.
+<!-- end of the figure of the move -->
+
 Performs a short molecular-dynamics trajectory as a single collective Monte
 Carlo move: all molecules (and, when present, flexible-framework atoms) move
 simultaneously, giving efficient collective relaxation while the Metropolis
@@ -1848,6 +2110,15 @@ condensed-matter systems*, Phys. Rev. B **45**, 679-685 (1992).
 Keyword: `"TranslationSmartMCAllProbability"` (system move; alias
 `"ForceBiasTranslationAllProbability"`)
 
+<!-- figure of the move: translation-smart-mc-all -->
+\image html mc_move_translation-smart-mc-all.png "All molecules are displaced at once, each around a drift along the force on it." width=313px
+\image latex mc_move_translation-smart-mc-all.png "All molecules are displaced at once, each around a drift along the force on it." width=5.3cm
+
+The red arrows are the forces on the molecules in the old configuration (faded). All molecules are displaced in
+the same trial, each around a drift along its own force, to the fully coloured positions; one acceptance test is
+applied to the whole set.
+<!-- end of the figure of the move -->
+
 The collective variant of the [translation smart MC](#translation-smart-mc):
 *all* molecules in the box are displaced simultaneously, each biased along the
 force acting on it, with a global Metropolis-Hastings correction. It behaves
@@ -1889,6 +2160,15 @@ smart Monte Carlo simulation*, J. Chem. Phys. **69**, 4628-4633 (1978).
 
 Keyword: `"RotationSmartMCAllProbability"` (system move)
 
+<!-- figure of the move: rotation-smart-mc-all -->
+\image html mc_move_rotation-smart-mc-all.png "All molecules are rotated at once, each around a drift along the torque on it." width=313px
+\image latex mc_move_rotation-smart-mc-all.png "All molecules are rotated at once, each around a drift along the torque on it." width=5.3cm
+
+The curved red arrows are the torques on the molecules. All molecules are rotated in the same trial about their
+own centres, each around a drift along its torque, from the faded to the fully coloured orientation; one
+acceptance test is applied to the whole set.
+<!-- end of the figure of the move -->
+
 The collective variant of [rotation smart MC](#rotation-smart-mc): every rigid
 multi-atomic molecule is rotated simultaneously about its own center of mass,
 each biased along the torque acting on it, with orientations updated through
@@ -1928,6 +2208,15 @@ thermodynamic equilibrium without an explicit interface.
 ### Gibbs volume change <a name="gibbs-volume-change"></a>
 
 Keyword: `"GibbsVolumeMoveProbability"` (system move)
+
+<!-- figure of the move: gibbs-volume-change -->
+\image html mc_move_gibbs-volume-change.png "Volume is exchanged between the two boxes at constant total volume (dashed: the old boxes)." width=686px
+\image latex mc_move_gibbs-volume-change.png "Volume is exchanged between the two boxes at constant total volume (dashed: the old boxes)." width=11.6cm
+
+The two panels are the two boxes of the Gibbs ensemble. Box A grows from its old size (dashed) to the new one
+(solid) by \f$\Delta V\f$ while box B shrinks by the same amount, so the total volume is constant. In both boxes
+the molecules move with their centres of mass, from the faded to the fully coloured positions.
+<!-- end of the figure of the move -->
 
 Exchanges volume between the two boxes at constant total volume
 \f$V = V_A + V_B\f$; the change is sampled in \f$\ln(V_A/V_B)\f$.
@@ -1973,6 +2262,16 @@ properties of fluids by Monte Carlo simulation in a new ensemble*, Mol. Phys.
 
 Keyword: `"GibbsSwapCBMCProbability"` (component move)
 
+<!-- figure of the move: gibbs-swap-cbmc -->
+\image html mc_move_gibbs-swap-cbmc.png "A molecule is retraced in one box and grown in the other, each bead from several trial positions (dashed)." width=686px
+\image latex mc_move_gibbs-swap-cbmc.png "A molecule is retraced in one box and grown in the other, each bead from several trial positions (dashed)." width=11.6cm
+
+The left panel is the donating box (drawn dense) and the right panel the receiving box (drawn dilute). The
+transferred molecule is retraced in the donating box (faded, with its trial positions) and grown bead by bead at a
+random position in the receiving box (full colour); the thin dashed circles are the trial positions that were not
+chosen. The direction of the transfer is chosen at random.
+<!-- end of the figure of the move -->
+
 Transfers one molecule from one box to the other using CBMC growth in the
 receiving box and CBMC retracing in the donating box. This move equalizes the
 chemical potential of the component between the two phases.
@@ -2016,6 +2315,15 @@ equilibria of chain molecules*, J. Phys.: Condens. Matter **4**, L255-L259
 
 Keyword: `"GibbsSwapMultiTrialProbability"` (component move);
 `"NumberOfTrialMolecules"` sets \f$M\f$ (default 10)
+
+<!-- figure of the move: gibbs-swap-multi-trial-cbmc -->
+\image html mc_move_gibbs-swap-multi-trial-cbmc.png "M trial molecules are grown in the receiving box and one is chosen; the donating box is weighed with the transferred molecule and M-1 reference molecules." width=686px
+\image latex mc_move_gibbs-swap-multi-trial-cbmc.png "M trial molecules are grown in the receiving box and one is chosen; the donating box is weighed with the transferred molecule and M-1 reference molecules." width=11.6cm
+
+In the receiving box (right) \f$M\f$ complete trial molecules are grown; the thin dashed ones are not chosen and
+the fully coloured one is the transferred molecule. In the donating box (left) the transferred molecule (faded) is
+retraced and \f$M-1\f$ reference molecules (thin dashed) are grown to complete its set.
+<!-- end of the figure of the move -->
 
 Multiple-try variant of the Gibbs CBMC swap. In the receiving box \f$M\f$
 trial molecules are grown and one is selected with probability proportional to
@@ -2064,6 +2372,17 @@ L255-L259 (1992). <https://doi.org/10.1088/0953-8984/4/16/001>
 ### Gibbs swap (CFCMC, serial) <a name="gibbs-swap-cfcmc"></a>
 
 Keyword: `"GibbsSwapCFCMCProbability"` (component move)
+
+<!-- figure of the move: gibbs-swap-cfcmc -->
+\image html mc_move_gibbs-swap-cfcmc.png "One fractional molecule (hatched) lives in one of the two boxes; a trial changes lambda or moves the fractional molecule to the other box at the same lambda." width=686px
+\image latex mc_move_gibbs-swap-cfcmc.png "One fractional molecule (hatched) lives in one of the two boxes; a trial changes lambda or moves the fractional molecule to the other box at the same lambda." width=11.6cm
+
+There is one fractional molecule (hatched), here in box A; the dashed outline in box B is the place it takes when
+it changes box. The axis under the two boxes is its coupling parameter \f$\lambda\f$: one sub-move changes
+\f$\lambda\f$ inside the box, between the two ends of the axis. The other sub-moves take the fractional molecule to
+the other box at the same \f$\lambda\f$, either by placing it there at a random position or by turning it whole
+here while a whole molecule of the other box becomes fractional, which is what transfers a molecule.
+<!-- end of the figure of the move -->
 
 Serial CFCMC version of the Gibbs swap: each box has a reserved fractional
 slot per component, but for each component exactly one box holds its
@@ -2139,6 +2458,15 @@ Gibbs Ensemble*, J. Chem. Theory Comput. **12**, 1481-1490 (2016).
 
 Keyword: `"GibbsSwapCBCFCMCProbability"` (component move)
 
+<!-- figure of the move: gibbs-swap-cbcfcmc -->
+\image html mc_move_gibbs-swap-cbcfcmc.png "As the serial CFCMC Gibbs swap, with the fractional molecule grown and retraced with trial positions (dashed)." width=686px
+\image latex mc_move_gibbs-swap-cbcfcmc.png "As the serial CFCMC Gibbs swap, with the fractional molecule grown and retraced with trial positions (dashed)." width=11.6cm
+
+The picture is that of the serial CFCMC Gibbs swap: one hatched fractional molecule, one \f$\lambda\f$ axis for
+both boxes, and the dashed outline where it appears in the other box. Where a fractional configuration is created
+or removed CBMC is used; the thin dashed circles are its trial positions.
+<!-- end of the figure of the move -->
+
 The serial CFCMC Gibbs swap combined with CBMC. It uses the same one-active,
 one-inactive reserved-slot and flag invariant as the conventional variant, but
 uses CBMC when configurations are created or removed.
@@ -2200,6 +2528,17 @@ J. Chem. Theory Comput. **10**, 942-952 (2014).
 ### Gibbs conventional CFCMC (parallel) <a name="gibbs-conventional-cfcmc"></a>
 
 Keyword: `"GibbsConventionalCFCMCProbability"` (component move)
+
+<!-- figure of the move: gibbs-conventional-cfcmc -->
+\image html mc_move_gibbs-conventional-cfcmc.png "Each box holds a fractional molecule (hatched); one random change moves the two coupling parameters in opposite directions." width=686px
+\image latex mc_move_gibbs-conventional-cfcmc.png "Each box holds a fractional molecule (hatched); one random change moves the two coupling parameters in opposite directions." width=11.6cm
+
+Each box has its own fractional molecule (hatched) and its own axis. One random number \f$\nu\f$ changes both
+coupling parameters in opposite directions, as the two arrows show: \f$\lambda_A\f$ goes up by \f$\nu\f$ while
+\f$\lambda_B\f$ goes down by \f$\nu\f$. When a coupling parameter passes the right end of its axis the fractional
+molecule of that box becomes whole and a new one is inserted; when it passes the left end the fractional molecule
+is removed and a whole molecule becomes fractional. Together this moves a molecule from one box to the other.
+<!-- end of the figure of the move -->
 
 The move needs exactly two systems (also for `"GibbsConventionalCBCFCMCProbability"`):
 the two fractional molecules share one coupling parameter, \f$\lambda_A + \lambda_B = 1\f$,
@@ -2276,6 +2615,16 @@ the continuous fractional component move*, J. Comput. Chem. **29**, 2520-2530
 
 Keyword: `"GibbsConventionalCBCFCMCProbability"` (component move)
 
+<!-- figure of the move: gibbs-conventional-cbcfcmc -->
+\image html mc_move_gibbs-conventional-cbcfcmc.png "As the parallel CFCMC Gibbs move, with the fractional molecules grown and retraced with trial positions (dashed)." width=686px
+\image latex mc_move_gibbs-conventional-cbcfcmc.png "As the parallel CFCMC Gibbs move, with the fractional molecules grown and retraced with trial positions (dashed)." width=11.6cm
+
+The picture is that of the parallel CFCMC Gibbs move, with a hatched fractional molecule and an axis in each box
+and one change \f$\nu\f$ that moves the two coupling parameters in opposite directions. The fractional molecules
+that are created and removed when an end is passed are grown and retraced with CBMC; the thin dashed circles are
+the trial positions.
+<!-- end of the figure of the move -->
+
 The parallel CFCMC Gibbs move with CBMC growth/retracing of the fractional
 molecules during the transfer sub-moves: the new fractional molecule of the
 receiving box is grown with configurational bias (Rosenbluth weight
@@ -2333,6 +2682,16 @@ Comput. **10**, 942-952 (2014). <https://doi.org/10.1021/ct4009766>
 
 Keyword: `"GibbsIdentityChangeProbability"` (component move), together with
 the component key `"GibbsIdentityChanges"`
+
+<!-- figure of the move: gibbs-identity-change-cbmc -->
+\image html mc_move_gibbs-identity-change-cbmc.png "A molecule of A becomes B in one box while a molecule of B becomes A in the other." width=686px
+\image latex mc_move_gibbs-identity-change-cbmc.png "A molecule of A becomes B in one box while a molecule of B becomes A in the other." width=11.6cm
+
+The dashed circles mark the selected molecule of each box. In box I a molecule of component A (blue, faded) is
+replaced by a molecule of component B (orange) grown at its position; in box II a molecule of B (faded) is
+replaced by a molecule of A. The two changes are made together, so the number of molecules of each component in
+the two boxes together is the same before and after.
+<!-- end of the figure of the move -->
 
 Simultaneously changes the identity of a molecule in one box and performs the
 inverse change in the other box: a molecule of component \f$A\f$ in box I becomes
@@ -2394,6 +2753,15 @@ J. Am. Chem. Soc. **119**, 8921-8924 (1997).
 
 Keyword: `"WidomProbability"` (component move)
 
+<!-- figure of the move: widom-insertion -->
+\image html mc_move_widom-insertion.png "A ghost molecule is grown, its Rosenbluth weight is recorded, and it is removed again; the configuration does not change." width=313px
+\image latex mc_move_widom-insertion.png "A ghost molecule is grown, its Rosenbluth weight is recorded, and it is removed again; the configuration does not change." width=5.3cm
+
+The faded molecule is the ghost molecule: it is grown at a random position, with the trial positions drawn as thin
+dashed circles, only to obtain its Rosenbluth weight \f$W\f$. It is then removed again, so the grey molecules, and
+with them the configuration of the system, are never changed by this move.
+<!-- end of the figure of the move -->
+
 A *measurement* move: a ghost molecule is grown at a random position with CBMC,
 its Rosenbluth weight is recorded, and the molecule is always removed again.
 The configuration of the system never changes. The excess chemical potential
@@ -2437,6 +2805,16 @@ Reference: B. Widom, *Some Topics in the Theory of Fluids*, J. Chem. Phys.
 ### Widom CFCMC <a name="widom-cfcmc"></a>
 
 Keyword: `"CFCMC_WidomProbability"` (component move)
+
+<!-- figure of the move: widom-cfcmc -->
+\image html mc_move_widom-cfcmc.png "The fractional molecule (hatched) only changes lambda; a trial beyond either end is rejected." width=313px
+\image latex mc_move_widom-cfcmc.png "The fractional molecule (hatched) only changes lambda; a trial beyond either end is rejected." width=5.3cm
+
+The hatched molecule is the fractional molecule and the axis under the box its coupling parameter \f$\lambda\f$.
+The ends of the axis are drawn as walls: a trial that would take \f$\lambda\f$ past either end is rejected, so no
+molecule is inserted or deleted and the number of whole molecules stays fixed. The chemical potential follows from
+how often the two ends of the axis are visited.
+<!-- end of the figure of the move -->
 
 Measures the chemical potential with the CFCMC machinery while keeping the
 number of integer molecules fixed: the reserved fractional molecule performs
@@ -2482,6 +2860,15 @@ Reference: W. Shi and E.J. Maginn, J. Chem. Theory Comput. **3**, 1451-1463
 
 Keyword: `"CFCMC_CBMC_WidomProbability"` (component move)
 
+<!-- figure of the move: widom-cbcfcmc -->
+\image html mc_move_widom-cbcfcmc.png "As the CFCMC Widom move, with the fractional molecule grown with trial positions (dashed)." width=313px
+\image latex mc_move_widom-cbcfcmc.png "As the CFCMC Widom move, with the fractional molecule grown with trial positions (dashed)." width=5.3cm
+
+The picture is that of the CFCMC Widom move: a hatched fractional molecule whose \f$\lambda\f$ stays between the
+two walls of the axis. The thin dashed circles are the trial positions of the configurational-bias growth of the
+fractional molecule.
+<!-- end of the figure of the move -->
+
 The CFCMC Widom measurement with configurational-bias growth of the fractional
 molecule, for flexible molecules in dense phases. The chemical potential
 follows from the ratio of the probabilities of the two ends of the sampled
@@ -2523,6 +2910,15 @@ J. Chem. Theory Comput. **10**, 942-952 (2014).
 ## Parallel tempering <a name="parallel-tempering"></a>
 
 Keyword: `"ParallelTemperingSwapProbability"` (system move)
+
+<!-- figure of the move: parallel-tempering -->
+\image html mc_move_parallel-tempering.png "Two replicas at neighbouring state points exchange their configurations." width=686px
+\image latex mc_move_parallel-tempering.png "Two replicas at neighbouring state points exchange their configurations." width=11.6cm
+
+The two panels are two replicas of the same system at neighbouring state points, here a colder, ordered one
+(blue) and a hotter, disordered one (red). The double arrow is the exchange: after an accepted move the
+configuration of each replica continues at the state point of the other.
+<!-- end of the figure of the move -->
 
 Attempts to exchange compatible **mobile configuration state** between two
 adjacent systems at different state points. Replicas
@@ -2607,6 +3003,15 @@ by `Swap` / `SwapCFCMC`). `ReactionCBMC`,
 
 Keyword: `"ReactionCBMCProbability"` (system move)
 
+<!-- figure of the move: reaction-cbmc -->
+\image html mc_move_reaction-cbmc.png "The reactants (A and B) are retraced and removed and the products (C) are grown, or the reverse." width=686px
+\image latex mc_move_reaction-cbmc.png "The reactants (A and B) are retraced and removed and the products (C) are grown, or the reverse." width=11.6cm
+
+The example is the reaction A + B ⇌ C. The left panel shows the reactant molecules A (blue) and B (orange) that
+are selected. In the right panel they are removed (faded) and the product molecule C (green) is grown with CBMC;
+the thin dashed circles are its trial positions. The backward reaction reads the picture from right to left.
+<!-- end of the figure of the move -->
+
 Performs one reaction step in the forward or backward direction using CBMC to
 insert the products and retrace the reactants, including flexible components.
 
@@ -2675,6 +3080,17 @@ Phys. **81**, 717-733 (1994). <https://doi.org/10.1080/00268979400100481>
 
 Keyword: `"ReactionConventionalCFCMCProbability"` (system move)
 
+<!-- figure of the move: reaction-conventional-cfcmc -->
+\image html mc_move_reaction-conventional-cfcmc.png "Fractional molecules (hatched) of both sides are present: the products are scaled with lambda and the reactants with 1 - lambda." width=313px
+\image latex mc_move_reaction-conventional-cfcmc.png "Fractional molecules (hatched) of both sides are present: the products are scaled with lambda and the reactants with 1 - lambda." width=5.3cm
+
+The box holds fractional molecules (hatched) of both sides of the reaction A + B ⇌ C at the same time: the
+reactants A and B, coupled with \f$1-\lambda\f$, and the product C, coupled with \f$\lambda\f$. Moving the dot
+along the axis under the box couples one side while it decouples the other. Past the right end the products become
+whole molecules and whole reactant molecules become the new fractional ones (a forward reaction); past the left
+end the reverse happens.
+<!-- end of the figure of the move -->
+
 Parallel Rx/CFC version of the reaction step: the system permanently carries
 fractional molecules of *both* the reactants and the products of the reaction,
 coupled through a single parameter \f$\lambda\f$: the products are scaled with
@@ -2741,6 +3157,15 @@ Carlo in the Reaction Ensemble*, J. Chem. Theory Comput. **13**, 4452-4466
 
 Keyword: `"ReactionConventionalCBCFCMCProbability"` (system move)
 
+<!-- figure of the move: reaction-conventional-cbcfcmc -->
+\image html mc_move_reaction-conventional-cbcfcmc.png "As the parallel reaction move, with the fractional molecules grown and retraced with trial positions (dashed)." width=313px
+\image latex mc_move_reaction-conventional-cbcfcmc.png "As the parallel reaction move, with the fractional molecules grown and retraced with trial positions (dashed)." width=5.3cm
+
+The picture is that of the parallel reaction move, with fractional molecules of both sides and one \f$\lambda\f$
+axis. The nearly decoupled fractional molecules that are created and removed when an end of the axis is passed are
+grown and retraced with CBMC; the thin dashed circles are the trial positions.
+<!-- end of the figure of the move -->
+
 The parallel Rx/CFC reaction move with configurational-bias growth of the
 fractional molecules: in the boundary-crossing (reaction) branches the new
 nearly decoupled fractional molecules are grown with CBMC using multiple trial
@@ -2805,6 +3230,18 @@ Theory Comput. **10**, 942-952 (2014). <https://doi.org/10.1021/ct4009766>
 ### Reaction CFCMC (serial) <a name="reaction-cfcmc"></a>
 
 Keyword: `"ReactionCFCMCProbability"` (system move)
+
+<!-- figure of the move: reaction-cfcmc -->
+\image html mc_move_reaction-cfcmc.png "Only one side of the reaction is fractional (hatched) at a time; trials change lambda or switch the fractional side." width=686px
+\image latex mc_move_reaction-cfcmc.png "Only one side of the reaction is fractional (hatched) at a time; trials change lambda or switch the fractional side." width=11.6cm
+
+Only one side of the reaction A + B ⇌ C is fractional at a time: the left panel is the state with fractional
+reactants (hatched A and B), the right panel the state with a fractional product (hatched C). The axis under the
+panels is the coupling parameter \f$\lambda\f$ of the fractional side; a trial that takes it past an end is
+rejected. The double arrow stands for the two sub-moves that switch sides at the same \f$\lambda\f$: the
+fractional molecules of one side are replaced by fractional molecules of the other side, or they become whole
+while whole molecules of the other side become fractional.
+<!-- end of the figure of the move -->
 
 Serial Rx/CFC version of the reaction move: only *one side* of the reaction is
 fractional at a time (indicator \f$\delta\f$: reactant side or product side), coupled
@@ -2882,6 +3319,15 @@ T.J.H. Vlugt, J. Chem. Theory Comput. **13**, 4452-4466 (2017).
 ### Reaction CB/CFCMC (serial) <a name="reaction-cbcfcmc"></a>
 
 Keyword: `"ReactionCBCFCMCProbability"` (system move)
+
+<!-- figure of the move: reaction-cbcfcmc -->
+\image html mc_move_reaction-cbcfcmc.png "As the serial reaction move, with the fractional molecules grown and retraced with trial positions (dashed)." width=686px
+\image latex mc_move_reaction-cbcfcmc.png "As the serial reaction move, with the fractional molecules grown and retraced with trial positions (dashed)." width=11.6cm
+
+The picture is that of the serial reaction move, with one side of the reaction fractional at a time and one
+\f$\lambda\f$ axis. The fractional molecules that are inserted when the fractional side switches are grown with
+CBMC, and the ones that are removed are retraced; the thin dashed circles are the trial positions.
+<!-- end of the figure of the move -->
 
 The serial Rx/CFC reaction move with configurational-bias growth: in the
 fractional-reaction sub-move the new fractional molecules are grown with CBMC
