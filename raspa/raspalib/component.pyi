@@ -25,6 +25,50 @@ class Component():
         ADSORBATE: int = 0
         CATION: int = 1
 
+    @staticmethod
+    def from_file(
+        force_field: ForceField,
+        file_name: str,
+        component_name: str | None = None,
+        particle_probabilities: MCMoveProbabilities = ...,
+        type: 'Component.Type' = ...,
+        fugacity_coefficient: float | None = None,
+        thermodynamic_integration: bool = False,
+        number_of_blocks: int = 5,
+        number_of_lambda_bins: int = 41,
+    ) -> 'Component':
+        """
+        Read a component from a molecule file (JSON), as the command-line
+        program reads the molecule of a component of ``simulation.json``.
+
+        Args:
+            force_field: The force field; it has to hold the pseudo-atoms of
+                the molecule.
+            file_name: The molecule file. The extension ``.json`` may be left
+                out, and a file that is not found is looked for in the
+                directory of ``RASPA_DIR``.
+            component_name: The name of the component. Defaults to the name
+                of the file without its extension.
+            particle_probabilities: The probabilities of the Monte Carlo
+                moves of the component.
+            type: Adsorbate (the default) or cation.
+            fugacity_coefficient: Optional fugacity coefficient; ``None``
+                takes it from the equation of state.
+            thermodynamic_integration: Whether dU/dlambda is sampled.
+            number_of_blocks: Not needed: a system sizes its components for
+                its number of blocks, and a driver its systems.
+            number_of_lambda_bins: Number of bins in lambda histograms.
+
+        What the component block of ``simulation.json`` sets besides (the mol
+        fraction, the ideal-gas Rosenbluth weight, the analyses of the
+        molecule) is set on the object before it is given to a system.
+
+        Raises:
+            ValueError: the file is not found or is not a molecule of this
+                force field.
+        """
+        ...
+
     def __init__(
         self,
         force_field: ForceField,

@@ -1,55 +1,63 @@
+"""Monte Carlo: binarymixture in two boxes.
+
+The simulation of simulation.json, set up with raspalib: the force field and the molecules
+are read from the files of this directory.
+
+    python run.py
+"""
+
 import raspalib
-import numpy as np
 
-ff = raspalib.ForceField("force_field.json")
+force_field = raspalib.ForceField.from_file("force_field.json")
 
-mcmoves = raspalib.MCMoveProbabilities(
-    translationProbability=1.0, reinsertionCBMCProbability=1.0, rotationProbability=1.0
-)
-box0 = raspalib.SimulationBox(25.0, 25.0, 25.0)
-box1 = raspalib.SimulationBox(30.0, 30.0, 30.0)
-
-# define particles
-co2 = raspalib.Component(
-    componentId=0,
-    forceField=ff,
-    componentName="CO2",
-    fileName="CO2.json",
-    particleProbabilities=mcmoves,
+co2 = raspalib.Component.from_file(
+    force_field,
+    "CO2.json",
+    particle_probabilities=raspalib.MCMoveProbabilities(
+        translation_probability=1.0,
+        rotation_probability=1.0,
+        reinsertion_cbmc_probability=1.0,
+    ),
 )
 
-n2 = raspalib.Component(
-    componentId=1,
-    forceField=ff,
-    componentName="N2",
-    fileName="N2.json",
-    particleProbabilities=mcmoves,
+n2 = raspalib.Component.from_file(
+    force_field,
+    "N2.json",
+    particle_probabilities=raspalib.MCMoveProbabilities(
+        translation_probability=1.0,
+        rotation_probability=1.0,
+        reinsertion_cbmc_probability=1.0,
+    ),
 )
 
-# define system
-system0 = raspalib.System(
-    systemId=0,
-    externalTemperature=500.0,
-    forceField=ff,
+system_0 = raspalib.System(
+    force_field=force_field,
+    simulation_box=raspalib.SimulationBox(25.0, 25.0, 25.0),
+    external_temperature=300.0,
     components=[co2, n2],
-    initialNumberOfMolecules=[50, 25],
-    simulationBox=box0,
+    initial_number_of_molecules=[50, 25],
 )
 
-system1 = raspalib.System(
-    systemId=1,
-    externalTemperature=500.0,
-    forceField=ff,
+system_1 = raspalib.System(
+    force_field=force_field,
+    simulation_box=raspalib.SimulationBox(30.0, 30.0, 30.0),
+    external_temperature=500.0,
     components=[co2, n2],
-    initialNumberOfMolecules=[25, 50],
-    simulationBox=box1,
+    initial_number_of_molecules=[25, 50],
 )
-
 
 mc = raspalib.MonteCarlo(
-    numberOfProductionCycles=10000,
-    numberOfInitializationCycles=1000,
-    systems=[system0, system1],
-    outputToFiles=True,
+    number_of_production_cycles=10000,
+    number_of_initialization_cycles=1000,
+    print_every=1000,
+    systems=[system_0, system_1],
+    output_to_files=True,
 )
 mc.run()
+
+energy, error = system_0.average_energies.result()
+print(f"system 0: average energy: {energy.total_energy.energy:.3f} +/- {error.total_energy.energy:.3f} K")
+print(f"system 0: molecules per component: {system_0.number_of_molecules_per_component}")
+energy, error = system_1.average_energies.result()
+print(f"system 1: average energy: {energy.total_energy.energy:.3f} +/- {error.total_energy.energy:.3f} K")
+print(f"system 1: molecules per component: {system_1.number_of_molecules_per_component}")

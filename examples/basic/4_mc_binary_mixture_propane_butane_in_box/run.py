@@ -1,46 +1,54 @@
+"""Monte Carlo: binary mixture propane butane in box.
+
+The simulation of simulation.json, set up with raspalib: the force field and the molecules
+are read from the files of this directory.
+
+    python run.py
+"""
+
 import raspalib
-import numpy as np
 
-ff = raspalib.ForceField("force_field.json")
-mcmoves = raspalib.MCMoveProbabilities(
-    translationProbability=1.0, reinsertionCBMCProbability=1.0, rotationProbability=1.0
-)
-box = raspalib.SimulationBox(30.0, 30.0, 30.0)
+force_field = raspalib.ForceField.from_file("force_field.json")
+force_field.use_charge = False
 
-# define particles
-co2 = raspalib.Component(
-    componentId=0,
-    forceField=ff,
-    componentName="CO2",
-    fileName="CO2.json",
-    particleProbabilities=mcmoves,
+propane = raspalib.Component.from_file(
+    force_field,
+    "propane.json",
+    particle_probabilities=raspalib.MCMoveProbabilities(
+        translation_probability=1.0,
+        rotation_probability=1.0,
+        reinsertion_cbmc_probability=1.0,
+        partial_reinsertion_cbmc_probability=1.0,
+    ),
 )
 
-n2 = raspalib.Component(
-    componentId=1,
-    forceField=ff,
-    componentName="N2",
-    fileName="N2.json",
-    particleProbabilities=mcmoves,
+butane = raspalib.Component.from_file(
+    force_field,
+    "butane.json",
+    particle_probabilities=raspalib.MCMoveProbabilities(
+        translation_probability=1.0,
+        rotation_probability=1.0,
+        reinsertion_cbmc_probability=1.0,
+        partial_reinsertion_cbmc_probability=1.0,
+    ),
 )
 
-# define system
 system = raspalib.System(
-    systemId=0,
-    externalTemperature=500.0,
-    forceField=ff,
-    components=[co2, n2],
-    initialNumberOfMolecules=[50, 50],
-    simulationBox=box,
+    force_field=force_field,
+    simulation_box=raspalib.SimulationBox(30.0, 30.0, 30.0),
+    external_temperature=500.0,
+    components=[propane, butane],
+    initial_number_of_molecules=[50, 50],
 )
-
 
 mc = raspalib.MonteCarlo(
-    numberOfProductionCycles=10000,
-    numberOfInitializationCycles=1000,
+    number_of_production_cycles=20000,
+    number_of_initialization_cycles=5000,
+    print_every=1000,
     systems=[system],
-    outputToFiles=True,
+    output_to_files=True,
 )
 mc.run()
 
-print(mc.systems[0].writeMCMoveStatistics())
+energy, error = system.average_energies.result()
+print(f"average energy: {energy.total_energy.energy:.3f} +/- {error.total_energy.energy:.3f} K")

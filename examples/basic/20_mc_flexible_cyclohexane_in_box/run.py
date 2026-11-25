@@ -1,38 +1,44 @@
+"""Monte Carlo: flexible cyclohexane in box.
+
+The simulation of simulation.json, set up with raspalib: the force field and the molecule
+are read from the files of this directory.
+
+    python run.py
+"""
+
 import raspalib
 
-ff = raspalib.ForceField("force_field.json")
-ff.useCharge = False
+force_field = raspalib.ForceField.from_file("force_field.json")
+force_field.use_charge = False
 
-mcmoves = raspalib.MCMoveProbabilities(
-    translationProbability=1.0,
-    rotationProbability=1.0,
-    reinsertionCBMCProbability=1.0,
+cyclohexane = raspalib.Component.from_file(
+    force_field,
+    "cyclohexane.json",
+    particle_probabilities=raspalib.MCMoveProbabilities(
+        translation_probability=1.0,
+        rotation_probability=1.0,
+        reinsertion_cbmc_probability=1.0,
+    ),
 )
-
-cyclohexane = raspalib.Component(
-    componentId=0,
-    forceField=ff,
-    componentName="cyclohexane",
-    fileName="cyclohexane.json",
-    particleProbabilities=mcmoves,
-)
-
-box = raspalib.SimulationBox(30.0, 30.0, 30.0)
+cyclohexane.molecule_properties_settings = raspalib.MoleculePropertiesSettings()
 
 system = raspalib.System(
-    systemId=0,
-    externalTemperature=300.0,
-    forceField=ff,
+    force_field=force_field,
+    simulation_box=raspalib.SimulationBox(30.0, 30.0, 30.0),
+    external_temperature=300.0,
     components=[cyclohexane],
-    initialNumberOfMolecules=[30],
-    simulationBox=box,
+    initial_number_of_molecules=[30],
 )
+system.set_sample_pdb_movie(raspalib.SampleMovie(sample_every=10))
 
 mc = raspalib.MonteCarlo(
-    numberOfProductionCycles=10000,
-    numberOfInitializationCycles=1000,
-    printEvery=1000,
+    number_of_production_cycles=10000,
+    number_of_initialization_cycles=1000,
+    print_every=1000,
     systems=[system],
-    outputToFiles=True,
+    output_to_files=True,
 )
 mc.run()
+
+energy, error = system.average_energies.result()
+print(f"average energy: {energy.total_energy.energy:.3f} +/- {error.total_energy.energy:.3f} K")

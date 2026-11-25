@@ -1,59 +1,52 @@
+"""Monte Carlo: henry coefficient of co2 n2 methane in mfi.
+
+The simulation of simulation.json, set up with raspalib: the force field, the molecules and the framework
+are read from the files of this directory.
+
+    python run.py
+"""
+
 import raspalib
 
-ff = raspalib.ForceField("force_field.json")
+force_field = raspalib.ForceField.from_file("force_field.json")
 
-mcmoves = raspalib.MCMoveProbabilities(widomProbability=1.0)
-
-box = raspalib.SimulationBox(30.0, 30.0, 30.0)
-
-# define particles
-co2 = raspalib.Component(
-    componentId=0,
-    forceField=ff,
-    componentName="CO2",
-    fileName="CO2.json",
-    particleProbabilities=mcmoves,
+co2 = raspalib.Component.from_file(
+    force_field,
+    "CO2.json",
+    particle_probabilities=raspalib.MCMoveProbabilities(widom_probability=1.0),
 )
 
-n2 = raspalib.Component(
-    componentId=1,
-    forceField=ff,
-    componentName="N2",
-    fileName="N2.json",
-    particleProbabilities=mcmoves,
+n2 = raspalib.Component.from_file(
+    force_field,
+    "N2.json",
+    particle_probabilities=raspalib.MCMoveProbabilities(widom_probability=1.0),
 )
 
-methane = raspalib.Component(
-    componentId=2,
-    forceField=ff,
-    componentName="methane",
-    fileName="methane.json",
-    particleProbabilities=mcmoves,
+methane = raspalib.Component.from_file(
+    force_field,
+    "methane.json",
+    particle_probabilities=raspalib.MCMoveProbabilities(widom_probability=1.0),
 )
 
-mfi = raspalib.Framework(
-    frameworkId=0,
-    forceField=ff,
-    componentName="MFI_SI",
-    fileName="MFI_SI.cif",
-    numberOfUnitCells=[2, 2, 2],
-)
+mfi_si = raspalib.Framework.from_cif(force_field, "MFI_SI.cif", number_of_unit_cells=[2, 2, 2])
 
-# define systems
 system = raspalib.System(
-    systemId=0,
-    externalTemperature=300.0,
-    forceField=ff,
+    force_field=force_field,
+    framework_components=mfi_si,
+    external_temperature=300.0,
+    external_pressure=100000.0,
     components=[co2, n2, methane],
-    initialNumberOfMolecules=[0, 0, 0],
-    frameworkComponents=[mfi],
+    initial_number_of_molecules=[0, 0, 0],
 )
 
 mc = raspalib.MonteCarlo(
-    numberOfProductionCycles=20000,
-    numberOfInitializationCycles=0,
+    number_of_production_cycles=20000,
+    print_every=1000,
     systems=[system],
-    outputToFiles=True,
+    output_to_files=True,
 )
-
 mc.run()
+
+energy, error = system.average_energies.result()
+print(f"average energy: {energy.total_energy.energy:.3f} +/- {error.total_energy.energy:.3f} K")
+print(f"molecules per component: {system.number_of_molecules_per_component}")

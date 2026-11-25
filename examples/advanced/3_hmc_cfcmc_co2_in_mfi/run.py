@@ -1,48 +1,51 @@
+"""Hybrid Monte Carlo: cfcmc co2 in mfi.
+
+The simulation of simulation.json, set up with raspalib: the force field, the molecule and the framework
+are read from the files of this directory.
+
+    python run.py
+"""
+
 import raspalib
 
-ff = raspalib.ForceField("force_field.json")
+force_field = raspalib.ForceField.from_file("force_field.json")
 
-mcmoves = raspalib.MCMoveProbabilities(
-    translationProbability=0.5,
-    rotationProbability=0.5,
-    reinsertionCBMCProbability=0.5,
-    swapCBCFCMCProbability=1.0,
-    hybridMCProbability=0.01,
+co2 = raspalib.Component.from_file(
+    force_field,
+    "CO2.json",
+    particle_probabilities=raspalib.MCMoveProbabilities(
+        translation_probability=0.5,
+        rotation_probability=0.5,
+        swap_cbcfcmc_probability=1.0,
+    ),
+    fugacity_coefficient=1.0,
+    thermodynamic_integration=True,
 )
 
-co2 = raspalib.Component(
-    componentId=0,
-    forceField=ff,
-    componentName="CO2",
-    fileName="CO2.json",
-    particleProbabilities=mcmoves,
-)
-
-mfi = raspalib.Framework(
-    frameworkId=0,
-    forceField=ff,
-    componentName="MFI_SI",
-    fileName="MFI_SI.cif",
-    numberOfUnitCells=[2, 2, 2],
-)
+mfi_si = raspalib.Framework.from_cif(force_field, "MFI_SI.cif", number_of_unit_cells=[2, 2, 2])
 
 system = raspalib.System(
-    systemId=0,
-    externalTemperature=353.0,
-    externalPressure=1e5,
-    forceField=ff,
+    force_field=force_field,
+    framework_components=mfi_si,
+    external_temperature=353.0,
+    external_pressure=100000.0,
     components=[co2],
-    initialNumberOfMolecules=[0],
-    frameworkComponents=[mfi],
+    initial_number_of_molecules=[0],
+    system_probabilities=raspalib.MCMoveProbabilities(hybrid_mc_probability=0.01),
 )
+system.time_step = 0.005
+system.number_of_hybrid_mc_steps = 100
 
 mc = raspalib.MonteCarlo(
-    numberOfProductionCycles=100000,
-    numberOfInitializationCycles=50000,
-    numberOfEquilibrationCycles=50000,
-    printEvery=10000,
+    number_of_production_cycles=10000,
+    number_of_initialization_cycles=5000,
+    number_of_equilibration_cycles=5000,
+    print_every=1000,
     systems=[system],
-    outputToFiles=True,
+    output_to_files=True,
 )
-
 mc.run()
+
+energy, error = system.average_energies.result()
+print(f"average energy: {energy.total_energy.energy:.3f} +/- {error.total_energy.energy:.3f} K")
+print(f"molecules per component: {system.number_of_molecules_per_component}")

@@ -12,7 +12,6 @@
       "ChargeMethod" : "Ewald",
       "ExternalTemperature": 296.0,
       "ExternalPressure": 1000000.0,
-      "CutOffVDW": 6.25,
       "ComputeDensityGrid" : true,
       "SampleDensityGridEvery" : 10,
       "WriteDensityGridEvery" : 10000,

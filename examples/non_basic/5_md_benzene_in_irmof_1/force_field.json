@@ -1,4 +1,5 @@
 {
+  "CutOff" : 12.0,
   "MixingRule" : "Lorentz-Berthelot",
   "TruncationMethod" : "shifted",
   "TailCorrections" : false,

@@ -2,7 +2,7 @@
   "MixingRule" : "Lorentz-Berthelot",
   "TruncationMethod" : "truncated",
   "TailCorrections" : true,
-  "CutOffVDW" : 12.0,
+  "CutOffVDW" : 14.0,
   "CutOffCoulomb" : 12.0,
   "PseudoAtoms" :
   [

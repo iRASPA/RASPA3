@@ -1,35 +1,48 @@
+"""Monte Carlo: rdf water box.
+
+The simulation of simulation.json, set up with raspalib: the force field and the molecule
+are read from the files of this directory.
+
+    python run.py
+"""
+
 import raspalib
-import numpy as np
 
-ff = raspalib.ForceField("force_field.json")
+force_field = raspalib.ForceField.from_file("force_field.json")
 
-mcmoves = raspalib.MCMoveProbabilities(translationProbability=0.5, rotationProbability=0.5, reinsertionCBMCProbability=1.0)
-
-water = raspalib.Component(
-    componentId=0,
-    forceField=ff,
-    componentName="water",
-    fileName="water.json",
-    particleProbabilities=mcmoves,
+water = raspalib.Component.from_file(
+    force_field,
+    "water.json",
+    particle_probabilities=raspalib.MCMoveProbabilities(
+        translation_probability=0.5,
+        rotation_probability=0.5,
+        reinsertion_cbmc_probability=1.0,
+    ),
 )
-
-box = raspalib.SimulationBox(24.83, 24.83, 24.83)
 
 system = raspalib.System(
-    systemId=0,
-    externalTemperature=300.0,
-    forceField=ff,
+    force_field=force_field,
+    simulation_box=raspalib.SimulationBox(24.83, 24.83, 24.83),
+    external_temperature=298.0,
     components=[water],
-    initialNumberOfMolecules=[512],
-    simulationBox=box,
-    sampleMoviesEvery=10,
+    initial_number_of_molecules=[512],
 )
+rdf = raspalib.PropertyConventionalRadialDistributionFunction(
+    number_of_bins=128,
+    range=12.0,
+    sample_every=10,
+    write_every=100,
+)
+system.set_property_conventional_rdf(rdf)
 
 mc = raspalib.MonteCarlo(
-    numberOfProductionCycles=10000,
-    numberOfInitializationCycles=1000,
-    printEvery=100,
+    number_of_production_cycles=10000,
+    number_of_initialization_cycles=10000,
+    print_every=100,
     systems=[system],
-    outputToFiles=True,
+    output_to_files=True,
 )
 mc.run()
+
+energy, error = system.average_energies.result()
+print(f"average energy: {energy.total_energy.energy:.3f} +/- {error.total_energy.energy:.3f} K")

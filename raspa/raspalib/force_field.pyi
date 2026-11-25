@@ -31,6 +31,21 @@ class ForceField():
         MODIFIED_SHIFTED_FORCE: int = 4
         ZERO_DIPOLE: int = 5
 
+    @staticmethod
+    def from_file(file_name: str) -> 'ForceField':
+        """
+        Read a force field from a file (JSON), as the command-line program
+        reads ``force_field.json``. What ``simulation.json`` adds to it (the
+        cutoffs, the charge method) is set on the object afterwards::
+
+            force_field = raspalib.ForceField.from_file("force_field.json")
+            force_field.use_charge = False
+
+        Raises:
+            ValueError: the file is not found or is not a force field.
+        """
+        ...
+
     def __init__(
         self,
         pseudo_atoms: collections.abc.Sequence[PseudoAtom],
@@ -181,18 +196,30 @@ class ForceField():
 
     @property
     def cutoff_framework_vdw(self) -> float:
-        """(self) -> float"""
+        """The cutoff of the van der Waals interactions with the framework [Å]. Setting it makes the shifts and
+        tail corrections that depend on it again."""
         ...
+
+    @cutoff_framework_vdw.setter
+    def cutoff_framework_vdw(self, value: float) -> None: ...
 
     @property
     def cutoff_molecule_vdw(self) -> float:
-        """(self) -> float"""
+        """The cutoff of the van der Waals interactions between molecules [Å]. Setting it makes the shifts and
+        tail corrections that depend on it again."""
         ...
+
+    @cutoff_molecule_vdw.setter
+    def cutoff_molecule_vdw(self, value: float) -> None: ...
 
     @property
     def cutoff_coulomb(self) -> float:
-        """(self) -> float"""
+        """The cutoff of the real-space electrostatics [Å]. Setting it makes the shifts and
+        tail corrections that depend on it again."""
         ...
+
+    @cutoff_coulomb.setter
+    def cutoff_coulomb(self, value: float) -> None: ...
 
     def set_ewald_parameters(self, alpha: float, number_of_wave_vectors: collections.abc.Sequence[int]) -> None:
         """Fix the Ewald damping parameter alpha [1/Angstrom] and the number

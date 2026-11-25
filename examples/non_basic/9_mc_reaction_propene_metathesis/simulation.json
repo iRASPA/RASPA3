@@ -12,7 +12,6 @@
       "BoxLengths" : [150.0, 150.0, 150.0],
       "ExternalTemperature" : 450.0,
       "ExternalPressure" : 101300.0,
-      "CutOff" : 14.0,
       "ChargeMethod" : "None",
       "ReactionCBMCProbability" : 1.0,
       "VolumeMoveProbability" : 0.1,

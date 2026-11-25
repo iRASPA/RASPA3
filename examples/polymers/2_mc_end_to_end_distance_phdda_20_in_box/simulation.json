@@ -10,11 +10,7 @@
       "Type" : "Box",
       "BoxLengths" : [60.0, 60.0, 60.0],
       "ExternalTemperature" : 300.0,
-      "ChargeMethod" : "Ewald",
-      "ComputeMoleculeProperties" : true,
-      "SampleMoleculePropertiesEvery" : 1,
-      "WriteMoleculePropertiesEvery" : 5000,
-      "NumberOfBinsMoleculeProperties" : 128
+      "ChargeMethod" : "Ewald"
     }
   ],
 
@@ -22,6 +18,10 @@
   [
     {
       "Name" : "pHDDA-20",
+      "ComputeMoleculeProperties" : true,
+      "SampleMoleculePropertiesEvery" : 1,
+      "WriteMoleculePropertiesEvery" : 5000,
+      "NumberOfBinsMoleculeProperties" : 128,
       "PivotProbability" : 1.0,
       "CrankshaftProbability" : 1.0,
       "BeadFlipProbability" : 1.0,

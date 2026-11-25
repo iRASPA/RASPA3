@@ -1508,6 +1508,26 @@ EXPAND_MODULE(MODULE_NAME)
            nanobind::arg("source") = "");
 
   nanobind::class_<ForceField> forceField(m, "ForceField");
+  forceField.def_static(
+      "from_file",
+      [](const std::string& file_name)
+      {
+        try
+        {
+          return ForceField(file_name);
+        }
+        catch (const nlohmann::json::exception& error)
+        {
+          throw std::invalid_argument(std::format("ForceField: file '{}': {}", file_name, error.what()));
+        }
+        catch (const std::runtime_error& error)
+        {
+          throw std::invalid_argument(error.what());
+        }
+      },
+      nanobind::arg("file_name"),
+      "Reads a force field from a file (JSON), as the command-line program reads 'force_field.json'. What "
+      "'simulation.json' adds to it (the cutoffs, the charge method) is set on the object.");
   nanobind::enum_<ForceField::MixingRule>(forceField, "MixingRule", nanobind::is_arithmetic())
       .value("LORENTZ_BERTHELOT", ForceField::MixingRule::Lorentz_Berthelot)
       .value("JORGENSEN", ForceField::MixingRule::Jorgensen)
@@ -1670,9 +1690,37 @@ EXPAND_MODULE(MODULE_NAME)
               "Leaves out the polarization between molecules.")
       .def_rw("omit_inter_interactions", &ForceField::omitInterInteractions,
               "Leaves out the interactions between molecules.")
-      .def_ro("cutoff_framework_vdw", &ForceField::cutOffFrameworkVDW)
-      .def_ro("cutoff_molecule_vdw", &ForceField::cutOffMoleculeVDW)
-      .def_ro("cutoff_coulomb", &ForceField::cutOffCoulomb);
+      // a cutoff that is set is a fixed one, and the shifts and tail corrections that depend on it are made again
+      .def_prop_rw(
+          "cutoff_framework_vdw", [](const ForceField& f) { return f.cutOffFrameworkVDW; },
+          [](ForceField& f, double cutoff)
+          {
+            if (!(cutoff > 0.0)) throw std::invalid_argument("cutoff_framework_vdw must be positive");
+            f.cutOffFrameworkVDW = cutoff;
+            f.cutOffFrameworkVDWAutomatic = false;
+            f.preComputeCutOffDependentParameters();
+          },
+          "The cutoff of the van der Waals interactions with the framework [Å].")
+      .def_prop_rw(
+          "cutoff_molecule_vdw", [](const ForceField& f) { return f.cutOffMoleculeVDW; },
+          [](ForceField& f, double cutoff)
+          {
+            if (!(cutoff > 0.0)) throw std::invalid_argument("cutoff_molecule_vdw must be positive");
+            f.cutOffMoleculeVDW = cutoff;
+            f.cutOffMoleculeVDWAutomatic = false;
+            f.preComputeCutOffDependentParameters();
+          },
+          "The cutoff of the van der Waals interactions between molecules [Å].")
+      .def_prop_rw(
+          "cutoff_coulomb", [](const ForceField& f) { return f.cutOffCoulomb; },
+          [](ForceField& f, double cutoff)
+          {
+            if (!(cutoff > 0.0)) throw std::invalid_argument("cutoff_coulomb must be positive");
+            f.cutOffCoulomb = cutoff;
+            f.cutOffCoulombAutomatic = false;
+            f.preComputeCutOffDependentParameters();
+          },
+          "The cutoff of the real-space electrostatics [Å].");
 
   nanobind::class_<CIFReader> cifReader(m, "CIFReader");
   cifReader
@@ -2358,6 +2406,40 @@ EXPAND_MODULE(MODULE_NAME)
         .value("CATION", Component::Type::Cation);
 
     component
+        .def_static(
+            "from_file",
+            [](const ForceField& force_field, const std::string& file_name, std::optional<std::string> component_name,
+               const MCMoveProbabilities& particle_probabilities, Component::Type type,
+               std::optional<double> fugacity_coefficient, bool thermodynamic_integration,
+               std::size_t number_of_blocks, std::size_t number_of_lambda_bins)
+            {
+              if (number_of_blocks == 0) throw std::invalid_argument("Component: number_of_blocks must be positive");
+              const std::string name = component_name.value_or(std::filesystem::path(file_name).stem().string());
+              try
+              {
+                // the index of the component is that of its place in the system, which the system gives its atoms
+                return Component(type, 0, force_field, name, file_name, number_of_blocks, number_of_lambda_bins,
+                                 particle_probabilities, fugacity_coefficient, thermodynamic_integration);
+              }
+              catch (const nlohmann::json::exception& error)
+              {
+                throw std::invalid_argument(std::format("Component: file '{}': {}", file_name, error.what()));
+              }
+              catch (const std::runtime_error& error)
+              {
+                throw std::invalid_argument(error.what());
+              }
+            },
+            nanobind::arg("force_field"), nanobind::arg("file_name"), nanobind::arg("component_name") = nanobind::none(),
+            nanobind::arg("particle_probabilities") = MCMoveProbabilities(),
+            nanobind::arg("type") = Component::Type::Adsorbate,
+            nanobind::arg("fugacity_coefficient") = nanobind::none(),
+            nanobind::arg("thermodynamic_integration") = false, nanobind::arg("number_of_blocks") = 5,
+            nanobind::arg("number_of_lambda_bins") = 41,
+            "Reads a component from a molecule file (JSON), as the command-line program reads the molecule of a "
+            "component of 'simulation.json': the extension '.json' may be left out, and a file that is not found is "
+            "looked for in the directory of RASPA_DIR. The pseudo-atoms of the molecule have to be those of the "
+            "force field. 'component_name' is the name of the file without it.")
         .def("__init__",
              [](Component* component, const ForceField& force_field, std::string component_name,
                 double critical_temperature, double critical_pressure, double acentric_factor,

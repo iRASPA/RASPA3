@@ -13,11 +13,7 @@
       "ExternalTemperature" : 300.0,
       "Ensemble" : "NVT",
       "TimeStep" : 0.001,
-      "ChargeMethod" : "Ewald",
-      "ComputeMoleculeProperties" : true,
-      "SampleMoleculePropertiesEvery" : 10,
-      "WriteMoleculePropertiesEvery" : 100000,
-      "NumberOfBinsMoleculeProperties" : 128
+      "ChargeMethod" : "Ewald"
     }
   ],
 
@@ -25,6 +21,10 @@
   [
     {
       "Name" : "pHDDA-20",
+      "ComputeMoleculeProperties" : true,
+      "SampleMoleculePropertiesEvery" : 10,
+      "WriteMoleculePropertiesEvery" : 100000,
+      "NumberOfBinsMoleculeProperties" : 128,
       "PivotProbability" : 1.0,
       "CrankshaftProbability" : 1.0,
       "BeadFlipProbability" : 1.0,

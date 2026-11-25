@@ -1,4 +1,5 @@
 {
+  "CutOff" : 10.0,
   "PseudoAtoms": [
     {
       "name": "Ow",

@@ -13,7 +13,6 @@
       "ExternalTemperature" : 298.0,
       "ExternalPressure" : 1.0e5,
       "ChargeMethod" : "Ewald",
-      "CutOff" : 10.0,
       "VolumeMoveProbability" : 0.01
     }
   ],

@@ -1,4 +1,5 @@
 {
+  "CutOffVDW": 6.25,
   "PseudoAtoms": [
     {
       "name": "Zn1",
