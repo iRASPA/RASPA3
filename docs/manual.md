@@ -9,6 +9,7 @@
 - \subpage mc_moves
 - \subpage drivers
 - \subpage properties
+- \subpage polymers
 - \subpage examples
 - \subpage restart
 - \subpage FAQ
