@@ -50,6 +50,11 @@ import polymer_links;
  * the driver adds the waiting time of a reacting active group to it at the reaction (the only moment the closed
  * interval is known) and writes the property every 'WriteRadicalWaitingTimesEvery' cycles and at the end.
  *
+ * The size and shape of the chains per chain length are measured with the PropertyPolymerChains of the system
+ * ('ComputePolymerChains'): every 'SamplePolymerChainsEvery' steps, or with 'SamplingPolymerChains' :
+ * 'BeforeReaction' from react() just before a reaction changes the chains of its reactants and once more at the end
+ * of the run; a chain is measured only after its force ramp.
+ *
  * Tacticity ('Tacticity' of the settings): a stereo entry of a rule creates a stereocentre whose configuration
  * is the sign of its chiral volume (see ChiralVolume) in the geometry of the reaction. The configuration a
  * group's centre has to take is set when the group is named 'Next' by a centre, relative to that centre

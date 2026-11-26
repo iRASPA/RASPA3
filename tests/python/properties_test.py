@@ -397,6 +397,49 @@ class OtherSamplers(unittest.TestCase):
         with self.assertRaises(ValueError):
             raspalib.PropertyRadicalWaitingTimes(bins_per_decade=0)
 
+    def test_the_polymer_chains_per_chain_length(self):
+        system = hexane_box(hexane())
+        self.assertIsNone(system.property_polymer_chains)
+        system.set_property_polymer_chains(
+            raspalib.PropertyPolymerChains(sample_every=50, sampling="before_reaction", lag_steps=200, conversion_bins=5)
+        )
+        chains = system.property_polymer_chains
+        self.assertEqual((chains.sample_every, chains.sampling, chains.lag_steps), (50, "before_reaction", 200))
+        self.assertEqual((chains.conversion_bins, chains.minimum_length, chains.mass_weighted), (5, 2, False))
+        self.assertEqual(chains.entries(), [])
+        self.assertEqual(chains.moments[0], "Rg^2")
+        system.set_property_polymer_chains(None)
+        self.assertIsNone(system.property_polymer_chains)
+        with self.assertRaises(ValueError):
+            raspalib.PropertyPolymerChains(sampling="sometimes")
+        with self.assertRaises(ValueError):
+            raspalib.PropertyPolymerChains(conversion_bins=0)
+
+    def test_the_polymer_chains_of_runs_are_combined(self):
+        from raspalib import polymer_chains
+
+        def run(count_a, sum_a, count_b, sum_b):
+            moments = ["Rg^2", "R^2"]
+            entry = lambda length, living, count, total: {
+                "length": length, "topology": "linear", "living": living, "conversionBin": 0, "count": count,
+                "sum": [total, 6.0 * total], "sumOfSquares": [total * total / count, 36.0 * total * total / count]}
+            return {"moments": moments, "settings": {"conversionBins": 1},
+                    "entries": [entry(3, True, count_a, sum_a), entry(3, False, count_b, sum_b)]}
+
+        # two runs; the living and dead entries of a length are pooled; run means 2 (n = 4) and 4 (n = 4)
+        rows = polymer_chains.combine([run(2, 4.0, 2, 4.0), run(1, 4.0, 3, 12.0)])
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual((row["length"], row["topology"], row["runs"], row["count"]), (3, "linear", 2, 8))
+        self.assertAlmostEqual(row["mean"]["Rg^2"], 3.0)
+        # sqrt(((1)^2 (2 - 3)^2 + (1)^2 (4 - 3)^2) / (2 * 1))
+        self.assertAlmostEqual(row["error"]["Rg^2"], 1.0)
+        self.assertAlmostEqual(row["end_to_end_ratio"], 6.0)
+        # resolved by the state: two keys
+        self.assertEqual(len(polymer_chains.combine([run(2, 4.0, 2, 4.0)], by=("length", "living"))), 2)
+        with self.assertRaises(ValueError):
+            polymer_chains.combine([run(2, 4.0, 2, 4.0)], by=("colour",))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -98,6 +98,7 @@ add_executable(unit_tests_raspakit
   solute_tempering.cpp
   polymer_tacticity.cpp
   polymer_network_statistics.cpp
+  polymer_chains.cpp
   connectivity_table.cpp
   dctst_window.cpp
   dctst_geometry_fixes.cpp

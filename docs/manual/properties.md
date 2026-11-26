@@ -121,6 +121,7 @@ otherwise, lengths in ångström, times in picoseconds, pressures in pascal.
 | [Elastic constants (fluctuations)](#property-elastic-fluctuation) | `"ComputeElasticConstantsFromFluctuations"` | MD | output file |
 | [Elastic constants, modes, phonons](#property-minimization) | `"ComputeElasticConstants"`, `"ComputeNormalModes"`, `"ComputePhononDispersion"` | minimization | output file |
 | [Radical waiting times](#property-radical-waiting-times) | `"ComputeRadicalWaitingTimes"` | polymerization | `radical_waiting_times` |
+| [Chains per chain length](#property-polymer-chains) | `"ComputePolymerChains"` | polymerization | `polymer_chains` |
 | [Movies and data files](#configurations) | `"OutputPDBMovie"`, `"WriteLammpsData"` | MC, MD | `movies`, `lammps` |
 
 The first group of keys belongs in the system block, the conformation
@@ -842,6 +843,66 @@ propagation rate. A stretched tail, a second slow component, or an
 accumulation of old active groups that no longer react is the signature of
 *trapping*: radicals buried in the network that monomers cannot reach. The
 conversion at which this sets in is read from successive output files.
+
+### Chains per chain length {#property-polymer-chains}
+
+`"ComputePolymerChains"` (system), with the
+[polymerization driver](\ref driver_polymerization). Output directory:
+`polymer_chains`.
+
+A long chain at room temperature does not relax on the time scale of a
+simulation, so its equilibrium size cannot be sampled after the fact. This
+property measures the chains while they form instead, separately for every
+chain length, and every run of the polymerization adds a new set of
+independent chains. The averages of many runs, combined per length, then
+describe the polymer *as it is formed* at the temperature of the run. This
+is not an equilibrium ensemble: it depends on how fast the chains grow
+relative to how fast they relax, so check that the result does not change
+when the reaction probabilities or `"RelaxationSteps"` are changed by a
+factor of a few.
+
+A chain is a connected cluster of the atom graph: the bonds of the molecules
+that no reaction broke plus the polymer bonds. Its length \f$N\f$ is the
+number of molecules in it. Every chain is unwrapped along its bonds, and the
+gyration tensor gives \f$R_g^2\f$, its eigenvalues, the asphericity, the
+acylindricity, the relative shape anisotropy \f$\kappa^2\f$ and the
+prolateness, as for the [molecule shape](#property-molecule-shape). The
+end-to-end vector joins the ends of the longest path through the bond graph
+(for a vinyl chain that path ends in the side groups of the two terminal
+monomers). A sample is kept under the key
+
+| Field | Meaning |
+|-------|---------|
+| length | molecules in the chain |
+| topology | `linear`; `branched` (a molecule with more than two polymer bonds); `cyclic` (more polymer bonds than a tree) |
+| living | a group of the chain is in an active state |
+| conversion bin | the conversion at the sample, in `"ConversionBinsPolymerChains"` bins |
+
+The conversion is part of the key because an \f$N\f$-mer that grows in its
+monomer is in a different environment from one that grows in a polymer melt.
+A chain is measured only after its topology has been constant for the force
+ramp plus `"LagStepsPolymerChains"` steps. Chains that wind through the
+periodic boundaries (the gel) are skipped. Both kinds of skip are counted.
+
+There are two ways to sample. `"Periodic"` measures every chain at a fixed
+interval, which weights a length by the time the chain spends at it.
+`"BeforeReaction"` measures a chain just before a reaction changes it, and
+every chain once more at the end of the run, so that each length of each
+chain counts once.
+
+The text files give the mean and the standard deviation of every value. The
+standard deviation is the width of the distribution, not an error of the
+mean, because the samples of one run are correlated. The JSON file holds the
+raw sums. `raspalib.polymer_chains.combine` adds the sums of several runs and
+takes the error of each mean from the scatter between the runs:
+
+\code{.py}
+import glob
+from raspalib import polymer_chains
+
+rows = polymer_chains.combine(glob.glob("run*/polymer_chains/polymer_chains.s0.json"))
+polymer_chains.write(rows, "chains_per_length.txt")
+\endcode
 
 ----------------------------------------------------------------------------------
 

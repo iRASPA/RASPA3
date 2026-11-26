@@ -43,6 +43,7 @@ from raspalib.reaction import *
 from raspalib.molecule_analyses import *
 from raspalib.property_elastic_constants_fluctuation import *
 from raspalib.property_radical_waiting_times import *
+from raspalib.property_polymer_chains import *
 from raspalib.write_lammps_data import *
 from raspalib.thermobarostat import *
 from raspalib.property_temperature import *
@@ -146,6 +147,7 @@ __all__ = [
     "EndToEndRelaxationTimes",
     "PropertyElasticConstantsFluctuation",
     "PropertyRadicalWaitingTimes",
+    "PropertyPolymerChains",
     "WriteLammpsData",
     "Reaction",
     "ThermochemicalDatabase",

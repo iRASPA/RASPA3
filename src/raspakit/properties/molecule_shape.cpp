@@ -277,6 +277,12 @@ PropertyMoleculeShape::Descriptors PropertyMoleculeShape::computeDescriptors(std
   return descriptorsOf(atoms.size(), [&](std::size_t i) { return molecule[atoms[i]].position; }, weights);
 }
 
+PropertyMoleculeShape::Descriptors PropertyMoleculeShape::computeDescriptors(std::span<const double3> positions,
+                                                                           std::span<const double> weights)
+{
+  return descriptorsOf(positions.size(), [&](std::size_t i) { return positions[i]; }, weights);
+}
+
 void PropertyMoleculeShape::accumulateShapeMoments(Moments &moments, const Descriptors &d)
 {
   double rg2 = d.radiusOfGyrationSquared;

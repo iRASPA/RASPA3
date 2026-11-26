@@ -99,6 +99,7 @@ import property_molecule_backbone;
 import property_end_to_end_acf;
 import property_elastic_constants_fluctuation;
 import property_radical_waiting_times;
+import property_polymer_chains;
 import write_lammps_data;
 import reaction;
 import reactions;
@@ -3462,6 +3463,78 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("by_reaction", &PropertyRadicalWaitingTimes::byReaction,
               "The histograms of the intervals, per reaction that ended them.");
 
+  // the size and shape of the chains of the polymerization driver, per chain length
+  nanobind::class_<PropertyPolymerChains>(m, "PropertyPolymerChains")
+      .def(
+          "__init__",
+          [](PropertyPolymerChains* property, std::size_t sample_every, std::size_t write_every,
+             const std::string& sampling, std::size_t lag_steps, std::size_t conversion_bins,
+             std::size_t minimum_length, bool mass_weighted)
+          {
+            PropertyPolymerChains::Sampling mode{};
+            if (sampling == "periodic")
+            {
+              mode = PropertyPolymerChains::Sampling::Periodic;
+            }
+            else if (sampling == "before_reaction")
+            {
+              mode = PropertyPolymerChains::Sampling::BeforeReaction;
+            }
+            else
+            {
+              throw std::invalid_argument("PropertyPolymerChains: sampling must be 'periodic' or 'before_reaction'");
+            }
+            new (property) PropertyPolymerChains(sample_every, write_every, mode, lag_steps, conversion_bins,
+                                                 minimum_length, mass_weighted);
+          },
+          nanobind::arg("sample_every") = 1000, nanobind::arg("write_every") = 5000,
+          nanobind::arg("sampling") = "periodic", nanobind::arg("lag_steps") = 0,
+          nanobind::arg("conversion_bins") = 10, nanobind::arg("minimum_length") = 2,
+          nanobind::arg("mass_weighted") = false)
+      .def_ro("sample_every", &PropertyPolymerChains::sampleEvery)
+      .def_ro("write_every", &PropertyPolymerChains::writeEvery)
+      .def_prop_ro("sampling",
+                   [](const PropertyPolymerChains& p)
+                   {
+                     return p.sampling == PropertyPolymerChains::Sampling::Periodic ? "periodic" : "before_reaction";
+                   })
+      .def_ro("lag_steps", &PropertyPolymerChains::lagSteps)
+      .def_ro("conversion_bins", &PropertyPolymerChains::numberOfConversionBins)
+      .def_ro("minimum_length", &PropertyPolymerChains::minimumLength)
+      .def_ro("mass_weighted", &PropertyPolymerChains::massWeighted)
+      .def_ro("sampling_events", &PropertyPolymerChains::numberOfSamplingEvents)
+      .def_ro("skipped_ramping", &PropertyPolymerChains::skippedRamping)
+      .def_ro("skipped_spanning", &PropertyPolymerChains::skippedSpanning)
+      .def_prop_ro(
+          "moments",
+          [](const PropertyPolymerChains&)
+          {
+            return std::vector<std::string>(PropertyPolymerChains::momentNames.begin(),
+                                            PropertyPolymerChains::momentNames.end());
+          },
+          "The names of the accumulated per-chain values, in the order of 'sum' and 'sumOfSquares'.")
+      .def(
+          "entries",
+          [](const PropertyPolymerChains& p)
+          {
+            nanobind::list entries;
+            for (const auto& [key, accumulator] : p.accumulators)
+            {
+              nanobind::dict entry;
+              entry["length"] = key.length;
+              entry["topology"] = std::string(PropertyPolymerChains::topologyName(key.topology));
+              entry["living"] = key.living;
+              entry["conversionBin"] = key.conversionBin;
+              entry["count"] = accumulator.count;
+              entry["sum"] = std::vector<double>(accumulator.sum.begin(), accumulator.sum.end());
+              entry["sumOfSquares"] = std::vector<double>(accumulator.sumOfSquares.begin(), accumulator.sumOfSquares.end());
+              entries.append(entry);
+            }
+            return entries;
+          },
+          "The raw sums per key (length, topology, living, conversion bin), as the 'entries' of the JSON output; "
+          "combine runs with raspalib.polymer_chains.combine.");
+
   // writes the configuration as LAMMPS data files ('s<system>.data' and its tables) every 'sample_every' cycles
   nanobind::class_<WriteLammpsData>(m, "WriteLammpsData")
       .def(
@@ -3658,6 +3731,7 @@ EXPAND_MODULE(MODULE_NAME)
           "Samples the elastic constants from the fluctuations of the stress, every 'sample_every' steps of "
           "molecular dynamics at constant volume and temperature.")
       .def_ro("property_radical_waiting_times", &System::propertyRadicalWaitingTimes)
+      .def_ro("property_polymer_chains", &System::propertyPolymerChains)
       .def_ro("write_lammps_data", &System::writeLammpsData)
       .def_ro("property_volume_evolution", &System::propertyVolumeEvolution)
       .def_ro("property_conserved_energy_evolution", &System::propertyConservedEnergyEvolution)
@@ -3722,6 +3796,8 @@ EXPAND_MODULE(MODULE_NAME)
                                                                &System::setPropertyConservedEnergyEvolution);
   bindGivenProperty<&System::propertyRadicalWaitingTimes>(system, "set_property_radical_waiting_times",
                                                           &System::setPropertyRadicalWaitingTimes);
+  bindGivenProperty<&System::propertyPolymerChains>(system, "set_property_polymer_chains",
+                                                    &System::setPropertyPolymerChains);
   bindGivenProperty<&System::writeLammpsData>(
       system, "set_write_lammps_data",
       [](System& s, const std::optional<WriteLammpsData>& writer) { s.writeLammpsData = writer; });

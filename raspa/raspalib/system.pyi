@@ -2,6 +2,7 @@ from raspalib.reaction import *
 from raspalib.molecule_analyses import *
 from raspalib.property_elastic_constants_fluctuation import *
 from raspalib.property_radical_waiting_times import *
+from raspalib.property_polymer_chains import *
 from raspalib.write_lammps_data import *
 from raspalib.running_energy import *
 from raspalib.thermobarostat import *
@@ -352,6 +353,15 @@ class System():
     def property_radical_waiting_times(self) -> PropertyRadicalWaitingTimes | None: ...
 
     def set_property_radical_waiting_times(self, property: PropertyRadicalWaitingTimes | None = None) -> None: ...
+
+    @property
+    def property_polymer_chains(self) -> PropertyPolymerChains | None: ...
+
+    def set_property_polymer_chains(self, property: PropertyPolymerChains | None = None) -> None:
+        """Sample the size and shape of the chains of the polymerization
+        per chain length; the given property holds the results when a driver
+        phase returns."""
+        ...
 
     @property
     def write_lammps_data(self) -> WriteLammpsData | None: ...

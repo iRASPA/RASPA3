@@ -58,6 +58,7 @@ import reactions;
 import cross_links;
 import polymer_links;
 import property_radical_waiting_times;
+import property_polymer_chains;
 import transition_matrix;
 import equation_of_states;
 import thermostat;
@@ -112,7 +113,7 @@ export struct System
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{5};
+  std::uint64_t versionNumber{6};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -368,6 +369,9 @@ export struct System
   /// Waiting times of the living radicals of a polymerization ('ComputeRadicalWaitingTimes'); the samples are
   /// added by the Polymerization driver at the reactions.
   std::optional<PropertyRadicalWaitingTimes> propertyRadicalWaitingTimes;
+  /// Size and shape of the chains of a polymerization per chain length ('ComputePolymerChains'); sampled by the
+  /// Polymerization driver.
+  std::optional<PropertyPolymerChains> propertyPolymerChains;
   std::optional<WriteLammpsData> writeLammpsData;
 
   std::optional<PropertyNumberOfMoleculesEvolution> propertyNumberOfMoleculesEvolution;
@@ -1720,6 +1724,7 @@ export struct System
   void setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement>& msd);
   void setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction>& vacf);
   void setPropertyRadicalWaitingTimes(const std::optional<PropertyRadicalWaitingTimes>& property);
+  void setPropertyPolymerChains(const std::optional<PropertyPolymerChains>& property);
 
   /// Creates the intra-molecular analyses requested by the components (their 'moleculePropertiesSettings',
   /// 'moleculeShapeSettings', 'moleculeBackboneSettings' and 'endToEndACFSettings'): the molecule-properties

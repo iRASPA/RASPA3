@@ -2612,6 +2612,54 @@ Requires `"SimulationType" : "Polymerization"`.
 -   `"BinsPerDecadeRadicalWaitingTimes" : integer`\
     The number of histogram bins per decade of time. Default: `10`.
 
+#### Chains per chain length (polymerization) <a name="polymer-chains"></a>
+
+`"ComputePolymerChains" : boolean`
+
+Whether to measure, in a `"Polymerization"` run, the size and shape of the
+chains per chain length (the number of molecules of a chain), its topology
+(linear, branched, cyclic), whether it is living, and the conversion at the
+sample. A chain is measured only when its topology has been constant for the
+force ramp (`"RelaxationSteps"`) plus `"LagStepsPolymerChains"` steps. Chains
+spanning the periodic boundaries are skipped. Output is written to the
+directory `polymer_chains`:
+
+- `polymer_chains.s<i>.txt`: the averages per length and topology;
+- `polymer_chains_resolved.s<i>.txt`: the averages per length, topology,
+  state and conversion bin;
+- `polymer_chains.s<i>.json`: the raw sums, which
+  `raspalib.polymer_chains.combine` adds over independent runs, taking the
+  errors from the scatter between them.
+
+The status report gives the number of chain samples and lengths and the
+number of skipped chains. Requires `"SimulationType" : "Polymerization"`.
+See [Chains per chain length](properties.md#property-polymer-chains).
+
+-   `"SamplingPolymerChains" : string`\
+    `"Periodic"`: every chain every `"SamplePolymerChainsEvery"` MD steps.
+    `"BeforeReaction"`: a chain just before a reaction changes it, and every
+    chain once more at the end of the run. Default: `"Periodic"`.
+
+-   `"SamplePolymerChainsEvery" : integer`\
+    The sampling interval in MD steps (`"Periodic"`). Default: `1000`.
+
+-   `"WritePolymerChainsEvery" : integer`\
+    Write the output every `int` cycles (MD steps). Default: `5000`.
+
+-   `"LagStepsPolymerChains" : integer`\
+    The MD steps after the force ramp before a changed chain is measured
+    again. Default: `0`.
+
+-   `"ConversionBinsPolymerChains" : integer`\
+    The number of equal conversion bins over [0, 1]. Default: `10`.
+
+-   `"MinimumLengthPolymerChains" : integer`\
+    Shorter chains (in molecules) are not sampled. Default: `2`.
+
+-   `"MassWeightedPolymerChains" : boolean`\
+    Use mass weights instead of uniform bead weights for the gyration
+    tensor. Default: `false`.
+
 #### Velocity Auto-Correlation Function (VACF) <a name="velocity-auto-correlation-function-vacf"></a>
 
 `"ComputeVACF" : boolean`

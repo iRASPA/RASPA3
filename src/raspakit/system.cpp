@@ -61,6 +61,7 @@ import cross_links;
 import polymer_links;
 import intra_molecular_exclusions;
 import property_radical_waiting_times;
+import property_polymer_chains;
 import cbmc;
 import interactions_framework_molecule;
 import interactions_framework_molecule_grid;
@@ -2127,6 +2128,17 @@ void System::setPropertyRadicalWaitingTimes(const std::optional<PropertyRadicalW
   }
 }
 
+void System::setPropertyPolymerChains(const std::optional<PropertyPolymerChains>& property)
+{
+  propertyPolymerChains.reset();  // None clears the property
+  if (property.has_value())
+  {
+    propertyPolymerChains =
+        PropertyPolymerChains(property->sampleEvery, property->writeEvery, property->sampling, property->lagSteps,
+                              property->numberOfConversionBins, property->minimumLength, property->massWeighted);
+  }
+}
+
 void System::setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction>& vacf)
 {
   propertyVACF.reset();  // None clears the property
@@ -2331,6 +2343,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
 
   // version 5
   archive << s.initialVelocities;
+
+  // version 6
+  archive << s.propertyPolymerChains;
 
   // 'interpolationGrids' and 'externalFieldInterpolationGrid' are intentionally not serialized:
   // they are derived data that can dominate the checkpoint size and are rebuilt deterministically
@@ -2544,6 +2559,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   if (versionNumber >= 5)
   {
     archive >> s.initialVelocities;
+  }
+
+  if (versionNumber >= 6)
+  {
+    archive >> s.propertyPolymerChains;
   }
 
   // archive >> s.columnNumberOfGridPoints;

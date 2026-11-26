@@ -739,7 +739,11 @@ whether a cluster is connected to its own periodic image. The first
 appearance of such a spanning cluster is the gel point of the box.
 
 `"ComputeRadicalWaitingTimes"` collects the time every radical waits between
-two reactions; a radical that stops reacting is trapped. See the
+two reactions; a radical that stops reacting is trapped.
+`"ComputePolymerChains"` measures the size and shape of the chains while
+they grow, separately for every chain length and only after the force ramp of
+their last reaction. Repeated runs at the same temperature are then combined
+per length into the structure of the polymer as it forms. See the
 [properties](\ref properties) page.
 
 ### Writing the rules for another chemistry

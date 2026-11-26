@@ -21,6 +21,7 @@ import reactive_group;
 import polymer_reactions;
 import polymerization_settings;
 import property_radical_waiting_times;
+import property_polymer_chains;
 import molecular_dynamics_spatial_decomposition;
 import force_engine;
 import lammps_io;
@@ -193,6 +194,15 @@ void Polymerization::writeSettings()
       std::print(stream, "    waiting times:                   dt = t(next) - t(last reaction) per active group, {} bins per decade, written every {} cycles\n",
                  system.propertyRadicalWaitingTimes->binsPerDecade, system.propertyRadicalWaitingTimes->writeEvery);
     }
+    if (system.propertyPolymerChains.has_value())
+    {
+      const PropertyPolymerChains& chains = system.propertyPolymerChains.value();
+      std::print(stream, "    polymer chains:                  size and shape per chain length, {}, after the ramp plus {} steps, written every {} cycles\n",
+                 chains.sampling == PropertyPolymerChains::Sampling::Periodic
+                     ? std::format("sampled every {} MD steps", chains.sampleEvery)
+                     : std::string("sampled before every reaction that changes a chain and at the end"),
+                 chains.lagSteps, chains.writeEvery);
+    }
     if (settings.tacticity != Tacticity::None)
     {
       std::print(stream, "    tacticity:                       {}{}, wrong-face candidates {}\n",
@@ -290,6 +300,19 @@ void Polymerization::run()
       throw std::runtime_error("Polymerization::run(): no resume dispatch for the checkpointed simulation stage");
   }
 
+  // with 'BeforeReaction' every chain counts once more at the end: the dead chains never react again
+  for (std::size_t systemId = 0; System& system : md.systems)
+  {
+    if (system.propertyPolymerChains.has_value() &&
+        system.propertyPolymerChains->sampling == PropertyPolymerChains::Sampling::BeforeReaction)
+    {
+      md.engines[systemId].downloadResidentState(system);
+      system.propertyPolymerChains->sample(system.polymerLinks, system.forceField, system.components,
+                                           system.simulationBox, system.spanOfMoleculeAtoms());
+    }
+    ++systemId;
+  }
+
   if (md.outputToFiles)
   {
     for (std::size_t systemId = 0; System& system : md.systems)
@@ -307,6 +330,11 @@ void Polymerization::run()
       std::print(stream, "{}", system.polymerLinks.printStatus(system.simulationBox, system.components, system.spanOfMoleculeAtoms()));
       std::print(stream, "{}", waitingTimeText(systemId));
       writeWaitingTimes(systemId, true);
+      if (system.propertyPolymerChains.has_value())
+      {
+        std::print(stream, "{}", system.propertyPolymerChains->printStatus());
+        system.propertyPolymerChains->writeOutput(systemId, md.currentCycle, system.polymerLinks, true);
+      }
       std::flush(stream);
       writeTopology(systemId);
       ++systemId;
@@ -329,7 +357,8 @@ std::string Polymerization::status(std::size_t systemId)
   const System& system = md.systems[systemId];
   if (!system.polymerLinks.activated) return {};
   return system.polymerLinks.printStatus(system.simulationBox, system.components, system.spanOfMoleculeAtoms()) +
-         orientationText(systemId) + waitingTimeText(systemId);
+         orientationText(systemId) + waitingTimeText(systemId) +
+         (system.propertyPolymerChains.has_value() ? system.propertyPolymerChains->printStatus() : std::string{});
 }
 
 std::uint64_t Polymerization::waitingTimeReferenceStep(std::size_t systemId) const
@@ -370,6 +399,17 @@ void Polymerization::afterStep(std::size_t systemId)
 
   ++table.currentStep;
   writeWaitingTimes(systemId, false);
+  if (system.propertyPolymerChains.has_value())
+  {
+    // sampled before the scan of the step, also after the reactions stopped (the chains keep relaxing)
+    PropertyPolymerChains& chains = system.propertyPolymerChains.value();
+    if (chains.sampling == PropertyPolymerChains::Sampling::Periodic && table.currentStep % chains.sampleEvery == 0)
+    {
+      md.engines[systemId].downloadResidentState(system);
+      chains.sample(table, system.forceField, system.components, system.simulationBox, system.spanOfMoleculeAtoms());
+    }
+    if (md.outputToFiles) chains.writeOutput(systemId, md.currentCycle, table, false);
+  }
   if (reactionsFinished[systemId]) return;
   if (table.currentStep % settings.scanEvery != 0) return;
 
@@ -530,6 +570,15 @@ Polymerization::ReactionEvent Polymerization::react(std::size_t systemId, std::s
       if (rule.stereoAtoms[k].next.has_value()) nextChiralities[k] = nextChirality(chiralities[k]);
     }
     event.stereo = text;
+  }
+
+  // the chains of the reactants in their last configuration before the reaction changes them (a chain changed by
+  // an earlier reaction of the same scan is still ramping and is skipped)
+  if (system.propertyPolymerChains.has_value() &&
+      system.propertyPolymerChains->sampling == PropertyPolymerChains::Sampling::BeforeReaction)
+  {
+    system.propertyPolymerChains->sample(table, system.forceField, components, system.simulationBox, atoms,
+                                         std::span<const std::uint32_t>(event.atoms.data(), groups.size()));
   }
 
   const std::size_t brokenBefore = table.brokenBonds.size();

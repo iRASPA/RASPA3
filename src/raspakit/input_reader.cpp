@@ -43,6 +43,7 @@ import property_volume_evolution;
 import property_number_of_molecules_evolution;
 import property_msd;
 import property_radical_waiting_times;
+import property_polymer_chains;
 import property_vacf;
 import property_elastic_constants_fluctuation;
 import write_lammps_data;
@@ -5176,6 +5177,61 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (value.contains("ComputePolymerChains") && value["ComputePolymerChains"].is_boolean())
+      {
+        if (value["ComputePolymerChains"].get<bool>())
+        {
+          if (simulationType != SimulationType::Polymerization)
+          {
+            throw std::runtime_error("[Input reader]: 'ComputePolymerChains' needs 'SimulationType' : 'Polymerization'\n");
+          }
+          auto unsignedOption = [&](const std::string& name, std::size_t fallback) -> std::size_t
+          {
+            if (!value.contains(name)) return fallback;
+            if (!value[name].is_number_unsigned())
+            {
+              throw std::runtime_error(std::format("[Input reader]: '{}' must be a non-negative integer\n", name));
+            }
+            return value[name].get<std::size_t>();
+          };
+          PropertyPolymerChains::Sampling sampling{PropertyPolymerChains::Sampling::Periodic};
+          if (value.contains("SamplingPolymerChains"))
+          {
+            const std::string name = value["SamplingPolymerChains"].is_string()
+                                         ? value["SamplingPolymerChains"].get<std::string>()
+                                         : std::string{};
+            if (caseInSensStringCompare(name, "Periodic"))
+            {
+              sampling = PropertyPolymerChains::Sampling::Periodic;
+            }
+            else if (caseInSensStringCompare(name, "BeforeReaction"))
+            {
+              sampling = PropertyPolymerChains::Sampling::BeforeReaction;
+            }
+            else
+            {
+              throw std::runtime_error(
+                  "[Input reader]: 'SamplingPolymerChains' must be 'Periodic' or 'BeforeReaction'\n");
+            }
+          }
+          const bool massWeighted = value.contains("MassWeightedPolymerChains") &&
+                                    value["MassWeightedPolymerChains"].is_boolean() &&
+                                    value["MassWeightedPolymerChains"].get<bool>();
+          const std::size_t sampleChainsEvery = unsignedOption("SamplePolymerChainsEvery", 1000);
+          const std::size_t writeChainsEvery = unsignedOption("WritePolymerChainsEvery", 5000);
+          const std::size_t conversionBins = unsignedOption("ConversionBinsPolymerChains", 10);
+          if (sampleChainsEvery == 0 || writeChainsEvery == 0 || conversionBins == 0)
+          {
+            throw std::runtime_error(
+                "[Input reader]: 'SamplePolymerChainsEvery', 'WritePolymerChainsEvery' and "
+                "'ConversionBinsPolymerChains' must be positive\n");
+          }
+          systems[systemId].propertyPolymerChains = PropertyPolymerChains(
+              sampleChainsEvery, writeChainsEvery, sampling, unsignedOption("LagStepsPolymerChains", 0), conversionBins,
+              unsignedOption("MinimumLengthPolymerChains", 2), massWeighted);
+        }
+      }
+
       if (value.contains("ComputeMSD") && value["ComputeMSD"].is_boolean())
       {
         if (value["ComputeMSD"].get<bool>())
@@ -6983,6 +7039,14 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "ComputeRadicalWaitingTimes",
     "WriteRadicalWaitingTimesEvery",
     "BinsPerDecadeRadicalWaitingTimes",
+    "ComputePolymerChains",
+    "SamplePolymerChainsEvery",
+    "WritePolymerChainsEvery",
+    "SamplingPolymerChains",
+    "LagStepsPolymerChains",
+    "ConversionBinsPolymerChains",
+    "MinimumLengthPolymerChains",
+    "MassWeightedPolymerChains",
     "ComputeMSD",
     "SampleMSDEvery",
     "WriteMSDEvery",

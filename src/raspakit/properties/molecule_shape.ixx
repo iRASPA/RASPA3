@@ -152,6 +152,9 @@ export struct PropertyMoleculeShape
   static Descriptors computeDescriptors(std::span<const Atom> molecule, std::span<const std::size_t> atoms,
                                         std::span<const double> weights);
 
+  // The same for a set of positions, e.g. the unwrapped atoms of a polymer chain spanning several molecules.
+  static Descriptors computeDescriptors(std::span<const double3> positions, std::span<const double> weights);
+
   // Accumulates the shape moments of a set of descriptors (the Kirkwood and end-to-end entries are
   // left to the caller).
   static void accumulateShapeMoments(Moments &moments, const Descriptors &descriptors);
