@@ -406,6 +406,16 @@ Prmtop parsePrmtop(const std::filesystem::path& file)
   prmtop.solventPointers = integers(sections, "SOLVENT_POINTERS");
   prmtop.atomsPerMolecule = integers(sections, "ATOMS_PER_MOLECULE");
   prmtop.boxDimensions = reals(sections, "BOX_DIMENSIONS");
+  // a CHAMBER (CHARMM) topology also holds Urey-Bradley terms and harmonic impropers, which are not converted: read
+  // without them, the energy of the molecules would lack those terms
+  for (const char* section : {"CHARMM_UREY_BRADLEY", "CHARMM_IMPROPERS"})
+  {
+    if (!integers(sections, section).empty())
+    {
+      throw std::runtime_error(std::format(
+          "[prmtop reader] the CHAMBER section '{}' holds terms that the converter does not support", section));
+    }
+  }
 
   // CMAP (ff19SB: CMAP_*; CHAMBER: CHARMM_CMAP_*)
   {
@@ -678,13 +688,15 @@ ReadResult readPrmtop(const std::filesystem::path& prmtopFile,
                               std::abs((*list)[i + 3]) / 3, (*list)[i + 4], flags});
     }
 
-  // 1-4 scaling (uniform in RASPA; AMBER allows it per dihedral type). Without scale factors in the file AMBER
-  // takes 1.2 and 2.0; a CHAMBER topology takes 1 and 1 (CHARMM scales no 1-4 Coulomb, and its 1-4 table already
-  // holds the 1-4 Lennard-Jones parameters).
-  double scee = has14Table ? 1.0 : 1.2, scnb = has14Table ? 1.0 : 2.0;
+  // 1-4 scaling (uniform per component in RASPA; AMBER allows it per dihedral type), from the dihedrals of each
+  // component: one value over the whole file put the factors of one force field on the molecules of another (GLYCAM
+  // and ff14SB in one file). Without scale factors in the file AMBER takes 1.2 and 2.0; a CHAMBER topology takes 1
+  // and 1 (CHARMM scales no 1-4 Coulomb, and its 1-4 table already holds the 1-4 Lennard-Jones parameters).
+  auto scaleFactorsOf = [&](std::span<const std::array<std::int64_t, 6>> dihedrals, std::string_view name)
   {
+    double scee = has14Table ? 1.0 : 1.2, scnb = has14Table ? 1.0 : 2.0;
     std::set<double> sceeValues{}, scnbValues{};
-    for (const std::array<std::int64_t, 6>& dihedral : dihedralList)
+    for (const std::array<std::int64_t, 6>& dihedral : dihedrals)
     {
       if (dihedral[5] != 0) continue;  // only terms that carry the 1-4 interaction
       std::size_t type = static_cast<std::size_t>(dihedral[4] - 1);
@@ -697,10 +709,11 @@ ReadResult readPrmtop(const std::filesystem::path& prmtopFile,
     if (!scnbValues.empty()) scnb = *scnbValues.begin();
     if (sceeValues.size() > 1 || scnbValues.size() > 1)
       result.warnings.push_back(std::format(
-          "[prmtop reader] non-uniform 1-4 scale factors (SCEE {} values, SCNB {} values); RASPA applies one pair of "
-          "factors per component, using 1/{} and 1/{}",
-          sceeValues.size(), scnbValues.size(), scee, scnb));
-  }
+          "[prmtop reader] component '{}': non-uniform 1-4 scale factors (SCEE {} values, SCNB {} values); RASPA "
+          "applies one pair of factors per component, using 1/{} and 1/{}",
+          name, sceeValues.size(), scnbValues.size(), scee, scnb));
+    return std::pair{scee, scnb};
+  };
 
   // molecules
   std::vector<std::vector<std::size_t>> molecules = findMolecules(numberOfAtoms, allBonds);
@@ -1017,6 +1030,14 @@ ReadResult readPrmtop(const std::filesystem::path& prmtopFile,
         }
       }
     }
+    // a rigid body is its geometry: without coordinates only the three-site water has one (a four- or five-site water
+    // such as TIP4P-Ew or OPC was a body with every site at the origin)
+    if (positions.empty() && rigid && n > 1 && !idealWater)
+    {
+      throw std::runtime_error(std::format(
+          "[prmtop reader] component '{}' is rigid and has no geometry of its own; give the coordinates (--inpcrd)",
+          component.name));
+    }
     std::array<double, 3> com = centreOfMass(geometry, masses);
     for (std::array<double, 3>& p : geometry)
       for (std::size_t k = 0; k < 3; ++k) p[k] -= com[k];
@@ -1129,7 +1150,8 @@ ReadResult readPrmtop(const std::filesystem::path& prmtopFile,
             if (a == c) continue;
             for (std::size_t d : neighbours[c])
             {
-              if (d == b) continue;
+              // (on a three-membered ring the far neighbour is the first atom: no torsion)
+              if (d == b || d == a) continue;
               graphTorsions.insert(canonical({a, b, c, d}));
             }
           }
@@ -1199,6 +1221,7 @@ ReadResult readPrmtop(const std::filesystem::path& prmtopFile,
         }
       }
 
+      const auto [scee, scnb] = scaleFactorsOf(tpl.dihedrals, component.name);
       definition["Intra14VanDerWaalsScalingValue"] = 1.0 / scnb;
       definition["Intra14ChargeChargeScalingValue"] = 1.0 / scee;
     }

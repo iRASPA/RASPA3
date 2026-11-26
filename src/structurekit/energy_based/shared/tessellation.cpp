@@ -27,6 +27,16 @@ EnergyTessellation::~EnergyTessellation() {}
 
 namespace
 {
+// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under which
+// 'std::isfinite' is true of everything. (Taken by reference and read as bytes, so that the test is not folded
+// away with it.)
+bool isFiniteNumber(const double& value)
+{
+  std::uint64_t bits{};
+  std::memcpy(&bits, &value, sizeof(bits));
+  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
+}
+
 // What the two routes differ in, which is nothing but the field, the labels, and what the report calls them.
 // The division itself is one piece of arithmetic and is written once.
 struct Division
@@ -115,7 +125,7 @@ static void divideAmongAtoms(EnergyTessellation &tessellation, const Crystal &fr
     const double3 pb = cell * b;
     const double3 pc = cell * c;
     const double area = 0.5 * double3::cross(pb - pa, pc - pa).length();
-    if (!std::isfinite(area)) continue;
+    if (!isFiniteNumber(area)) continue;
 
     // A triangle is confined to a single voxel, so anything larger is numerical debris rather than surface.
     if (area > largestPlausible)

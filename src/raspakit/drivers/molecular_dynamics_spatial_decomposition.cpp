@@ -317,7 +317,14 @@ void distributeCenterOfMassDisplacement(System& system, const MoleculeRange& ran
 // the polymer-bond overlay;
 // with a single component those all belong to the (0, 0) pair. The reciprocal (mesh) sum cannot be attributed to
 // component pairs, so mixtures keep the exact decomposition.
-bool engineProvidesEnergyStatus(const System& system) { return system.components.size() == 1; }
+// The pair kernels evaluate the full-strength pairs inside a molecule (its 1-5 and further pairs) like the pairs of two
+// molecules: with such pairs the engine's pair energy is not the intermolecular one, and the split is the exact one.
+bool engineProvidesEnergyStatus(const System& system)
+{
+  if (system.components.size() != 1) return false;
+  const auto& exclusions = system.components.front().intraMolecularPotentials.exclusions;
+  return exclusions.numberOfNonExcludedPairs() == exclusions.scaledPairs.size();
+}
 
 EnergyStatus energyStatusFromRunningEnergies(const System& system)
 {
@@ -1402,7 +1409,8 @@ void MolecularDynamicsSpatialDecomposition::production()
     }
 
     // Energy decomposition for the averages. The engine's running energies are exact totals and, for a single
-    // component, the complete decomposition: sampled every cycle at no cost. Only a mixture needs the exact
+    // component without full-strength pairs inside its molecules, the complete decomposition: sampled every cycle
+    // at no cost. Only a mixture needs the exact
     // O(N^2) code for the per-pair split; that is sampled every 'PrintEvery' cycles. The pressure tensor comes
     // from the engine's virial every cycle in both cases (see molecularDynamicsStep).
     for (System& system : systems)

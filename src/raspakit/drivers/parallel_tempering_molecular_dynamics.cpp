@@ -318,14 +318,18 @@ void ParallelTemperingMolecularDynamics::setup()
       std::print(replicaStream, "{}", system.writeNumberOfPseudoAtoms());
     }
 
+    // a resume keeps the JSON of the start of the run (restored from the checkpoint)
+    if (!resumedFromBinaryRestart)
+    {
 #ifdef VERSION
-    replicaJsons[replicaId]["version"] = EXPAND_AND_QUOTE(VERSION);
+      replicaJsons[replicaId]["version"] = EXPAND_AND_QUOTE(VERSION);
 #endif
-    replicaJsons[replicaId]["seed"] = randoms[replicaId].seed;
-    replicaJsons[replicaId]["replicaId"] = replicaId;
-    replicaJsons[replicaId]["temperature"] = system.temperature;
-    replicaJsons[replicaId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
-    replicaJsons[replicaId]["initialization"]["components"] = system.jsonComponentStatus();
+      replicaJsons[replicaId]["seed"] = randoms[replicaId].seed;
+      replicaJsons[replicaId]["replicaId"] = replicaId;
+      replicaJsons[replicaId]["temperature"] = system.temperature;
+      replicaJsons[replicaId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
+      replicaJsons[replicaId]["initialization"]["components"] = system.jsonComponentStatus();
+    }
 
     std::ofstream replicaJson(replicaJsonFileNames[replicaId]);
     replicaJson << replicaJsons[replicaId].dump(4);
@@ -1061,6 +1065,11 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
   archive << pt.totalEquilibrationSimulationTime;
   archive << pt.totalProductionSimulationTime;
   archive << pt.totalSimulationTime;
+  // the output JSON of every replica, with the initial conditions of the start of the run: rebuilt on a resume, it
+  // held the state of the checkpoint under 'initialConditions'
+  std::vector<std::string> jsons;
+  for (const nlohmann::json& json : pt.replicaJsons) jsons.push_back(json.dump());
+  archive << jsons;
 
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
@@ -1118,6 +1127,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTemp
   archive >> pt.totalEquilibrationSimulationTime;
   archive >> pt.totalProductionSimulationTime;
   archive >> pt.totalSimulationTime;
+  std::vector<std::string> jsons;
+  archive >> jsons;
+  pt.replicaJsons.clear();
+  for (const std::string& json : jsons) pt.replicaJsons.push_back(nlohmann::json::parse(json));
 
   std::uint64_t magicNumber;
   archive >> magicNumber;

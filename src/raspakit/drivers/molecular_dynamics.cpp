@@ -1430,7 +1430,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     for (std::size_t system_id{0}; System& system : systems)
     {
       system.samplePropertiesEvolution(absoluteCurrentCycle);
-      system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
+      if (outputToFiles) system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
       ++system_id;
     }
 
@@ -1479,6 +1479,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
     // output properties to files
     for (std::size_t system_id{0}; System& system : systems)
     {
+      if (!outputToFiles) break;
       if (system.propertyConventionalRadialDistributionFunction.has_value())
       {
         system.propertyConventionalRadialDistributionFunction->writeOutput(
@@ -1549,7 +1550,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
   // the samples of the time-evolution properties collected over all stages
   for (std::size_t system_id{0}; System& system : systems)
   {
-    system.writePropertiesEvolution(system_id, absoluteCurrentCycle, true);
+    if (outputToFiles) system.writePropertiesEvolution(system_id, absoluteCurrentCycle, true);
     ++system_id;
   }
 
@@ -1557,6 +1558,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
   // when it is a multiple of it, and the samples since the last write, all of them in a short run, were lost)
   for (std::size_t system_id{0}; System& system : systems)
   {
+    if (!outputToFiles) break;
     if (system.propertyConventionalRadialDistributionFunction.has_value())
     {
       system.propertyConventionalRadialDistributionFunction->writeOutput(

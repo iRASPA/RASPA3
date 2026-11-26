@@ -15,6 +15,7 @@ import simd_quatd;
 import ring;
 import ringmatrix;
 import cubic;
+import polint;
 import randomnumbers;
 import marching_cubes;
 import special_functions;
@@ -608,4 +609,71 @@ TEST(MATHKIT_FIXES, categorical_distribution_refuses_a_negative_weight)
   RandomNumber random(std::size_t{17});
   const std::array<double, 3> weights{1.0, -0.5, 1.0};
   EXPECT_THROW(static_cast<void>(random.categoricalDistribution(weights)), std::invalid_argument);
+}
+
+// The eigenvalues in ascending order for every matrix: a matrix whose eigenvectors came out as an improper
+// orthogonal matrix had the last two swapped (about every other matrix), with the eigenvectors swapped along.
+TEST(MATHKIT_FIXES, symmetric_eigensystem_is_ascending_and_a_rotation)
+{
+  RandomNumber random(std::size_t{29});
+  for (std::size_t trial = 0; trial < 200; ++trial)
+  {
+    double3x3 matrix{};
+    matrix.ax = random.uniform();
+    matrix.by = 2.0 + random.uniform();
+    matrix.cz = 4.0 + random.uniform();
+    matrix.ay = matrix.bx = 0.3 * (random.uniform() - 0.5);
+    matrix.az = matrix.cx = 0.3 * (random.uniform() - 0.5);
+    matrix.bz = matrix.cy = 0.3 * (random.uniform() - 0.5);
+    double3 eigenvalues{};
+    double3x3 eigenvectors{};
+    matrix.EigenSystemSymmetric(eigenvalues, eigenvectors);
+    EXPECT_LE(eigenvalues.x, eigenvalues.y);
+    EXPECT_LE(eigenvalues.y, eigenvalues.z);
+    EXPECT_NEAR(eigenvectors.determinant(), 1.0, 1.0e-10);
+    // each column is the eigenvector of the eigenvalue at its place
+    const double3 v3 = eigenvectors * double3(0.0, 0.0, 1.0);
+    EXPECT_NEAR((matrix * v3 - eigenvalues.z * v3).length(), 0.0, 1.0e-10);
+  }
+}
+
+// The zero quaternion (a default-constructed one) is no rotation: the identity, and not 0 / 0 in every entry.
+TEST(MATHKIT_FIXES, the_zero_quaternion_is_the_identity_rotation)
+{
+  const double3x3 matrix(simd_quatd{});
+  EXPECT_EQ(matrix.ax, 1.0);
+  EXPECT_EQ(matrix.by, 1.0);
+  EXPECT_EQ(matrix.cz, 1.0);
+  EXPECT_EQ(matrix.ay, 0.0);
+  EXPECT_EQ(matrix.cx, 0.0);
+}
+
+// A cubic with one real root far from the complex pair, and a quadratic with a tiny root: the roots that were the
+// difference of two nearly equal numbers keep their relative precision.
+TEST(MATHKIT_FIXES, cubic_and_quadratic_roots_keep_their_precision)
+{
+  // (x + 1e-6) (x^2 + x + 1): the real root -1e-6, a complex pair of modulus one
+  double cubicCoefficients[4] = {1.0e-6, 1.0 + 1.0e-6, 1.0 + 1.0e-6, 1.0};
+  double roots[3]{};
+  int numberOfRoots = 0;
+  cubic(cubicCoefficients, roots, &numberOfRoots);
+  ASSERT_EQ(numberOfRoots, 1);
+  EXPECT_NEAR(roots[0] / -1.0e-6, 1.0, 1.0e-9);
+
+  // x^2 + 1e8 x + 1: the roots -1e-8 and -1e8
+  double quadraticCoefficients[4] = {1.0, 1.0e8, 1.0, 0.0};
+  cubic(quadraticCoefficients, roots, &numberOfRoots);
+  ASSERT_EQ(numberOfRoots, 2);
+  EXPECT_NEAR(roots[0] / -1.0e8, 1.0, 1.0e-12);
+  EXPECT_NEAR(roots[1] / -1.0e-8, 1.0, 1.0e-9);
+}
+
+// The error estimate of the interpolation through a single point is zero; it was left unset.
+TEST(MATHKIT_FIXES, polynomial_interpolation_through_one_point_has_no_error)
+{
+  double y = 0.0;
+  double dy = 123.0;
+  Interpolation::polint<1>({2.0}, {5.0}, 3.0, &y, &dy);
+  EXPECT_EQ(y, 5.0);
+  EXPECT_EQ(dy, 0.0);
 }

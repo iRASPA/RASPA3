@@ -65,6 +65,13 @@ SymmetricEigenSystem diagonalizeSymmetric(std::span<const double> matrix, std::s
 
   char jobz = 'V';
   char uplo = 'U';
+  // The workspace of the eigenvectors, 2 n^2 + 6 n + 1, has to be counted in the LAPACK integer type, which LAPACK
+  // does itself in the size query (from n = 32768 on with 32-bit integers it overflowed)
+  const double nn = static_cast<double>(size);
+  if (2.0 * nn * nn + 6.0 * nn + 1.0 > static_cast<double>(std::numeric_limits<blas_int>::max()))
+  {
+    throw std::overflow_error("diagonalizeSymmetric: the workspace is too large for the configured LAPACK integer type");
+  }
   blas_int n = static_cast<blas_int>(size);
   blas_int lda = n;
   blas_int info = 0;

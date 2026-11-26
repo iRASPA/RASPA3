@@ -25,6 +25,8 @@ void polint(const std::array<double, N> &xa, const std::array<double, N> &ya, do
     d[i] = ya[i];
   }
   *y = ya[nearest];
+  // (the error estimate of a single point is zero: no correction is taken, and it was left unset)
+  *dy = 0.0;
 
   // 'next' is one past the index of the last correction taken along the tableau (the 1-based 'ns' of Numerical
   // Recipes); the 'c'-branch is always taken when it is zero, since 2 * 0 < N - m, so it never goes below zero

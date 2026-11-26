@@ -39,6 +39,8 @@ double3x3::double3x3(simd_quatd q) : m{}
   double sqy = q.iy * q.iy;
   double sqz = q.iz * q.iz;
 
+  // the zero quaternion (a default-constructed one) is no rotation: the identity, and not 0 / 0 everywhere
+  if (sqx + sqy + sqz + sqw == 0.0) sqw = 1.0;
   // invs (inverse square length) is only required if quaternion is not already normalised
   double invs = 1.0 / (sqx + sqy + sqz + sqw);
   m11 = (sqx - sqy - sqz + sqw) * invs;  // since sqw + sqx + sqy + sqz =1/invs*invs
@@ -238,8 +240,9 @@ void double3x3::EigenSystemSymmetric(double3& eigenvalues, double3x3& eigenvecto
 
   dsyev_(&decompositionJobV, &upload, &M, matrix.data(), &N, e.data(), work.data(), &lwork, &error);
 
-  // the eigenvalues in ascending order, each with the eigenvector in the same column; swapping two columns turns an
-  // improper orthogonal matrix into a rotation, and the eigenvalues are swapped with them
+  // the eigenvalues in ascending order, each with the eigenvector in the same column; reversing the last eigenvector
+  // turns an improper orthogonal matrix into a rotation and keeps the order (swapping two columns, as it was done,
+  // gave the eigenvalues out of order for every other matrix)
   double3 v1, v2, v3;
   v1 = double3(matrix[0], matrix[1], matrix[2]);
   v2 = double3(matrix[3], matrix[4], matrix[5]);
@@ -248,8 +251,7 @@ void double3x3::EigenSystemSymmetric(double3& eigenvalues, double3x3& eigenvecto
   eigenvectors = double3x3(v1, v2, v3);
   if (eigenvectors.determinant() < 0)
   {
-    eigenvalues = double3(e[0], e[2], e[1]);
-    eigenvectors = double3x3(v1, v3, v2);
+    eigenvectors = double3x3(v1, v2, -v3);
   }
 }
 

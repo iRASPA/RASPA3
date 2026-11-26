@@ -384,6 +384,8 @@ void ThermodynamicIntegration::production()
       }
       // (the pressure is sampled in the cycles its tensor was computed for)
       system.sampleProperties(system_id, estimation.currentBin, currentCycle, false, freshPressure.has_value());
+      // the force-based RDF needs the full gradients, which the moves leave out: sampled as in MonteCarlo
+      if (system.forceBasedRDFSampleDue(currentCycle)) system.sampleForceBasedRDFWithFullGradients(currentCycle, estimation.currentBin);
 
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {

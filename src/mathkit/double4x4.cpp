@@ -288,6 +288,8 @@ double4x4 double4x4::Rotationdouble4x4FromQuaternion(simd_quatd q)
   double sqy = q.iy * q.iy;
   double sqz = q.iz * q.iz;
 
+  // the zero quaternion (a default-constructed one) is no rotation: the identity, and not 0 / 0 everywhere
+  if (sqx + sqy + sqz + sqw == 0.0) sqw = 1.0;
   // invs (inverse square length) is only required if quaternion is not already normalised
   double invs = 1 / (sqx + sqy + sqz + sqw);
   m.m11 = (sqx - sqy - sqz + sqw) * invs;  // since sqw + sqx + sqy + sqz =1/invs*invs

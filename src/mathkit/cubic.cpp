@@ -90,9 +90,12 @@ int cubic(double A[4], double X[3], int* L)
     }
     else
     {
-      // only one real solution!
+      // only one real solution! The two cube roots multiply to -p: the larger one is taken from the sum without
+      // cancellation and the other from the product (cbrt(Q - sqrt(DIS)) lost its digits when Q and sqrt(DIS) are
+      // close, a root far from the others)
       DIS = std::sqrt(DIS);
-      X[0] = CBRT(Q + DIS) + CBRT(Q - DIS) - W;
+      const double u = CBRT(Q + std::copysign(DIS, Q));
+      X[0] = (u != 0.0 ? u - p / u : 0.0) - W;
       *L = 1;
     }
   }
@@ -103,9 +106,12 @@ int cubic(double A[4], double X[3], int* L)
     DIS = std::pow(P, 2) - A[0] / A[2];
     if (DIS >= 0.0)
     {
-      // 2 real solutions (equal ones for DIS == 0, a repeated root)
-      X[0] = -P - std::sqrt(DIS);
-      X[1] = -P + std::sqrt(DIS);
+      // 2 real solutions (equal ones for DIS == 0, a repeated root): the one of the larger magnitude without
+      // cancellation, the other from their product A[0] / A[2] (-P + sqrt(DIS) lost its digits for a small root)
+      const double larger = -P - std::copysign(std::sqrt(DIS), P);
+      const double smaller = larger != 0.0 ? (A[0] / A[2]) / larger : 0.0;
+      X[0] = std::min(larger, smaller);
+      X[1] = std::max(larger, smaller);
       *L = 2;
     }
     else

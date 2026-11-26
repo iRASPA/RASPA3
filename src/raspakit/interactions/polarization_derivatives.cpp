@@ -102,7 +102,10 @@ std::span<const Atom> reciprocalHostAtoms(const System& system, std::span<const 
 {
   if (!system.framework.has_value() || frameworkAtoms.empty()) return {};
   if (!system.framework->hasMobileAtoms()) return frameworkAtoms;
-  const std::size_t numberOfFixedAtoms = system.framework->numberOfFixedAtoms();
+  // (in the flattened copy of a mixed framework its former Fixed atoms: see Framework::flattenedFixedAtomCount)
+  const std::size_t numberOfFixedAtoms =
+      std::min(frameworkAtoms.size(),
+               std::max(system.framework->numberOfFixedAtoms(), system.framework->flattenedFixedAtomCount));
   for (const Atom& atom : frameworkAtoms.subspan(numberOfFixedAtoms))
   {
     if (atom.scalingCoulomb * atom.charge != 0.0)

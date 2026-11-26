@@ -299,15 +299,19 @@ void HyperParallelTempering::setup()
       std::print(replicaStream, "{}", system.writeNumberOfPseudoAtoms());
     }
 
+    // a resume keeps the JSON of the start of the run (restored from the checkpoint)
+    if (!resumedFromBinaryRestart)
+    {
 #ifdef VERSION
-    replicaJsons[replicaId]["version"] = EXPAND_AND_QUOTE(VERSION);
+      replicaJsons[replicaId]["version"] = EXPAND_AND_QUOTE(VERSION);
 #endif
-    replicaJsons[replicaId]["seed"] = randoms[replicaId].seed;
-    replicaJsons[replicaId]["replicaId"] = replicaId;
-    replicaJsons[replicaId]["temperature"] = system.temperature;
-    replicaJsons[replicaId]["pressure"] = system.input_pressure;
-    replicaJsons[replicaId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
-    replicaJsons[replicaId]["initialization"]["components"] = system.jsonComponentStatus();
+      replicaJsons[replicaId]["seed"] = randoms[replicaId].seed;
+      replicaJsons[replicaId]["replicaId"] = replicaId;
+      replicaJsons[replicaId]["temperature"] = system.temperature;
+      replicaJsons[replicaId]["pressure"] = system.input_pressure;
+      replicaJsons[replicaId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
+      replicaJsons[replicaId]["initialization"]["components"] = system.jsonComponentStatus();
+    }
 
     std::ofstream replicaJson(replicaJsonFileNames[replicaId]);
     replicaJson << replicaJsons[replicaId].dump(4);
@@ -666,6 +670,8 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
                 }
                 // (the pressure is sampled in the cycles its tensor was computed for)
                 system.sampleProperties(replicaId, estimation.currentBin, cycle, false, freshPressure.has_value());
+                // the force-based RDF needs the full gradients, which the moves leave out: sampled as in MonteCarlo
+                if (system.forceBasedRDFSampleDue(cycle)) system.sampleForceBasedRDFWithFullGradients(cycle, estimation.currentBin);
 
                 // analysis-property files (RDFs, density grid, histograms, molecule properties);
                 // the writers gate on their own 'writeEvery'
@@ -1135,6 +1141,11 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const HyperP
   archive << hpt.totalEquilibrationSimulationTime;
   archive << hpt.totalProductionSimulationTime;
   archive << hpt.totalSimulationTime;
+  // the output JSON of every replica, with the initial conditions of the start of the run: rebuilt on a resume, it
+  // held the state of the checkpoint under 'initialConditions'
+  std::vector<std::string> jsons;
+  for (const nlohmann::json& json : hpt.replicaJsons) jsons.push_back(json.dump());
+  archive << jsons;
 
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
@@ -1207,6 +1218,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, HyperParalle
   archive >> hpt.totalEquilibrationSimulationTime;
   archive >> hpt.totalProductionSimulationTime;
   archive >> hpt.totalSimulationTime;
+  std::vector<std::string> jsons;
+  archive >> jsons;
+  hpt.replicaJsons.clear();
+  for (const std::string& json : jsons) hpt.replicaJsons.push_back(nlohmann::json::parse(json));
 
   std::uint64_t magicNumber;
   archive >> magicNumber;

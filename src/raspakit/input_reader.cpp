@@ -4148,8 +4148,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             // Minimum supercell so that 2 * cut-off fits in each perpendicular width (MIC).
             // Uses the force-field cut-offs present at read time (defaults or system overrides).
             const ForceField& forceField = forceFields[systemId].value();
-            const double cutOff = std::max(
-                {forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb});
+            const double cutOff = std::max({forceField.cutOffFrameworkVDWAutomatic ? 0.0 : forceField.cutOffFrameworkVDW,
+                      forceField.cutOffMoleculeVDWAutomatic ? 0.0 : forceField.cutOffMoleculeVDW,
+                      forceField.useCharge && !forceField.cutOffCoulombAutomatic ? forceField.cutOffCoulomb : 0.0});
             jsonNumberOfUnitCells = simulation_box.smallestNumberOfUnitCellsForMinimumImagesConvention(cutOff);
             jsonNumberOfUnitCells.x = std::max(jsonNumberOfUnitCells.x, std::int32_t{1});
             jsonNumberOfUnitCells.y = std::max(jsonNumberOfUnitCells.y, std::int32_t{1});

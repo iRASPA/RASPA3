@@ -384,7 +384,10 @@ SKPowderDiffraction SKPowderDiffraction::compute(const double3x3& unitCell, std:
   // the table: the strongest peak of the range is 100, and what is left without intensity is not a peak
   double strongest = 0.0;
   for (const Peak& peak : result.peaks) strongest = std::max(strongest, peak.intensity);
-  if (!isFiniteNumber(strongest))
+  // (every reflection that is drawn, also those past the range whose tails reach into it: one that is not finite made
+  // the whole pattern not a number)
+  if (!isFiniteNumber(strongest) ||
+      !std::ranges::all_of(drawn, [](const Bragg& bragg) { return isFiniteNumber(bragg.intensity); }))
   {
     // exp(-B s^2) of a large negative B overflows, and the scaling below made every intensity not a number
     throw std::invalid_argument("powder diffraction: the intensities are not finite (check the displacement factors)");

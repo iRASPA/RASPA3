@@ -444,6 +444,7 @@ std::vector<PhononModes> computeGeneralizedDispersion(const System& system, std:
     cartesianSystem.framework->groups.clear();
     cartesianSystem.framework->atomGroupIds.clear();
     cartesianSystem.framework->mixed = false;
+    cartesianSystem.framework->flattenedFixedAtomCount = system.framework->numberOfFixedAtoms();
     cartesianSystem.framework->fixedAtomCount = 0;
     cartesianSystem.frameworkGroupData.clear();
     cartesianSystem.numberOfRigidFrameworkAtoms = 0;

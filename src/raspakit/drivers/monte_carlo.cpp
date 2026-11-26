@@ -537,7 +537,7 @@ void MonteCarlo::preInitialize(std::function<void()> call_back_function, std::si
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
+      if (outputToFiles) system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
 
       ++system_id;
     }
@@ -650,7 +650,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
+      if (outputToFiles) system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
 
       ++system_id;
     }
@@ -812,7 +812,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
+      if (outputToFiles) system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
 
       ++system_id;
     }
@@ -1019,14 +1019,14 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      system.writeSampledPropertiesMC(system_id, currentCycle);
+      if (outputToFiles) system.writeSampledPropertiesMC(system_id, currentCycle);
 
       ++system_id;
     }
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
+      if (outputToFiles) system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
 
       ++system_id;
     }

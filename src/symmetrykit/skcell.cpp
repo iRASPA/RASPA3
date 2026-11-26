@@ -543,9 +543,11 @@ int3 SKCell::numberOfReplicas(double cutoff)
 
   double3 perpendicularWith = double3(volume / v2.length(), volume / v3.length(), volume / v1.length());
 
-  int3 replicas = int3(int(std::ceil(2.0 * cutoff / (perpendicularWith.x + 0.000001))),
-                       int(std::ceil(2.0 * cutoff / (perpendicularWith.y + 0.000001))),
-                       int(std::ceil(2.0 * cutoff / (perpendicularWith.z + 0.000001))));
+  // (as SimulationBox::smallestNumberOfUnitCellsForMinimumImagesConvention: a width added to in the denominator gave
+  // one replica too few to a cell just narrower than a multiple of twice the cut-off)
+  int3 replicas = int3(int(std::ceil(2.0 * cutoff / perpendicularWith.x)),
+                       int(std::ceil(2.0 * cutoff / perpendicularWith.y)),
+                       int(std::ceil(2.0 * cutoff / perpendicularWith.z)));
 
   return replicas;
 }

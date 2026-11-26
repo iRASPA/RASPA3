@@ -432,8 +432,14 @@ class OtherSamplers(unittest.TestCase):
         row = rows[0]
         self.assertEqual((row["length"], row["topology"], row["runs"], row["count"]), (3, "linear", 2, 8))
         self.assertAlmostEqual(row["mean"]["Rg^2"], 3.0)
-        # sqrt(((1)^2 (2 - 3)^2 + (1)^2 (4 - 3)^2) / (2 * 1))
+        # sqrt((1/2 (2 - 3)^2 + 1/2 (4 - 3)^2) / (2 - 1))
         self.assertAlmostEqual(row["error"]["Rg^2"], 1.0)
+        # runs of very different length: the error is that of the scatter of the short run, sqrt(w_2 (4 - mean)^2 +
+        # w_1 (2 - mean)^2), w_r = n_r / N (it went to zero with the squared weights)
+        skewed = polymer_chains.combine([run(500, 1000.0, 500, 1000.0), run(1, 4.0, 1, 4.0)])[0]
+        mean = 2008.0 / 1002.0
+        expected = math.sqrt((1000.0 / 1002.0) * (2.0 - mean) ** 2 + (2.0 / 1002.0) * (4.0 - mean) ** 2)
+        self.assertAlmostEqual(skewed["error"]["Rg^2"], expected)
         self.assertAlmostEqual(row["end_to_end_ratio"], 6.0)
         # resolved by the state: two keys
         self.assertEqual(len(polymer_chains.combine([run(2, 4.0, 2, 4.0)], by=("length", "living"))), 2)

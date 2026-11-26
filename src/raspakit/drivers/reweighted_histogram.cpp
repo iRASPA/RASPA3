@@ -1043,6 +1043,8 @@ void ReweightedHistogram::runStage(SimulationStage stage, std::size_t numberOfCy
                 }
                 // (the pressure is sampled in the cycles its tensor was computed for)
                 system.sampleProperties(replicaId, estimation.currentBin, cycle, false, freshPressure.has_value());
+                // the force-based RDF needs the full gradients, which the moves leave out: sampled as in MonteCarlo
+                if (system.forceBasedRDFSampleDue(cycle)) system.sampleForceBasedRDFWithFullGradients(cycle, estimation.currentBin);
 
                 // the raw (N, U) reweighting sample of this replica: the molecule count of the
                 // single adsorbate component and the potential energy, tagged with the block.

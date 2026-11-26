@@ -178,6 +178,10 @@ export struct Framework
   std::vector<FrameworkGroup> groups{};
   std::vector<std::size_t> atomGroupIds{};  ///< Per-atom index into groups (empty when no Groups).
   std::size_t fixedAtomCount{0};
+  /// The leading atoms that were the Fixed atoms of a mixed framework flattened into independent Cartesian sites
+  /// (the copy of computeGeneralizedDispersion): their derivatives are projected out afterwards, so the reciprocal
+  /// field of their charges is that of lab-fixed hosts, as in the mixed framework. Not archived (zero elsewhere).
+  std::size_t flattenedFixedAtomCount{0};
   std::size_t rigidGroupAtomCount{0};
   std::size_t flexibleAtomCount{0};
   std::size_t rigidGroupCount{0};

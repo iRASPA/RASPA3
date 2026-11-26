@@ -64,7 +64,10 @@ def combine(sources: Iterable, by: Sequence[str] = ("length", "topology")) -> li
     if "conversionBin" in by:
         bins = {run.get("settings", {}).get("conversionBins") for run in runs}
         if len(bins) > 1:
-            raise ValueError(f"polymer_chains: the runs use different numbers of conversion bins {sorted(bins)}")
+            # (a run that does not state its bins is listed as None, which does not sort with numbers)
+            raise ValueError(
+                f"polymer_chains: the runs use different numbers of conversion bins {sorted(bins, key=repr)}"
+            )
 
     # per key, per run: count, sums and sums of squares
     width = len(moments)
@@ -97,10 +100,12 @@ def combine(sources: Iterable, by: Sequence[str] = ("length", "topology")) -> li
             squares = sum(slot[2][m] for slot in slots)
             mean = total / count
             if number_of_runs > 1:
-                scatter = sum(
-                    (slot[0] / mean_count) ** 2 * (slot[1][m] / slot[0] - mean) ** 2 for slot in sampled
-                )
-                error = math.sqrt(scatter / (number_of_runs * (number_of_runs - 1)))
+                # The mean of run r, of n_r samples, scatters as sigma^2 / n_r about the common mean: with the
+                # weights w_r = n_r / N its error is sum_r w_r (m_r - mean)^2 / (R - 1), the classic error of a mean
+                # for runs of equal length. (The squared weights over R (R - 1) took the scatter of the long runs as
+                # that of all, and went to zero for runs of very different length.)
+                scatter = sum((slot[0] / count) * (slot[1][m] / slot[0] - mean) ** 2 for slot in sampled)
+                error = math.sqrt(scatter / (number_of_runs - 1))
             else:
                 error = math.nan
             variance = (squares - count * mean * mean) / (count - 1) if count > 1 else 0.0

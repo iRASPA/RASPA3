@@ -492,6 +492,8 @@ void ParallelThermodynamicIntegration::runStage(SimulationStage stage, std::size
                 }
                 // (the pressure is sampled in the cycles its tensor was computed for)
                 system.sampleProperties(replicaId, estimation.currentBin, cycle, false, freshPressure.has_value());
+                // the force-based RDF needs the full gradients, which the moves leave out: sampled as in MonteCarlo
+                if (system.forceBasedRDFSampleDue(cycle)) system.sampleForceBasedRDFWithFullGradients(cycle, estimation.currentBin);
 
                 // energy/pressure averages for the per-replica final report
                 if (cycle % 10uz == 0uz || cycle % printEvery == 0uz)

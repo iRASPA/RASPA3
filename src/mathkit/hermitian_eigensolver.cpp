@@ -16,6 +16,19 @@ module hermitian_eigensolver;
 
 import std;
 
+namespace
+{
+// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under which
+// 'std::isfinite' is true of everything. (Taken by reference and read as bytes, so that the test is not folded
+// away with it.)
+bool isFiniteNumber(const double& value)
+{
+  std::uint64_t bits{};
+  std::memcpy(&bits, &value, sizeof(bits));
+  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
+}
+}  // namespace
+
 HermitianEigenSystem diagonalizeHermitian(std::span<const std::complex<double>> matrix, std::size_t size,
                                           bool computeEigenvectors)
 {
@@ -54,12 +67,21 @@ HermitianEigenSystem diagonalizeHermitian(std::span<const std::complex<double>> 
     for (std::size_t row = 0; row <= column; ++row)
     {
       const std::complex<double> value = 0.5 * (matrix[row * size + column] + std::conj(matrix[column * size + row]));
-      if (!std::isfinite(value.real()) || !std::isfinite(value.imag()))
+      if (!isFiniteNumber(value.real()) || !isFiniteNumber(value.imag()))
       {
         throw std::runtime_error("diagonalizeHermitian: matrix contains a non-finite value");
       }
       storage[row + size * column] = value;
     }
+  }
+
+  // The workspace of the eigenvectors, 2 n^2 + 5 n + 1 reals, has to be counted in the LAPACK integer type, which
+  // LAPACK does itself in the size query (from n = 32768 on with 32-bit integers it overflowed)
+  const double nn = static_cast<double>(size);
+  if (computeEigenvectors &&
+      2.0 * nn * nn + 5.0 * nn + 1.0 > static_cast<double>(std::numeric_limits<blas_int>::max()))
+  {
+    throw std::overflow_error("diagonalizeHermitian: the workspace is too large for the configured LAPACK integer type");
   }
 
   char jobz = computeEigenvectors ? 'V' : 'N';

@@ -1280,8 +1280,17 @@ RunningEnergy System::computeTotalEnergies(bool* overlap) noexcept
     }
     else
     {
+      // With bonds between molecules (which the input refuses together with polarization: the field does not exclude
+      // the linked pairs) the pair energy and the overlap are those of the bonds' exclusions and overlap exemptions,
+      // as without polarization; the field routine knows neither.
+      const bool linked = !crossLinks.empty() || !polymerLinks.empty();
       intermolecularEnergy = Interactions::computeInterMolecularElectricField(
-          forceField, simulationBox, moleculeElectricField, moleculeAtomPositions, overlap);
+          forceField, simulationBox, moleculeElectricField, moleculeAtomPositions, linked ? nullptr : overlap);
+      if (linked)
+      {
+        intermolecularEnergy = interMolecularEnergyWithPolymerLinks(
+            forceField, simulationBox, pairCellList, moleculeAtomPositions, overlapExempt, overlap);
+      }
     }
 
     RunningEnergy tailEnergy = computeTailCorrectionEnergies();

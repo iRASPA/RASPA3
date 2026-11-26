@@ -177,6 +177,7 @@ __all__ = [
     "EndToEndRelaxationTimes",
     "PropertyElasticConstantsFluctuation",
     "PropertyRadicalWaitingTimes",
+    "PropertyPolymerChains",
     "WriteLammpsData",
     "Reaction",
     "ThermochemicalDatabase",

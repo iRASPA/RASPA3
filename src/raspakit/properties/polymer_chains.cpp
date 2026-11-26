@@ -182,15 +182,41 @@ std::vector<PropertyPolymerChains::Chain> PropertyPolymerChains::findChains(cons
     }
   }
 
-  // per chain its molecules (global index -> polymer bonds, and an atom of the molecule) and its last change
-  std::vector<std::map<std::size_t, std::pair<std::size_t, std::uint32_t>>> molecules(chains.size());
+  // The units of a chain are the pieces of molecules it holds: a molecule whose bond broke (an initiator split into
+  // two radicals, a scission) is two pieces, which can end up in two chains or at the two ends of one. A piece is
+  // the part of a molecule that its own bonds connect within the chain (the root of 'unitOf' per atom). Counted by
+  // molecule, a chain that two pieces of one initiator end counted one unit too few and was taken for a cycle, and the
+  // state of the groups of one piece was that of the chain of the other piece as well.
+  std::vector<std::size_t> unitOf(table.layout.numberOfAtoms, unassigned);
   for (std::size_t id = 0; Chain &chain : chains)
   {
-    for (std::uint32_t atom : chain.atoms)
+    std::vector<std::size_t> parent(chain.atoms.size());
+    std::iota(parent.begin(), parent.end(), std::size_t{0});
+    const auto root = [&](std::size_t k)
     {
-      molecules[id].try_emplace(table.layout.moleculeOf(atom), std::pair<std::size_t, std::uint32_t>{0, atom});
+      while (parent[k] != k) k = parent[k] = parent[parent[k]];
+      return k;
+    };
+    for (std::size_t k = 0; k < chain.atoms.size(); ++k)
+    {
+      for (std::size_t next : adjacency[id][k])
+      {
+        if (table.layout.moleculeOf(chain.atoms[k]) == table.layout.moleculeOf(chain.atoms[next]))
+        {
+          parent[root(k)] = root(next);
+        }
+      }
     }
-    chain.length = molecules[id].size();
+    for (std::size_t k = 0; k < chain.atoms.size(); ++k) unitOf[chain.atoms[k]] = chain.atoms[root(k)];
+    ++id;
+  }
+
+  // per chain its units (an atom of the unit -> polymer bonds) and its last change
+  std::vector<std::map<std::size_t, std::size_t>> units(chains.size());
+  for (std::size_t id = 0; Chain &chain : chains)
+  {
+    for (std::uint32_t atom : chain.atoms) units[id].try_emplace(unitOf[atom], 0uz);
+    chain.length = units[id].size();
     ++id;
   }
   for (const PolymerBond &bond : table.bonds)
@@ -200,14 +226,18 @@ std::vector<PropertyPolymerChains::Chain> PropertyPolymerChains::findChains(cons
     if (id == unassigned) continue;
     Chain &chain = chains[id];
     ++chain.polymerBonds;
-    ++molecules[id][table.layout.moleculeOf(a)].first;
-    ++molecules[id][table.layout.moleculeOf(table.layout.index(bond.b))].first;
+    ++units[id][unitOf[a]];
+    ++units[id][unitOf[table.layout.index(bond.b)]];
     chain.lastChange = std::max(chain.lastChange, bond.formedAtStep);
   }
+  // a broken bond changed the chains of both its pieces
   for (const BrokenBond &bond : table.brokenBonds)
   {
-    const std::size_t id = chainOf[table.layout.index(bond.a)];
-    if (id != unassigned) chains[id].lastChange = std::max(chains[id].lastChange, bond.brokenAtStep);
+    for (const std::size_t atom : {table.layout.index(bond.a), table.layout.index(bond.b)})
+    {
+      const std::size_t id = chainOf[atom];
+      if (id != unassigned) chains[id].lastChange = std::max(chains[id].lastChange, bond.brokenAtStep);
+    }
   }
   for (const Retyping &retyping : table.retypings)
   {
@@ -218,19 +248,21 @@ std::vector<PropertyPolymerChains::Chain> PropertyPolymerChains::findChains(cons
   for (std::size_t id = 0; Chain &chain : chains)
   {
     bool branched = false;
-    for (const auto &[molecule, entry] : molecules[id])
+    for (const auto &[unit, bonds] : units[id])
     {
-      branched = branched || entry.first > 2;
-      // the groups of the molecule: the chain is living when one is active, and their state changes are changes
-      const PolymerAtomRef ref = table.layout.ref(entry.second);
+      branched = branched || bonds > 2;
+      // the groups of the piece (those whose first atom it holds): the chain is living when one is active, and their
+      // state changes are changes
+      const PolymerAtomRef ref = table.layout.ref(static_cast<std::uint32_t>(unit));
       for (std::size_t g = 0; g < table.groupsPerMolecule[ref.componentId]; ++g)
       {
         const std::size_t group = table.groupIndex(ref.componentId, ref.moleculeIndex, g);
+        if (unitOf[table.atomOf(group, 0, components)] != unit) continue;
         chain.living = chain.living || table.active(group);
         if (table.reacted(group)) chain.lastChange = std::max(chain.lastChange, table.groupStep[group]);
       }
     }
-    // a tree of n molecules has n - 1 polymer bonds; one more (or one within a molecule) closes a cycle
+    // a tree of n pieces has n - 1 polymer bonds; one more (or one within a piece) closes a cycle
     chain.topology = chain.polymerBonds + 1 > chain.length ? Topology::Cyclic
                      : branched                            ? Topology::Branched
                                                            : Topology::Linear;

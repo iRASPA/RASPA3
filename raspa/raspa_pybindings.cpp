@@ -842,7 +842,9 @@ Framework frameworkFromCIF(const ForceField& forceField, const std::string& cont
     else
     {
       const double cutOff =
-          std::max({forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb});
+          std::max({forceField.cutOffFrameworkVDWAutomatic ? 0.0 : forceField.cutOffFrameworkVDW,
+                      forceField.cutOffMoleculeVDWAutomatic ? 0.0 : forceField.cutOffMoleculeVDW,
+                      forceField.useCharge && !forceField.cutOffCoulombAutomatic ? forceField.cutOffCoulomb : 0.0});
       cells = simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutOff);
       cells.x = std::max(cells.x, std::int32_t{1});
       cells.y = std::max(cells.y, std::int32_t{1});

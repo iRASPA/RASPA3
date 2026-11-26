@@ -1364,6 +1364,8 @@ void ParallelTMMC::runStage(SimulationStage stage, std::size_t numberOfCycles)
                 }
                 // (the pressure is sampled in the cycles its tensor was computed for)
                 system.sampleProperties(walkerId, estimation.currentBin, cycle, false, freshPressure.has_value());
+                // the force-based RDF needs the full gradients, which the moves leave out: sampled as in MonteCarlo
+                if (system.forceBasedRDFSampleDue(cycle)) system.sampleForceBasedRDFWithFullGradients(cycle, estimation.currentBin);
 
                 // analysis-property files (RDFs, density grid, histograms, molecule properties);
                 // the writers gate on their own 'writeEvery'
