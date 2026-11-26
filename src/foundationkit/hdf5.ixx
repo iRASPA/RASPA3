@@ -60,7 +60,8 @@ export class HDF5Writer
     H5::Group group = file.openGroup(groupName.c_str());
     std::vector<hsize_t> vec_hsize_t(dimensions.begin(), dimensions.end());
     H5::DataSpace dataspace(static_cast<int>(vec_hsize_t.size()), vec_hsize_t.data());
-    H5::StrType strtype(H5::PredType::C_S1, maxLength);
+    // a string type of no length is refused by HDF5 (all strings empty): one character, the terminator
+    H5::StrType strtype(H5::PredType::C_S1, std::max<size_t>(maxLength, 1));
     H5::DataSet dataset = group.createDataSet(datasetName.c_str(), strtype, dataspace);
   }
 
@@ -192,6 +193,8 @@ void HDF5Writer::writeVector(const std::string& groupName, const std::string& da
   H5::DataSpace dataspace = dataset.getSpace();
   H5::PredType datatype = getH5Type<T>();
   checkElementCount(groupName, datasetName, dataspace, data.size());
+  // nothing to write into an empty dataset (and an empty vector may have no buffer at all, which HDF5 refuses)
+  if (data.empty()) return;
   dataset.write(data.data(), datatype);
 }
 
@@ -203,6 +206,7 @@ void HDF5Writer::writeVector<bool>(const std::string& groupName, const std::stri
   H5::DataSpace dataspace = dataset.getSpace();
   H5::PredType datatype = getH5Type<bool>();
   checkElementCount(groupName, datasetName, dataspace, data.size());
+  if (data.empty()) return;
 
   // the memory type is NATIVE_HBOOL, so the buffer holds hbool_t, whatever its size in this HDF5 build (an array,
   // since hbool_t may be bool, whose std::vector has no contiguous buffer)
@@ -221,6 +225,7 @@ void HDF5Writer::writeVector<std::string>(const std::string& groupName, const st
   H5::StrType strtype = dataset.getStrType();
   size_t maxLength = strtype.getSize();
   checkElementCount(groupName, datasetName, dataspace, data.size());
+  if (data.empty()) return;
 
   std::vector<char> buffer(data.size() * maxLength, '\0');
   for (size_t i = 0; i < data.size(); ++i)

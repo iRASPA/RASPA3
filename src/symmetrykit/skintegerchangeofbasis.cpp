@@ -2,6 +2,8 @@ module;
 
 module skintegerchangeofbasis;
 
+import std;
+
 import int3;
 import int3x3;
 import double3;
@@ -15,6 +17,11 @@ SKIntegerChangeOfBasis::SKIntegerChangeOfBasis(SKTransformationMatrix inversionT
   _changeOfBasis = inversionTransformation.adjugate();
   _changeOfBasisDeterminant = inversionTransformation.determinant();
   _inverseChangeOfBasisDeterminant = 1;
+  // a singular transformation is no change of basis: every product with it divides by its determinant
+  if (_changeOfBasisDeterminant == 0)
+  {
+    throw std::invalid_argument("SKIntegerChangeOfBasis: the transformation is singular (determinant zero)");
+  }
 }
 
 SKIntegerChangeOfBasis SKIntegerChangeOfBasis::inverse()

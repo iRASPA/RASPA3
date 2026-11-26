@@ -72,6 +72,12 @@ auto CIFReader::readCIFString(const std::string& content, const ForceField& forc
     }
   }
 
+  // no cell (an empty file, or no CIF at all): the box would have no volume and no inverse
+  if (!(cif_reader.a > 0.0) || !(cif_reader.b > 0.0) || !(cif_reader.c > 0.0))
+  {
+    return std::unexpected(CIFReader::ParseError::invalidInput);
+  }
+
   SimulationBox::Type type =
       (std::abs(cif_reader.alpha - 90.0) > 1.0e-3) || (std::abs(cif_reader.beta - 90.0) > 1.0e-3) || (std::abs(cif_reader.gamma - 90.0) > 1.0e-3)
           ? SimulationBox::Type::Triclinic
@@ -208,7 +214,7 @@ void CIFReader::parseSymmetry(std::string& string)
     }
   }
 
-  if ((string == std::string("_space_group_name_H-M_alt")) ||
+  if ((string == std::string("_space_group_name_H-M_alt")) || (string == std::string("_space_group.name_H-M_alt")) ||
       (string == std::string("_symmetry_space_group_name_H-M")) ||
       (string == std::string("_symmetry.pdbx_full_space_group_name_H-M")))
   {
@@ -223,19 +229,15 @@ void CIFReader::parseSymmetry(std::string& string)
     }
   }
 
-  if (!spaceGroupHallNumber)
-  {
-    if ((string == std::string("_space_group_IT_number")) || (string == std::string("_symmetry_Int_Tables_number")) ||
-        (string == std::string("_symmetry.Int_Tables_number")))
-    {
-      spaceGroupInternationalNumber = scanInt();
-      spaceGroupHallNumber = SKSpaceGroup::HallNumberFromSpaceGroupNumber(*spaceGroupInternationalNumber);
-    }
-  }
-  else if ((string == std::string("_space_group_IT_number")) || (string == std::string("_symmetry_Int_Tables_number")) ||
-           (string == std::string("_symmetry.Int_Tables_number")))
+  // (CIF2 / DDLm names it '_space_group.IT_number')
+  if ((string == std::string("_space_group_IT_number")) || (string == std::string("_space_group.IT_number")) ||
+      (string == std::string("_symmetry_Int_Tables_number")) || (string == std::string("_symmetry.Int_Tables_number")))
   {
     spaceGroupInternationalNumber = scanInt();
+    if (!spaceGroupHallNumber)
+    {
+      spaceGroupHallNumber = SKSpaceGroup::HallNumberFromSpaceGroupNumber(*spaceGroupInternationalNumber);
+    }
   }
 }
 
@@ -680,6 +682,27 @@ std::optional<std::string> CIFReader::scanString()
   std::string tempString;
   if (scanner.scanUpToCharacters(CharacterSet::newlineCharacterSet(), tempString))
   {
+    // a '#' that starts a word outside quotes begins a comment, which is no part of the value ('P 1  # triclinic')
+    char quote = '\0';
+    for (std::size_t i = 0; i < tempString.size(); ++i)
+    {
+      const char character = tempString[i];
+      if (quote != '\0')
+      {
+        if (character == quote) quote = '\0';
+      }
+      else if (character == '\'' || character == '"')
+      {
+        quote = character;
+      }
+      else if (character == '#' && (i == 0 || std::isspace(static_cast<unsigned char>(tempString[i - 1]))))
+      {
+        tempString.erase(i);
+        break;
+      }
+    }
+    while (!tempString.empty() && std::isspace(static_cast<unsigned char>(tempString.back()))) tempString.pop_back();
+    if (tempString.empty()) return std::nullopt;
     return tempString;
   }
 

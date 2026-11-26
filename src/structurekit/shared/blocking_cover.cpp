@@ -51,7 +51,9 @@ GridBlockingCover coverPockets(uint3 gridSize, const UnitCell &unitCell,
     std::int32_t wi = ((i % nx) + nx) % nx;
     std::int32_t wj = ((j % ny) + ny) % ny;
     std::int32_t wk = ((k % nz) + nz) % nz;
-    return static_cast<std::size_t>((wk * ny + wj) * nx + wi);
+    return (static_cast<std::size_t>(wk) * static_cast<std::size_t>(ny) + static_cast<std::size_t>(wj)) *
+               static_cast<std::size_t>(nx) +
+           static_cast<std::size_t>(wi);
   };
 
   bool anyReachable = false;

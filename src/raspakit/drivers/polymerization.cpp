@@ -1093,7 +1093,8 @@ void Polymerization::writeEventFrame(std::size_t systemId, std::span<const React
     const LAMMPS::ExportFiles files =
         LAMMPS::exportSystem(system.components, system.atomData, system.atomTags, system.atomDynamics,
                              system.moleculeData, system.simulationBox, system.forceField,
-                             system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table);
+                             system.numberOfIntegerMoleculesPerComponent, system.framework, options, &table,
+                             system.spanOfGroupData(), system.spanOfFrameworkGroupData());
     std::ofstream(directory / options.dataFile) << files.data;
     std::ofstream(directory / (stem + ".in")) << files.input;
     if (!files.table.empty()) std::ofstream(directory / options.tableFile) << files.table;

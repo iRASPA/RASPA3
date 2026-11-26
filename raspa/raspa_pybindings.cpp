@@ -3703,7 +3703,12 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("property_molecule_shape", &System::propertyMoleculeShape)
       .def_ro("property_molecule_backbone", &System::propertyMoleculeBackbone)
       .def_ro("property_end_to_end_acf", &System::propertyEndToEndACF)
-      .def_ro("property_elastic_constants_fluctuation", &System::propertyElasticConstantsFluctuation)
+      .def_ro("property_elastic_constants_fluctuation", &System::propertyElasticConstantsFluctuation);
+  // bound by hand for its 'sample_every', and registered like the setters of bindGivenProperty so that a driver
+  // copies the sampled property back to the object that was given
+  copiesOfGivenProperties.emplace_back("set_property_elastic_constants_fluctuation",
+                                       &copyPropertyTo<&System::propertyElasticConstantsFluctuation>);
+  system
       .def(
           "set_property_elastic_constants_fluctuation",
           [](nanobind::handle self, nanobind::handle given, std::size_t sample_every)
@@ -3723,7 +3728,10 @@ EXPAND_MODULE(MODULE_NAME)
               throw std::invalid_argument("the elastic constants from fluctuations do not support an external field "
                                           "or polarization");
             }
-            system.propertyElasticConstantsFluctuation = property;
+            // the blocks are those of the system, whatever the given property was made with (the sampling indexes
+            // the blocks of the system)
+            system.propertyElasticConstantsFluctuation =
+                PropertyElasticConstantsFluctuation(system.averageEnergies.numberOfBlocks);
             system.elasticConstantsSampleEvery = sample_every;
             attachGivenProperty<&System::propertyElasticConstantsFluctuation>(self, name, given);
           },
@@ -3741,7 +3749,10 @@ EXPAND_MODULE(MODULE_NAME)
       .def_ro("atom_data", &System::atomData)
       .def_rw("translational_degrees_of_freedom", &System::translationalDegreesOfFreedom)
       .def_rw("rotational_degrees_of_freedom", &System::rotationalDegreesOfFreedom)
-      .def_rw("time_step", &System::timeStep)
+      .def_prop_rw(
+          "time_step", [](const System& system) { return system.timeStep; },
+          [](System& system, double dt) { system.setTimeStep(dt); },
+          "The MD time step [ps]; set, it is also that of the thermostat, the barostat and the correlation functions.")
       .def("write_mc_move_statistics", &System::writeMCMoveStatistics)
       .def_ro("temperature", &System::temperature, "The external temperature [K].")
       .def_prop_rw(

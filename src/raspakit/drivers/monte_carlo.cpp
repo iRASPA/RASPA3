@@ -85,6 +85,8 @@ MonteCarlo::MonteCarlo(const SimulationSchedule &schedule, const std::vector<Sys
       outputJsons(systems.size()),
       estimation(numberOfBlocks, schedule.numberOfProductionCycles)
 {
+  // every stage reads the components of the first system
+  if (this->systems.empty()) throw std::invalid_argument("MonteCarlo: no systems given\n");
   // the block of a sample comes from 'estimation': the systems must hold as many blocks of averages
   for (const System& system : this->systems)
   {

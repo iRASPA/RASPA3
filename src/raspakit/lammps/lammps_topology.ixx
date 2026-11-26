@@ -152,10 +152,14 @@ struct Topology
 /// plus one, so an atom keeps its id across frames whatever is inserted or deleted around it.
 /// 'polymerLinks': the polymer overlay to merge (its derived term lists must be current, see
 /// PolymerLinkTable::rebuild); none to export the component topology only.
+/// 'groupData', 'frameworkGroupData': the states of the rigid fragments of the semi-flexible molecules and of the rigid
+/// groups of a mixed framework (System::groupData, frameworkGroupData), whose atoms move with them: their velocities
+/// are those of the bodies (the atoms carry none of their own).
 Topology buildTopology(std::span<const Component> components, std::span<const Atom> atomData,
                        std::span<const std::uint32_t> atomTags, std::span<const AtomDynamics> atomDynamics,
                        std::span<const Molecule> moleculeData, const SimulationBox& simulationBox,
                        const ForceField& forceField, std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
                        const std::optional<Framework>& framework, ExportOptions options = {},
-                       const PolymerLinkTable* polymerLinks = nullptr);
+                       const PolymerLinkTable* polymerLinks = nullptr, std::span<const GroupState> groupData = {},
+                       std::span<const GroupState> frameworkGroupData = {});
 }  // namespace LAMMPS

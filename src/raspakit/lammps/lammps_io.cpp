@@ -536,11 +536,13 @@ ExportFiles exportSystem(std::span<const Component> components, std::span<const 
                          const ForceField& forceField,
                          std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
                          const std::optional<Framework>& framework, ExportOptions options,
-                         const PolymerLinkTable* polymerLinks)
+                         const PolymerLinkTable* polymerLinks, std::span<const GroupState> groupData,
+                         std::span<const GroupState> frameworkGroupData)
 {
   Topology topology =
       buildTopology(components, atomData, atomTags, atomDynamics, moleculeData, simulationBox, forceField,
-                    numberOfIntegerMoleculesPerComponent, framework, std::move(options), polymerLinks);
+                    numberOfIntegerMoleculesPerComponent, framework, std::move(options), polymerLinks, groupData,
+                    frameworkGroupData);
   ExportFiles files{};
   files.data = writeDataFile(topology);
   files.input = writeInputScript(topology);

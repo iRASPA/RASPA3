@@ -265,3 +265,51 @@ data_second
   EXPECT_EQ(static_cast<std::size_t>(definedAtoms[0].type), forceField.findPseudoAtom("Si").value());
   EXPECT_EQ(static_cast<std::size_t>(definedAtoms[1].type), forceField.findPseudoAtom("O").value());
 }
+
+// The space group by its number or its H-M symbol under the CIF2 (DDLm) names '_space_group.IT_number' and
+// '_space_group.name_H-M_alt', and an H-M symbol with a comment after it: each fell back to P 1, and the
+// symmetry-equivalent atoms were dropped.
+TEST(cif_reader, space_group_under_the_cif2_names_and_before_a_comment)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+  std::vector<std::size_t> numbers;
+  for (const std::string line : {"_space_group_name_H-M_alt 'P m -3 m'", "_space_group.name_H-M_alt 'P m -3 m'",
+                                 "_space_group.IT_number 221", "_space_group_name_H-M_alt 'P m -3 m'  # cubic"})
+  {
+    const std::string cif = std::format(R"(
+data_test
+_cell_length_a 10.0
+_cell_length_b 10.0
+_cell_length_c 10.0
+_cell_angle_alpha 90.0
+_cell_angle_beta 90.0
+_cell_angle_gamma 90.0
+{}
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Si1 Si 0.1 0.2 0.3
+)",
+                                        line);
+    const auto parsed = CIFReader::readCIFString(cif, forceField, CIFReader::UseChargesFrom::CIF_File);
+    ASSERT_TRUE(parsed.has_value()) << line;
+    numbers.push_back(std::get<1>(parsed.value()));
+  }
+  EXPECT_NE(numbers[0], 1uz);
+  for (std::size_t number : numbers) EXPECT_EQ(number, numbers[0]);
+}
+
+// A file without a cell (empty, or no CIF at all) is refused: it gave a box of zero lengths, without an inverse.
+TEST(cif_reader, a_file_without_a_cell_is_invalid_input)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+  for (const std::string cif : {std::string{}, std::string{"not a cif file\n"}})
+  {
+    const auto parsed = CIFReader::readCIFString(cif, forceField, CIFReader::UseChargesFrom::CIF_File);
+    ASSERT_FALSE(parsed.has_value());
+    EXPECT_EQ(parsed.error(), CIFReader::ParseError::invalidInput);
+  }
+}

@@ -22,6 +22,12 @@ import mc_moves_probabilities;
 import mc_moves_move_types;
 import minimization;
 import minimization_options;
+import monte_carlo;
+import simulation_schedule;
+import molecular_dynamics;
+import thermostat;
+import property_elastic_constants_fluctuation;
+import write_lammps_data;
 
 // A light rigid body whose moments lie between the zero thresholds of the two counts: the inverse inertia zeroes an
 // axis below max(1e-2, S) * 1e-5, and the degrees of freedom were counted against S * 1e-5, or against 1e-5 when the
@@ -207,4 +213,51 @@ TEST(SIMULATION_SETUP_FIXES, minimization_refuses_fixed_bonds_between_flexible_a
 
   Minimization minimization(MinimizationOptions{}, {system});
   EXPECT_THROW(minimization.setup(), std::runtime_error);
+}
+
+// The stress-fluctuation property keeps blocks as the averages of the system do: one made with another number of
+// blocks was taken as it was, and the sampling of a block past its last wrote past its end; the system now reports
+// it as not sized and sizes it with the rest.
+TEST(SIMULATION_SETUP_FIXES, elastic_constants_property_follows_the_blocks_of_the_system)
+{
+  const ForceField forceField({{"Ar", false, 39.948, 0.0, 0.0, 18, false}}, {VDWParameters(119.8, 3.4)},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  const Component argon(forceField, "argon", 150.86, 4.898e6, -0.00219,
+                        {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 8, 21);
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {argon}, {}, {2}, 8);
+  ASSERT_TRUE(system.hasNumberOfBlocks(8));
+  system.propertyElasticConstantsFluctuation = PropertyElasticConstantsFluctuation(5);
+  EXPECT_FALSE(system.hasNumberOfBlocks(8));
+  system.setNumberOfBlocks(8);
+  EXPECT_EQ(system.propertyElasticConstantsFluctuation->numberOfBlocks, 8uz);
+  EXPECT_TRUE(system.hasNumberOfBlocks(8));
+}
+
+// The thermostat, the barostat and the correlation functions keep a copy of the time step: set on the system alone,
+// the chains were integrated with another time step than the particles.
+TEST(SIMULATION_SETUP_FIXES, the_time_step_of_a_system_is_that_of_its_thermostat_and_barostat)
+{
+  const ForceField forceField({{"Ar", false, 39.948, 0.0, 0.0, 18, false}}, {VDWParameters(119.8, 3.4)},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  const Component argon(forceField, "argon", 150.86, 4.898e6, -0.00219,
+                        {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21);
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {argon}, {}, {2}, 5);
+  system.setThermostat(Thermostat(300.0, system.timeStep, 3, 0, 5, 5, 0.15));
+  system.setThermobarostat(Thermobarostat(MolecularDynamicsEnsemble::NPT, CellMinimizationType::Isotropic,
+                                          MonoclinicAngleType::Beta, 300.0, 1e5, system.timeStep, 3));
+  system.setTimeStep(0.002);
+  EXPECT_EQ(system.timeStep, 0.002);
+  EXPECT_EQ(system.thermostat->timeStep, 0.002);
+  EXPECT_EQ(system.thermobarostat->timeStep, 0.002);
+  EXPECT_THROW(system.setTimeStep(0.0), std::invalid_argument);
+}
+
+// A driver without systems reads the components of the first one at every stage, and a LAMMPS writer every zero
+// cycles divides by zero: both are refused when they are made.
+TEST(SIMULATION_SETUP_FIXES, drivers_without_systems_and_writers_without_an_interval_are_refused)
+{
+  const SimulationSchedule schedule{20, 0, 3, 3, 1000, 10000, 5000, 5000};
+  EXPECT_THROW((MonteCarlo(schedule, std::vector<System>{}, 47uz, 5, false)), std::invalid_argument);
+  EXPECT_THROW((MolecularDynamics(schedule, std::vector<System>{}, 47uz, 5, false)), std::invalid_argument);
+  EXPECT_THROW(WriteLammpsData(0, 0), std::invalid_argument);
 }

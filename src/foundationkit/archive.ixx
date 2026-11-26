@@ -235,6 +235,8 @@ class Archive
   {
     std::size_t len;
     *this >> len;
+    // (an element takes at least one byte of the stream)
+    requireBytes(len, is_bulk_serializable_v<T> ? sizeof(T) : 1);
     if constexpr (is_bulk_serializable_v<T>)
     {
       v.resize(len);
@@ -381,6 +383,7 @@ class Archive
   {
     std::size_t len;
     *this >> len;
+    requireBytes(len, 1);
     // sized once and read in one call (it was appended in 256-byte pieces through a temporary string each)
     v.resize(len);
     if (len != 0) stream.read(v.data(), static_cast<std::streamsize>(len));
@@ -398,6 +401,23 @@ class Archive
 
  private:
   STREAM& stream;
+
+  // A length read from the stream is checked before anything is allocated or read for it: 'count' elements of
+  // 'size' bytes have to fit in a stream size and in what is left of the stream (a corrupted length allocated
+  // terabytes, or overflowed the size of the read).
+  void requireBytes(std::size_t count, std::size_t size)
+  {
+    if (size != 0 && count > static_cast<std::size_t>(std::numeric_limits<std::streamsize>::max()) / size)
+    {
+      throw std::runtime_error("malformed data");
+    }
+    const auto position = stream.tellg();
+    if (position == decltype(position)(-1)) return;  // not seekable: the read itself fails
+    stream.seekg(0, std::ios::end);
+    const auto end = stream.tellg();
+    stream.seekg(position);
+    if (end - position < static_cast<std::streamoff>(count * size)) throw std::runtime_error("malformed data");
+  }
 };
 
 // Byte-order marker at the start of every binary restart file. The archive format uses the

@@ -1245,6 +1245,7 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
 {
   double3x3 translationsnew = double3x3();
 
+  if (HallNumber >= SKSpaceGroupDataBase::spaceGroupData.size()) return std::nullopt;
   const SKSpaceGroupSetting& setting = SKSpaceGroupDataBase::spaceGroupData[HallNumber];
 
   // the operations must have the order of the candidate: its generators are found in every supergroup as well, and

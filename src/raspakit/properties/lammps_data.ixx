@@ -31,14 +31,20 @@ export struct WriteLammpsData
 
   /**
    * \brief Write data to LAMMPS file.
+   *
+   * The files are named after 'systemId', the index of the system that writes (and not the 'systemId' the writer was
+   * made for: the replicas of a parallel-tempering, TMMC or thermodynamic-integration driver are copies of one system,
+   * and wrote to one set of files from as many threads).
    */
-  void update(std::size_t currentCycle, std::span<const Component> components, std::span<const Atom> atomData,
-              std::span<const std::uint32_t> atomTags, std::span<const AtomDynamics> atomDynamics,
-              std::span<const Molecule> moleculeData, const SimulationBox simulationBox, const ForceField forceField,
+  void update(std::size_t systemId, std::size_t currentCycle, std::span<const Component> components,
+              std::span<const Atom> atomData, std::span<const std::uint32_t> atomTags,
+              std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
+              std::span<const GroupState> groupData, std::span<const GroupState> frameworkGroupData,
+              const SimulationBox simulationBox, const ForceField forceField,
               std::vector<std::size_t> numberOfIntegerMoleculesPerComponent, std::optional<Framework> framework);
 
   std::size_t sampleEvery{10};  ///< Writing frequency.
-  std::size_t systemId{0};      ///< Necessary for determining filename.
+  std::size_t systemId{0};      ///< The system the writer was made for.
 
   int modelNumber{1};
 

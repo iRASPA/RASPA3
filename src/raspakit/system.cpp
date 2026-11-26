@@ -809,8 +809,9 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
 
   if (writeLammpsData.has_value())
   {
-    writeLammpsData->update(currentCycle, components, atomData, atomTags, atomDynamics, moleculeData, simulationBox,
-                            forceField, numberOfIntegerMoleculesPerComponent, framework);
+    writeLammpsData->update(systemId, currentCycle, components, atomData, atomTags, atomDynamics, moleculeData,
+                            spanOfGroupData(), spanOfFrameworkGroupData(), simulationBox, forceField,
+                            numberOfIntegerMoleculesPerComponent, framework);
   }
 
   if (propertyConventionalRadialDistributionFunction.has_value())
@@ -1867,7 +1868,9 @@ bool System::hasNumberOfBlocks(std::size_t blocks) const
                                auto sized = [&](const PropertyLambdaProbabilityHistogram& histogram)
                                { return histogram.numberOfSamplePoints == 0uz || histogram.numberOfBlocks == blocks; };
                                return sized(reaction.lambda) && sized(reaction.lambdaProductSide);
-                             });
+                             }) &&
+         (!propertyElasticConstantsFluctuation.has_value() ||
+          propertyElasticConstantsFluctuation->numberOfBlocks == blocks);
 }
 
 void System::setNumberOfBlocks(std::size_t blocks)
@@ -1875,6 +1878,8 @@ void System::setNumberOfBlocks(std::size_t blocks)
   if (blocks == 0uz) throw std::invalid_argument("System: the number of blocks must be positive");
 
   for (Component& component : components) component.setNumberOfBlocks(blocks);
+  if (propertyElasticConstantsFluctuation.has_value() && propertyElasticConstantsFluctuation->numberOfBlocks != blocks)
+    propertyElasticConstantsFluctuation = PropertyElasticConstantsFluctuation(blocks);
   for (Reaction& reaction : reactions.list)
   {
     if (reaction.lambda.numberOfSamplePoints != 0uz) reaction.lambda.setNumberOfBlocks(blocks);
@@ -1905,8 +1910,18 @@ void System::setNumberOfBlocks(std::size_t blocks)
     setPropertyConventionalRDF(std::optional(*propertyConventionalRadialDistributionFunction));
   if (propertyRadialDistributionFunction.has_value())
     setPropertyRDF(std::optional(*propertyRadialDistributionFunction));
-  if (propertyElasticConstantsFluctuation.has_value())
-    propertyElasticConstantsFluctuation = PropertyElasticConstantsFluctuation(blocks);
+}
+
+void System::setTimeStep(double dt)
+{
+  if (!(dt > 0.0) || !std::isfinite(dt)) throw std::invalid_argument("System: the time step must be positive");
+  timeStep = dt;
+  if (thermostat.has_value()) thermostat->timeStep = dt;
+  if (thermobarostat.has_value()) thermobarostat->timeStep = dt;
+  if (propertyMSD.has_value()) propertyMSD->timeStep = dt;
+  if (propertyVACF.has_value()) propertyVACF->timeStep = dt;
+  // (a time step of zero makes the end-to-end autocorrelation function report its lags in cycles)
+  if (propertyEndToEndACF.has_value() && propertyEndToEndACF->timeStep > 0.0) propertyEndToEndACF->timeStep = dt;
 }
 
 void System::setThermostat(const std::optional<Thermostat>& thermo)

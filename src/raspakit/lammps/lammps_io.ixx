@@ -48,7 +48,8 @@ ExportFiles exportSystem(std::span<const Component> components, std::span<const 
                          const ForceField& forceField,
                          std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
                          const std::optional<Framework>& framework, ExportOptions options = {},
-                         const PolymerLinkTable* polymerLinks = nullptr);
+                         const PolymerLinkTable* polymerLinks = nullptr, std::span<const GroupState> groupData = {},
+                         std::span<const GroupState> frameworkGroupData = {});
 }  // namespace LAMMPS
 
 export namespace IO

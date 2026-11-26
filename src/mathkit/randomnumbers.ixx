@@ -123,6 +123,11 @@ export struct RandomNumber
     double total = 0.0;
     for (std::size_t i = 0; i < n; ++i)
     {
+      // a negative weight makes the sums fall, which the search for the draw assumes they never do
+      if (!(weights[i] >= 0.0))
+      {
+        throw std::invalid_argument("RandomNumber::categoricalDistribution: the weights must not be negative");
+      }
       total += weights[i];
       cumulative[i] = total;
     }

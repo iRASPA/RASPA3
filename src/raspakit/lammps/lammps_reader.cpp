@@ -142,6 +142,7 @@ struct DataFile
 struct InputScript
 {
   std::string units{"real"};
+  std::optional<std::string> atomStyle{};  ///< 'atom_style': the columns of the Atoms section without a style comment
   StyleSpec bond{}, angle{}, dihedral{}, improper{}, pair{};
   bool haveBond{false}, haveAngle{false}, haveDihedral{false}, haveImproper{false}, havePair{false};
   std::string mixing{};  ///< geometric (LAMMPS default), arithmetic, sixthpower
@@ -334,10 +335,17 @@ InputScript readInputScript(const std::filesystem::path &path, std::vector<std::
       for (const auto &[name, value] : variables)
       {
         if (words[i] == "v_" + name) words[i] = value;
-        const std::string reference = "${" + name + "}";
-        for (std::size_t at = words[i].find(reference); at != std::string::npos; at = words[i].find(reference))
+        // the search goes on after the value put in: a value that holds the reference itself ('${dir}/out' for
+        // 'dir') was expanded forever. A variable of one letter is also referenced as '$x'.
+        for (const std::string& reference :
+             name.size() == 1 ? std::vector<std::string>{"${" + name + "}", "$" + name}
+                              : std::vector<std::string>{"${" + name + "}"})
         {
-          words[i].replace(at, reference.size(), value);
+          for (std::size_t at = words[i].find(reference); at != std::string::npos;
+               at = words[i].find(reference, at + value.size()))
+          {
+            words[i].replace(at, reference.size(), value);
+          }
         }
       }
     }
@@ -346,6 +354,11 @@ InputScript readInputScript(const std::filesystem::path &path, std::vector<std::
         (words[2] == "equal" || words[2] == "index" || words[2] == "string"))
     {
       variables[words[1]] = words[3];
+      continue;
+    }
+    if (command == "atom_style" && words.size() > 1)
+    {
+      script.atomStyle = words[1];
       continue;
     }
     if (command == "timestep" && words.size() > 1 && isNumber(words[1]))
@@ -535,9 +548,12 @@ InputScript readInputScript(const std::filesystem::path &path, std::vector<std::
   return script;
 }
 
-DataFile readData(const std::filesystem::path &path, std::vector<std::string> &warnings)
+DataFile readData(const std::filesystem::path &path, std::vector<std::string> &warnings,
+                  const std::optional<std::string> &atomStyle)
 {
   DataFile data;
+  // the style of the script, unless the Atoms section names its own
+  if (atomStyle.has_value()) data.atomStyle = *atomStyle;
   std::ifstream file(path);
   if (!file) throw std::runtime_error(std::format("[LAMMPS reader] cannot open data file '{}'", path.string()));
 
@@ -818,7 +834,7 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
   ReadResult result;
   InputScript script;
   if (inputScript) script = readInputScript(*inputScript, result.warnings);
-  DataFile data = readData(dataFile, result.warnings);
+  DataFile data = readData(dataFile, result.warnings, script.atomStyle);
 
   const double unitFactor = energyToKelvinFactor(script.units, result.warnings);
 
@@ -1555,6 +1571,60 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
         term = fixedReference(term, phi);
         definition["Torsions"].push_back(
             {{quadruple[0], quadruple[1], quadruple[2], quadruple[3]}, term.type, term.parameters});
+      }
+    }
+    // The component reader asks a potential of every bend and torsion of the bond graph; LAMMPS has none for an
+    // angle or dihedral the file leaves out, which is no force at all. Those get a potential without energy (left
+    // out, the component of the file was refused).
+    if (!tpl.bonds.empty())
+    {
+      std::vector<std::set<std::size_t>> neighbours(tpl.pseudoAtomIndex.size());
+      for (const std::array<std::size_t, 3> &bond : tpl.bonds)
+      {
+        neighbours[bond[0]].insert(bond[1]);
+        neighbours[bond[1]].insert(bond[0]);
+      }
+      const auto defined = [&](const char *key)
+      {
+        std::set<std::vector<std::size_t>> listed;
+        if (definition.contains(key))
+        {
+          for (const auto &item : definition[key])
+          {
+            std::vector<std::size_t> ids = item[0].get<std::vector<std::size_t>>();
+            listed.insert(ids);
+            std::ranges::reverse(ids);
+            listed.insert(ids);
+          }
+        }
+        return listed;
+      };
+      const std::set<std::vector<std::size_t>> bends = defined("Bends");
+      for (std::size_t b = 0; b < neighbours.size(); ++b)
+      {
+        for (std::size_t a : neighbours[b])
+        {
+          for (std::size_t c : neighbours[b])
+          {
+            if (a >= c || bends.contains({a, b, c})) continue;
+            if (!definition.contains("Bends")) definition["Bends"] = nlohmann::json::array();
+            definition["Bends"].push_back({{a, b, c}, "HARMONIC", {0.0, 0.0}});
+          }
+        }
+      }
+      const std::set<std::vector<std::size_t>> torsions = defined("Torsions");
+      for (const std::array<std::size_t, 3> &bond : tpl.bonds)
+      {
+        const std::size_t b = bond[0], c = bond[1];
+        for (std::size_t a : neighbours[b])
+        {
+          for (std::size_t d : neighbours[c])
+          {
+            if (a == c || d == b || a == d || torsions.contains({a, b, c, d})) continue;
+            if (!definition.contains("Torsions")) definition["Torsions"] = nlohmann::json::array();
+            definition["Torsions"].push_back({{a, b, c, d}, "THREE_COSINE", {0.0, 0.0, 0.0}});
+          }
+        }
       }
     }
     if (!tpl.bonds.empty())

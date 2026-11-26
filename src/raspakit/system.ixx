@@ -1737,6 +1737,9 @@ export struct System
 
   void setPropertyConventionalRDF(const std::optional<PropertyConventionalRadialDistributionFunction>& rdf);
   void setPropertyRDF(const std::optional<PropertyRadialDistributionFunction>& rdf);
+  /// Sets the MD time step, also of the thermostat, the thermobarostat and the correlation functions that were set
+  /// up with the time step before (each keeps a copy of it).
+  void setTimeStep(double dt);
   void setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement>& msd);
   void setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction>& vacf);
   void setPropertyRadicalWaitingTimes(const std::optional<PropertyRadicalWaitingTimes>& property);

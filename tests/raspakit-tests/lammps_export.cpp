@@ -2080,3 +2080,80 @@ Bonds
                                     { return warning.contains("velocity ... create"); }));
   }
 }
+
+// A molecular data file without an Atoms style comment takes the columns of the script's 'atom_style' (it was read
+// as 'full', the molecule id as a charge, every coordinate one column off); a variable whose value names itself is
+// expanded once (it was expanded forever); and the angles and dihedrals that the file leaves out, which LAMMPS
+// evaluates as no force, get potentials without energy: without them the component was refused by RASPA.
+TEST(lammps_export, reader_takes_the_atom_style_of_the_script_and_completes_the_bond_graph)
+{
+  const std::string data = R"(LAMMPS data file
+
+4 atoms
+3 bonds
+2 atom types
+1 bond types
+
+0.0 20.0 xlo xhi
+0.0 20.0 ylo yhi
+0.0 20.0 zlo zhi
+
+Masses
+
+1 12.0
+2 16.0
+
+Pair Coeffs
+
+1 0.1 3.4
+2 0.2 3.0
+
+Bond Coeffs
+
+1 300.0 1.5
+
+Atoms
+
+1 1 1 5.0 5.0 5.0 0 0 0
+2 1 1 6.5 5.0 5.0 0 0 0
+3 1 2 7.2 6.2 5.0 0 0 0
+4 1 1 8.7 6.2 5.0 0 0 0
+
+Bonds
+
+1 1 1 2
+2 1 2 3
+3 1 3 4
+)";
+  const std::string input = R"(units real
+atom_style molecular
+variable a string ${a}/out
+variable s equal 2.0
+pair_style lj/cut 12.0
+bond_style harmonic
+timestep $s
+read_data chain.data
+)";
+  TemporaryDirectory directory;
+  const std::filesystem::path dataPath = directory.path / "chain.data";
+  const std::filesystem::path inputPath = directory.path / "chain.in";
+  std::ofstream(dataPath) << data;
+  std::ofstream(inputPath) << input;
+
+  const LAMMPS::ReadResult read = LAMMPS::readDataFile(dataPath, inputPath);
+  ASSERT_EQ(read.positions.size(), 4u);
+  EXPECT_NEAR(read.positions[1][0], 6.5, 1e-9);
+  EXPECT_NEAR(read.positions[2][1], 6.2, 1e-9);
+  ASSERT_EQ(read.components.size(), 1u);
+  const nlohmann::json &definition = read.components[0].definition;
+  ASSERT_EQ(definition["Bends"].size(), 2u);
+  ASSERT_EQ(definition["Torsions"].size(), 1u);
+
+  // (the pseudo atoms are named after the LAMMPS types)
+  const ForceField forceField({{"T1", false, 12.0, 0.0, 0.0, 6, true}, {"T2", false, 16.0, 0.0, 0.0, 8, true}},
+                              {{120.0, 3.4}, {80.0, 3.0}}, ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0,
+                              false, false, false);
+  Component reread = readComponent(forceField, definition, "chain-without-angles");
+  EXPECT_EQ(reread.intraMolecularPotentials.bends.size(), 2u);
+  EXPECT_EQ(reread.intraMolecularPotentials.torsions.size(), 1u);
+}

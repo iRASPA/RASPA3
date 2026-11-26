@@ -168,12 +168,17 @@ class ThreadPool
       return;
     }
 
-    // Already running: the workers hold references into tasks_, so it cannot be rebuilt and
-    // the existing thread count stays authoritative. Only the threading type is updated.
+    // Already running with the requested number of workers: nothing to start. With another number the workers are
+    // stopped (after the tasks in flight) and started anew: the workers hold references into tasks_, which is rebuilt
+    // only once none of them runs. Kept as they were, a later request for another number of threads was ignored.
     if (!threads_.empty())
     {
-      number_of_threads = threads_.size();
-      return;
+      if (threads_.size() == requested - 1)
+      {
+        number_of_threads = threads_.size();
+        return;
+      }
+      stop_workers();
     }
 
     number_of_threads = requested - 1;
@@ -189,6 +194,7 @@ class ThreadPool
         threads_.emplace_back(
             [&, id = current_id, init](const std::stop_token &stop_tok)
             {
+              is_worker_ = true;
               init(id);
               do
               {
@@ -257,18 +263,7 @@ class ThreadPool
     if (number_of_threads == 0) threadingType = ThreadingType::Serial;
   }
 
-  ~ThreadPool()
-  {
-    wait_for_tasks();
-
-    // stop all threads
-    for (std::size_t i = 0; i < threads_.size(); ++i)
-    {
-      threads_[i].request_stop();
-      tasks_[i].signal.release();
-      threads_[i].join();
-    }
-  }
+  ~ThreadPool() { stop_workers(); }
 
   /// thread pool is non-copyable
   ThreadPool(const ThreadPool &) = delete;
@@ -386,6 +381,8 @@ class ThreadPool
    */
   void wait_for_tasks()
   {
+    // the task that calls it is in flight itself: a worker would wait for its own end
+    if (is_worker_) throw std::logic_error("ThreadPool: wait_for_tasks() called from a task of the pool");
     // Block while any task is still in flight. Waiting on the counter itself (rather than a
     // semaphore released by the workers) cannot leave a stale permit behind: a wake-up is only
     // meaningful if the counter actually changed, and the loop re-checks it.
@@ -398,6 +395,27 @@ class ThreadPool
 
  private:
   ThreadPool() : tasks_() {};
+
+  /// Waits for the tasks in flight and stops and joins every worker.
+  void stop_workers()
+  {
+    wait_for_tasks();
+    for (std::size_t i = 0; i < threads_.size(); ++i)
+    {
+      threads_[i].request_stop();
+      tasks_[i].signal.release();
+      threads_[i].join();
+    }
+    threads_.clear();
+    while (priority_queue_.pop_front().has_value())
+    {
+    }
+  }
+
+  /// Set on the threads of the pool: a task they enqueue runs at once on the same thread. Queued, a task that waits
+  /// for the tasks it enqueued (a nested parallel loop, a future it gets) blocked a worker that its own tasks may need,
+  /// and with a single worker it waited for itself forever.
+  static inline thread_local bool is_worker_{false};
 
   std::size_t number_of_threads{0};
   ThreadingType threadingType{ThreadingType::Serial};
@@ -418,7 +436,8 @@ class ThreadPool
     // dropped task made the future throw broken_promise); the workers of a pool switched to serial afterwards
     // (they cannot be stopped while running) receive no more work
     std::optional<std::size_t> i_opt{};
-    if (threadingType == ThreadingType::ThreadPool) i_opt = priority_queue_.copy_front_and_rotate_to_back();
+    if (threadingType == ThreadingType::ThreadPool && !is_worker_)
+      i_opt = priority_queue_.copy_front_and_rotate_to_back();
     if (!i_opt.has_value())
     {
       std::invoke(std::forward<Function>(f));
@@ -427,7 +446,17 @@ class ThreadPool
     auto i = *(i_opt);
     unassigned_tasks_.fetch_add(1, std::memory_order_relaxed);
     in_flight_tasks_.fetch_add(1, std::memory_order_relaxed);
-    tasks_[i].tasks.push_back(std::forward<Function>(f));
+    try
+    {
+      tasks_[i].tasks.push_back(std::forward<Function>(f));
+    }
+    catch (...)
+    {
+      // not queued (an allocation failed): not to be waited for, or wait_for_tasks() and the destructor never return
+      unassigned_tasks_.fetch_sub(1, std::memory_order_relaxed);
+      task_completed();
+      throw;
+    }
     tasks_[i].signal.release();
   }
 

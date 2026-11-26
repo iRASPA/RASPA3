@@ -10,6 +10,7 @@ import double3x3;
 import unit_cell;
 import brute_force_structure;
 import structure_parallel;
+import grid_connected_components;
 
 namespace
 {
@@ -27,16 +28,32 @@ struct PeriodicUnionFind
     std::iota(parent.begin(), parent.end(), std::size_t{0});
   }
 
-  // The root of a voxel's piece and the translation to it, flattening the tree as it goes.
+  // The root of a voxel's piece and the translation to it, flattening the tree as it goes. A walk and not a
+  // recursion: a fine grid chains a million voxels along a slit before the first flattening, deeper than the stack.
   std::pair<std::size_t, int3> find(std::size_t node)
   {
-    if (parent[node] == node) return {node, int3(0, 0, 0)};
+    std::size_t root = node;
+    int3 total(0, 0, 0);
+    while (parent[root] != root)
+    {
+      total = int3(total.x + offset[root].x, total.y + offset[root].y, total.z + offset[root].z);
+      root = parent[root];
+    }
 
-    auto [root, toRoot] = find(parent[node]);
-    int3 total(offset[node].x + toRoot.x, offset[node].y + toRoot.y, offset[node].z + toRoot.z);
+    std::size_t walk = node;
+    int3 remaining = total;
+    while (parent[walk] != walk)
+    {
+      std::size_t next = parent[walk];
+      int3 step = offset[walk];
 
-    parent[node] = root;
-    offset[node] = total;
+      parent[walk] = root;
+      offset[walk] = remaining;
+
+      remaining = int3(remaining.x - step.x, remaining.y - step.y, remaining.z - step.z);
+      walk = next;
+    }
+
     return {root, total};
   }
 
@@ -67,39 +84,6 @@ struct PeriodicUnionFind
   }
 };
 
-// How many independent directions a set of integer vectors spans, by elimination over the integers so that
-// no tolerance has to be chosen.
-std::size_t latticeRank(std::vector<int3> vectors)
-{
-  std::array<std::array<std::int64_t, 3>, 3> rows{};
-  std::size_t rank = 0;
-
-  for (const int3 &vector : vectors)
-  {
-    std::array<std::int64_t, 3> row{vector.x, vector.y, vector.z};
-
-    for (std::size_t pivot = 0; pivot < rank; ++pivot)
-    {
-      // Find the column this pivot row leads in and clear it, working in integers by cross-multiplying.
-      std::size_t column = 0;
-      while (column < 3 && rows[pivot][column] == 0) ++column;
-      if (column == 3 || row[column] == 0) continue;
-
-      std::int64_t a = rows[pivot][column];
-      std::int64_t b = row[column];
-      for (std::size_t c = 0; c < 3; ++c) row[c] = row[c] * a - rows[pivot][c] * b;
-    }
-
-    if (row[0] != 0 || row[1] != 0 || row[2] != 0)
-    {
-      rows[rank] = row;
-      ++rank;
-      if (rank == 3) break;
-    }
-  }
-
-  return rank;
-}
 }  // namespace
 
 double3 BruteForceVoxels::fractionalCentre(std::size_t index) const
@@ -352,14 +336,14 @@ BruteForceVoxels BruteForceVoxels::build(const BruteForceStructure &structure, d
         {
           if (span.basis.size() == 3) break;
           span.basis.push_back(vector);
-          if (latticeRank(span.basis) != span.basis.size()) span.basis.pop_back();
+          if (static_cast<std::size_t>(latticeVectorRank(span.basis)) != span.basis.size()) span.basis.pop_back();
         }
         span.numberOfCycles = cycles.size();
       }
       if (span.basis.size() == 3) return std::nullopt;
       std::vector<int3> extended = span.basis;
       extended.push_back(between);
-      if (latticeRank(extended) == span.basis.size()) return std::nullopt;
+      if (static_cast<std::size_t>(latticeVectorRank(extended)) == span.basis.size()) return std::nullopt;
       return between;
     };
 
@@ -494,7 +478,7 @@ BruteForceVoxels BruteForceVoxels::build(const BruteForceStructure &structure, d
     if (inserted)
     {
       BruteForceRegion region;
-      region.dimensionality = latticeRank(pieces.cycles[root]);
+      region.dimensionality = static_cast<std::size_t>(latticeVectorRank(pieces.cycles[root]));
       region.percolates = region.dimensionality > 0;
       region.deepestVoxel = voxel;
       region.deepestClearance = self.clearance[voxel];

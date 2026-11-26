@@ -714,6 +714,8 @@ MolecularDynamics::MolecularDynamics(const SimulationSchedule& schedule, const s
       outputJsons(systems.size()),
       estimation(numberOfBlocks, schedule.numberOfProductionCycles)
 {
+  // every stage reads the components of the first system
+  if (this->systems.empty()) throw std::invalid_argument("MolecularDynamics: no systems given\n");
   // the block of a sample comes from 'estimation': the systems must hold as many blocks of averages
   for (const System& system : this->systems)
   {
@@ -1027,7 +1029,7 @@ void MolecularDynamics::preInitialize(std::function<void()> call_back_function, 
       }
     }
 
-    if (currentCycle % callBackEvery == 0uz)
+    if (callBackEvery != 0uz && currentCycle % callBackEvery == 0uz)
     {
       if (call_back_function)
       {
@@ -1121,7 +1123,7 @@ void MolecularDynamics::initialize(std::function<void()> call_back_function, std
       }
     }
 
-    if (currentCycle % callBackEvery == 0uz)
+    if (callBackEvery != 0uz && currentCycle % callBackEvery == 0uz)
     {
       if (call_back_function)
       {
@@ -1252,7 +1254,7 @@ void MolecularDynamics::equilibrate(std::function<void()> call_back_function, st
       }
     }
 
-    if (currentCycle % callBackEvery == 0uz)
+    if (callBackEvery != 0uz && currentCycle % callBackEvery == 0uz)
     {
       if (call_back_function)
       {
@@ -1462,7 +1464,7 @@ void MolecularDynamics::production(std::function<void()> call_back_function, std
       }
     }
 
-    if (currentCycle % callBackEvery == 0uz)
+    if (callBackEvery != 0uz && currentCycle % callBackEvery == 0uz)
     {
       if (call_back_function)
       {

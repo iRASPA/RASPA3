@@ -102,7 +102,9 @@ bool Scanner::scanUpToCharacters(const CharacterSet& set, std::string& into)
   found = find_first_of(set.string(), _string, _scanLocation);
   into = std::string(_scanLocation, found);
   _scanLocation = found;
-  return true;
+  // nothing scanned (the location is at a character of the set): no match, as for the other scans, or a loop over the
+  // tokens stood still at a delimiter that is not skipped
+  return !into.empty();
 }
 
 bool Scanner::isAtEnd() { return _scanLocation >= _string.cend(); }

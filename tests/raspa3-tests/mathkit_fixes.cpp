@@ -600,3 +600,12 @@ TEST(MATHKIT_FIXES, hypergeometric_2F1_converges_for_every_z_below_one)
     EXPECT_NEAR(hypergeometric2F1(1.5, 2.5, 2.0, z) / hypergeometric(1.5, 2.5, 2.0, z), 1.0, 1e-10) << z;
   }
 }
+
+// A negative weight makes the running sums fall, which the search for the draw assumes they never do (it could step
+// back past the first category); refused.
+TEST(MATHKIT_FIXES, categorical_distribution_refuses_a_negative_weight)
+{
+  RandomNumber random(std::size_t{17});
+  const std::array<double, 3> weights{1.0, -0.5, 1.0};
+  EXPECT_THROW(static_cast<void>(random.categoricalDistribution(weights)), std::invalid_argument);
+}

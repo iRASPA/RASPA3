@@ -11,6 +11,7 @@ import unit_cell;
 import brute_force_structure;
 import brute_force_voxels;
 import structure_parallel;
+import grid_connected_components;
 
 namespace
 {
@@ -82,36 +83,6 @@ struct PeriodicUnionFind
   }
 };
 
-std::size_t latticeRank(const std::vector<int3> &vectors)
-{
-  std::array<std::array<std::int64_t, 3>, 3> rows{};
-  std::size_t rank = 0;
-
-  for (const int3 &vector : vectors)
-  {
-    std::array<std::int64_t, 3> row{vector.x, vector.y, vector.z};
-
-    for (std::size_t pivot = 0; pivot < rank; ++pivot)
-    {
-      std::size_t column = 0;
-      while (column < 3 && rows[pivot][column] == 0) ++column;
-      if (column == 3 || row[column] == 0) continue;
-
-      std::int64_t a = rows[pivot][column];
-      std::int64_t b = row[column];
-      for (std::size_t c = 0; c < 3; ++c) row[c] = row[c] * a - rows[pivot][c] * b;
-    }
-
-    if (row[0] != 0 || row[1] != 0 || row[2] != 0)
-    {
-      rows[rank] = row;
-      ++rank;
-      if (rank == 3) break;
-    }
-  }
-
-  return rank;
-}
 
 // One hop between neighbouring voxels, and how wide a sphere it takes.
 struct Hop
@@ -334,7 +305,7 @@ BruteForceDiameters BruteForceDiameters::compute(const BruteForceStructure &stru
   double width = self.percolates ? static_cast<double>(hops[way.closedAt].width) : 0.0;
   for (const auto &[root, repeats] : way.repeatsOfPiece)
   {
-    self.dimensionality = std::max(self.dimensionality, latticeRank(repeats));
+    self.dimensionality = std::max(self.dimensionality, static_cast<std::size_t>(latticeVectorRank(repeats)));
   }
   self.freeSphereDiameter = 2.0 * width;
   self.guaranteedFreeSphereDiameter = 2.0 * std::max(width - 0.5 * longestHop, 0.0);

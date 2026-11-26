@@ -197,11 +197,9 @@ TEST(FOUNDATIONKIT_FIXES, thread_pool_completes_tasks_queued_faster_than_its_wor
   auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
   pool.init(3, ThreadPool::ThreadingType::ThreadPool);
   ASSERT_EQ(pool.getThreadingType(), ThreadPool::ThreadingType::ThreadPool);
-  // The pool is one per process and cannot be rebuilt once its workers run: started here it has the two workers
-  // asked for (the calling thread is the third), started by an earlier test of the same run it keeps the number
-  // it was started with.
+  // two workers (the calling thread is the third)
   const std::size_t workers = pool.getThreadCount();
-  ASSERT_GE(workers, 1uz);
+  ASSERT_EQ(workers, 2uz);
 
   std::vector<std::future<std::size_t>> futures;
   for (std::size_t i = 0; i < 2000; ++i) futures.push_back(pool.enqueue([i] { return i * i; }));
@@ -461,8 +459,7 @@ TEST(FOUNDATIONKIT_FIXES, a_pool_switched_to_serial_runs_tasks_on_the_calling_th
 {
   auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
   pool.init(3, ThreadPool::ThreadingType::ThreadPool);
-  // two workers when the pool starts here, the number it was started with by an earlier test of the same run
-  ASSERT_GE(pool.getThreadCount(), 1uz);
+  ASSERT_EQ(pool.getThreadCount(), 2uz);
 
   pool.init(3, ThreadPool::ThreadingType::Serial);
   ASSERT_EQ(pool.getThreadingType(), ThreadPool::ThreadingType::Serial);
@@ -553,4 +550,73 @@ TEST(FOUNDATIONKIT_FIXES, character_sets_do_not_split_utf8_characters)
   std::string word;
   EXPECT_TRUE(words.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), word));
   EXPECT_EQ(word, "\xC3\x85ngstrom\xC2\xA0unit");
+}
+
+// A pool of one worker: a task that waits for work it enqueues (a nested parallel loop) waited for itself, since the
+// work queued behind it on the only worker; it now runs on the same thread. A task that waits for all tasks waits for
+// itself, and is refused. And another number of threads asked for later restarts the workers (it was ignored).
+TEST(FOUNDATIONKIT_FIXES, thread_pool_runs_nested_work_and_follows_a_new_number_of_threads)
+{
+  auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+  pool.init(2, ThreadPool::ThreadingType::ThreadPool);
+  ASSERT_EQ(pool.getThreadingType(), ThreadPool::ThreadingType::ThreadPool);
+  ASSERT_EQ(pool.getThreadCount(), 1uz);
+
+  std::future<int> outer = pool.enqueue([&pool] { return pool.enqueue([] { return 7; }).get() + 1; });
+  ASSERT_EQ(outer.wait_for(std::chrono::seconds(10)), std::future_status::ready);
+  EXPECT_EQ(outer.get(), 8);
+
+  std::future<void> waiting = pool.enqueue([&pool] { pool.wait_for_tasks(); });
+  ASSERT_EQ(waiting.wait_for(std::chrono::seconds(10)), std::future_status::ready);
+  EXPECT_THROW(waiting.get(), std::logic_error);
+
+  pool.init(3, ThreadPool::ThreadingType::ThreadPool);
+  EXPECT_EQ(pool.getThreadCount(), 2uz);
+  std::vector<std::future<std::size_t>> futures;
+  for (std::size_t i = 0; i < 200; ++i) futures.push_back(pool.enqueue([i] { return i + 1; }));
+  for (std::size_t i = 0; i < futures.size(); ++i) EXPECT_EQ(futures[i].get(), i + 1);
+}
+
+// A length in an archive is checked against the rest of the file before anything is allocated for it: a corrupted
+// length made the vector and string reads allocate whatever it said (and overflow the size of the read).
+TEST(FOUNDATIONKIT_FIXES, archive_refuses_a_length_longer_than_the_file)
+{
+  TemporaryDirectory workspace;
+  const std::filesystem::path file = workspace.path() / "lengths.bin";
+  {
+    std::ofstream stream(file, std::ios::binary);
+    Archive<std::ofstream> archive(stream);
+    archive << std::size_t{1} << std::uint64_t{0} << std::numeric_limits<std::size_t>::max() / 2;
+  }
+  std::ifstream stream(file, std::ios::binary);
+  Archive<std::ifstream> archive(stream);
+  std::vector<double> fits;
+  archive >> fits;
+  EXPECT_EQ(fits.size(), 1uz);
+  std::string huge;
+  EXPECT_THROW(archive >> huge, std::runtime_error);
+}
+
+// A scan up to a set that stands on a character of the set scans nothing, which is no match: it reported one, and a
+// loop over the tokens stood still.
+TEST(FOUNDATIONKIT_FIXES, scanning_up_to_characters_without_scanning_any_is_false)
+{
+  Scanner scanner(",abc", CharacterSet::whitespaceCharacterSet());
+  std::string into = "unchanged";
+  EXPECT_FALSE(scanner.scanUpToCharacters(CharacterSet(","), into));
+  EXPECT_TRUE(into.empty());
+}
+
+// An empty dataset takes an empty vector (whose buffer may be null), and a string dataset of strings that are all
+// empty a length of zero: both were refused by HDF5.
+TEST(FOUNDATIONKIT_FIXES, hdf5_writer_writes_empty_vectors_and_empty_strings)
+{
+  TemporaryDirectory workspace;
+  const std::filesystem::path file = workspace.path() / "empty.h5";
+  HDF5Writer writer(file.string());
+  writer.createGroup("/g");
+  writer.createDataset<double>("/g", "d", {0}, {});
+  EXPECT_NO_THROW(writer.writeVector<double>("/g", "d", std::vector<double>{}));
+  EXPECT_NO_THROW(writer.createStringDataset("/g", "s", {1}, 0));
+  EXPECT_NO_THROW(writer.writeVector<std::string>("/g", "s", std::vector<std::string>{""}));
 }

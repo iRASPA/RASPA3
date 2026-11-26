@@ -718,7 +718,8 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
                        std::span<const Molecule> moleculeData, const SimulationBox& simulationBox,
                        const ForceField& forceField, std::span<const std::size_t> numberOfIntegerMoleculesPerComponent,
                        const std::optional<Framework>& framework, ExportOptions options,
-                       const PolymerLinkTable* polymerLinks)
+                       const PolymerLinkTable* polymerLinks, std::span<const GroupState> groupData,
+                       std::span<const GroupState> frameworkGroupData)
 {
   if (atomTags.size() != atomData.size())
   {
@@ -726,6 +727,20 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
   }
   // the LAMMPS atom id of the atom at storage index 'a': its persistent tag, one-based
   auto lammpsId = [&](std::size_t a) { return static_cast<std::size_t>(atomTags[a]) + 1; };
+
+  // a rigid body moves as one: v_i = v_com + omega x (r_i - r_com), with the body-frame angular velocity
+  // omega = (1/2) I^-1 vec(p^* q) of the quaternion momentum (as in the rotational kinetic energy) turned into the
+  // laboratory frame
+  auto bodyVelocity = [](const double3& velocity, const simd_quatd& orientation, const simd_quatd& orientationMomentum,
+                         const double3& centerOfMass, const double3& inverseInertia, const double3& position)
+  {
+    simd_quatd p = orientationMomentum;
+    p.r = -p.r;
+    const simd_quatd pq = p * orientation;
+    const double3 bodyAngularVelocity = 0.5 * double3(pq.ix, pq.iy, pq.iz) * inverseInertia;
+    const double3 angularVelocity = double3x3::buildRotationMatrixInverse(orientation) * bodyAngularVelocity;
+    return velocity + double3::cross(angularVelocity, position - centerOfMass);
+  };
 
   Topology topology{};
   topology.options = std::move(options);
@@ -839,6 +854,21 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
     ++moleculeId;
     std::vector<std::size_t> fragmentOfAtom(numberOfFrameworkAtoms, 0);
     std::vector<bool> fixedAtom(numberOfFrameworkAtoms, framework->rigid);
+    // the rigid group of an atom by its rank among the rigid groups (the order of 'frameworkGroupData')
+    std::vector<const FrameworkGroup*> rigidGroupOfAtom(numberOfFrameworkAtoms, nullptr);
+    std::vector<std::size_t> rigidRankOfAtom(numberOfFrameworkAtoms, 0);
+    std::size_t rigidRank = 0;
+    for (const FrameworkGroup& group : framework->groups)
+    {
+      if (!group.isRigidBody()) continue;
+      for (std::size_t a : group.atoms)
+      {
+        if (a >= numberOfFrameworkAtoms) continue;
+        rigidGroupOfAtom[a] = &group;
+        rigidRankOfAtom[a] = rigidRank;
+      }
+      ++rigidRank;
+    }
     if (!framework->groups.empty())
     {
       std::fill(fixedAtom.begin(), fixedAtom.end(), false);
@@ -857,7 +887,14 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
     }
     for (std::size_t a = 0; a < numberOfFrameworkAtoms && a < atomData.size(); ++a)
     {
-      const double3 velocity = (a < atomDynamics.size()) ? atomDynamics[a].velocity : double3{};
+      double3 velocity = (a < atomDynamics.size()) ? atomDynamics[a].velocity : double3{};
+      if (rigidGroupOfAtom[a] != nullptr && rigidRankOfAtom[a] < frameworkGroupData.size())
+      {
+        const GroupState& state = frameworkGroupData[rigidRankOfAtom[a]];
+        velocity = bodyVelocity(state.velocity, state.orientation, state.orientationMomentum,
+                                state.centerOfMassPosition, rigidGroupOfAtom[a]->inverseInertiaVector,
+                                atomData[a].position);
+      }
       AtomEntry entry = makeAtom(atomData[a], lammpsId(a), moleculeId, velocity);
       entry.fragment = fragmentOfAtom[a];
       entry.fixed = fixedAtom[a];
@@ -878,6 +915,9 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
   // atomData holds the framework first, then the components in order, each molecule contiguous.
   std::size_t cursor = numberOfFrameworkAtoms;
   std::size_t moleculeDataOffset = 0;
+  // the states of the rigid fragments of the semi-flexible molecules, in the order of the molecules (the fractional
+  // ones included; see System::initializeGroupData)
+  std::size_t groupCursor = 0;
   std::vector<ComponentSpecial> specials{};
   std::vector<std::pair<std::size_t, std::size_t>> exportedMolecules{};  // component index, first storage index
   // the LAMMPS atom id of every atom of the molecule span (0: not exported); the polymer overlay refers to these
@@ -893,6 +933,7 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
     // rigid-body fragments of the template
     std::vector<std::size_t> fragmentIndexOfAtom(atomsPerMolecule, std::numeric_limits<std::size_t>::max());
     std::size_t fragmentsPerMolecule = 0;
+    std::vector<const Fragment*> rigidFragments{};  // the rigid fragments of a semi-flexible molecule by their rank
     if (component.rigid && atomsPerMolecule >= 2)
     {
       std::fill(fragmentIndexOfAtom.begin(), fragmentIndexOfAtom.end(), 0uz);
@@ -903,6 +944,7 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
       for (const Fragment &fragment : component.fragmentGraph.fragments)
       {
         if (fragment.atoms.size() < 2) continue;
+        rigidFragments.push_back(&fragment);
         for (std::size_t a : fragment.atoms)
         {
           if (a < atomsPerMolecule) fragmentIndexOfAtom[a] = fragmentsPerMolecule;
@@ -947,18 +989,18 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
           double3 velocity{};
           if (component.rigid && moleculeIndex < moleculeData.size())
           {
-            // a rigid molecule moves as a body: v_i = v_com + omega x (r_i - r_com), with the body-frame angular
-            // velocity omega = (1/2) I^-1 vec(p^* q) of the quaternion momentum (as in the rotational kinetic
-            // energy) turned into the laboratory frame
             const Molecule& molecule = moleculeData[moleculeIndex];
-            simd_quatd p = molecule.orientationMomentum;
-            p.r = -p.r;
-            const simd_quatd pq = p * molecule.orientation;
-            const double3 bodyAngularVelocity = 0.5 * double3(pq.ix, pq.iy, pq.iz) * component.inverseInertiaVector;
-            const double3 angularVelocity =
-                double3x3::buildRotationMatrixInverse(molecule.orientation) * bodyAngularVelocity;
-            velocity = molecule.velocity +
-                       double3::cross(angularVelocity, atomData[a].position - molecule.centerOfMassPosition);
+            velocity = bodyVelocity(molecule.velocity, molecule.orientation, molecule.orientationMomentum,
+                                    molecule.centerOfMassPosition, component.inverseInertiaVector,
+                                    atomData[a].position);
+          }
+          else if (component.isSemiFlexible() && fragmentIndexOfAtom[local] < rigidFragments.size() &&
+                   groupCursor + fragmentIndexOfAtom[local] < groupData.size())
+          {
+            const GroupState& state = groupData[groupCursor + fragmentIndexOfAtom[local]];
+            velocity = bodyVelocity(state.velocity, state.orientation, state.orientationMomentum,
+                                    state.centerOfMassPosition, rigidFragments[fragmentIndexOfAtom[local]]->inverseInertiaVector,
+                                    atomData[a].position);
           }
           else if (a < atomDynamics.size())
           {
@@ -988,6 +1030,7 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
         topology.warnings.push_back(std::format("{}: molecule {} has {} atoms instead of {}; skipped",
                                                 component.name, localMolecule, end - cursor, atomsPerMolecule));
       }
+      if (component.isSemiFlexible()) groupCursor += component.numberOfRigidFragments();
       cursor = end;
     }
     moleculeDataOffset += moleculesSeen;

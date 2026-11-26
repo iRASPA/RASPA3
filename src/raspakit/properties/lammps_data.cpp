@@ -16,21 +16,25 @@ import lammps_topology;
 import framework;
 import molecule;
 
+// The files are written (and replaced) by 'update' only: emptied here, the data file of a run resumed from a binary
+// restart was lost before the restart was read.
 WriteLammpsData::WriteLammpsData(std::size_t systemId, std::size_t sampleEvery)
     : sampleEvery(sampleEvery), systemId(systemId)
 {
+  if (sampleEvery == 0) throw std::invalid_argument("WriteLammpsData: the interval must be positive\n");
   std::filesystem::create_directory("lammps");
-  std::ofstream stream(std::format("lammps/s{}.data", systemId));
 }
 
-void WriteLammpsData::update(std::size_t currentCycle, std::span<const Component> components,
+void WriteLammpsData::update(std::size_t systemId, std::size_t currentCycle, std::span<const Component> components,
                              std::span<const Atom> atomData, std::span<const std::uint32_t> atomTags,
                              std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
+                             std::span<const GroupState> groupData, std::span<const GroupState> frameworkGroupData,
                              const SimulationBox simulationBox, const ForceField forceField,
                              std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
                              std::optional<Framework> framework)
 {
-  if (currentCycle % sampleEvery != 0) return;
+  if (sampleEvery == 0 || currentCycle % sampleEvery != 0) return;
+  std::filesystem::create_directory("lammps");
 
   LAMMPS::ExportOptions options{};
   options.dataFile = std::format("s{}.data", systemId);
@@ -38,7 +42,8 @@ void WriteLammpsData::update(std::size_t currentCycle, std::span<const Component
   options.pairListFile = std::format("s{}.pairs", systemId);
   LAMMPS::ExportFiles files =
       LAMMPS::exportSystem(components, atomData, atomTags, atomDynamics, moleculeData, simulationBox, forceField,
-                           numberOfIntegerMoleculesPerComponent, framework, options);
+                           numberOfIntegerMoleculesPerComponent, framework, options, nullptr, groupData,
+                           frameworkGroupData);
 
   std::ofstream(std::format("lammps/{}", options.dataFile), std::ios_base::out) << files.data;
   std::ofstream(std::format("lammps/s{}.in", systemId), std::ios_base::out) << files.input;
