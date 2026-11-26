@@ -839,6 +839,12 @@ void MolecularDynamics::setup()
         throw std::runtime_error("ElasticConstantsSampleEvery must be positive");
       if (system.hasExternalField || system.forceField.computePolarization)
         throw std::runtime_error("Stress-fluctuation elastic constants do not support external fields or polarization");
+      // the Born term and the stress are those of the atoms, which leave out the constraint forces and the stiffness
+      // of a FIXED bond (as the atomic barostat coupling, see thermobarostatVelocityVerlet)
+      if (std::ranges::any_of(system.components,
+                              [](const Component& component) { return !component.distanceConstraints.empty(); }))
+        throw std::runtime_error(
+            "Stress-fluctuation elastic constants do not support FIXED (constrained) bonds; use stiff potentials");
     }
     // the integrator evaluates the pair, Ewald and intramolecular forces only
     if (system.hasExternalField)

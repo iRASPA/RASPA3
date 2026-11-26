@@ -105,7 +105,8 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
     // 'dUdlambda' collects the unscaled field U_ext; the scaled energy is formed after the switch
     Potentials::PairDerivatives<0> energyFactor{0.0, 0.0};
 
-    if (externalFieldInterpolationGrid.has_value())
+    // an analytic surface is no periodic field: beyond the cell of its grid it is evaluated itself
+    if (externalFieldInterpolationGrid.has_value() && externalFieldInterpolationGrid->covers(posA))
     {
       energyFactor.dUdlambda = externalFieldInterpolationGrid->interpolate(posA);
     }

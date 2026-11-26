@@ -1135,12 +1135,33 @@ void Framework::regenerateVanDerWaalsImageList(const ForceField& forceField, con
   {
     intraMolecularPotentials.vanDerWaals = std::move(vanDerWaals);
     intraMolecularImageShifts.vanDerWaals = std::move(vanDerWaalsImages);
+    intraMolecularImageShifts.vanDerWaalsReplicated = true;
   }
   if (replicateCoulomb)
   {
     intraMolecularPotentials.coulombs = std::move(coulombs);
     intraMolecularImageShifts.coulombs = std::move(coulombImages);
+    intraMolecularImageShifts.coulombsReplicated = true;
   }
+}
+
+std::vector<std::array<int3, 2>> Framework::nonBondedPairImages(bool coulombs, const SimulationBox& box,
+                                                                std::span<const Atom> currentAtoms) const
+{
+  const std::vector<std::array<int3, 2>>& listed =
+      coulombs ? intraMolecularImageShifts.coulombs : intraMolecularImageShifts.vanDerWaals;
+  if (coulombs ? intraMolecularImageShifts.coulombsReplicated : intraMolecularImageShifts.vanDerWaalsReplicated)
+  {
+    return listed;
+  }
+  std::vector<std::array<int3, 2>> images(listed.size());
+  for (std::size_t index = 0; index < listed.size(); ++index)
+  {
+    const std::array<std::size_t, 2>& ids = coulombs ? intraMolecularPotentials.coulombs[index].identifiers
+                                                     : intraMolecularPotentials.vanDerWaals[index].identifiers;
+    images[index] = {int3{}, periodicImageShift(box, currentAtoms[ids[0]].position, currentAtoms[ids[1]].position)};
+  }
+  return images;
 }
 
 void Framework::makeSuperCell()
@@ -1509,6 +1530,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framew
   archive << c.intraMolecularImageShifts.improperTorsions;
   archive << c.intraMolecularImageShifts.vanDerWaals;
   archive << c.intraMolecularImageShifts.coulombs;
+  archive << c.intraMolecularImageShifts.vanDerWaalsReplicated;
+  archive << c.intraMolecularImageShifts.coulombsReplicated;
 
   archive << c.groups;
   archive << c.atomGroupIds;
@@ -1580,6 +1603,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c
   archive >> c.intraMolecularImageShifts.improperTorsions;
   archive >> c.intraMolecularImageShifts.vanDerWaals;
   archive >> c.intraMolecularImageShifts.coulombs;
+  archive >> c.intraMolecularImageShifts.vanDerWaalsReplicated;
+  archive >> c.intraMolecularImageShifts.coulombsReplicated;
 
   archive >> c.groups;
   archive >> c.atomGroupIds;

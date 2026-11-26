@@ -14,6 +14,8 @@ import mc_moves;
 import property_lambda_probability_histogram;
 import component;
 import intra_molecular_potentials;
+import bond_potential;
+import bend_potential;
 import int3;
 import double3;
 import double3x3;
@@ -32,6 +34,7 @@ import normal_modes;
 import phonon_kpath;
 import phonon_dynamical_matrix;
 import units;
+import system_preparation;
 
 namespace
 {
@@ -354,6 +357,30 @@ void Minimization::setup()
   for (std::size_t systemIndex = 0; systemIndex < systems.size(); ++systemIndex)
   {
     System& system = systems[systemIndex];
+    // A FIXED term between flexible atoms has no energy, gradient or Hessian: the dynamics holds it as a constraint
+    // (SHAKE/RATTLE), and the minimizer, the normal modes and the elastic constants, which move every flexible atom
+    // freely, would pull the bond apart and count it as a mode of zero frequency.
+    for (const Component& component : system.components)
+    {
+      if (!component.distanceConstraints.empty())
+      {
+        throw std::runtime_error(std::format(
+            "Minimization: component '{}' has FIXED bonds, Urey-Bradley distances or bends between flexible atoms, "
+            "which the minimization does not hold; use stiff potentials for these terms, or make the atoms one rigid "
+            "group\n",
+            component.name));
+      }
+    }
+    if (system.framework.has_value() && !system.framework->rigid &&
+        (std::ranges::any_of(system.framework->intraMolecularPotentials.bonds,
+                             [](const auto& bond) { return bond.type == BondType::Fixed; }) ||
+         std::ranges::any_of(system.framework->intraMolecularPotentials.bends, [](const auto& bend)
+                             { return bend.type == BendType::Fixed || bend.type == BendType::Rigid; })))
+    {
+      throw std::runtime_error(
+          "Minimization: the flexible framework has FIXED bonds or FIXED/RIGID bends, which the minimization does not "
+          "hold; use stiff potentials for these terms, or make the atoms a rigid group\n");
+    }
     // A variable-cell minimization keeps the cut-offs and Ewald parameters of the starting cell while the cell
     // changes (the energy surface stays one surface); on a resume they are those of the checkpoint, and deriving
     // them again from the partly minimized cell changed the Hamiltonian in the middle of the minimization.
@@ -417,6 +444,10 @@ void Minimization::setup()
                  options.phononDispersionPointsPerSegment);
     }
   }
+
+  // what the Monte Carlo stages before the minimization need worked out: the ideal-gas Rosenbluth weight of the
+  // flexible molecules that are inserted, deleted or probed with configurational bias and were given none
+  Preparation::prepareSystems(systems);
 }
 
 void Minimization::performCycle()

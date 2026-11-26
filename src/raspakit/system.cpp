@@ -194,6 +194,14 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   // energy evaluation, including the initial chain growth.
   forceField.initializeAutomaticCutOff(simulationBox);
   forceField.initializeEwaldParameters(simulationBox);
+  assignFrameworkPseudoAtoms();
+  // In a cell narrower than twice the cutoff a flexible framework interacts with the periodic images of its own atoms
+  // (and each atom with its own images) that the construction-time minimum-image pair list leaves out
+  if (framework.has_value() && !framework->rigid)
+  {
+    framework->regenerateVanDerWaalsImageList(forceField, simulationBox, forceField.cutOffFrameworkVDW,
+                                              spanOfFrameworkAtoms());
+  }
   checkPairAndGroupDistances();
 
   CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
@@ -273,6 +281,33 @@ void System::createFrameworks()
   resetAtomTags();
 }
 
+void System::assignFrameworkPseudoAtoms()
+{
+  for (auto& pseudoAtom : forceField.pseudoAtoms) pseudoAtom.framework = false;
+  if (framework.has_value())
+  {
+    for (const Atom& atom : framework->atoms) forceField.pseudoAtoms[atom.type].framework = true;
+  }
+  forceField.preComputeCutOffDependentParameters();
+
+  if (forceField.cutOffFrameworkVDW == forceField.cutOffMoleculeVDW) return;
+  for (const Component& component : components)
+  {
+    for (const auto& [atom, mass] : component.definedAtoms)
+    {
+      if (forceField.pseudoAtoms[atom.type].framework)
+      {
+        throw std::runtime_error(std::format(
+            "System: pseudo atom '{}' is in the framework and in component '{}', and the framework and molecule "
+            "cut-offs differ ({} and {} Angstrom); the shift, switching and tail correction of its pairs would be "
+            "those of one cut-off for both. Give the framework atoms a type of their own or use one cut-off\n",
+            forceField.pseudoAtoms[atom.type].name, component.name, forceField.cutOffFrameworkVDW,
+            forceField.cutOffMoleculeVDW));
+      }
+    }
+  }
+}
+
 void System::rebuildForFramework(const Framework& newFramework, const SimulationBox& newSimulationBox)
 {
   const std::size_t previousTranslationalFrameworkDof =
@@ -345,6 +380,7 @@ void System::rebuildForFramework(const Framework& newFramework, const Simulation
 
   forceField.initializeAutomaticCutOff(simulationBox);
   forceField.initializeEwaldParameters(simulationBox);
+  assignFrameworkPseudoAtoms();
   CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
       eik_x, eik_y, eik_z, eik_xy, forceField, simulationBox, double3(0.0, 0.0, 0.0), 1.0);
 

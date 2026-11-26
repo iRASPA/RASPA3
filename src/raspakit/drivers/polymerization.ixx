@@ -136,6 +136,7 @@ export struct Polymerization
   void openBondLogs();
 
   /// The hook of the MD driver: called after every MD step of a system.
+  void beforeStep(std::size_t systemId);
   void afterStep(std::size_t systemId);
   /// The status block of the MD driver's reports.
   std::string status(std::size_t systemId);

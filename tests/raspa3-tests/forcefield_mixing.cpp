@@ -8,6 +8,12 @@ import pseudo_atom;
 import vdwparameters;
 import forcefield;
 import potential_pair_vdw;
+import int3;
+import atom;
+import simulationbox;
+import framework;
+import component;
+import system;
 
 namespace
 {
@@ -119,4 +125,34 @@ TEST(FORCEFIELD_MIXING, feynman_hibbs_prefactor_is_hbar_squared_over_24_u_kb)
       hbar * hbar / (24.0 * Units::AtomicMassUnit * Units::BoltzmannConstant * Units::Angstrom * Units::Angstrom);
   EXPECT_NEAR(Units::FeymannHibbsConversionFactor, expected, 1e-12 * expected);
   EXPECT_NEAR(Units::FeymannHibbsConversionFactor, 2.0212, 1e-4);
+}
+
+// The shift of a pair with a framework atom is that at the framework cut-off, where the framework-molecule energy is
+// truncated, also for a framework type that the force field did not flag 'framework' (the default): the pair constants
+// were evaluated at the molecule cut-off, and the shifted potential jumped at the framework cut-off.
+TEST(FORCEFIELD_MIXING, framework_pairs_take_the_framework_cut_off_whatever_the_framework_flag)
+{
+  ForceField forceField({{"Si", false, 28.0855, 0.0, 0.0, 14, false}, {"CH4", false, 16.04246, 0.0, 0.0, 6, false}},
+                        {VDWParameters(22.0, 2.30), VDWParameters(158.5, 3.72)},
+                        ForceField::MixingRule::Lorentz_Berthelot, 12.0, 8.0, 12.0, true, false, false);
+  const Framework framework(forceField, "host", SimulationBox(25.0, 25.0, 25.0), 1,
+                            {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, int3(1, 1, 1));
+  const Component methane(forceField, "methane", 190.564, 4599200, 0.01142,
+                          {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false)}, {}, {}, 5, 21);
+  System system(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {framework}, {methane}, {}, {0}, 5);
+
+  ForceField reference = forceField;
+  reference.pseudoAtoms[0].framework = true;
+  reference.preComputeCutOffDependentParameters();
+  EXPECT_TRUE(system.forceField.pseudoAtoms[0].framework);
+  EXPECT_FALSE(system.forceField.pseudoAtoms[1].framework);
+  EXPECT_DOUBLE_EQ(system.forceField(0, 1).shift, reference(0, 1).shift);
+  EXPECT_DOUBLE_EQ(system.forceField(1, 1).shift, forceField(1, 1).shift);
+  EXPECT_NE(system.forceField(0, 1).shift, forceField(0, 1).shift);
+
+  // one type in both the framework and a molecule can not have its pairs at both cut-offs
+  const Component silicon(forceField, "silicon", 190.564, 4599200, 0.01142,
+                          {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21);
+  EXPECT_THROW(System(forceField, std::nullopt, false, 300.0, 1e5, 1.0, {framework}, {silicon}, {}, {0}, 5),
+               std::runtime_error);
 }

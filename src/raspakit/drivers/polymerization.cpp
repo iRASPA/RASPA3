@@ -258,6 +258,7 @@ void Polymerization::writeSettings()
 
 void Polymerization::run()
 {
+  md.beforeSystemStep = [this](std::size_t systemId) { beforeStep(systemId); };
   md.afterSystemStep = [this](std::size_t systemId) { afterStep(systemId); };
   md.extraStatus = [this](std::size_t systemId) { return status(systemId); };
   md.checkpointWriter = [this]() { writeBinaryRestartFile(*this); };
@@ -383,6 +384,17 @@ void Polymerization::writeWaitingTimes(std::size_t systemId, bool force) const
                                                   waitingTimeReferenceStep(systemId), force);
 }
 
+void Polymerization::beforeStep(std::size_t systemId)
+{
+  // The step is counted before it is taken: the forces that the MD step evaluates are those of the new step, so the
+  // first step after a reaction (stamped with the step of its scan, at which its ramp is zero) integrates the first
+  // increment of the ramp. Counted after the step, the forces of that step were evaluated at the step of the scan
+  // still, and the first step after every reaction ran without any force of the new terms.
+  if (md.simulationStage != MolecularDynamicsSpatialDecomposition::SimulationStage::Production) return;
+  if (md.currentCycle < settings.startCycle) return;
+  ++md.systems[systemId].polymerLinks.currentStep;
+}
+
 void Polymerization::afterStep(std::size_t systemId)
 {
   if (md.simulationStage != MolecularDynamicsSpatialDecomposition::SimulationStage::Production) return;
@@ -397,7 +409,6 @@ void Polymerization::afterStep(std::size_t systemId)
     activate(systemId);
   }
 
-  ++table.currentStep;
   writeWaitingTimes(systemId, false);
   if (system.propertyPolymerChains.has_value())
   {
@@ -441,6 +452,79 @@ void Polymerization::activate(std::size_t systemId)
 {
   System& system = md.systems[systemId];
   PolymerLinkTable& table = system.polymerLinks;
+
+  // A rigid molecule and a rigid fragment hold their masses in their body-fixed description (the centre of mass, the
+  // body-fixed positions and the principal moments of inertia of the component), which a reaction does not rebuild:
+  // a retyping to a pseudo atom of another mass would leave the dynamics of the body at the old masses while the
+  // atoms and the molecule carry the new ones. And a FIXED term of a monomer is a constraint of the dynamics
+  // (Component::distanceConstraints) that a reaction does not lift: a broken bond would stay held at its length, and
+  // a retyped atom would have the template terms of its new type on top of the constraint. Refused before the first
+  // reaction.
+  for (const Component& component : system.components)
+  {
+    const auto constrained = [&](std::size_t atom)
+    {
+      return std::ranges::any_of(component.distanceConstraints,
+                                 [&](const auto& constraint) { return constraint.a == atom || constraint.b == atom; });
+    };
+    for (const ReactiveGroup& group : component.reactiveGroups)
+    {
+      const auto type = std::ranges::find(table.scheme.types, group.type, &ReactionScheme::GroupType::name);
+      if (type == table.scheme.types.end()) continue;
+      const std::size_t typeIndex = static_cast<std::size_t>(std::distance(table.scheme.types.begin(), type));
+      for (const ReactionRule& rule : table.scheme.rules)
+      {
+        for (const std::array<RoleIndex, 2>& pair : rule.breakAtoms)
+        {
+          if (rule.reactantType[pair[0].reactant] != typeIndex) continue;
+          const std::optional<std::size_t> a = group.atomOf(type->roles[pair[0].role]);
+          const std::optional<std::size_t> b = group.atomOf(type->roles[pair[1].role]);
+          if (!a.has_value() || !b.has_value()) continue;
+          if (std::ranges::any_of(
+                  component.distanceConstraints, [&](const auto& constraint)
+                  { return (constraint.a == *a && constraint.b == *b) || (constraint.a == *b && constraint.b == *a); }))
+          {
+            throw std::runtime_error(std::format(
+                "[Polymerization]: reaction '{}' breaks the FIXED bond {}-{} of component '{}', a constraint of the "
+                "dynamics that stays; use a stiff HARMONIC bond\n",
+                rule.name, *a, *b, component.name));
+          }
+        }
+        for (std::size_t i = 0; i < rule.reactants.size(); ++i)
+        {
+          if (rule.reactantType[i] != typeIndex) continue;
+          for (const auto& [role, newType] : rule.retype[i])
+          {
+            const std::optional<std::size_t> atom = group.atomOf(type->roles[role]);
+            if (!atom.has_value()) continue;
+            if (constrained(*atom) && component.definedAtoms[*atom].first.type != newType)
+            {
+              throw std::runtime_error(std::format(
+                  "[Polymerization]: reaction '{}' retypes atom {} of component '{}', which a FIXED term holds as a "
+                  "constraint of the dynamics; use stiff potentials for its terms\n",
+                  rule.name, *atom, component.name));
+            }
+            const bool inRigidBody =
+                component.rigid ||
+                std::ranges::any_of(component.fragmentGraph.fragments, [&](const auto& fragment)
+                                    { return fragment.isRigidBody() && std::ranges::contains(fragment.atoms, *atom); });
+            const auto& before = system.forceField.pseudoAtoms[component.definedAtoms[*atom].first.type];
+            const auto& after = system.forceField.pseudoAtoms[newType];
+            if (inRigidBody && before.mass != after.mass)
+            {
+              throw std::runtime_error(std::format(
+                  "[Polymerization]: reaction '{}' retypes atom {} of component '{}' from '{}' ({} u) to '{}' ({} u), "
+                  "an atom of a rigid {}; a rigid body keeps the masses it was set up with. Give the product pseudo "
+                  "atom the same mass, or make the atom flexible\n",
+                  rule.name, *atom, component.name, before.name, before.mass, after.name, after.mass,
+                  component.rigid ? "molecule" : "fragment"));
+            }
+          }
+        }
+      }
+    }
+  }
+
   table.activate(system.components, system.numberOfMoleculesPerComponent);
   table.relaxationSteps = settings.relaxationSteps;
   table.chiralForceConstant = settings.chiralForceConstant * Units::KelvinToEnergy;

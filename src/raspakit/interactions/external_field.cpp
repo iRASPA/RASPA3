@@ -75,7 +75,7 @@ ExternalFieldValue externalFieldValue(const ForceField& forceField, const Simula
   // a decoupled atom (an inactive fractional molecule) feels neither the field nor the confining geometry
   if (scalingVDWA == 0.0) return value;
 
-  if (externalFieldInterpolationGrid.has_value())
+  if (externalFieldInterpolationGrid.has_value() && externalFieldInterpolationGrid->covers(posA))
   {
     value.dUdlambda = externalFieldInterpolationGrid->interpolate(posA);
     value.energy = scalingVDWA * value.dUdlambda;
@@ -83,7 +83,8 @@ ExternalFieldValue externalFieldValue(const ForceField& forceField, const Simula
   }
 
   // The analytic surfaces (the polynomial test functions, Muller-Brown) are functions of the position itself, laid
-  // out around the origin and not periodic: they are evaluated where the atom is, also outside the unit cell.
+  // out around the origin and not periodic: they are evaluated where the atom is, also outside the unit cell (and so
+  // beyond the cell of their interpolation grid).
   const double fieldEnergy = Interactions::analyticExternalFieldEnergy(forceField, posA);
   // the confining geometry is periodic: test the position wrapped into the unit cell, so that a molecule that
   // drifted out of the cell, or a bead of a chain overhanging its edge, is tested against its own image of the

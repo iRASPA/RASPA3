@@ -347,6 +347,9 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
 
   const auto& potentials = framework.intraMolecularPotentials;
   const auto& images = framework.intraMolecularImageShifts;
+  // a pair at its minimum image follows the atoms (a replicated list is evaluated as listed)
+  const std::vector<std::array<int3, 2>> vanDerWaalsImages = framework.nonBondedPairImages(false, simulationBox, atoms);
+  const std::vector<std::array<int3, 2>> coulombImages = framework.nonBondedPairImages(true, simulationBox, atoms);
   std::set<std::array<std::size_t, 2>> pairs12And13;
   std::set<std::array<std::size_t, 2>> pairs14;
   if (!framework.connectivityTable.table.empty())
@@ -476,7 +479,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     const std::size_t A = potential.identifiers[0];
     const std::size_t B = potential.identifiers[1];
     const double3 dr =
-        shiftedPosition(A, images.vanDerWaals[index][0]) - shiftedPosition(B, images.vanDerWaals[index][1]);
+        shiftedPosition(A, vanDerWaalsImages[index][0]) - shiftedPosition(B, vanDerWaalsImages[index][1]);
     const double rr = double3::dot(dr, dr);
     // the 1-4 pair (at its bonded, minimum image; whatever its scaling) takes the 1-4 parameters of the force field,
     // and like every pair (and the 1-4 pairs of a molecule) it ends at the cutoff
@@ -491,7 +494,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
       const Potentials::PairDerivatives<2> factors = Potentials::potentialVDW<2>(
           forceField.pair(static_cast<std::size_t>(atoms[A].type), static_cast<std::size_t>(atoms[B].type), is14), 1.0,
           1.0, rr);
-      accumulateRadial(A, B, images.vanDerWaals[index], potential.scaling * factors.energy,
+      accumulateRadial(A, B, vanDerWaalsImages[index], potential.scaling * factors.energy,
                        potential.scaling * factors.firstDerivativeFactor,
                        potential.scaling * factors.secondDerivativeFactor, energies.intraVDW);
     }
@@ -504,7 +507,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
       const CoulombPotential& potential = potentials.coulombs[index];
       const std::size_t A = potential.identifiers[0];
       const std::size_t B = potential.identifiers[1];
-      const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
+      const double3 dr = shiftedPosition(A, coulombImages[index][0]) - shiftedPosition(B, coulombImages[index][1]);
       const double rr = double3::dot(dr, dr);
       bool scaled14 = potential.scaling != 1.0 && pairs14.contains({std::min(A, B), std::max(A, B)});
       if (scaled14)
@@ -517,7 +520,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
       {
         const Potentials::PairDerivatives<2> factors = Potentials::frameworkScaledPairCoulomb<2>(
             forceField, potential.scaling, std::sqrt(rr), potential.chargeA, potential.chargeB);
-        accumulateRadial(A, B, images.coulombs[index], factors.energy, factors.firstDerivativeFactor,
+        accumulateRadial(A, B, coulombImages[index], factors.energy, factors.firstDerivativeFactor,
                          factors.secondDerivativeFactor, energies.intraCoul);
       }
       else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
@@ -525,7 +528,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
         const double r = std::sqrt(rr);
         const Potentials::PairDerivatives<2> factors =
             Potentials::potentialCoulomb<2>(forceField, 1.0, 1.0, r, potential.chargeA, potential.chargeB);
-        accumulateRadial(A, B, images.coulombs[index], potential.scaling * factors.energy,
+        accumulateRadial(A, B, coulombImages[index], potential.scaling * factors.energy,
                          potential.scaling * factors.firstDerivativeFactor,
                          potential.scaling * factors.secondDerivativeFactor, energies.intraCoul);
       }

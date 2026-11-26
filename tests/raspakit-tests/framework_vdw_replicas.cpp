@@ -338,3 +338,26 @@ TEST(framework_vdw_replicas, coulomb_replica_energy_matches_brute_force_lattice_
   ASSERT_GT(std::abs(referenceEnergy), 1.0);
   EXPECT_NEAR(replicaEnergy, referenceEnergy, 1.0e-8 * std::abs(referenceEnergy));
 }
+
+// In a cell at least twice the cutoff each pair is listed once, at the minimum image of the positions the list was
+// made for. An atom that then moves across the half-box plane of its partner (a mobile ion, a long dynamics run)
+// has another nearest image: the pair is evaluated there, and not at the image of the list (which put the pair at
+// 26 A instead of 6 A here, and left it out).
+TEST(framework_vdw_replicas, minimum_image_pairs_follow_the_atoms)
+{
+  const double cutOff = 10.0;
+  ForceField forceField({{"C", false, 12.0, 0.0, 0.0, 6, false}}, {{100.0, 3.0}},
+                        ForceField::MixingRule::Lorentz_Berthelot, cutOff, cutOff, cutOff, false, false, false);
+  const SimulationBox box(25.0, 25.0, 25.0);
+
+  Framework framework = makeSmallFramework(forceField, box);
+  seedMinimumImageVanDerWaals(framework, forceField, box);
+  framework.regenerateVanDerWaalsImageList(forceField, box, cutOff);
+
+  std::vector<Atom> moved = framework.atoms;
+  moved[1].position = moved[0].position + double3(-20.0, 3.0, 0.0);
+  const double energy = Interactions::computeFrameworkIntraMolecularEnergy(forceField, framework, box, moved).intraVDW;
+  const double referenceEnergy = bruteForceLatticeVanDerWaals(moved, forceField, box, cutOff, 2);
+  EXPECT_NE(referenceEnergy, 0.0);
+  EXPECT_NEAR(energy, referenceEnergy, 1.0e-6 * (1.0 + std::abs(referenceEnergy)));
+}

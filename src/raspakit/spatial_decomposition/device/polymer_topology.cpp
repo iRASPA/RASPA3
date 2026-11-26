@@ -172,7 +172,8 @@ void PolymerOverlayTopology::build(const System& system, const PolymerLinkTable&
     term.ramp = rampIndex(pair.step);
     term.atoms[0] = pair.atoms[0];
     term.atoms[1] = pair.atoms[1];
-    term.flags = interMolecular | (pair.listed ? 0u : unlistedPair);
+    term.flags = interMolecular | (pair.listed ? 0u : unlistedPair) |
+                 (table.layout.ref(pair.atoms[0]).sameMolecule(table.layout.ref(pair.atoms[1])) ? sameMolecule : 0u);
     const std::size_t typeA = static_cast<std::size_t>(systemAtoms[pair.atoms[0]].type);
     const std::size_t typeB = static_cast<std::size_t>(systemAtoms[pair.atoms[1]].type);
     pairParameters(forceField, pair.wanted, pair.wantedScaling, typeA, typeB, term.parameters);
@@ -188,6 +189,7 @@ void PolymerOverlayTopology::build(const System& system, const PolymerLinkTable&
     term.ramp = rampIndex(over.step);
     term.atoms[0] = over.atoms[0];
     term.atoms[1] = over.atoms[1];
+    term.flags = sameMolecule;
     copyParameters(over.replacement.parameters, term.parameters);
     copyParameters(over.original.parameters, term.parameters2);
     add(term);
@@ -200,6 +202,7 @@ void PolymerOverlayTopology::build(const System& system, const PolymerLinkTable&
     term.type2 = static_cast<std::uint32_t>(std::to_underlying(over.original.type));
     term.ramp = rampIndex(over.step);
     for (std::size_t i = 0; i < 3; ++i) term.atoms[i] = over.atoms[i];
+    term.flags = sameMolecule;
     copyParameters(over.replacement.parameters, term.parameters);
     copyParameters(over.original.parameters, term.parameters2);
     add(term);
@@ -212,6 +215,7 @@ void PolymerOverlayTopology::build(const System& system, const PolymerLinkTable&
     term.type2 = static_cast<std::uint32_t>(std::to_underlying(over.original.type));
     term.ramp = rampIndex(over.step);
     for (std::size_t i = 0; i < 4; ++i) term.atoms[i] = over.atoms[i];
+    term.flags = sameMolecule;
     copyParameters(over.replacement.parameters, term.parameters);
     copyParameters(over.original.parameters, term.parameters2);
     add(term);
@@ -246,7 +250,7 @@ void PolymerOverlayTopology::build(const System& system, const PolymerLinkTable&
         term.type2 = term.type;
         term.atoms[0] = static_cast<std::uint32_t>(molecule.atomIndex + pair.atomA);
         term.atoms[1] = static_cast<std::uint32_t>(molecule.atomIndex + pair.atomB);
-        term.flags = intramolecularPair;
+        term.flags = intramolecularPair | sameMolecule;
         pairParameters(forceField, PairState::Scaled, scaling, currentA, currentB, term.parameters);
         pairParameters(forceField, PairState::Scaled, scaling, originalA, originalB, term.parameters2);
         // The Coulomb parts cancel exactly: the kernels take the charges from the atoms (the current, retyped

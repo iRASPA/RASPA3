@@ -70,6 +70,11 @@ export struct FrameworkIntraMolecularImageShifts
   std::vector<std::array<int3, 4>> improperTorsions{};
   std::vector<std::array<int3, 2>> vanDerWaals{};
   std::vector<std::array<int3, 2>> coulombs{};
+  /// Whether the non-bonded pairs are listed at every periodic image inside the cutoff (regenerateVanDerWaalsImageList,
+  /// in a cell narrower than twice the cutoff). Otherwise each pair is at its minimum image, which follows the atoms
+  /// (Framework::nonBondedPairImages); the shifts above are those of the positions the list was made for.
+  bool vanDerWaalsReplicated{false};
+  bool coulombsReplicated{false};
 };
 
 /**
@@ -237,6 +242,13 @@ export struct Framework
    */
   void regenerateVanDerWaalsImageList(const ForceField& forceField, const SimulationBox& box,
                                       double cutOffFrameworkVDW, std::span<const Atom> currentAtoms = {});
+
+  /// The image shifts of the non-bonded van der Waals ('coulombs' false) or Coulomb pairs for the atoms at 'atoms':
+  /// a replicated list as listed, and otherwise the minimum image of every pair at these positions (an atom that
+  /// moved across the half-box plane of its partner is evaluated at its nearest image, not at the one it had when
+  /// the list was made).
+  std::vector<std::array<int3, 2>> nonBondedPairImages(bool coulombs, const SimulationBox& box,
+                                                       std::span<const Atom> atoms) const;
 
   /**
    * Reads type-based intramolecular definitions and expands them over the framework supercell.

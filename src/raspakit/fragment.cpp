@@ -98,13 +98,11 @@ void Fragment::computeRigidProperties(std::span<const double3> referencePosition
   inverseInertiaVector.y = (inertiaVector.y < rotlim) ? 0.0 : 1.0 / inertiaVector.y;
   inverseInertiaVector.z = (inertiaVector.z < rotlim) ? 0.0 : 1.0 / inertiaVector.z;
 
-  double rotall = inertiaVector.x + inertiaVector.y + inertiaVector.z > 1.0e-5
-                      ? inertiaVector.x + inertiaVector.y + inertiaVector.z
-                      : 1.0;
+  // an axis without rotational degree of freedom is exactly one that the integrator does not rotate about
   std::size_t zeroModes = 0;
-  if (inertiaVector.x / rotall < 1.0e-5) ++zeroModes;
-  if (inertiaVector.y / rotall < 1.0e-5) ++zeroModes;
-  if (inertiaVector.z / rotall < 1.0e-5) ++zeroModes;
+  if (inertiaVector.x < rotlim) ++zeroModes;
+  if (inertiaVector.y < rotlim) ++zeroModes;
+  if (inertiaVector.z < rotlim) ++zeroModes;
 
   // zeroModes: 0 -> nonlinear (3 rot DOF), 1 -> linear (2 rot DOF), 3 -> single point (0 rot DOF).
   rotationalDegreesOfFreedom = 3 - std::min<std::size_t>(zeroModes, 3);

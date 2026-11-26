@@ -437,6 +437,11 @@ export struct System
   void addComponent(const Component&& component) noexcept(false);
 
   void createFrameworks();
+  /// Marks the pseudo atoms of the framework atoms as framework types (and no others), which selects the cut-off of
+  /// their pairs in ForceField::cutOffVDW: the shifts, switching constants and tail corrections then follow the
+  /// cut-off at which the pairs with the framework are truncated. Refuses a type that is both in the framework and
+  /// in a component when the framework and molecule cut-offs differ: one set of pair constants can not hold both.
+  void assignFrameworkPseudoAtoms();
   void createInitialMolecules(const std::vector<std::vector<double3>>& initialPositions);
 
   /**
@@ -1133,10 +1138,21 @@ export struct System
 
   /// Why a thermobarostat cannot deform the cell of this system (nullopt when it can): a lab-frozen framework keeps
   /// its atoms in place while its periodic images move with the cell, and the framework interpolation grids tabulate
-  /// the framework of the initial cell.
+  /// the framework of the initial cell. An automatic cut-off follows the cell, and so makes the energy a function of
+  /// the volume through the cut-off, a derivative that the virial leaves out (the barostat then samples another
+  /// density, and the conserved energy drifts): only the automatic Coulomb cut-off of an Ewald summation with
+  /// automatic parameters, whose energy does not depend on the cut-off within its precision, follows the cell.
   std::optional<std::string> thermobarostatUnsupportedReason() const
   {
-    if (!thermobarostat.has_value() || !framework.has_value()) return std::nullopt;
+    if (!thermobarostat.has_value()) return std::nullopt;
+    if (forceField.cutOffFrameworkVDWAutomatic || forceField.cutOffMoleculeVDWAutomatic)
+      return "a barostat with an automatic van der Waals cut-off (it would follow the cell); give 'CutOffVDW' a "
+             "value";
+    if (forceField.useCharge && forceField.cutOffCoulombAutomatic &&
+        !(forceField.chargeMethod == ForceField::ChargeMethod::Ewald && forceField.automaticEwald))
+      return "a barostat with an automatic Coulomb cut-off for a method other than Ewald with automatic parameters "
+             "(it would follow the cell); give 'CutOffCoulomb' a value";
+    if (!framework.has_value()) return std::nullopt;
     if (framework->rigid && !framework->isMixed())
       return "a barostat with a rigid framework (its atoms do not follow the cell); make the framework flexible";
     if (!forceField.settings.gridPseudoAtomIndices.empty())

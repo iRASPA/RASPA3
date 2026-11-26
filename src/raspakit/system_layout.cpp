@@ -279,6 +279,17 @@ void System::initializeGroupData()
                                                -derived.orientation.iz, -derived.orientation.r);
             }
           }
+          // The fit fixes the orientation only up to a rotation about the axis of a linear group (its body frame
+          // is any one of those about the axis): the preserved momentum p = 2 q (0, I w) goes with the stored
+          // orientation q, and with the fitted q' = q u it is p u for the same motion in the laboratory frame.
+          // Kept unchanged, the angular velocity of a linear group was turned about its axis by the gauge angle.
+          if (preserveDynamics)
+          {
+            const simd_quatd u =
+                simd_quatd(-state.orientation.ix, -state.orientation.iy, -state.orientation.iz, state.orientation.r) *
+                derived.orientation;
+            state.orientationMomentum = state.orientationMomentum * u;
+          }
           state.centerOfMassPosition = derived.centerOfMassPosition;
           state.orientation = derived.orientation;
           state.gradient = derived.gradient;
@@ -372,6 +383,14 @@ void System::initializeFrameworkGroupData()
         derived.orientation = simd_quatd(-derived.orientation.ix, -derived.orientation.iy,
                                          -derived.orientation.iz, -derived.orientation.r);
       }
+    }
+    // the momentum follows the fitted orientation as for the rigid groups of the molecules (initializeGroupData)
+    if (preserveDynamics)
+    {
+      const simd_quatd u =
+          simd_quatd(-state.orientation.ix, -state.orientation.iy, -state.orientation.iz, state.orientation.r) *
+          derived.orientation;
+      state.orientationMomentum = state.orientationMomentum * u;
     }
     state.centerOfMassPosition = derived.centerOfMassPosition;
     state.orientation = derived.orientation;

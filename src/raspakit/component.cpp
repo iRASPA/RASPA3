@@ -2087,22 +2087,16 @@ void Component::computeRigidProperties()
   inverseInertiaVector.y = (inertiaVector.y < rotlim) ? 0.0 : 1.0 / inertiaVector.y;
   inverseInertiaVector.z = (inertiaVector.z < rotlim) ? 0.0 : 1.0 / inertiaVector.z;
 
-  double rotall = inertiaVector.x + inertiaVector.y + inertiaVector.z > 1.0e-5
-                      ? inertiaVector.x + inertiaVector.y + inertiaVector.z
-                      : 1.0;
-
+  // an axis without rotational degree of freedom is exactly one that the integrator does not rotate about
   std::size_t index = 0;
-  if (inertiaVector.x / rotall < 1.0e-5) ++index;
-  if (inertiaVector.y / rotall < 1.0e-5) ++index;
-  if (inertiaVector.z / rotall < 1.0e-5) ++index;
+  if (inertiaVector.x < rotlim) ++index;
+  if (inertiaVector.y < rotlim) ++index;
+  if (inertiaVector.z < rotlim) ++index;
 
   if(rigid)
   {
     translationalDegreesOfFreedom = 3;
-    rotationalDegreesOfFreedom = 3;
-    if (inertiaVector.x / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
-    if (inertiaVector.y / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
-    if (inertiaVector.z / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
+    rotationalDegreesOfFreedom = 3 - index;
 
     // Three vanishing principal moments is a point mass. Shape is only NonLinear, Linear, and Point.
     shapeType = index >= 3 ? Component::Shape::Point : static_cast<Component::Shape>(index);

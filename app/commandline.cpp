@@ -1794,6 +1794,10 @@ void CommandLine::run(int argc, char *argv[])
           std::format("{}_{}_{}.h5", framework.name,
                       (order == ForceFieldSettings::InterpolationScheme::Tricubic) ? "Tricubic" : "Triquintic",
                       (gridType == ForceFieldSettings::InterpolationGridType::LennardJones) ? "LennardJones" : "Ewald"));
+      // the automatic cut-offs and the Ewald alpha follow from the box, as in a simulation of this framework
+      const auto systemBox = framework.simulationBox.scaled(framework.numberOfUnitCells);
+      forceField->initializeAutomaticCutOff(systemBox);
+      forceField->initializeEwaldParameters(systemBox);
       for (std::size_t pseudoAtomIdx : pseudoAtomsGrid)
       {
         if (pseudoAtomIdx >= forceField->pseudoAtoms.size())

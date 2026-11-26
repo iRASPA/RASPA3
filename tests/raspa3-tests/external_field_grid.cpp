@@ -11,6 +11,7 @@ import forcefield_settings;
 import component;
 import simulationbox;
 import system;
+import running_energy;
 import interpolation_energy_grid;
 import interactions_external_field;
 import triquintic_derivatives_external_field;
@@ -139,4 +140,99 @@ TEST(EXTERNAL_FIELD_GRID, muller_brown_has_the_published_minima_and_is_bounded_b
   {
     EXPECT_GT(Interactions::analyticExternalFieldEnergy(forceField, far), -150.0);
   }
+}
+
+// The grid of an analytic surface holds it over the cell only: the surface is no periodic function, and the energy of
+// an atom beyond the cell is that of the surface itself and not of its wrapped image (which differed by hundreds of
+// Kelvin for Muller-Brown, and jumped at every face of the cell).
+TEST(EXTERNAL_FIELD_GRID, analytic_grid_is_not_wrapped_beyond_the_cell)
+{
+  ForceField forceField = makeForceField();
+  forceField.potentialEnergySurfaceType = ForceField::PotentialEnergySurfaceType::MullerBrown;
+  forceField.potentialEnergySurfaceOrigin = double3(-1.5, -0.5, 0.0);
+  forceField.externalFieldGridFileName = "this_cube_file_does_not_exist.cube";
+  forceField.settings.useExternalFieldGrid = true;
+  forceField.settings.interpolationScheme = ForceFieldSettings::InterpolationScheme::Tricubic;
+  forceField.settings.numberOfExternalFieldGridPoints = uint3(105, 105, 3);
+  forceField.settings.numberOfGridTestPoints = 0;
+  const std::uint16_t type = static_cast<std::uint16_t>(*forceField.findPseudoAtom("O"));
+  Component atomic(forceField, "atomic", 64.0, 1.0e6, 0.02, {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, false, false)},
+                   {}, {}, 5, 21);
+  System system(forceField, SimulationBox(2.6, 2.6, 2.6), true, 300.0, 1e4, 1.0, {}, {atomic}, {{}}, {0}, 5);
+  std::ostringstream stream;
+  system.createExternalFieldInterpolationGrid(stream, 0);
+  ASSERT_TRUE(system.externalFieldInterpolationGrid.has_value());
+
+  for (const double3& pos : {double3(1.2, 0.6, 1.0), double3(2.9, 0.6, 1.0), double3(-0.4, 1.9, 1.0)})
+  {
+    const std::vector<Atom> atoms{Atom(pos, 0.0, 1.0, 0, type, 0, false, false)};
+    RunningEnergy energy{};
+    Interactions::computeExternalFieldEnergy(true, forceField, system.simulationBox, atoms, energy,
+                                             system.externalFieldInterpolationGrid);
+    const double analytic = Interactions::analyticExternalFieldEnergy(forceField, pos);
+    EXPECT_NEAR(energy.externalFieldVDW, analytic, 1.0e-5 * std::abs(analytic));
+  }
+}
+
+// The first voxel of a CUBE file lies at the origin in its header: a file whose grid starts at (1, 2, 3) holds the
+// field at a node there, and not at the node of the cell at the same fractional position.
+TEST(EXTERNAL_FIELD_GRID, cube_file_grid_starts_at_its_origin)
+{
+  const uint3 dims(3, 4, 5);
+  const std::filesystem::path filename =
+      std::filesystem::temp_directory_path() / "raspa3_external_field_grid_origin_test.cube";
+  const double3 origin(1.0, 2.0, 3.0);
+  {
+    std::ofstream file(filename);
+    std::print(file, "comment\ncomment\n0 {} {} {}\n", origin.x, origin.y, origin.z);
+    std::print(file, "-3 5.0 0.0 0.0\n-4 0.0 3.333333333333 0.0\n-5 0.0 0.0 2.5\n");
+    for (std::size_t i = 0; i < dims.x; ++i)
+    {
+      for (std::size_t j = 0; j < dims.y; ++j)
+      {
+        for (std::size_t k = 0; k < dims.z; ++k)
+        {
+          std::print(file, "{}\n", 100.0 * static_cast<double>(i) + 10.0 * static_cast<double>(j) + k);
+        }
+      }
+    }
+  }
+  // the negative counts give the steps (and so the origin) in Angstrom
+  EXPECT_NEAR((InterpolationEnergyGrid::parseExternalFieldGridOrigin(filename.string()) - origin).length(), 0.0,
+              1.0e-12);
+
+  ForceField forceField = makeForceField();
+  forceField.potentialEnergySurfaceType = ForceField::PotentialEnergySurfaceType::GridFile;
+  forceField.externalFieldGridFileName = filename.string();
+  const SimulationBox box(10.0, 10.0, 10.0);
+  std::ostringstream stream;
+  InterpolationEnergyGrid polynomial(box, double3(), dims, ForceFieldSettings::InterpolationScheme::Polynomial);
+  polynomial.makeExternalFieldInterpolationGrid(stream, forceField, box);
+  const double3 node = box.cell * double3(1.0 / 2.0, 2.0 / 3.0, 3.0 / 4.0) + origin;
+  EXPECT_NEAR(polynomial.interpolate(node), 123.0 * Units::KelvinToEnergy, 1.0e-8);
+
+  std::filesystem::remove(filename);
+}
+
+// The overlap sentinel is a mark in the energy slot of a vertex inside a framework atom and stays when the grid is
+// scaled; every other entry is scaled. The derivatives of a vertex just outside an atom are stored as computed and
+// can exceed the criterion: tested entry by entry against it, a positive one stayed while the negative ones were
+// scaled, and the interpolant no longer was the scaled one.
+TEST(EXTERNAL_FIELD_GRID, scaled_grid_keeps_only_the_overlap_sentinel)
+{
+  const double criterion = 1.0e5;
+  InterpolationEnergyGrid grid(SimulationBox(10.0, 10.0, 10.0), double3(), uint3(2, 2, 2),
+                               ForceFieldSettings::InterpolationScheme::Tricubic);
+  grid.data[0] = 100.0;
+  grid.data[1] = 3.0 * criterion;
+  grid.data[2] = -3.0 * criterion;
+  grid.data[8] = 2.0 * criterion;
+  grid.data[9] = 0.5 * criterion;
+
+  grid.scaleEnergy(0.5, criterion);
+  EXPECT_DOUBLE_EQ(grid.data[0], 50.0);
+  EXPECT_DOUBLE_EQ(grid.data[1], 1.5 * criterion);
+  EXPECT_DOUBLE_EQ(grid.data[2], -1.5 * criterion);
+  EXPECT_DOUBLE_EQ(grid.data[8], 2.0 * criterion);
+  EXPECT_DOUBLE_EQ(grid.data[9], 0.25 * criterion);
 }

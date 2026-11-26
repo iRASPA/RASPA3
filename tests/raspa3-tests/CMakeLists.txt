@@ -3,6 +3,7 @@ add_executable(unit_tests_raspa3
   mc_component_moves.cpp
   mc_moves_and_cbmc_engine_fixes.cpp
   ewald_and_electrostatics_fixes.cpp
+  simulation_setup_fixes.cpp
   property_sampling_fixes.cpp
   mc_fractional_molecule_order.cpp
   mc_gibbs_drift.cpp

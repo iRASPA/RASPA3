@@ -125,6 +125,7 @@ void DevicePolymerOverlay::enqueue(DeviceBuffer position, DeviceBuffer slotOfAto
   {
     const DeviceArg arguments[] = {DeviceArg::of(position),
                                    DeviceArg::of(slotOfAtom),
+                                   DeviceArg::of(relative),
                                    DeviceArg::of(termsBuffer.get()),
                                    DeviceArg::of(lambdaBuffer.get()),
                                    DeviceArg::of(parameterBuffer.get()),

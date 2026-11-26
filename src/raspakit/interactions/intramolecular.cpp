@@ -62,6 +62,9 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const ForceFiel
   };
   const auto& potentials = framework.intraMolecularPotentials;
   const auto& images = framework.intraMolecularImageShifts;
+  // a pair at its minimum image follows the atoms (a replicated list is evaluated as listed)
+  const std::vector<std::array<int3, 2>> vanDerWaalsImages = framework.nonBondedPairImages(false, simulationBox, atoms);
+  const std::vector<std::array<int3, 2>> coulombImages = framework.nonBondedPairImages(true, simulationBox, atoms);
   std::set<std::array<std::size_t, 2>> pairs12And13;
   std::set<std::array<std::size_t, 2>> pairs14;
   if (!framework.connectivityTable.table.empty())
@@ -118,7 +121,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const ForceFiel
     const std::size_t A = potential.identifiers[0];
     const std::size_t B = potential.identifiers[1];
     const double3 dr =
-        shiftedPosition(A, images.vanDerWaals[index][0]) - shiftedPosition(B, images.vanDerWaals[index][1]);
+        shiftedPosition(A, vanDerWaalsImages[index][0]) - shiftedPosition(B, vanDerWaalsImages[index][1]);
     const double rr = double3::dot(dr, dr);
     // the 1-4 pair (at its bonded, minimum image; whatever its scaling) takes the 1-4 parameters of the force field,
     // and like every pair (and the 1-4 pairs of a molecule) it ends at the cutoff
@@ -143,7 +146,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularEnergy(const ForceFiel
       const CoulombPotential& potential = potentials.coulombs[index];
       const std::size_t A = potential.identifiers[0];
       const std::size_t B = potential.identifiers[1];
-      const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
+      const double3 dr = shiftedPosition(A, coulombImages[index][0]) - shiftedPosition(B, coulombImages[index][1]);
       const double rr = double3::dot(dr, dr);
       if (scaledFramework14Pair(pairs14, A, B, potential.scaling, dr, simulationBox))
       {
@@ -183,6 +186,9 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
   };
   const auto& potentials = framework.intraMolecularPotentials;
   const auto& images = framework.intraMolecularImageShifts;
+  // a pair at its minimum image follows the atoms (a replicated list is evaluated as listed)
+  const std::vector<std::array<int3, 2>> vanDerWaalsImages = framework.nonBondedPairImages(false, simulationBox, atoms);
+  const std::vector<std::array<int3, 2>> coulombImages = framework.nonBondedPairImages(true, simulationBox, atoms);
   std::set<std::array<std::size_t, 2>> pairs12And13;
   std::set<std::array<std::size_t, 2>> pairs14;
   if (!framework.connectivityTable.table.empty())
@@ -261,7 +267,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
     const std::size_t A = potential.identifiers[0];
     const std::size_t B = potential.identifiers[1];
     const double3 dr =
-        shiftedPosition(A, images.vanDerWaals[index][0]) - shiftedPosition(B, images.vanDerWaals[index][1]);
+        shiftedPosition(A, vanDerWaalsImages[index][0]) - shiftedPosition(B, vanDerWaalsImages[index][1]);
     const double rr = double3::dot(dr, dr);
     // the 1-4 pair (at its bonded, minimum image; whatever its scaling) takes the 1-4 parameters of the force field,
     // and like every pair (and the 1-4 pairs of a molecule) it ends at the cutoff
@@ -286,7 +292,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularGradient(const ForceFi
       const CoulombPotential& potential = potentials.coulombs[index];
       const std::size_t A = potential.identifiers[0];
       const std::size_t B = potential.identifiers[1];
-      const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
+      const double3 dr = shiftedPosition(A, coulombImages[index][0]) - shiftedPosition(B, coulombImages[index][1]);
       const double rr = double3::dot(dr, dr);
       const double r = std::sqrt(rr);
       if (scaledFramework14Pair(pairs14, A, B, potential.scaling, dr, simulationBox))
@@ -344,6 +350,9 @@ std::pair<RunningEnergy, double3x3> Interactions::computeFrameworkIntraMolecular
   };
   const auto& potentials = framework.intraMolecularPotentials;
   const auto& images = framework.intraMolecularImageShifts;
+  // a pair at its minimum image follows the atoms (a replicated list is evaluated as listed)
+  const std::vector<std::array<int3, 2>> vanDerWaalsImages = framework.nonBondedPairImages(false, simulationBox, atoms);
+  const std::vector<std::array<int3, 2>> coulombImages = framework.nonBondedPairImages(true, simulationBox, atoms);
   std::set<std::array<std::size_t, 2>> pairs12And13;
   std::set<std::array<std::size_t, 2>> pairs14;
   if (!framework.connectivityTable.table.empty())
@@ -413,7 +422,7 @@ std::pair<RunningEnergy, double3x3> Interactions::computeFrameworkIntraMolecular
     const std::size_t A = potential.identifiers[0];
     const std::size_t B = potential.identifiers[1];
     const double3 dr =
-        shiftedPosition(A, images.vanDerWaals[index][0]) - shiftedPosition(B, images.vanDerWaals[index][1]);
+        shiftedPosition(A, vanDerWaalsImages[index][0]) - shiftedPosition(B, vanDerWaalsImages[index][1]);
     const double rr = double3::dot(dr, dr);
     // the 1-4 pair (at its bonded, minimum image; whatever its scaling) takes the 1-4 parameters of the force field,
     // and like every pair (and the 1-4 pairs of a molecule) it ends at the cutoff
@@ -442,7 +451,7 @@ std::pair<RunningEnergy, double3x3> Interactions::computeFrameworkIntraMolecular
       const CoulombPotential& potential = potentials.coulombs[index];
       const std::size_t A = potential.identifiers[0];
       const std::size_t B = potential.identifiers[1];
-      const double3 dr = shiftedPosition(A, images.coulombs[index][0]) - shiftedPosition(B, images.coulombs[index][1]);
+      const double3 dr = shiftedPosition(A, coulombImages[index][0]) - shiftedPosition(B, coulombImages[index][1]);
       const double rr = double3::dot(dr, dr);
       const double r = std::sqrt(rr);
       if (scaledFramework14Pair(pairs14, A, B, potential.scaling, dr, simulationBox))

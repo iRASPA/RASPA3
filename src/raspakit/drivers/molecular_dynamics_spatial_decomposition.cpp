@@ -38,6 +38,7 @@ import integrators_cputime;
 import thermobarostat;
 import minimization_cell_layout;
 import elastic_constants;
+import system_preparation;
 import spatial_decomposition_settings;
 import force_engine;
 import spatial_decomposition_integrator;
@@ -698,6 +699,11 @@ void MolecularDynamicsSpatialDecomposition::setup()
           "MolecularDynamicsSpatialDecomposition: stress-fluctuation elastic constants are not available with the "
           "spatial-decomposition force engine; use 'SimulationType': 'MolecularDynamics'\n");
     }
+    if (const std::optional<std::string> reason = system.thermobarostatUnsupportedReason())
+    {
+      throw std::runtime_error(
+          std::format("MolecularDynamicsSpatialDecomposition: system {} uses {}\n", system_id, reason.value()));
+    }
 
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
@@ -715,6 +721,10 @@ void MolecularDynamicsSpatialDecomposition::setup()
 
     ++system_id;
   }
+
+  // what the Monte Carlo stages before the dynamics need worked out: the ideal-gas Rosenbluth weight of the flexible
+  // molecules that are inserted, deleted or probed with configurational bias and were given none
+  Preparation::prepareSystems(systems);
 
   // the box, the Verlet skin and the device: report a layout that the engine cannot host before any MC cycles
   // are spent. The engines themselves are built in startEngines after the MC initialization (the pair-kernel
@@ -1258,6 +1268,7 @@ void MolecularDynamicsSpatialDecomposition::equilibrate()
   {
     for (std::size_t system_id{0}; System& system : systems)
     {
+      if (beforeSystemStep) beforeSystemStep(system_id);
       system.runningEnergies = molecularDynamicsStep(system_id);
 
       system.accountConservedEnergy();
@@ -1380,6 +1391,7 @@ void MolecularDynamicsSpatialDecomposition::production()
 
     for (std::size_t system_id{0}; System& system : systems)
     {
+      if (beforeSystemStep) beforeSystemStep(system_id);
       system.runningEnergies = molecularDynamicsStep(system_id);
       ++numberOfSteps;
 

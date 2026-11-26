@@ -194,6 +194,16 @@ RunningEnergy evaluate(const ForceField &forceField, const SimulationBox &simula
     }
     return positions;
   };
+  // The terms of the atoms of one molecule are those of its stored geometry, as the intramolecular potentials, the
+  // exclusions and the molecular virial see it (and not the minimum image): an override cancels the monomer term
+  // the intramolecular potentials evaluate, and a pair correction the pair they count. Once a broken bond has split
+  // a molecule into two fragments that drift more than half a box apart, the minimum image is another geometry.
+  auto stored = [&](std::span<const std::uint32_t> ids)
+  {
+    std::array<double3, 4> positions{};
+    for (std::size_t i = 0; i < ids.size(); ++i) positions[i] = atoms[ids[i]].position;
+    return positions;
+  };
   auto lambdaOfBond = [&](std::uint32_t bondId) { return table.rampFactor(table.bonds[bondId].formedAtStep); };
 
   // --- the bonded terms across the polymer bonds ------------------------------------------------------------------
@@ -292,7 +302,9 @@ RunningEnergy evaluate(const ForceField &forceField, const SimulationBox &simula
     const double countedWeight = supplied ? -lambda : 1.0 - lambda;
     const Atom &a = atoms[pair.atoms[0]];
     const Atom &b = atoms[pair.atoms[1]];
-    const double3 dr = simulationBox.applyPeriodicBoundaryConditions(a.position - b.position);
+    const double3 dr = layout.ref(pair.atoms[0]).sameMolecule(layout.ref(pair.atoms[1]))
+                           ? a.position - b.position
+                           : simulationBox.applyPeriodicBoundaryConditions(a.position - b.position);
     const double rr = double3::dot(dr, dr);
     const PairValue wanted = pairValue<Order>(forceField, a, b, dr, rr, pair.wanted, pair.wantedScaling);
     const PairValue counted = pairValue<Order>(forceField, a, b, dr, rr, pair.counted, pair.countedScaling);
@@ -315,7 +327,7 @@ RunningEnergy evaluate(const ForceField &forceField, const SimulationBox &simula
   {
     const double lambda = table.rampFactor(term.step);
     if (lambda == 0.0) continue;
-    const std::array<double3, 4> p = chain(term.atoms);
+    const std::array<double3, 4> p = stored(term.atoms);
     if constexpr (Order == 0)
     {
       energy.bond +=
@@ -333,7 +345,7 @@ RunningEnergy evaluate(const ForceField &forceField, const SimulationBox &simula
   {
     const double lambda = table.rampFactor(term.step);
     if (lambda == 0.0) continue;
-    const std::array<double3, 4> p = chain(term.atoms);
+    const std::array<double3, 4> p = stored(term.atoms);
     if constexpr (Order == 0)
     {
       energy.bend += lambda * (term.replacement.calculateEnergy(p[0], p[1], p[2], std::nullopt) -
@@ -351,7 +363,7 @@ RunningEnergy evaluate(const ForceField &forceField, const SimulationBox &simula
   {
     const double lambda = table.rampFactor(term.step);
     if (lambda == 0.0) continue;
-    const std::array<double3, 4> p = chain(term.atoms);
+    const std::array<double3, 4> p = stored(term.atoms);
     if constexpr (Order == 0)
     {
       energy.torsion += lambda * (term.replacement.calculateEnergy(p[0], p[1], p[2], p[3]) -

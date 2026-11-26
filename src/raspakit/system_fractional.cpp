@@ -17,6 +17,7 @@ import forcefield;
 import simulationbox;
 import framework;
 import cbmc;
+import cbmc_external_energy;
 import interpolation_energy_grid;
 import interactions_external_field;
 import interactions_framework_molecule;
@@ -612,11 +613,15 @@ void System::initializeFixedLambdaFractionalMolecules()
     }
 
     // The slot was created switched off ('createInitialMolecules' grows every fractional molecule at scaling
-    // zero, where the pocket radius is zero), or pinned before at a smaller lambda: the molecule may lie inside a
-    // blocked pocket at the pinned lambda. Grow it anew at that scaling; the grow filters every trial position
-    // against the pockets with the radius of the scaling it is grown with, so the result needs no further check.
+    // zero, where the pocket radius is zero and it feels nothing), or pinned before at a smaller lambda: at the
+    // pinned lambda the molecule may lie inside a blocked pocket, or overlap with the framework or another
+    // molecule (above lambda = 0.5 the soft core is gone and the overlap is the full repulsion). Grow it anew at
+    // that scaling; the grow filters every trial position against the pockets with the radius of the scaling it
+    // is grown with and refuses overlaps, so the result needs no further check.
     const Component& component = components[componentId];
-    if (!insideBlockedPockets(component, molecule))
+    if (!insideBlockedPockets(component, molecule) &&
+        CBMC::computeExternalNonOverlappingEnergy(makeGrowContext(CBMC::CutOffMode::Full), component, molecule)
+            .has_value())
     {
       return;
     }

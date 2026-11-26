@@ -208,6 +208,15 @@ void PolymerTemplates::read(const nlohmann::basic_json<nlohmann::raspa_map> &val
         t.types = readTypeNames<2>(item, forceField, "'Bonds'");
         t.type = BondPotential::definitionForString.at(item[1].get<std::string>());
         t.parameters = readParameters(item);
+        // a FIXED bond has no force: held by SHAKE/RATTLE in a molecule, but the bonds of a reaction are no
+        // constraints of the dynamics, and the bond would have no potential at all
+        if (t.type == BondType::Fixed)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'Polymerization' 'Bonds' entry {}: a FIXED bond is no constraint between molecules (it "
+              "would have no force); use a stiff HARMONIC bond\n",
+              item.dump()));
+        }
         bonds.push_back(std::move(t));
       }
       catch (std::out_of_range const &)
@@ -227,6 +236,13 @@ void PolymerTemplates::read(const nlohmann::basic_json<nlohmann::raspa_map> &val
         t.types = readTypeNames<3>(item, forceField, "'Bends'");
         t.type = BendPotential::definitionForString.at(item[1].get<std::string>());
         t.parameters = readParameters(item);
+        if (t.type == BendType::Fixed || t.type == BendType::Rigid)
+        {
+          throw std::runtime_error(std::format(
+              "[Input reader]: 'Polymerization' 'Bends' entry {}: a FIXED or RIGID bend is no constraint between "
+              "molecules (it would have no force); use a stiff HARMONIC bend\n",
+              item.dump()));
+        }
         bends.push_back(std::move(t));
       }
       catch (std::out_of_range const &)

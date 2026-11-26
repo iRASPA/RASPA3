@@ -29,6 +29,13 @@ export struct InterpolationEnergyGrid
   // omit data from binary restart (the grid will recreated on the fly)
   std::vector<double> data;
 
+  /// False for the grid of an analytic external field: the surface is no periodic function, and the grid holds it
+  /// over the cell only ('covers').
+  bool periodic{true};
+  /// Added to a position before it is located on the grid: for a field read from file, the surface origin less the
+  /// origin of the file (see makeExternalFieldInterpolationGrid).
+  double3 shift{};
+
   InterpolationEnergyGrid() {}
 
   InterpolationEnergyGrid(const SimulationBox unitCellBox, double3 origin, uint3 numberOfGridPoints, ForceFieldSettings::InterpolationScheme order);
@@ -46,6 +53,9 @@ export struct InterpolationEnergyGrid
   /// energy parameters were scaled by 'factor' (solute tempering: ForceField::scaleSoluteInteractions). The
   /// overlap sentinel of the vertices inside a framework atom (the entries above 'overlapCriteria') is kept.
   void scaleEnergy(double factor, double overlapCriteria);
+
+  /// Whether the grid holds the field at 'pos': everywhere for a periodic grid, else within the cell.
+  bool covers(double3 pos) const;
 
   double interpolate(double3 pos) const;
   std::pair<double, double3> interpolateGradient(double3 pos) const;
@@ -80,6 +90,8 @@ export struct InterpolationEnergyGrid
 
   /// The voxel counts in the header of a CUBE file.
   static const uint3 parseExternalFieldGridDimensions(const std::string& filename);
+  /// The position of the first voxel in the header of a CUBE file, in Angstrom.
+  static double3 parseExternalFieldGridOrigin(const std::string& filename);
 
   /// The grid dimensions of a CUBE file over 'box': along an axis whose N voxels a step apart span the cell (a
   /// periodic file, as CP2K writes it: voxel i at s = i/N) one more plane, the copy of s = 0 at s = 1; along an

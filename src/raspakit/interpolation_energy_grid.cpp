@@ -317,6 +317,7 @@ struct CubeHeader
 {
   uint3 dimensions;
   std::array<double, 3> stepLengths;  ///< in Angstrom
+  double3 origin;                     ///< the position of the first voxel, in Angstrom
 };
 
 CubeHeader readCubeHeader(const std::string& filename)
@@ -339,6 +340,13 @@ CubeHeader readCubeHeader(const std::string& filename)
   if (!std::getline(infile, line))
   {
       throw std::runtime_error("Invalid cube file (missing origin line): " + filename);
+  }
+  double3 origin{};
+  {
+      std::int64_t numberOfAtoms{};
+      std::istringstream iss(line);
+      if (!(iss >> numberOfAtoms >> origin.x >> origin.y >> origin.z))
+        throw std::runtime_error("Invalid origin line in cube: " + filename);
   }
 
   // read X basis vector coordinates
@@ -387,13 +395,19 @@ CubeHeader readCubeHeader(const std::string& filename)
   }
   return {uint3(static_cast<std::size_t>(gridDims.x), static_cast<std::size_t>(gridDims.y),
                 static_cast<std::size_t>(gridDims.z)),
-          {unit * steps[0].length(), unit * steps[1].length(), unit * steps[2].length()}};
+          {unit * steps[0].length(), unit * steps[1].length(), unit * steps[2].length()},
+          unit * origin};
 }
 }  // namespace
 
 const uint3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std::string& filename)
 {
   return readCubeHeader(filename).dimensions;
+}
+
+double3 InterpolationEnergyGrid::parseExternalFieldGridOrigin(const std::string& filename)
+{
+  return readCubeHeader(filename).origin;
 }
 
 uint3 InterpolationEnergyGrid::externalFieldGridDimensions(const std::string& filename, const SimulationBox& box)
@@ -516,9 +530,16 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
     }
     data =
         InterpolationEnergyGrid::parseExternalFieldGridCube(forceField.externalFieldGridFileName, numberOfGridPoints);
+    // The field at a position is that of the surface at 'position + potentialEnergySurfaceOrigin' (as for the
+    // analytic surfaces), and the first voxel of the file lies at its origin. A file written by 'writeOutput', which
+    // puts the surface origin in its header, is read back unshifted.
+    shift = forceField.potentialEnergySurfaceOrigin -
+            InterpolationEnergyGrid::parseExternalFieldGridOrigin(forceField.externalFieldGridFileName);
   }
   else
   {
+    // the analytic surfaces are laid out around the origin and are not periodic: the grid holds them over the cell
+    periodic = false;
     double3 delta = double3(1.0 / static_cast<double>(numberOfCells.x), 1.0 / static_cast<double>(numberOfCells.y),
                             1.0 / static_cast<double>(numberOfCells.z));
     std::mdspan<double, std::dextents<std::size_t, 4>, std::layout_left> data_cell(
@@ -947,9 +968,16 @@ double polynomialInterpolate(const std::vector<double>& data, const uint3& numbe
 }
 }  // namespace
 
+bool InterpolationEnergyGrid::covers(double3 pos) const
+{
+  if (periodic) return true;
+  const double3 s = unitCellBox.inverseCell * (pos + shift);
+  return s.x >= 0.0 && s.x <= 1.0 && s.y >= 0.0 && s.y <= 1.0 && s.z >= 0.0 && s.z <= 1.0;
+}
+
 InterpolationEnergyGrid::Cell InterpolationEnergyGrid::locateCell(double3 pos) const
 {
-  const double3 s = (unitCellBox.inverseCell * pos).fract();
+  const double3 s = (unitCellBox.inverseCell * (pos + shift)).fract();
 
   // the scaled coordinate; the case s == 1.0 is handled by the last cell
   const double sx = s.x * static_cast<double>(numberOfCells.x);
@@ -1014,13 +1042,16 @@ double3x3 InterpolationEnergyGrid::cartesianHessian(const double3x3& cellHessian
 
 void InterpolationEnergyGrid::scaleEnergy(double factor, double overlapCriteria)
 {
-  // A vertex inside a framework atom holds the overlap sentinel, twice the criterion, in place of its energy (the
-  // tabulated derivatives are held within the criterion): the only entries above the criterion. The sentinel is
-  // a mark and no energy, and stays: scaled with the rest, a factor below one half took it under the criterion
-  // and the grid no longer refused a molecule on top of a framework atom.
-  for (double& value : data)
+  // A vertex inside a framework atom holds the overlap sentinel, twice the criterion, in place of its energy. The
+  // sentinel is a mark and no energy, and stays: scaled with the rest, a factor below one half took it under the
+  // criterion and the grid no longer refused a molecule on top of a framework atom. Only the energy slot of a vertex
+  // is tested: the derivatives of a vertex just outside an atom are stored as computed and can exceed the criterion
+  // themselves, and left unscaled they no longer matched the scaled energies they interpolate between.
+  const std::size_t stride = std::to_underlying(order);
+  for (std::size_t vertex = 0; vertex < data.size(); vertex += stride)
   {
-    if (!(value > overlapCriteria)) value *= factor;
+    if (!(data[vertex] > overlapCriteria)) data[vertex] *= factor;
+    for (std::size_t slot = 1; slot < stride; ++slot) data[vertex + slot] *= factor;
   }
 }
 
@@ -1030,7 +1061,7 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
   {
     case ForceFieldSettings::InterpolationScheme::Polynomial:
       return polynomialInterpolate<num_points_interpolation>(data, numberOfGridPoints, numberOfCells,
-                                                             (unitCellBox.inverseCell * pos).fract());
+                                                             (unitCellBox.inverseCell * (pos + shift)).fract());
     case ForceFieldSettings::InterpolationScheme::Tricubic:
     {
       const Cell cell = locateCell(pos);
@@ -1060,7 +1091,7 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
   {
     case ForceFieldSettings::InterpolationScheme::Polynomial:
       return {polynomialInterpolate<num_points_interpolation>(data, numberOfGridPoints, numberOfCells,
-                                                              (unitCellBox.inverseCell * pos).fract()),
+                                                              (unitCellBox.inverseCell * (pos + shift)).fract()),
               double3(0.0, 0.0, 0.0)};
     case ForceFieldSettings::InterpolationScheme::Tricubic:
     {
@@ -1091,7 +1122,7 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
   {
     case ForceFieldSettings::InterpolationScheme::Polynomial:
       return {polynomialInterpolate<num_points_interpolation>(data, numberOfGridPoints, numberOfCells,
-                                                              (unitCellBox.inverseCell * pos).fract()),
+                                                              (unitCellBox.inverseCell * (pos + shift)).fract()),
               double3(0.0, 0.0, 0.0), double3x3{}};
     case ForceFieldSettings::InterpolationScheme::Tricubic:
     {
@@ -1250,6 +1281,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Interp
   archive << s.numberOfCells;
   archive << s.order;
   archive << s.data;
+  archive << s.periodic;
+  archive << s.shift;
 
   // the end marker after the fields, where the reader looks for it
 #if DEBUG_ARCHIVE
@@ -1276,6 +1309,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Interpolatio
   archive >> s.numberOfCells;
   archive >> s.order;
   archive >> s.data;
+  archive >> s.periodic;
+  archive >> s.shift;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

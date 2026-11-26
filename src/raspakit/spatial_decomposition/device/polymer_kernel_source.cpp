@@ -40,7 +40,8 @@ typedef struct
   uint atoms[4];  // system atom indices
   uint flags;     // bit 0: inter-molecular (strain derivative and virial correction); bit 1: the pair energies go to
                   // the intramolecular slot; bit 2: the pair lists leave the pair out (the term supplies
-                  // lambda wanted + (1 - lambda) counted instead of lambda (wanted - counted))
+                  // lambda wanted + (1 - lambda) counted instead of lambda (wanted - counted)); bit 3: the atoms are
+                  // of one molecule (its relative geometry, not the minimum image)
   uint padding[3];
   float parameters[6];   // link / replacement parameters; pair: wanted (f 4 eps, sigma^6, f shift, f_coulomb);
                          // stereocentre: k, chi V_0
@@ -240,6 +241,7 @@ DEVICE_FUNCTION float polymerChiralVolume(float3 bp, float3 bn, float3 bz, PRIVA
 KERNEL_GROUP_SIZE(POLYMER_GROUP)
 void polymerTerms(GLOBAL const float4* RESTRICT position,     // per slot: wrapped position, charge
                   GLOBAL const uint* RESTRICT slotOfAtom,     // per atom (system order): its slot
+                  GLOBAL const float4* RESTRICT relative,     // per atom: position relative to the molecule's first atom
                   GLOBAL const PolymerTerm* RESTRICT terms,
                   GLOBAL const float* RESTRICT lambda,        // per ramp: the ramp factor
                   CONSTANT const PolymerParameters* p,
@@ -263,7 +265,8 @@ void polymerTerms(GLOBAL const float4* RESTRICT position,     // per slot: wrapp
     const bool unlisted = (term.flags & 4u) != 0u;
 
     // the geometry of the term: the first atom at its wrapped position, the others imaged consecutively along the
-    // chain (the stereocentre: its substituents imaged from the centre)
+    // chain (the stereocentre: its substituents imaged from the centre); the atoms of one molecule at their places
+    // in the molecule, as the bonded kernels see them
     float4 pos4[4];
     float3 pos[4];
     pos4[0] = position[slotOfAtom[term.atoms[0]]];
@@ -275,7 +278,8 @@ void polymerTerms(GLOBAL const float4* RESTRICT position,     // per slot: wrapp
     {
       pos4[i] = position[slotOfAtom[term.atoms[i]]];
       const float3 reference = (kind == 7u) ? pos[0] : pos[i - 1];
-      pos[i] = reference + polymerMinimumImage(pos4[i].xyz - reference, p);
+      pos[i] = ((term.flags & 8u) != 0u) ? pos[0] + (relative[term.atoms[i]].xyz - relative[term.atoms[0]].xyz)
+                                         : reference + polymerMinimumImage(pos4[i].xyz - reference, p);
     }
 
     // named gradients (not an array: the device compilers mishandle the address of an indexed vector element)
