@@ -23,7 +23,7 @@ import molecule;
  */
 export struct WriteLammpsData
 {
-  std::uint64_t versionNumber{2};  ///< 2: the system id and model number
+  std::uint64_t versionNumber{1};
 
   WriteLammpsData() {};
 

@@ -42,9 +42,9 @@ export enum class BondBendType : std::size_t {
  */
 export struct BondBendPotential
 {
-  std::uint64_t versionNumber{2};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  // a three-body term A-B-C, with B the vertex (version 1 stored a fourth identifier that nothing used)
+  // a three-body term A-B-C, with B the vertex
   std::array<std::size_t, 3> identifiers;  ///< Identifiers of the three particles of the bond-bend.
   BondBendType type;                       ///< The type of bond_bend potential.
   std::array<double, maximumNumberOfBondBendParameters>

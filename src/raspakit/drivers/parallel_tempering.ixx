@@ -54,7 +54,7 @@ export struct ParallelTempering
    */
   ParallelTempering(InputReader& reader);
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization (2: productionCycleLengths).
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   RandomNumber random;  ///< Random number generator (seeding + swap acceptance).
 

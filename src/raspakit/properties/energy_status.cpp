@@ -207,7 +207,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyStatus
   archive >> e.interComponentEnergies;
   archive >> e.polarizationEnergy;
   archive >> e.crossLinkEnergy;
-  if (versionNumber >= 2) archive >> e.frameworkEnergy;
+  archive >> e.frameworkEnergy;
   archive >> e.dUdlambda;
   archive >> e.translationalKineticEnergy;
   archive >> e.rotationalKineticEnergy;

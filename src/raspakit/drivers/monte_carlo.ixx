@@ -77,7 +77,7 @@ export struct MonteCarlo
   MonteCarlo(const SimulationSchedule &schedule, const std::vector<System> &systems,
              std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles);
 
-  std::uint64_t versionNumber{3};  ///< Version number for serialization (3: productionCycleLength).
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   bool outputToFiles{true};
   RandomNumber random;  ///< Random number generator.

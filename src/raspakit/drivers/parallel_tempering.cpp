@@ -1072,7 +1072,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
   archive << pt.soluteTemperingComponent;
   archive << pt.soluteTemperatures;
 
-  // version 2: the fixed number of steps of a production cycle, per replica
+  // the fixed number of steps of a production cycle, per replica
   archive << static_cast<std::uint64_t>(pt.productionCycleLengths.size());
   for (const ProductionCycleLength& cycleLength : pt.productionCycleLengths)
   {
@@ -1140,20 +1140,16 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTemp
   archive >> pt.soluteTemperingComponent;
   archive >> pt.soluteTemperatures;
 
-  // older restart files did not store it: a resumed production fixes its cycle lengths at its first cycle
+  std::uint64_t numberOfCycleLengths{0};
+  archive >> numberOfCycleLengths;
   pt.productionCycleLengths.clear();
-  if (versionNumber >= 2)
+  pt.productionCycleLengths.resize(numberOfCycleLengths);
+  for (ProductionCycleLength& cycleLength : pt.productionCycleLengths)
   {
-    std::uint64_t numberOfCycleLengths{0};
-    archive >> numberOfCycleLengths;
-    pt.productionCycleLengths.resize(numberOfCycleLengths);
-    for (ProductionCycleLength& cycleLength : pt.productionCycleLengths)
-    {
-      archive >> cycleLength.moleculeCountSum;
-      archive >> cycleLength.numberOfSamples;
-      archive >> cycleLength.stepsPerCycle;
-      archive >> cycleLength.fixed;
-    }
+    archive >> cycleLength.moleculeCountSum;
+    archive >> cycleLength.numberOfSamples;
+    archive >> cycleLength.stepsPerCycle;
+    archive >> cycleLength.fixed;
   }
 
   archive >> pt.totalPreInitializationSimulationTime;

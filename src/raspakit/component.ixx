@@ -157,7 +157,7 @@ export struct Component
             std::vector<std::vector<std::size_t>> rigidBodies = {}, double intra14VanDerWaalsScaling = 0.0,
             double intra14ChargeChargeScaling = 0.0) noexcept(false);
 
-  std::uint64_t versionNumber{5};  ///< Version number for serialization (5: constraint settings).
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   Type type{0};  ///< Type of the component (Adsorbate or Cation).
 

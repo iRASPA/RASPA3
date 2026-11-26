@@ -61,12 +61,11 @@ struct BlockAverage
   /// the result of Sample::compositeProperty() for composite properties.
   using Data = typename BlockAverageDataType<Sample>::type;
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{1};
   std::size_t numberOfBlocks{};
   Sample zeroSample{};
   std::vector<std::pair<Sample, double>> bookKeeping;
-  /// The number of samples of each block (version 2): what 'filled' goes by. Empty for blocks read from a restart
-  /// file that had no counts, which then go on by their weights.
+  /// The number of samples of each block: what 'filled' goes by. Without counts the blocks go by their weights.
   std::vector<std::size_t> numberOfSamples;
 
   BlockAverage() = default;
@@ -402,9 +401,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Property &p)
   archive >> p.numberOfBlocks;
   archive >> p.zeroSample;
   archive >> p.bookKeeping;
-  // (before version 2 the samples were not counted: see 'filled')
-  p.numberOfSamples.clear();
-  if (versionNumber >= 2) archive >> p.numberOfSamples;
+  archive >> p.numberOfSamples;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

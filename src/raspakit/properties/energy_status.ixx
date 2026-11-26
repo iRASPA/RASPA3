@@ -219,7 +219,7 @@ export struct EnergyStatus
     return v;
   }
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{1};
   std::size_t numberOfExternalFields;
   std::size_t numberOfFrameworks;
   std::size_t numberOfComponents;

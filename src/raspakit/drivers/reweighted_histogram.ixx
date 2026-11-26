@@ -142,8 +142,8 @@ export struct ReweightedHistogram
   ReweightedHistogram(System templateSystem, std::vector<double> temperatures, std::vector<double> pressures,
                       ReweightedHistogramParameters parameters = {});
 
-  /// Version number for serialization (2: BET auto-setup state, 3: output JSON, 4: ideal-gas references).
-  std::uint64_t versionNumber{4};
+  /// Version number for serialization.
+  std::uint64_t versionNumber{1};
 
   RandomNumber random;  ///< Random number generator (seeding + swap acceptance).
 

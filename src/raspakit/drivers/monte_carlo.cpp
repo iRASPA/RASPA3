@@ -1272,12 +1272,12 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
 
   archive << mc.estimation;
 
-  // version 2: the overall cycle number that indexes the property-evolution samples
+  // the overall cycle number that indexes the property-evolution samples
   archive << mc.absoluteCurrentCycle;
 
   // not written: totalGridCreationTime
 
-  // version 3: the fixed number of steps of a production cycle
+  // the fixed number of steps of a production cycle
   archive << mc.productionCycleLength.moleculeCountSum;
   archive << mc.productionCycleLength.numberOfSamples;
   archive << mc.productionCycleLength.stepsPerCycle;
@@ -1332,34 +1332,14 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
 
   archive >> mc.estimation;
 
-  if (versionNumber >= 2)
-  {
-    archive >> mc.absoluteCurrentCycle;
-  }
-  else
-  {
-    // older restart files did not store it; the best available estimate is the cycle count of the stages
-    // that were completed before the one being resumed plus the position within the current stage
-    mc.absoluteCurrentCycle = mc.currentCycle;
-    if (mc.simulationStage > MonteCarlo::SimulationStage::PreInitialization)
-      mc.absoluteCurrentCycle += mc.numberOfPreInitializationCycles;
-    if (mc.simulationStage > MonteCarlo::SimulationStage::Initialization)
-      mc.absoluteCurrentCycle += mc.numberOfInitializationCycles;
-    if (mc.simulationStage > MonteCarlo::SimulationStage::Equilibration)
-      mc.absoluteCurrentCycle += mc.numberOfEquilibrationCycles;
-  }
+  archive >> mc.absoluteCurrentCycle;
 
   // not written: totalGridCreationTime
 
-  // older restart files did not store it: a resumed production fixes its cycle length at its first cycle
-  mc.productionCycleLength.clear();
-  if (versionNumber >= 3)
-  {
-    archive >> mc.productionCycleLength.moleculeCountSum;
-    archive >> mc.productionCycleLength.numberOfSamples;
-    archive >> mc.productionCycleLength.stepsPerCycle;
-    archive >> mc.productionCycleLength.fixed;
-  }
+  archive >> mc.productionCycleLength.moleculeCountSum;
+  archive >> mc.productionCycleLength.numberOfSamples;
+  archive >> mc.productionCycleLength.stepsPerCycle;
+  archive >> mc.productionCycleLength.fixed;
 
   archive >> mc.totalPreInitializationSimulationTime;
   archive >> mc.totalInitializationSimulationTime;

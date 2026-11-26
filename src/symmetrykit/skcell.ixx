@@ -105,7 +105,7 @@ export class SKCell
 
  private:
   void updateFullCell();
-  std::int64_t _versionNumber{2};
+  std::int64_t _versionNumber{1};
 
   int _zValue{1};
 

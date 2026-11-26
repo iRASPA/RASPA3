@@ -265,26 +265,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyConv
   archive >> rdf.pairCount;
   archive >> rdf.volumeCumulative;
   archive >> rdf.volumeSampleCount;
-  // (before version 2 every sample had the weight one)
-  rdf.pairWeight.assign(rdf.pairCount.begin(), rdf.pairCount.end());
-  if (versionNumber >= 2) archive >> rdf.pairWeight;
-  // (before version 3 the pairs were not kept per block: the blocks read are given their share of the pairs of the
-  // run by their number of samples, which is how they were normalized, and the ones sampled from here on their own)
-  if (versionNumber >= 3)
-  {
-    archive >> rdf.pairWeightPerBlock;
-  }
-  else
-  {
-    rdf.pairWeightPerBlock.assign(rdf.histogram.numberOfBlocks, std::vector<double>(rdf.pairWeight.size(), 0.0));
-    for (std::size_t block = 0; block != rdf.histogram.numberOfBlocks; ++block)
-    {
-      const double share = rdf.histogram.totalNumberOfCounts > 0.0
-                               ? rdf.histogram.numberOfCounts[block] / rdf.histogram.totalNumberOfCounts
-                               : 0.0;
-      for (std::size_t c = 0; c != rdf.pairWeight.size(); ++c) rdf.pairWeightPerBlock[block][c] = share * rdf.pairWeight[c];
-    }
-  }
+  archive >> rdf.pairWeight;
+  archive >> rdf.pairWeightPerBlock;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

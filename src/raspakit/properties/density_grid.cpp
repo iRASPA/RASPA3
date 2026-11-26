@@ -421,10 +421,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyDens
   archive >> temp.normType;
   archive >> temp.binningMode;
   archive >> temp.numberOfSamples;
-  if (versionNumber >= 2) archive >> temp.volumeSum;
-  // (before version 3 every sample had the weight one)
-  temp.weightSum = static_cast<double>(temp.numberOfSamples);
-  if (versionNumber >= 3) archive >> temp.weightSum;
+  archive >> temp.volumeSum;
+  archive >> temp.weightSum;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

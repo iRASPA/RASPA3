@@ -1161,7 +1161,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
     archive << jsons;
   }
 
-  // version 2: the fixed number of steps of a production cycle
+  // the fixed number of steps of a production cycle
   archive << pti.productionCycleLength.moleculeCountSum;
   archive << pti.productionCycleLength.numberOfSamples;
   archive << pti.productionCycleLength.stepsPerCycle;
@@ -1228,15 +1228,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTher
     for (const std::string& replicaJson : jsons) pti.replicaJsons.push_back(nlohmann::json::parse(replicaJson));
   }
 
-  // older restart files did not store it: a resumed production fixes its cycle length at its first cycle
-  pti.productionCycleLength.clear();
-  if (versionNumber >= 2)
-  {
-    archive >> pti.productionCycleLength.moleculeCountSum;
-    archive >> pti.productionCycleLength.numberOfSamples;
-    archive >> pti.productionCycleLength.stepsPerCycle;
-    archive >> pti.productionCycleLength.fixed;
-  }
+  archive >> pti.productionCycleLength.moleculeCountSum;
+  archive >> pti.productionCycleLength.numberOfSamples;
+  archive >> pti.productionCycleLength.stepsPerCycle;
+  archive >> pti.productionCycleLength.fixed;
 
   std::uint64_t magicNumber;
   archive >> magicNumber;

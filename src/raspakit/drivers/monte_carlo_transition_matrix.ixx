@@ -71,7 +71,7 @@ export struct MonteCarloTransitionMatrix
   MonteCarloTransitionMatrix(const SimulationSchedule &schedule, std::vector<System> &systems,
                              RandomNumber &randomSeed, std::size_t numberOfBlocks);
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization (2: productionCycleLength).
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   std::size_t numberOfProductionCycles;                   ///< Number of production cycles.
   std::size_t numberOfPreInitializationCycles;  ///< Number of pre-initialization cycles.

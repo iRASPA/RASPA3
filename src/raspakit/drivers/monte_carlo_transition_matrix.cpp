@@ -1116,7 +1116,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
 
   archive << mc.estimation;
 
-  // version 2: the fixed number of steps of a production cycle
+  // the fixed number of steps of a production cycle
   archive << mc.productionCycleLength.moleculeCountSum;
   archive << mc.productionCycleLength.numberOfSamples;
   archive << mc.productionCycleLength.stepsPerCycle;
@@ -1171,15 +1171,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarloTr
 
   archive >> mc.estimation;
 
-  // older restart files did not store it: a resumed production fixes its cycle length at its first cycle
-  mc.productionCycleLength.clear();
-  if (versionNumber >= 2)
-  {
-    archive >> mc.productionCycleLength.moleculeCountSum;
-    archive >> mc.productionCycleLength.numberOfSamples;
-    archive >> mc.productionCycleLength.stepsPerCycle;
-    archive >> mc.productionCycleLength.fixed;
-  }
+  archive >> mc.productionCycleLength.moleculeCountSum;
+  archive >> mc.productionCycleLength.numberOfSamples;
+  archive >> mc.productionCycleLength.stepsPerCycle;
+  archive >> mc.productionCycleLength.fixed;
 
   archive >> mc.totalPreInitializationSimulationTime;
   archive >> mc.totalInitializationSimulationTime;

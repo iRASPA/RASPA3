@@ -2946,7 +2946,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Reweig
   archive << rh.totalReweightingAnalysisTime;
   archive << rh.totalSimulationTime;
 
-  // version 2: the BET auto-setup state (the scouts are not rerun on a restart)
+  // the BET auto-setup state (the scouts are not rerun on a restart)
   archive << rh.computeBET;
   archive << rh.autoExternalPressures;
   archive << rh.autoReweightingPressureRange;
@@ -2954,15 +2954,15 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Reweig
   archive << rh.nitrogenBETPressurePlan;
   archive << rh.nitrogenBETFillingCeiling;
 
-  // version 3: the JSON output of the run (its header, the pre-isotherm fit of the ladder and the initial
-  // conditions of the replicas), which a resumed run must not rebuild from its mid-run state
+  // the JSON output of the run (its header, the pre-isotherm fit of the ladder and the initial conditions of the
+  // replicas), which a resumed run must not rebuild from its mid-run state
   archive << rh.outputJson.dump();
   {
     std::vector<std::string> jsons;
     for (const nlohmann::json& json : rh.replicaJsons) jsons.push_back(json.dump());
     archive << jsons;
   }
-  archive << rh.reweightingLogNormalization;  // version 4
+  archive << rh.reweightingLogNormalization;
 
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
@@ -3035,33 +3035,20 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ReweightedHi
   archive >> rh.totalReweightingAnalysisTime;
   archive >> rh.totalSimulationTime;
 
-  if (versionNumber >= 2)
-  {
-    archive >> rh.computeBET;
-    archive >> rh.autoExternalPressures;
-    archive >> rh.autoReweightingPressureRange;
-    archive >> rh.autoMacroStateMaximum;
-    archive >> rh.nitrogenBETPressurePlan;
-    archive >> rh.nitrogenBETFillingCeiling;
-  }
-  if (versionNumber >= 3)
-  {
-    std::string json;
-    archive >> json;
-    rh.outputJson = nlohmann::json::parse(json);
-    std::vector<std::string> jsons;
-    archive >> jsons;
-    rh.replicaJsons.clear();
-    for (const std::string& replicaJson : jsons) rh.replicaJsons.push_back(nlohmann::json::parse(replicaJson));
-  }
-  if (versionNumber >= 4)
-  {
-    archive >> rh.reweightingLogNormalization;
-  }
-  else
-  {
-    rh.reweightingLogNormalization.clear();
-  }
+  archive >> rh.computeBET;
+  archive >> rh.autoExternalPressures;
+  archive >> rh.autoReweightingPressureRange;
+  archive >> rh.autoMacroStateMaximum;
+  archive >> rh.nitrogenBETPressurePlan;
+  archive >> rh.nitrogenBETFillingCeiling;
+  std::string json;
+  archive >> json;
+  rh.outputJson = nlohmann::json::parse(json);
+  std::vector<std::string> jsons;
+  archive >> jsons;
+  rh.replicaJsons.clear();
+  for (const std::string& replicaJson : jsons) rh.replicaJsons.push_back(nlohmann::json::parse(replicaJson));
+  archive >> rh.reweightingLogNormalization;
 
   std::uint64_t magicNumber;
   archive >> magicNumber;

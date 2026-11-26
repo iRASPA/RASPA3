@@ -473,7 +473,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Thermobarost
   value.coupling = static_cast<BarostatCoupling>(coupling);
   archive >> value.temperature >> value.pressure >> value.timeStep >> value.timeScaleParameterBarostat;
   archive >> value.translationalDegreesOfFreedom;
-  if (version >= 2) archive >> value.centerOfMassConstraint;
+  archive >> value.centerOfMassConstraint;
   archive >> value.cellDegreesOfFreedom >> value.chainLength;
   archive >> value.numberOfRespaSteps >> value.numberOfYoshidaSuzukiSteps;
   archive >> value.logVolumePosition >> value.logVolumeVelocity >> value.logVolumeMass;

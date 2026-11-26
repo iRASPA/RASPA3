@@ -12,7 +12,7 @@ import forcefield;
 
 export struct SampleMovie
 {
-  std::uint64_t versionNumber{2};  ///< 2: the box restriction, tag and model number
+  std::uint64_t versionNumber{1};
 
   SampleMovie() {};
   SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictToBox, std::optional<std::string> tag);

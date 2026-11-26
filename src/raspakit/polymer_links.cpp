@@ -2227,7 +2227,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Polyme
   archive << t.currentStep;
   archive << t.chiralForceConstant;
   archive << t.chiralReferenceVolume;
-  // version 2: the radicals
+  // the radicals
   archive << t.groupRadical;
   archive << t.groupLastRadical;
   archive << t.radicals;
@@ -2266,19 +2266,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PolymerLinkT
   archive >> t.currentStep;
   archive >> t.chiralForceConstant;
   archive >> t.chiralReferenceVolume;
-  if (versionNumber >= 2)
-  {
-    archive >> t.groupRadical;
-    archive >> t.groupLastRadical;
-    archive >> t.radicals;
-  }
-  else
-  {
-    // an older restart: the living chain ends receive their radicals at their next reaction (apply())
-    t.groupRadical.assign(t.groupState.size(), PolymerLinkTable::noRadical);
-    t.groupLastRadical.assign(t.groupState.size(), PolymerLinkTable::noRadical);
-    t.radicals.clear();
-  }
+  archive >> t.groupRadical;
+  archive >> t.groupLastRadical;
+  archive >> t.radicals;
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
   archive >> magicNumber;

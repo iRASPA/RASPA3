@@ -297,7 +297,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ReactiveSite
   archive >> s.atom;
   archive >> s.siteType;
   archive >> s.valence;
-  if (versionNumber >= 2) archive >> s.linkBend;
+  archive >> s.linkBend;
   return archive;
 }
 

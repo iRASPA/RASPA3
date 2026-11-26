@@ -325,8 +325,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Thermo
   archive << t.numberOfYoshidaSuzukiSteps;
   archive << t.timeScaleParameterThermostat;
 
-  // version 2: the particle degrees of freedom the chain acts on (NoseHooverNVT and getEnergy are
-  // gated on them; without these a resumed thermostat is silently inactive)
+  // the particle degrees of freedom the chain acts on (NoseHooverNVT and getEnergy are gated on them)
   archive << t.translationalDegreesOfFreedom;
   archive << t.rotationalDegreesOfFreedom;
   archive << t.translationalCenterOfMassConstraint;
@@ -391,17 +390,14 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Thermostat &
 
   archive >> t.w;
 
-  if (versionNumber >= 2)
-  {
-    std::uint8_t type{};
-    archive >> type;
-    if (type > static_cast<std::uint8_t>(Thermostat::Type::Langevin))
-      throw std::runtime_error("Invalid thermostat type reading 'Thermostat'\n");
-    t.type = static_cast<Thermostat::Type>(type);
-    archive >> t.langevinFriction;
-    archive >> t.langevinHeat;
-    archive >> t.langevinRandom;
-  }
+  std::uint8_t type{};
+  archive >> type;
+  if (type > static_cast<std::uint8_t>(Thermostat::Type::Langevin))
+    throw std::runtime_error("Invalid thermostat type reading 'Thermostat'\n");
+  t.type = static_cast<Thermostat::Type>(type);
+  archive >> t.langevinFriction;
+  archive >> t.langevinHeat;
+  archive >> t.langevinRandom;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

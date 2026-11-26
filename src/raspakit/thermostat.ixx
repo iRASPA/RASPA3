@@ -53,7 +53,7 @@ export struct Thermostat
              std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps,
              double timeScaleParameterThermostat);
 
-  std::uint64_t versionNumber{2};  ///< Version number for serialization (2: the Langevin thermostat).
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   /// How the temperature is held. Nose-Hoover: a deterministic chain of thermostat variables that scales the
   /// velocities. Langevin: friction and random kicks on every thermostatted degree of freedom, an exact

@@ -1517,13 +1517,12 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framew
   archive << c.flexibleAtomCount;
   archive << c.rigidGroupCount;
   archive << c.mixed;
-  // version 2: the unit-cell data the loading conversions and the void fraction use
+  // the unit-cell data the loading conversions and the void fraction use
   archive << c.unitCellMass;
   archive << c.fractionalUnitCellAtoms;
   archive << std::vector<std::size_t>(c.uniqueAtomTypes.begin(), c.uniqueAtomTypes.end());
-  // version 3: the generation options and definitions the van der Waals image list and the intramolecular topology
-  // are regenerated from (without them a restart regenerated the pair list with the default exclusions and 1-4
-  // scalings)
+  // the generation options and definitions the van der Waals image list and the intramolecular topology are
+  // regenerated from
   archive << c.excludeIntra12Interactions;
   archive << c.excludeIntra13Interactions;
   archive << c.excludeIntraBondInteractions;
@@ -1589,28 +1588,22 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c
   archive >> c.flexibleAtomCount;
   archive >> c.rigidGroupCount;
   archive >> c.mixed;
-  if (versionNumber >= 2)
-  {
-    archive >> c.unitCellMass;
-    archive >> c.fractionalUnitCellAtoms;
-    std::vector<std::size_t> uniqueAtomTypes;
-    archive >> uniqueAtomTypes;
-    c.uniqueAtomTypes = std::unordered_set<std::size_t>(uniqueAtomTypes.begin(), uniqueAtomTypes.end());
-  }
-  if (versionNumber >= 3)
-  {
-    archive >> c.excludeIntra12Interactions;
-    archive >> c.excludeIntra13Interactions;
-    archive >> c.excludeIntraBondInteractions;
-    archive >> c.excludeIntraBendInteractions;
-    archive >> c.intra14VanDerWaalsScaling;
-    archive >> c.intra14ChargeChargeScaling;
-    archive >> c.frameworkDefinitionName;
-    readDefinitions(archive, c.bondDefinitions);
-    readDefinitions(archive, c.bendDefinitions);
-    readDefinitions(archive, c.torsionDefinitions);
-    readDefinitions(archive, c.improperTorsionDefinitions);
-  }
+  archive >> c.unitCellMass;
+  archive >> c.fractionalUnitCellAtoms;
+  std::vector<std::size_t> uniqueAtomTypes;
+  archive >> uniqueAtomTypes;
+  c.uniqueAtomTypes = std::unordered_set<std::size_t>(uniqueAtomTypes.begin(), uniqueAtomTypes.end());
+  archive >> c.excludeIntra12Interactions;
+  archive >> c.excludeIntra13Interactions;
+  archive >> c.excludeIntraBondInteractions;
+  archive >> c.excludeIntraBendInteractions;
+  archive >> c.intra14VanDerWaalsScaling;
+  archive >> c.intra14ChargeChargeScaling;
+  archive >> c.frameworkDefinitionName;
+  readDefinitions(archive, c.bondDefinitions);
+  readDefinitions(archive, c.bendDefinitions);
+  readDefinitions(archive, c.torsionDefinitions);
+  readDefinitions(archive, c.improperTorsionDefinitions);
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

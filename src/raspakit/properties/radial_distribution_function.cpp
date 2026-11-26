@@ -230,15 +230,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyRadi
                     location.line(), location.file_name()));
   }
 
-  // up to version 2 every sample was divided by its own pair count before it was accumulated: those sums cannot be
-  // continued with the pair counts kept apart
-  if (versionNumber < 3)
-  {
-    throw std::runtime_error(
-        "PropertyRadialDistributionFunction: the restart file holds a force-based RDF of an older version, which "
-        "cannot be continued (its samples were normalised one by one); restart without 'ComputeRDF' or start anew\n");
-  }
-
   archive >> rdf.numberOfPseudoAtoms;
   archive >> rdf.numberOfBins;
   archive >> rdf.range;

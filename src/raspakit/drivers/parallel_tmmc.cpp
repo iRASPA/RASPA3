@@ -1975,7 +1975,7 @@ void ParallelTMMC::performTransitionMatrixAnalysis()
     // left with its collection-matrix increment, which at low N in a strongly binding adsorbent has no accepted
     // deletion, the very case the anchor is for: the chain of the block was cut there and the macrostates on the
     // shorter side dropped out of its ln Pi.
-    // (a restart file of an older version has no Widom snapshots: its blocks keep the whole-production anchor)
+    // (blocks without Widom snapshots keep the whole-production anchor)
     bool haveBlockWidomSnapshots = true;
     for (std::size_t windowIndex = 0; windowIndex < numberOfWindows; ++windowIndex)
     {
@@ -2927,15 +2927,15 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Parall
   archive << ptmmc.totalAnalysisTime;
   archive << ptmmc.totalSimulationTime;
 
-  // version 2: the BET auto-setup state (the scouts are not rerun on a restart)
+  // the BET auto-setup state (the scouts are not rerun on a restart)
   archive << ptmmc.computeBET;
   archive << ptmmc.autoReweightingPressureRange;
   archive << ptmmc.autoMacroStateMaximum;
   archive << ptmmc.nitrogenBETPressurePlan;
   archive << ptmmc.nitrogenBETFillingCeiling;
 
-  // version 3: the per-block Widom snapshots, and the JSON output of the run (its header and the initial
-  // conditions of the walkers), which a resumed run must not rebuild from its mid-run state
+  // the per-block Widom snapshots, and the JSON output of the run (its header and the initial conditions of the
+  // walkers), which a resumed run must not rebuild from its mid-run state
   archive << ptmmc.blockWidomWeightSums;
   archive << ptmmc.blockWidomInsertions;
   archive << ptmmc.outputJson.dump();
@@ -3013,35 +3013,20 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTMMC
   archive >> ptmmc.totalAnalysisTime;
   archive >> ptmmc.totalSimulationTime;
 
-  if (versionNumber >= 2)
-  {
-    archive >> ptmmc.computeBET;
-    archive >> ptmmc.autoReweightingPressureRange;
-    archive >> ptmmc.autoMacroStateMaximum;
-    archive >> ptmmc.nitrogenBETPressurePlan;
-    archive >> ptmmc.nitrogenBETFillingCeiling;
-  }
-  if (versionNumber >= 3)
-  {
-    archive >> ptmmc.blockWidomWeightSums;
-    archive >> ptmmc.blockWidomInsertions;
-    std::string json;
-    archive >> json;
-    ptmmc.outputJson = nlohmann::json::parse(json);
-    std::vector<std::string> jsons;
-    archive >> jsons;
-    ptmmc.walkerJsons.clear();
-    for (const std::string& walkerJson : jsons) ptmmc.walkerJsons.push_back(nlohmann::json::parse(walkerJson));
-  }
-  else
-  {
-    // An older file has no Widom snapshots. One (empty) list per walker all the same: the production stage appends
-    // to the list of its walker and the analysis asks each for its size, and a driver read from a restart file has
-    // not been through 'initializeWalkers', so that both indexed an empty vector. With fewer snapshots than blocks
-    // the analysis keeps the whole-production anchor for every block.
-    ptmmc.blockWidomWeightSums.assign(ptmmc.systems.size(), {});
-    ptmmc.blockWidomInsertions.assign(ptmmc.systems.size(), {});
-  }
+  archive >> ptmmc.computeBET;
+  archive >> ptmmc.autoReweightingPressureRange;
+  archive >> ptmmc.autoMacroStateMaximum;
+  archive >> ptmmc.nitrogenBETPressurePlan;
+  archive >> ptmmc.nitrogenBETFillingCeiling;
+  archive >> ptmmc.blockWidomWeightSums;
+  archive >> ptmmc.blockWidomInsertions;
+  std::string json;
+  archive >> json;
+  ptmmc.outputJson = nlohmann::json::parse(json);
+  std::vector<std::string> jsons;
+  archive >> jsons;
+  ptmmc.walkerJsons.clear();
+  for (const std::string& walkerJson : jsons) ptmmc.walkerJsons.push_back(nlohmann::json::parse(walkerJson));
 
   std::uint64_t magicNumber;
   archive >> magicNumber;

@@ -144,8 +144,7 @@ export struct Framework
             std::size_t spaceGroupHallNumber, const std::vector<Atom>& definedAtoms,
             int3 numberOfUnitCells) noexcept(false);
 
-  std::uint64_t versionNumber{3};  ///< Version number for serialization purposes (2: unit-cell mass and atoms;
-                                   ///< 3: intra-framework exclusions, 1-4 scalings, and potential definitions).
+  std::uint64_t versionNumber{1};  ///< Version number for serialization purposes.
 
   SimulationBox simulationBox;          ///< Simulation box defining the unit cell dimensions.
   std::size_t spaceGroupHallNumber{1};  ///< Space group number according to the Hall notation.

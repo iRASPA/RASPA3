@@ -52,7 +52,7 @@ export struct PropertyConventionalRadialDistributionFunction
       throw std::runtime_error("PropertyConventionalRadialDistributionFunction: the writing interval must be at least 1\n");
   }
 
-  std::uint64_t versionNumber{3};
+  std::uint64_t versionNumber{1};
 
   /// Channel index of an ordered pseudo-atom pair.
   std::size_t channel(std::size_t atomTypeA, std::size_t atomTypeB) const

@@ -2335,16 +2335,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.forceEngineSettings;
   archive << s.propertyRadicalWaitingTimes;
 
-  // version 2
   archive << s.referenceSimulationBox;
-
-  // version 3
   archive << s.atomTags;
-
-  // version 5
   archive << s.initialVelocities;
-
-  // version 6
   archive << s.propertyPolymerChains;
 
   // 'interpolationGrids' and 'externalFieldInterpolationGrid' are intentionally not serialized:
@@ -2437,17 +2430,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.timeStep;
 
   archive >> s.simulationBox;
-  if (versionNumber >= 4)
-  {
-    archive >> s.containsTheFractionalMoleculeOfComponent;
-  }
-  else
-  {
-    // an older restart has one flag for the box: the fractional molecules of all components were in the same box
-    bool containsTheFractionalMolecule;
-    archive >> containsTheFractionalMolecule;
-    s.setContainsTheFractionalMolecules(containsTheFractionalMolecule);
-  }
+  archive >> s.containsTheFractionalMoleculeOfComponent;
 
   archive >> s.atomData;
   archive >> s.atomDynamics;
@@ -2534,37 +2517,15 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   // the engine itself is derived state, rebuilt by the first hybrid MC move
   s.hybridMCForceEngine.reset();
 
-  if (versionNumber >= 2)
-  {
-    archive >> s.referenceSimulationBox;
-  }
-  else
-  {
-    // an older restart: the constant-stress reference cell is the box at the restart point
-    s.referenceSimulationBox = s.simulationBox;
-  }
+  archive >> s.referenceSimulationBox;
 
-  if (versionNumber >= 3)
-  {
-    archive >> s.atomTags;
-    s.rebuildAtomIndexOfTag();
-    s.checkAtomTags();
-  }
-  else
-  {
-    // an older restart carries no tags: the atoms are numbered in storage order
-    s.resetAtomTags();
-  }
+  archive >> s.atomTags;
+  s.rebuildAtomIndexOfTag();
+  s.checkAtomTags();
 
-  if (versionNumber >= 5)
-  {
-    archive >> s.initialVelocities;
-  }
+  archive >> s.initialVelocities;
 
-  if (versionNumber >= 6)
-  {
-    archive >> s.propertyPolymerChains;
-  }
+  archive >> s.propertyPolymerChains;
 
   // archive >> s.columnNumberOfGridPoints;
   // archive >> s.columnTotalPressure;

@@ -4426,17 +4426,17 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
 
   archive << c.reactiveSites;
   archive << c.reactiveGroups;
-  archive << c.pseudoAtomMasses;  // version 2
+  archive << c.pseudoAtomMasses;
 
   archive << c.moleculePropertiesSettings;
   archive << c.moleculeShapeSettings;
   archive << c.moleculeBackboneSettings;
   archive << c.endToEndACFSettings;
 
-  archive << c.idealGasRosenbluthWeightLadder;  // version 3
+  archive << c.idealGasRosenbluthWeightLadder;
   archive << c.logInsertionNormalization;
 
-  archive << c.idealGasRosenbluthWeightEstimate.has_value();  // version 4
+  archive << c.idealGasRosenbluthWeightEstimate.has_value();
   if (c.idealGasRosenbluthWeightEstimate.has_value())
   {
     archive << c.idealGasRosenbluthWeightEstimate->temperature;
@@ -4567,59 +4567,32 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.reactiveSites;
   archive >> c.reactiveGroups;
-  if (versionNumber >= 2)
-  {
-    archive >> c.pseudoAtomMasses;
-  }
-  else
-  {
-    // a version-1 restart: the table is unknown, 'atomMass' falls back to the defined bead masses
-    c.pseudoAtomMasses.clear();
-  }
+  archive >> c.pseudoAtomMasses;
 
   archive >> c.moleculePropertiesSettings;
   archive >> c.moleculeShapeSettings;
   archive >> c.moleculeBackboneSettings;
   archive >> c.endToEndACFSettings;
 
-  if (versionNumber >= 3)
-  {
-    archive >> c.idealGasRosenbluthWeightLadder;
-    archive >> c.logInsertionNormalization;
-  }
-  else
-  {
-    c.idealGasRosenbluthWeightLadder.clear();
-    c.logInsertionNormalization.reset();
-  }
+  archive >> c.idealGasRosenbluthWeightLadder;
+  archive >> c.logInsertionNormalization;
 
   c.idealGasRosenbluthWeightEstimate.reset();
-  if (versionNumber >= 4)
+  bool hasEstimate{false};
+  archive >> hasEstimate;
+  if (hasEstimate)
   {
-    bool hasEstimate{false};
-    archive >> hasEstimate;
-    if (hasEstimate)
-    {
-      Component::IdealGasRosenbluthWeightEstimate estimate{};
-      archive >> estimate.temperature;
-      archive >> estimate.relativeError;
-      archive >> estimate.numberOfGrows;
-      archive >> estimate.converged;
-      c.idealGasRosenbluthWeightEstimate = estimate;
-    }
-    archive >> c.idealGasRosenbluthWeightTolerance;
+    Component::IdealGasRosenbluthWeightEstimate estimate{};
+    archive >> estimate.temperature;
+    archive >> estimate.relativeError;
+    archive >> estimate.numberOfGrows;
+    archive >> estimate.converged;
+    c.idealGasRosenbluthWeightEstimate = estimate;
   }
-  else
-  {
-    c.idealGasRosenbluthWeightTolerance.reset();
-  }
-  if (versionNumber >= 5)
-  {
-    archive >> c.constraintTolerance;
-    archive >> c.constraintMaximumIterations;
-  }
-  // the constraints follow from the potentials and the fragments (a restart file of before them has none stored,
-  // and the degrees of freedom of its flexible molecules without the constraints taken off)
+  archive >> c.idealGasRosenbluthWeightTolerance;
+  archive >> c.constraintTolerance;
+  archive >> c.constraintMaximumIterations;
+  // the constraints follow from the potentials and the fragments
   c.buildDistanceConstraints();
 
 #if DEBUG_ARCHIVE

@@ -114,7 +114,7 @@ export class SKAsymmetricAtom
   void setCopies(std::vector<std::shared_ptr<SKAtomCopy>> copies) { _copies = copies; }
 
  private:
-  std::size_t _versionNumber{2};
+  std::size_t _versionNumber{1};
   std::size_t _asymmetricIndex = 0;
   std::string _displayName = std::string("Default");
   double3 _position = double3(0, 0, 0);

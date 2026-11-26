@@ -426,17 +426,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BondBendPote
   }
 
   archive >> b.type;
-  if (versionNumber < 2)
-  {
-    // version 1 stored a fourth identifier that the three-body term never used
-    std::array<std::size_t, 4> identifiers{};
-    archive >> identifiers;
-    b.identifiers = {identifiers[0], identifiers[1], identifiers[2]};
-  }
-  else
-  {
-    archive >> b.identifiers;
-  }
+  archive >> b.identifiers;
   archive >> b.parameters;
 
 #if DEBUG_ARCHIVE

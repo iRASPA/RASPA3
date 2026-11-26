@@ -1120,7 +1120,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const HyperP
   archive << hpt.swapAttemptsPerPressurePair;
   archive << hpt.swapAcceptedPerPressurePair;
 
-  // version 2: the fixed number of steps of a production cycle, per replica
+  // the fixed number of steps of a production cycle, per replica
   archive << static_cast<std::uint64_t>(hpt.productionCycleLengths.size());
   for (const ProductionCycleLength& cycleLength : hpt.productionCycleLengths)
   {
@@ -1190,20 +1190,16 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, HyperParalle
   archive >> hpt.swapAttemptsPerPressurePair;
   archive >> hpt.swapAcceptedPerPressurePair;
 
-  // older restart files did not store it: a resumed production fixes its cycle lengths at its first cycle
+  std::uint64_t numberOfCycleLengths{0};
+  archive >> numberOfCycleLengths;
   hpt.productionCycleLengths.clear();
-  if (versionNumber >= 2)
+  hpt.productionCycleLengths.resize(numberOfCycleLengths);
+  for (ProductionCycleLength& cycleLength : hpt.productionCycleLengths)
   {
-    std::uint64_t numberOfCycleLengths{0};
-    archive >> numberOfCycleLengths;
-    hpt.productionCycleLengths.resize(numberOfCycleLengths);
-    for (ProductionCycleLength& cycleLength : hpt.productionCycleLengths)
-    {
-      archive >> cycleLength.moleculeCountSum;
-      archive >> cycleLength.numberOfSamples;
-      archive >> cycleLength.stepsPerCycle;
-      archive >> cycleLength.fixed;
-    }
+    archive >> cycleLength.moleculeCountSum;
+    archive >> cycleLength.numberOfSamples;
+    archive >> cycleLength.stepsPerCycle;
+    archive >> cycleLength.fixed;
   }
 
   archive >> hpt.totalPreInitializationSimulationTime;
