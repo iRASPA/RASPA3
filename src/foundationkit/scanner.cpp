@@ -76,11 +76,15 @@ bool Scanner::scanLine(std::string& into)
   {
     into = std::string(_scanLocation, _string.cend());
     _scanLocation = _string.cend();
-    return true;
   }
-
-  into = std::string(_scanLocation, newlineLocation);
-  _scanLocation = newlineLocation + 1;
+  else
+  {
+    into = std::string(_scanLocation, newlineLocation);
+    _scanLocation = newlineLocation + 1;
+  }
+  // a file with Windows line ends: the carriage return before the newline is not part of the line (it stayed on the
+  // last value of every line)
+  if (!into.empty() && into.back() == '\r') into.pop_back();
   return true;
 }
 

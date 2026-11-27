@@ -2,6 +2,8 @@ add_executable(unit_tests_foundationkit
   archive.cpp
   units.cpp
   getopt.cpp
+  scanner.cpp
+  json.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_foundationkit)

@@ -1934,3 +1934,39 @@ TEST(MC_CROSS_LINKS, regrowth_of_an_unconstructible_linked_set_is_refused)
     EXPECT_EQ(system.spanOfMolecule(0, 0)[k].position.x, before[k].position.x);
   }
 }
+
+// A FIXED or RIGID bend is a constraint without energy, and nothing holds one across a link: as the bend partner-site-
+// partner of a reactive site it had no force at all. Refused, as the polymer bends refuse it; a HARMONIC one is read.
+TEST(MC_CROSS_LINKS, a_fixed_link_bend_is_refused)
+{
+  const ForceField forceField = makeForceField(40.0, 0.0, 0.0, false);
+  for (const std::string bend : {"FIXED", "RIGID", "HARMONIC"})
+  {
+    const std::string parameters = bend == "HARMONIC" ? "[1000.0, 109.5]" : "[109.5]";
+    const std::string json = std::format(R"({{
+  "CriticalTemperature" : 190.6,
+  "CriticalPressure" : 4599200.0,
+  "AcentricFactor" : 0.011,
+  "pseudoAtoms" : [["B", [0.0, 0.0, 0.0]], ["A", [1.54, 0.0, 0.0]]],
+  "Connectivity" : [[0, 1]],
+  "Bonds" : [[["B", "A"], "HARMONIC", [96500.0, 1.54]]],
+  "ReactiveSites" : [{{"Atom" : 0, "Type" : "X", "Valence" : 2, "LinkBend" : ["{}", {}]}}]
+}}
+)",
+                                         bend, parameters);
+    TemporaryFile file(std::format("xl-link-bend-{}.json", bend), json);
+    const auto make = [&]
+    {
+      return Component(Component::Type::Adsorbate, 0, forceField, "xl-link-bend", file.stemPath().string(), 5, 21,
+                       MCMoveProbabilities(), std::nullopt, false);
+    };
+    if (bend == "HARMONIC")
+    {
+      EXPECT_NO_THROW(static_cast<void>(make()));
+    }
+    else
+    {
+      EXPECT_THROW(static_cast<void>(make()), std::runtime_error) << bend;
+    }
+  }
+}

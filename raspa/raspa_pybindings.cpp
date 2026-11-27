@@ -1275,12 +1275,15 @@ void bindDriver(nanobind::module_& m, const char* name)
   auto phase = [&driver](const char* pythonName, void (Driver::*function)(CallBack, std::size_t))
   {
     driver.def(
-        pythonName, [function](Bound& d, CallBack call_back_function, std::size_t call_back_every)
+        pythonName,
+        [function](Bound& d, std::optional<CallBack> call_back_function, std::size_t call_back_every)
         {
-          (d.*function)(std::move(call_back_function), call_back_every);
+          // None, as the type stubs advertise, is no callback (nanobind refused it for a plain std::function)
+          (d.*function)(call_back_function.has_value() ? std::move(call_back_function.value()) : CallBack([]() {}),
+                        call_back_every);
           d.copyOut();
         },
-        nanobind::arg("call_back_function") = CallBack([]() {}), nanobind::arg("call_back_every") = 100);
+        nanobind::arg("call_back_function").none() = nanobind::none(), nanobind::arg("call_back_every") = 100);
   };
 
   step("run", &Driver::run);

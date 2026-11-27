@@ -746,7 +746,12 @@ void ParallelTemperingMolecularDynamics::runStage(SimulationStage stage, std::si
               const bool binaryRestartDue =
                   writeBinaryRestartEvery != 0uz &&
                   ((cycle + 1uz) % writeBinaryRestartEvery == 0uz || cycle + 1uz == numberOfCycles);
-              if (swapDue || binaryRestartDue)
+              // and a fixed poll of a shutdown signal, the same cycles for every thread (a thread that went by the
+              // signal itself could reach the barrier alone): without swaps and restart files there was no
+              // synchronization in the whole stage, and SIGINT / SIGTERM went unanswered until its end
+              constexpr std::size_t shutdownPollEvery = 100uz;
+              const bool shutdownPollDue = (cycle + 1uz) % shutdownPollEvery == 0uz;
+              if (swapDue || binaryRestartDue || shutdownPollDue)
               {
                 if (replicaId == 0uz)
                 {

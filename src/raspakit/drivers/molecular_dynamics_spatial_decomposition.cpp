@@ -4,6 +4,8 @@ module molecular_dynamics_spatial_decomposition;
 
 import std;
 
+import finite_value;
+
 import hardware_info;
 import archive;
 import graceful_shutdown;
@@ -218,7 +220,7 @@ void propagateCell(System& system, const double3x3& cellVelocity, BarostatCoupli
   const bool upper = system.thermobarostat->cellType == CellMinimizationType::RegularUpperTriangle ||
                      system.thermobarostat->cellType == CellMinimizationType::MonoclinicUpperTriangle;
   propagateCellAndPosition(cell, positions, velocities, cellVelocity, system.timeStep, upper);
-  if (!std::isfinite(cell.determinant()) || cell.determinant() <= 1.0e-10)
+  if (!isFiniteValue(cell.determinant()) || cell.determinant() <= 1.0e-10)
     throw std::runtime_error("Thermobarostat produced an invalid or singular cell");
   if (molecular)
   {
@@ -1433,7 +1435,9 @@ void MolecularDynamicsSpatialDecomposition::production()
     for (std::size_t system_id{0}; System& system : systems)
     {
       system.samplePropertiesEvolution(absoluteCurrentCycle);
-      system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
+      // (the files only when the driver writes them, as the other drivers: they were written into the working
+      // directory of a driver run without output files, a Python one)
+      if (outputToFiles) system.writePropertiesEvolution(system_id, absoluteCurrentCycle);
       ++system_id;
     }
 
@@ -1472,6 +1476,7 @@ void MolecularDynamicsSpatialDecomposition::production()
 
     for (std::size_t system_id{0}; System& system : systems)
     {
+      if (!outputToFiles) break;
       if (system.propertyConventionalRadialDistributionFunction.has_value())
       {
         system.propertyConventionalRadialDistributionFunction->writeOutput(
@@ -1534,7 +1539,7 @@ void MolecularDynamicsSpatialDecomposition::production()
   // the samples of the time-evolution properties collected over all stages
   for (std::size_t system_id{0}; System& system : systems)
   {
-    system.writePropertiesEvolution(system_id, absoluteCurrentCycle, true);
+    if (outputToFiles) system.writePropertiesEvolution(system_id, absoluteCurrentCycle, true);
     ++system_id;
   }
   for (std::size_t system_id{0}; system_id < systems.size(); ++system_id) refreshHostState(system_id, true, true);
@@ -1543,6 +1548,7 @@ void MolecularDynamicsSpatialDecomposition::production()
   // when it is a multiple of it, and the samples since the last write, all of them in a short run, were lost)
   for (std::size_t system_id{0}; System& system : systems)
   {
+    if (!outputToFiles) break;
     if (system.propertyConventionalRadialDistributionFunction.has_value())
     {
       system.propertyConventionalRadialDistributionFunction->writeOutput(

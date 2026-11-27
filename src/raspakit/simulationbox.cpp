@@ -27,9 +27,12 @@ SimulationBox::SimulationBox(double a, double b, double c) : type(Type::Rectangu
 SimulationBox::SimulationBox(double a, double b, double c, double alpha, double beta, double gamma)
     : lengthA(a), lengthB(b), lengthC(c), angleAlpha(alpha), angleBeta(beta), angleGamma(gamma), type(Type::Triclinic)
 {
-  if (((std::fabs(angleAlpha - 0.5 * std::numbers::pi)) < 1e-5) &&
-      ((std::fabs(angleBeta - 0.5 * std::numbers::pi)) < 1e-5) &&
-      ((std::fabs(angleGamma - 0.5 * std::numbers::pi)) < 1e-5))
+  // Rectangular only where the tilt of the cell matrix is negligible: the minimum image of a rectangular box reads its
+  // diagonal alone. Within 1e-5 rad of a right angle (as it was) the tilt of a 30 A box is 3e-4 A, which that minimum
+  // image left out; 1e-12 still takes a right angle given in degrees, an ulp or so off pi / 2.
+  if (((std::fabs(angleAlpha - 0.5 * std::numbers::pi)) < 1e-12) &&
+      ((std::fabs(angleBeta - 0.5 * std::numbers::pi)) < 1e-12) &&
+      ((std::fabs(angleGamma - 0.5 * std::numbers::pi)) < 1e-12))
   {
     type = Type::Rectangular;
   }
@@ -55,9 +58,9 @@ SimulationBox::SimulationBox(double3x3 m) : type(Type::Triclinic)
   this->lengthB = column2.length();
   this->lengthC = column3.length();
 
-  angleAlpha = std::acos(double3::dot(column2, column3) / (this->lengthB * this->lengthC));
-  angleBeta = std::acos(double3::dot(column1, column3) / (this->lengthA * this->lengthC));
-  angleGamma = std::acos(double3::dot(column1, column2) / (this->lengthA * this->lengthB));
+  angleAlpha = std::acos(std::clamp(double3::dot(column2, column3) / (this->lengthB * this->lengthC), -1.0, 1.0));
+  angleBeta = std::acos(std::clamp(double3::dot(column1, column3) / (this->lengthA * this->lengthC), -1.0, 1.0));
+  angleGamma = std::acos(std::clamp(double3::dot(column1, column2) / (this->lengthA * this->lengthB), -1.0, 1.0));
 
   // The rectangular minimum image reads only the diagonal of the cell, so right angles are not enough: the cell
   // vectors have to lie along the positive axes. A rotated orthogonal cell (after a symmetric strain, or under a
@@ -88,9 +91,9 @@ SimulationBox::SimulationBox(double3x3 m, Type type) : type(type)
   this->lengthB = column2.length();
   this->lengthC = column3.length();
 
-  angleAlpha = std::acos(double3::dot(column2, column3) / (this->lengthB * this->lengthC));
-  angleBeta = std::acos(double3::dot(column1, column3) / (this->lengthA * this->lengthC));
-  angleGamma = std::acos(double3::dot(column1, column2) / (this->lengthA * this->lengthB));
+  angleAlpha = std::acos(std::clamp(double3::dot(column2, column3) / (this->lengthB * this->lengthC), -1.0, 1.0));
+  angleBeta = std::acos(std::clamp(double3::dot(column1, column3) / (this->lengthA * this->lengthC), -1.0, 1.0));
+  angleGamma = std::acos(std::clamp(double3::dot(column1, column2) / (this->lengthA * this->lengthB), -1.0, 1.0));
 }
 
 double3 SimulationBox::randomPosition(RandomNumber& random) const
@@ -132,10 +135,11 @@ void SimulationBox::setBoxAngles(double3 angles)
   angleAlpha = angles.x;
   angleBeta = angles.y;
   angleGamma = angles.z;
-  // the minimum image of a rectangular box ignores the off-diagonal cell elements: the type follows the angles
-  const bool rightAngles = std::fabs(angleAlpha - 0.5 * std::numbers::pi) < 1e-5 &&
-                           std::fabs(angleBeta - 0.5 * std::numbers::pi) < 1e-5 &&
-                           std::fabs(angleGamma - 0.5 * std::numbers::pi) < 1e-5;
+  // the minimum image of a rectangular box ignores the off-diagonal cell elements: the type follows the angles (to the
+  // tolerance of the constructor from the lengths and the angles)
+  const bool rightAngles = std::fabs(angleAlpha - 0.5 * std::numbers::pi) < 1e-12 &&
+                           std::fabs(angleBeta - 0.5 * std::numbers::pi) < 1e-12 &&
+                           std::fabs(angleGamma - 0.5 * std::numbers::pi) < 1e-12;
   type = rightAngles ? Type::Rectangular : Type::Triclinic;
   const double3 edgeLengths = this->lengths();
   lengthA = edgeLengths.x;

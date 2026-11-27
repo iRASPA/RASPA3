@@ -103,6 +103,29 @@ O1  O  0.4 0.5 0.6 -0.75
   EXPECT_NEAR(definedAtoms[1].charge, -0.75, 1.0e-12);
 }
 
+// The tags of a CIF are case-insensitive (CIF 1.1), and a file may have Windows line ends: a file with upper-case
+// tags was read without its cell and atoms, and the carriage return stayed on the last value of every line.
+TEST(UNINITIALIZED_MEMBERS, cif_tags_in_any_case_and_crlf_line_ends_are_read)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, false);
+  const std::string cif =
+      "data_test\r\n_CELL_LENGTH_A 10.0\r\n_Cell_Length_B 11.0\r\n_cell_length_c 12.0\r\n"
+      "_CELL_ANGLE_ALPHA 90.0\r\n_cell_angle_beta 90.0\r\n_cell_angle_gamma 90.0\r\n"
+      "loop_\r\n_ATOM_SITE_LABEL\r\n_Atom_Site_Type_Symbol\r\n_atom_site_fract_x\r\n"
+      "_atom_site_fract_y\r\n_atom_site_fract_z\r\n_atom_site_charge\r\n"
+      "Si1 Si 0.1 0.2 0.3 1.5\r\nO1  O  0.4 0.5 0.6 -0.75\r\n";
+
+  const auto parsed = CIFReader::readCIFString(cif, forceField, CIFReader::UseChargesFrom::CIF_File);
+  ASSERT_TRUE(parsed.has_value());
+  const auto& [simulationBox, spaceGroupHallNumber, definedAtoms, unitCellAtoms] = parsed.value();
+  EXPECT_NEAR(simulationBox.lengthA, 10.0, 1.0e-12);
+  EXPECT_NEAR(simulationBox.lengthB, 11.0, 1.0e-12);
+  ASSERT_EQ(definedAtoms.size(), 2uz);
+  EXPECT_EQ(static_cast<std::size_t>(definedAtoms[1].type), *forceField.findPseudoAtom("O"));
+  EXPECT_NEAR(definedAtoms[1].position.z, 0.6, 1.0e-12);
+  EXPECT_NEAR(definedAtoms[1].charge, -0.75, 1.0e-12);
+}
+
 TEST(UNINITIALIZED_MEMBERS, automatic_coulomb_cutoff_follows_the_box_with_explicit_ewald_parameters)
 {
   ForceField forceField({{"O", false, 16.0, 0.0, 0.0, 8, false}}, {{80.0, 3.0}},

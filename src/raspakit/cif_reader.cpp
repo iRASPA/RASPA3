@@ -34,8 +34,11 @@ auto CIFReader::readCIFString(const std::string& content, const ForceField& forc
     // scan to first keyword
     if (cif_reader.scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString))
     {
-      // FIX: cast to lower case
+      // the tags and keywords of a CIF are case-insensitive (CIF 1.1): compared in lower case below (a file that
+      // wrote _CELL_LENGTH_A or _Atom_Site_Fract_X was read without its cell or atoms)
       std::string keyword = tempString;
+      std::transform(keyword.begin(), keyword.end(), keyword.begin(),
+                     [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
 
       if (keyword.starts_with(std::string("_audit")))
       {
@@ -198,12 +201,13 @@ void CIFReader::parseSymmetry(std::string& string)
     return;
   }
 
+  // (the tags are compared in lower case: CIF tags are case-insensitive, and the reader lowers them)
   // prefer setting spacegroup based on Hall-symbol
   // the IUCr core dictionary names it '_space_group_name_Hall' (CIF1) and '_space_group.name_Hall' (CIF2 / DDLm);
   // '_symmetry_space_group_name_Hall' is the older, deprecated name
-  if ((string == std::string("_symmetry_space_group_name_Hall")) ||
-      (string == std::string("_symmetry.space_group_name_Hall")) || (string == std::string("_space_group_name_Hall")) ||
-      (string == std::string("_space_group.name_Hall")))
+  if ((string == std::string("_symmetry_space_group_name_hall")) ||
+      (string == std::string("_symmetry.space_group_name_hall")) || (string == std::string("_space_group_name_hall")) ||
+      (string == std::string("_space_group.name_hall")))
   {
     std::optional<std::string> possibleString = scanString();
 
@@ -214,9 +218,9 @@ void CIFReader::parseSymmetry(std::string& string)
     }
   }
 
-  if ((string == std::string("_space_group_name_H-M_alt")) || (string == std::string("_space_group.name_H-M_alt")) ||
-      (string == std::string("_symmetry_space_group_name_H-M")) ||
-      (string == std::string("_symmetry.pdbx_full_space_group_name_H-M")))
+  if ((string == std::string("_space_group_name_h-m_alt")) || (string == std::string("_space_group.name_h-m_alt")) ||
+      (string == std::string("_symmetry_space_group_name_h-m")) ||
+      (string == std::string("_symmetry.pdbx_full_space_group_name_h-m")))
   {
     std::optional<std::string> possibleString = scanString();
     if (possibleString)
@@ -230,8 +234,8 @@ void CIFReader::parseSymmetry(std::string& string)
   }
 
   // (CIF2 / DDLm names it '_space_group.IT_number')
-  if ((string == std::string("_space_group_IT_number")) || (string == std::string("_space_group.IT_number")) ||
-      (string == std::string("_symmetry_Int_Tables_number")) || (string == std::string("_symmetry.Int_Tables_number")))
+  if ((string == std::string("_space_group_it_number")) || (string == std::string("_space_group.it_number")) ||
+      (string == std::string("_symmetry_int_tables_number")) || (string == std::string("_symmetry.int_tables_number")))
   {
     spaceGroupInternationalNumber = scanInt();
     if (!spaceGroupHallNumber)
@@ -388,8 +392,10 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
          (tempString.size() > 0) &&
          (tempString.starts_with(std::string("_")) || (tempString.starts_with(std::string("#")))))
   {
-    // std::string tag = tempString.toLower();
+    // (case-insensitive, as the keywords: compared in lower case)
     std::string tag = tempString;
+    std::transform(tag.begin(), tag.end(), tag.begin(),
+                   [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
 
     if (tag.starts_with(std::string("_")))
     {

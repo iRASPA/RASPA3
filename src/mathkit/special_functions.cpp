@@ -228,10 +228,9 @@ double finiteSum(double a, double b, int m, double w)
 
 // 2F1(a, b; c; z) for 1/2 < z < 1 from the connection formula in 1 - z (A&S 15.3.6), and its logarithmic forms
 // (15.3.10-12) when c - a - b is an integer (within 1e-8, where the two terms of 15.3.6 cancel to the rounding of
-// Gamma(c - a - b))
-double hypergeometric2F1NearOne(double a, double b, double c, double z)
+// Gamma(c - a - b)). It takes w = 1 - z, which the caller forms without cancellation.
+double hypergeometric2F1NearOne(double a, double b, double c, double w)
 {
-  const double w = 1.0 - z;
   const double m = c - a - b;
   const double integerM = std::round(m);
   if (std::fabs(m - integerM) > 1.0e-8)
@@ -264,14 +263,15 @@ double hypergeometric2F1NearOne(double a, double b, double c, double z)
 // 2 sqrt(2) - 2 < z < 1 and z <= -4.)
 double hypergeometric2F1(double a, double b, double c, double z)
 {
+  // a polynomial first, for every z: it ends before a pole of c at a non-positive integer below a or b, where the
+  // series (taken first for |z| <= 1/2) divided 0 by 0, as for 2F1(-1, 2; -2; z)
+  if (isNonPositiveInteger(a) || isNonPositiveInteger(b))
+  {
+    return hypergeometric(a, b, c, z);
+  }
   if (std::fabs(z) <= 0.5)
   {
     return series_2F1(a, b, c, z);
-  }
-  if (isNonPositiveInteger(a) || isNonPositiveInteger(b))
-  {
-    // a polynomial
-    return hypergeometric(a, b, c, z);
   }
 
   const double mu = c - a - b;
@@ -285,6 +285,17 @@ double hypergeometric2F1(double a, double b, double c, double z)
     return std::copysign(std::numeric_limits<double>::infinity(), prefactor);
   }
   if (z > 1.0) return std::numeric_limits<double>::quiet_NaN();
-  if (z < 0.0) return std::pow(1.0 - z, -a) * hypergeometric2F1(a, c - b, c, z / (z - 1.0));
-  return hypergeometric2F1NearOne(a, b, c, z);
+  if (z < 0.0)
+  {
+    // Pfaff: z' = z / (z - 1) lies in (1/3, 1), and its distance from 1 is 1 / (1 - z), formed as that: as 1 - z' it
+    // lost the digits of |z| and was exactly 1 (an infinity, at z' = 1) for z below -2^53, where the function decays
+    // as (-z)^-min(a, b)
+    const double pfaffB = c - b;
+    const double zPfaff = z / (z - 1.0);
+    const double prefactor = std::pow(1.0 - z, -a);
+    if (isNonPositiveInteger(pfaffB)) return prefactor * hypergeometric(a, pfaffB, c, zPfaff);
+    if (zPfaff <= 0.5) return prefactor * series_2F1(a, pfaffB, c, zPfaff);
+    return prefactor * hypergeometric2F1NearOne(a, pfaffB, c, 1.0 / (1.0 - z));
+  }
+  return hypergeometric2F1NearOne(a, b, c, 1.0 - z);
 }

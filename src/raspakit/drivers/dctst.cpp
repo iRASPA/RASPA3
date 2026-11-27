@@ -424,6 +424,13 @@ void validateDcTSTSystem(const System& system, std::size_t taggedComponent, std:
   {
     throw std::runtime_error(std::format("dcTST: '{}' supports rigid frameworks only\n", driverName));
   }
+  // the bonds between molecules tie the tagged molecule to others (its moves and the occupancy constraint move one
+  // molecule) and change the topology the free-energy profile is taken in
+  if (!system.crossLinks.empty() || !system.polymerLinks.empty())
+  {
+    throw std::runtime_error(std::format(
+        "dcTST: '{}' does not support bonds between molecules (cross-links or polymer bonds)\n", driverName));
+  }
   if (!integratesTrajectories) return;
   if (system.forceField.computePolarization)
   {

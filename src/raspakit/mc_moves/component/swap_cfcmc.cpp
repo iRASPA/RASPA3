@@ -781,7 +781,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
       // Calculate acceptance probability
       double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
-      double preFactor = double(oldN) / (system.beta * component.molFraction * fugacity * system.simulationBox.volume);
+      // (a reservoir of no fugacity takes every deletion: see 'logSwapPrefactor')
+      const double logPreFactor = MC_Moves::logSwapPrefactor(
+          double(oldN), system.beta * component.molFraction * fugacity * system.simulationBox.volume);
       // On a TMMC (N, lambda) chain the transition matrix biases the whole chain, the endpoint jumps
       // included, and the lambda Wang-Landau bias is off, as it is for the lambda hops.
       double biasTerm = (system.tmmcTracks(selectedComponent) && system.tmmc.lambdaChain())
@@ -790,10 +792,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       // the reverse insertion draws the removed conformation at full coupling and places it at the old lambda
       // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
       const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
-          preFactor,
-          -system.beta *
-              (energyDifferenceStep1.potentialEnergy() + energyDifferenceStep2.potentialEnergy() +
-               polarizationDifference.potentialEnergy() - system.intraCoulombScalingEnergy(oldFractionalMolecule)),
+          logPreFactor +
+              (-system.beta *
+               (energyDifferenceStep1.potentialEnergy() + energyDifferenceStep2.potentialEnergy() +
+                polarizationDifference.potentialEnergy() - system.intraCoulombScalingEnergy(oldFractionalMolecule))),
           biasTerm);
       const double physicalPacc = acceptance.physical;
       const double samplingPacc = acceptance.sampling;

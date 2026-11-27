@@ -984,29 +984,30 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     // the integer molecules of the central component) and (candidate count) * b / (beta*f_c*V_s)
     // per satellite slot, the exact reciprocal of the insertion prefactor with the reverse distance
     // bias evaluated at the removed fractional group's geometry.
-    double preFactor = 1.0;
+    double logPreFactor = 0.0;
     {
       const double fugacityCentral =
           central.molFraction * central.fugacityCoefficient.value_or(1.0) * system.pressure;
-      preFactor *= static_cast<double>(oldN) / (system.beta * fugacityCentral * system.simulationBox.volume);
+      logPreFactor += MC_Moves::logSwapPrefactor(static_cast<double>(oldN),
+                                                 system.beta * fugacityCentral * system.simulationBox.volume);
 
       for (std::size_t i = 1; i < groupSize; ++i)
       {
         const Component& memberComponent = system.components[members[i].componentId];
         const double fugacity =
             memberComponent.molFraction * memberComponent.fugacityCoefficient.value_or(1.0) * system.pressure;
-        preFactor *= static_cast<double>(slotCandidateCounts[i]) * removedDistanceBiasFactors[i] /
-                     (system.beta * fugacity * sphereVolume);
+        logPreFactor +=
+            MC_Moves::logSwapPrefactor(static_cast<double>(slotCandidateCounts[i]) * removedDistanceBiasFactors[i],
+                                       system.beta * fugacity * sphereVolume);
       }
     }
 
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
     const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
-        preFactor,
-        logRosenbluthRatio -
-            system.beta * (energyDifference.potentialEnergy() + removalExtraDifference.potentialEnergy() +
-                           polarizationDifference.potentialEnergy() + intraCoulombScaling),
+        logPreFactor + (logRosenbluthRatio -
+                        system.beta * (energyDifference.potentialEnergy() + removalExtraDifference.potentialEnergy() +
+                                       polarizationDifference.potentialEnergy() + intraCoulombScaling)),
         biasTerm);
     const double physicalPacc = acceptance.physical;
     const double samplingPacc = acceptance.sampling;

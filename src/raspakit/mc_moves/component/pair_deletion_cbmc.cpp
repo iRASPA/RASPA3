@@ -293,11 +293,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMoveCBMC(
   const double logRosenbluthWeight = retraceDataA.logRosenbluthWeight + retraceDataB.logRosenbluthWeight;
 
   // Exact reciprocal of the insertion prefactor: N_A/(beta*f_A*V) for A and k/(beta*f_B*V_s) for B.
-  const double preFactor = (N_A / (system.beta * fugacityA * system.simulationBox.volume)) *
-                           (k * distanceBias / (system.beta * fugacityB * sphereVolume));
+  // (a reservoir of no fugacity takes every deletion: see 'logSwapPrefactor')
+  const double logPreFactor = MC_Moves::logSwapPrefactor(N_A, system.beta * fugacityA * system.simulationBox.volume) +
+                              MC_Moves::logSwapPrefactor(k * distanceBias, system.beta * fugacityB * sphereVolume);
 
-  const double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasA * idealGasB) -
-                               logRosenbluthWeight);
+  const double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + logPreFactor + std::log(idealGasA * idealGasB) -
+                                           logRosenbluthWeight);
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 
@@ -544,11 +545,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairDeletionMove(Rand
   const double logRosenbluthWeight = retraceDataA.logRosenbluthWeight + retraceDataB.logRosenbluthWeight;
 
   // Exact reciprocal of the insertion prefactor: N_A/(beta*f_A*V) for A and k/(beta*f_B*V_s) for B.
-  const double preFactor = (N_A / (system.beta * fugacityA * system.simulationBox.volume)) *
-                           (k / (system.beta * fugacityB * sphereVolume));
+  // (a reservoir of no fugacity takes every deletion: see 'logSwapPrefactor')
+  const double logPreFactor = MC_Moves::logSwapPrefactor(N_A, system.beta * fugacityA * system.simulationBox.volume) +
+                              MC_Moves::logSwapPrefactor(k, system.beta * fugacityB * sphereVolume);
 
-  const double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasA * idealGasB) -
-                               logRosenbluthWeight);
+  const double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + logPreFactor + std::log(idealGasA * idealGasB) -
+                                           logRosenbluthWeight);
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 

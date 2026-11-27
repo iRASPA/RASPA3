@@ -21,3 +21,16 @@ TEST(pbc, triclinic)
   //
   // double3 test = triclinic_box.applyPeriodicBoundaryConditions(dr);
 }
+
+// An angle 1e-7 rad off a right angle has a tilt in the cell matrix (3e-6 A for 30 A), which the minimum image of a
+// rectangular box leaves out: such a box is triclinic. It was taken for rectangular within 1e-5 rad; a right angle
+// given in degrees still makes a rectangular box.
+TEST(pbc, a_cell_a_little_off_right_angles_is_triclinic)
+{
+  const double rightAngle = 0.5 * std::numbers::pi;
+  const SimulationBox tilted(30.0, 30.0, 30.0, rightAngle + 1.0e-7, rightAngle, rightAngle);
+  EXPECT_EQ(tilted.type, SimulationBox::Type::Triclinic);
+  EXPECT_NE(tilted.cell.cy, 0.0);
+  const double degrees = 90.0 * std::numbers::pi / 180.0;
+  EXPECT_EQ(SimulationBox(30.0, 30.0, 30.0, degrees, degrees, degrees).type, SimulationBox::Type::Rectangular);
+}

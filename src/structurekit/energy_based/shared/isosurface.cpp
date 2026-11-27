@@ -4,6 +4,8 @@ module energy_shared_isosurface;
 
 import std;
 
+import finite_value;
+
 import uint3;
 import double3;
 import double3x3;
@@ -42,7 +44,7 @@ IsosurfaceArea accumulateTriangleAreas(const double3x3 &unitCell, uint3 gridSize
     double3 p3 = unitCell * corners[i + 2];
 
     double area = 0.5 * double3::cross(p2 - p1, p3 - p1).length();
-    if (std::isfinite(area) && area < largestPlausible)
+    if (isFiniteValue(area) && area < largestPlausible)
     {
       result.area += area;
       ++result.numberOfTriangles;

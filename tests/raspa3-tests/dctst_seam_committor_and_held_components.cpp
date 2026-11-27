@@ -24,6 +24,7 @@ import dctst_settings;
 import dctst_barrier;
 import dctst_free_energy;
 import dctst_free_energy_settings;
+import cross_links;
 
 // The seam of the box on the barrier top, the committor of an asymmetric profile, the components the trajectories
 // hold in place, and the settings the drivers check for themselves.
@@ -377,4 +378,27 @@ TEST(DCTST_FREE_ENERGY_CHECKS, windows_of_the_plain_coordinate_are_laid_out_on_t
     ASSERT_EQ(driver.windows.size(), 5uz);
     EXPECT_FALSE(driver.windowsClosePeriod);
   }
+}
+
+// The transmission coefficient takes the speed of the tagged bead from its effective mass along the normal: a FIXED
+// bond of the molecule (RATTLE) moves its partner along, which that mass of the free bead left out. And bonds between
+// molecules tie the tagged molecule to others. Both are refused by the free-energy driver.
+TEST(DCTST_FREE_ENERGY_CHECKS, constrained_or_linked_tagged_molecules_are_refused)
+{
+  TemporaryDirectory workspace;
+  ScopedCurrentPath currentPath(workspace.path());
+  DcTSTFreeEnergyParameters parameters;
+  parameters.numberOfBlocks = 5uz;
+  parameters.randomSeed = 17;
+
+  System constrained = makeCO2System(8);
+  constrained.components[0].distanceConstraints.push_back(Component::DistanceConstraint{0, 1, 1.149});
+  EXPECT_THROW(DynamicallyCorrectedTSTFreeEnergy(constrained, makeFreeEnergySettings(), parameters),
+               std::runtime_error);
+
+  System linked = makeCO2System(8);
+  linked.crossLinks.bondTypes.push_back(CrossLinkBondType{});
+  linked.crossLinks.links.push_back(CrossLink{{0, 0, 0}, {0, 1, 0}, 0});
+  linked.crossLinks.rebuildIndex();
+  EXPECT_THROW(DynamicallyCorrectedTSTFreeEnergy(linked, makeFreeEnergySettings(), parameters), std::runtime_error);
 }

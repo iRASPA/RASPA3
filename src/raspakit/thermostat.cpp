@@ -31,6 +31,12 @@ Thermostat::Thermostat(double temperature, double timeStep,
       thermostatMassRotation(thermostatChainLength),
       w(numberOfYoshidaSuzukiSteps)
 {
+  // a chain of no thermostats has no first one to couple to the particles: its arrays were indexed at 0 and the sweeps
+  // ran to M - 1 = the largest size_t (the input reader refuses it; a thermostat built in code is held here)
+  if (thermostatChainLength == 0)
+  {
+    throw std::runtime_error("Thermostat: the chain length must be at least 1\n");
+  }
   switch (numberOfYoshidaSuzukiSteps)
   {
     case 1:
@@ -112,6 +118,22 @@ void Thermostat::refreshDegreesOfFreedom(std::size_t newTranslationalDegreesOfFr
         thermostatDegreesOfFreedomRotation[i] > 0.0
             ? thermostatDegreesOfFreedomRotation[i] * timeScaleParameterThermostat * timeScaleParameterThermostat
             : 1.0;
+  }
+
+  // The forces on the chain beyond the first, G_k = (Q_(k-1) v_(k-1)^2 - k_B T) / Q_k, are carried from one sweep to
+  // the next, and the first inward half step applies them before they are formed again: with the masses of new
+  // degrees of freedom (a molecule inserted or deleted, a polymer bond) they are formed anew here, not left those of
+  // the old masses. (G_0 is formed from the kinetic energy at the start of each sweep.)
+  for (std::size_t k = 1; k < thermostatChainLength; ++k)
+  {
+    thermostatForceTranslation[k] = (thermostatMassTranslation[k - 1] * thermostatVelocityTranslation[k - 1] *
+                                         thermostatVelocityTranslation[k - 1] -
+                                     thermostatDegreesOfFreedomTranslation[k]) /
+                                    thermostatMassTranslation[k];
+    thermostatForceRotation[k] =
+        (thermostatMassRotation[k - 1] * thermostatVelocityRotation[k - 1] * thermostatVelocityRotation[k - 1] -
+         thermostatDegreesOfFreedomRotation[k]) /
+        thermostatMassRotation[k];
   }
 }
 

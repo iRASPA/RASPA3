@@ -21,6 +21,23 @@ inline double boundedExp(double exponent)
   return std::exp(std::min(exponent, limit));
 }
 
+/**
+ * \brief The logarithm of the prefactor of a swap move: beta f V / (N + 1) of an insertion from a reservoir of
+ * fugacity f, N / (beta f V) of a deletion into it.
+ *
+ * A reservoir of no fugacity (no external pressure, or a mole fraction of zero: a desorption into vacuum, a component
+ * loaded beforehand) gives no insertion and accepts every deletion. Its logarithm is held far beyond the range of the
+ * exponential ('boundedExp'), where the logarithm of 0 and the division by 0 gave -inf, +inf or NaN, which the
+ * fast-math flags of the build assume never occur (and NaN fails every comparison of the Metropolis test).
+ */
+inline double logSwapPrefactor(double numerator, double denominator)
+{
+  constexpr double beyondRange = 1.0e300;
+  if (!(numerator > 0.0)) return -beyondRange;
+  if (!(denominator > 0.0)) return beyondRange;
+  return std::log(numerator / denominator);
+}
+
 /// The acceptance probability of a move with and without the bias of its sampling.
 struct BiasedAcceptance
 {

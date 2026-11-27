@@ -253,12 +253,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   // One factor beta*f*V per molecule: the box volume V for A (placed anywhere) and the sphere
   // volume V_s for B (confined to the pair sphere); the reverse deletion selects A among N_A+1
   // integer molecules and B among the k_new in-range partners.
-  const double preFactor = (system.beta * fugacityA * system.simulationBox.volume / (N_A + 1.0)) *
-                           (system.beta * fugacityB * sphereVolume * distanceBias / k_new);
+  // (a reservoir of no fugacity gives no insertion: see 'logSwapPrefactor')
+  const double logPreFactor =
+      MC_Moves::logSwapPrefactor(system.beta * fugacityA * system.simulationBox.volume, N_A + 1.0) +
+      MC_Moves::logSwapPrefactor(system.beta * fugacityB * sphereVolume * distanceBias, k_new);
 
   // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
-  const double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + std::log(preFactor) + growDataA->logRosenbluthWeight -
-                               std::log(idealGasA) + growDataB->logRosenbluthWeight - std::log(idealGasB));
+  const double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + logPreFactor + growDataA->logRosenbluthWeight -
+                                           std::log(idealGasA) + growDataB->logRosenbluthWeight - std::log(idealGasB));
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 
@@ -505,12 +507,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   // One factor beta*f*V per molecule: the box volume V for A (placed anywhere) and the sphere
   // volume V_s for B (confined to the pair sphere); the reverse deletion selects A among N_A+1
   // integer molecules and B among the k_new in-range partners.
-  const double preFactor = (system.beta * fugacityA * system.simulationBox.volume / (N_A + 1.0)) *
-                           (system.beta * fugacityB * sphereVolume / k_new);
+  // (a reservoir of no fugacity gives no insertion: see 'logSwapPrefactor')
+  const double logPreFactor =
+      MC_Moves::logSwapPrefactor(system.beta * fugacityA * system.simulationBox.volume, N_A + 1.0) +
+      MC_Moves::logSwapPrefactor(system.beta * fugacityB * sphereVolume, k_new);
 
   // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
-  const double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + std::log(preFactor) + growDataA->logRosenbluthWeight -
-                               std::log(idealGasA) + growDataB->logRosenbluthWeight - std::log(idealGasB));
+  const double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + logPreFactor + growDataA->logRosenbluthWeight -
+                                           std::log(idealGasA) + growDataB->logRosenbluthWeight - std::log(idealGasB));
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 

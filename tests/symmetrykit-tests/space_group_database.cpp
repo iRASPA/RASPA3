@@ -209,3 +209,19 @@ TEST(space_group_database, centring_of_a_skewed_basis_is_its_centring_vector)
   EXPECT_EQ(pointGroup.computeCentering(SKTransformationMatrix(int3(1, 0, 0), int3(0, 1, 0), int3(0, 0, 2))),
             Centring::none);
 }
+
+// The axis of an improper rotation is that of its proper part: the mirror m_z and the rotoinversion -4 about z have
+// the z axis. The eigenvector of eigenvalue 1 of the matrix itself is a direction in the mirror plane, and there is
+// none for -4.
+TEST(space_group_database, rotation_axis_of_an_improper_rotation_is_that_of_its_proper_part)
+{
+  const SKRotationMatrix mirror(int3(1, 0, 0), int3(0, 1, 0), int3(0, 0, -1));
+  const SKRotationMatrix rotoinversion(int3(0, -1, 0), int3(1, 0, 0), int3(0, 0, -1));
+  for (const SKRotationMatrix& m : {mirror, rotoinversion})
+  {
+    const int3 axis = m.rotationAxis();
+    EXPECT_EQ(axis.x, 0);
+    EXPECT_EQ(axis.y, 0);
+    EXPECT_EQ(std::abs(axis.z), 1);
+  }
+}

@@ -7,6 +7,10 @@ module;
 export module json;
 
 import std;
+
+// (the finite test of the dump and of the parser: std::isfinite is true of everything under the fast-math flags,
+// and a NaN or an infinity was written as the invalid tokens nan and inf instead of null)
+import finite_value;
 import std.compat;
 
 import stringutils;
@@ -12234,7 +12238,7 @@ class parser
           {
             const auto res = m_lexer.get_number_float();
 
-            if (JSON_HEDLEY_UNLIKELY(!std::isfinite(res)))
+            if (JSON_HEDLEY_UNLIKELY(!isFiniteValue(res)))
             {
               return sax->parse_error(
                   m_lexer.get_position(), m_lexer.get_token_string(),
@@ -18293,7 +18297,7 @@ class serializer
   void dump_float(number_float_t x)
   {
     // NaN / inf
-    if (!std::isfinite(x))
+    if (!isFiniteValue(x))
     {
       o->write_characters("null", 4);
       return;

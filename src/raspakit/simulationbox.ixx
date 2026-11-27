@@ -574,9 +574,10 @@ export void from_json(const nlohmann::json& j, SimulationBox& b)
   b.angleGamma *= Units::DegreesToRadians;
 
   // the type was not stored: rectangular when every angle is a right angle (as the cell-matrix constructor decides)
-  const bool rightAngles = std::fabs(b.angleAlpha - 0.5 * std::numbers::pi) < 1e-5 &&
-                           std::fabs(b.angleBeta - 0.5 * std::numbers::pi) < 1e-5 &&
-                           std::fabs(b.angleGamma - 0.5 * std::numbers::pi) < 1e-5;
+  // (to the tolerance of the constructor from the lengths and the angles)
+  const bool rightAngles = std::fabs(b.angleAlpha - 0.5 * std::numbers::pi) < 1e-12 &&
+                           std::fabs(b.angleBeta - 0.5 * std::numbers::pi) < 1e-12 &&
+                           std::fabs(b.angleGamma - 0.5 * std::numbers::pi) < 1e-12;
   b.type = rightAngles ? SimulationBox::Type::Rectangular : SimulationBox::Type::Triclinic;
   b.formCellMatrix();
 }

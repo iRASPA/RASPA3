@@ -59,10 +59,9 @@ MolecularVoidFraction MolecularVoidFraction::fromGrid(const MolecularEnergyGrid 
   result.boltzmannAverage = logAverage < 709.0 ? std::exp(logAverage) : std::numeric_limits<double>::max();
   result.readsAsFraction = result.boltzmannAverage <= 1.0;
 
-  if (logAverage > -700.0)
-  {
-    result.excessChemicalPotential = -Units::KB * temperature * logAverage;
-  }
+  // the logarithm is there for every grid (it was taken in log space): a repulsive or closed framework, below e^-700,
+  // has its large excess chemical potential too (it was left at the ideal-gas zero)
+  result.excessChemicalPotential = -Units::KB * temperature * logAverage;
 
   // The framework's density is what turns an average per unit volume into one per unit mass, which is the
   // form an isotherm is measured in.

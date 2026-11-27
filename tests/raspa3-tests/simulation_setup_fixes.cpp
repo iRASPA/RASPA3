@@ -15,6 +15,7 @@ import fragment;
 import simulationbox;
 import system;
 import mc_cell_list;
+import archive;
 import thermobarostat;
 import minimization_cell_layout;
 import simd_quatd;
@@ -226,6 +227,40 @@ TEST(SIMULATION_SETUP_FIXES, pinned_fractional_molecule_refreshes_the_cell_list)
   system.initializeFixedLambdaFractionalMolecules();
   EXPECT_EQ(molecule[0].scalingVDW, pinned);
   EXPECT_TRUE(system.verifyCellList());
+}
+
+// A system read from a binary restart into one that was in use: the cell list of the Monte Carlo moves is current by
+// its atom count, cut-off and box alone, and with as many atoms in the same box the list of the old positions stood.
+TEST(SIMULATION_SETUP_FIXES, a_system_read_into_one_in_use_rebuilds_its_cell_list)
+{
+  const ForceField forceField({{"Ar", false, 39.948, 0.0, 0.0, 18, false}}, {VDWParameters(119.8, 3.4)},
+                              ForceField::MixingRule::Lorentz_Berthelot, 7.0, 7.0, 7.0, true, false, false);
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  Component argon(forceField, "argon", 150.86, 4.898e6, -0.00219,
+                  {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21, probabilities);
+  const System saved(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {argon}, {}, {20}, 5);
+  System inUse = saved;
+  for (Atom& atom : inUse.spanOfMoleculeAtoms()) atom.position += double3(7.3, -4.1, 2.9);
+  inUse.invalidateCellList();
+  ASSERT_TRUE(inUse.cellList().enabled);
+  ASSERT_TRUE(inUse.verifyCellList());
+
+  const std::filesystem::path path = std::filesystem::temp_directory_path() /
+                                     std::format("raspa3_cell_list_restart_{}.bin", test_support::uniqueSuffix());
+  {
+    std::ofstream stream(path, std::ios::binary);
+    Archive<std::ofstream> archive(stream);
+    archive << saved;
+  }
+  {
+    std::ifstream stream(path, std::ios::binary);
+    Archive<std::ifstream> archive(stream);
+    archive >> inUse;
+  }
+  std::filesystem::remove(path);
+  EXPECT_EQ(inUse.spanOfMoleculeAtoms()[0].position.x, saved.spanOfMoleculeAtoms()[0].position.x);
+  EXPECT_TRUE(inUse.verifyCellList());
 }
 
 // A FIXED bond between flexible atoms has no energy, gradient or Hessian: the dynamics holds it with SHAKE/RATTLE.

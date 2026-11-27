@@ -130,12 +130,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     // Compute acceptance probability factors
     double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
     double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
-    double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
-                       (system.beta * fugacity * system.simulationBox.volume);
+    // (a reservoir of no fugacity takes every deletion: see 'logSwapPrefactor')
+    const double logPreFactor =
+        MC_Moves::logSwapPrefactor(double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]),
+                                   system.beta * fugacity * system.simulationBox.volume);
     // Rosenbluth weight through its exact logarithm: the raw weight of a long chain underflows to zero,
     // which would turn this quotient into +inf and unconditionally accept every deletion.
-    double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + std::log(preFactor) + std::log(idealGasRosenbluthWeight) -
-                           retraceData.logRosenbluthWeight);
+    double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + logPreFactor + std::log(idealGasRosenbluthWeight) -
+                                       retraceData.logRosenbluthWeight);
     std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
     // Check if the new macrostate is within the allowed TMMC range

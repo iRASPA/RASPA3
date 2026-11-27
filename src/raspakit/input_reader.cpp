@@ -4,6 +4,8 @@ module input_reader;
 
 import std;
 
+import finite_value;
+
 import int3;
 import uint3;
 import stringutils;
@@ -766,8 +768,16 @@ void readCrossLinks(const nlohmann::basic_json<nlohmann::raspa_map>& value, Syst
           {
             throw std::runtime_error(std::format("unknown bend potential '{}'", bend[0].get<std::string>()));
           }
-          bondType.junctionBend = BendPotential({0, 1, 2}, BendPotential::definitionForString.at(bendName),
-                                                bend[1].get<std::vector<double>>());
+          // a FIXED or RIGID bend is a constraint without energy, which nothing holds across a link: it had no force
+          // at all (as the polymer bends, which refuse it)
+          const BendType junctionType = BendPotential::definitionForString.at(bendName);
+          if (junctionType == BendType::Fixed || junctionType == BendType::Rigid)
+          {
+            throw std::runtime_error(
+                "'JunctionBend' cannot be FIXED or RIGID (it would have no force); use a stiff "
+                "HARMONIC bend");
+          }
+          bondType.junctionBend = BendPotential({0, 1, 2}, junctionType, bend[1].get<std::vector<double>>());
         }
 
         if (item.contains("CaptureRadius")) bondType.captureRadius = item["CaptureRadius"].get<double>();
@@ -1539,7 +1549,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       throw std::runtime_error(std::format("[Input reader]: {} must be a finite number", key));
     }
     value = parsed_data[key].get<double>();
-    if (!std::isfinite(value))
+    if (!isFiniteValue(value))
     {
       throw std::runtime_error(std::format("[Input reader]: {} must be finite", key));
     }
@@ -3885,6 +3895,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("ExternalPressure"))
       {
         P = value["ExternalPressure"].get<double>();
+        // a reservoir of negative pressure has no fugacity the swap moves can take (zero is a reservoir without
+        // molecules: no insertion, every deletion)
+        if (!(P.value() >= 0.0))
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: system {}: 'ExternalPressure' must not be negative\n", systemId));
+        }
       }
       else if (!parallelTemperingPressures.empty())
       {
@@ -3940,7 +3957,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         const double totalFugacity =
             Units::KB * T * std::exp(largestChemicalPotential / (Units::KB * T)) * relativeFugacitySum;
-        if (!(totalFugacity > 0.0) || !std::isfinite(totalFugacity))
+        if (!(totalFugacity > 0.0) || !isFiniteValue(totalFugacity))
         {
           throw std::runtime_error(std::format(
               "[Input reader]: system {}: the chemical potentials give a reservoir fugacity of {} (exp(mu/kT) "
@@ -4206,15 +4223,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                      jsonFrameworkComponents, jsonComponents[systemId], jsonRestartFilePositions[systemId],
                      jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
         }
+        // refused like every other input error (an exit ended the Python interpreter that read the input)
         else if (cif.error() == CIFReader::ParseError::invalidInput)
         {
-          std::print("Invalid input\n");
-          std::exit(-1);
+          throw std::runtime_error(
+              std::format("[Input reader]: the CIF file of framework '{}' is not valid input\n", frameworkNameString));
         }
         else if (cif.error() == CIFReader::ParseError::invalidForceField)
         {
-          std::print("not all atoms defined in CIF-file\n");
-          std::exit(-1);
+          throw std::runtime_error(std::format(
+              "[Input reader]: not all atoms of the CIF file of framework '{}' are defined in the force field\n",
+              frameworkNameString));
         }
       }
       else if (caseInSensStringCompare(typeString, "Box"))
@@ -4566,10 +4585,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                 value["WriteNumberOfMoleculesEvolutionEvery"].get<std::size_t>();
           }
 
-          systems[systemId].propertyNumberOfMoleculesEvolution = PropertyNumberOfMoleculesEvolution(
-              numberOfProductionCycles + numberOfInitializationCycles + numberOfEquilibrationCycles,
-              systems[systemId].components.size(), sample_number_of_molecules_every,
-              write_number_of_molecules_evolution_every);
+          // (every stage: the pre-initialization cycles advance the absolute cycle too, and the samples of the end of
+          // the production fell past the capacity)
+          systems[systemId].propertyNumberOfMoleculesEvolution =
+              PropertyNumberOfMoleculesEvolution(numberOfPreInitializationCycles + numberOfProductionCycles +
+                                                     numberOfInitializationCycles + numberOfEquilibrationCycles,
+                                                 systems[systemId].components.size(), sample_number_of_molecules_every,
+                                                 write_number_of_molecules_evolution_every);
         }
       }
 
@@ -4589,9 +4611,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             write_volume_evolution_every = value["WriteVolumeEvolutionEvery"].get<std::size_t>();
           }
 
-          systems[systemId].propertyVolumeEvolution = PropertyVolumeEvolution(
-              numberOfProductionCycles + numberOfInitializationCycles + numberOfEquilibrationCycles,
-              sample_volume_evolution_every, write_volume_evolution_every);
+          systems[systemId].propertyVolumeEvolution =
+              PropertyVolumeEvolution(numberOfPreInitializationCycles + numberOfProductionCycles +
+                                          numberOfInitializationCycles + numberOfEquilibrationCycles,
+                                      sample_volume_evolution_every, write_volume_evolution_every);
         }
       }
 
@@ -5299,9 +5322,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       // function) are component options, parsed in the 'Components' block above; the time step must be
       // known for the autocorrelation function (its lag axis is in picoseconds for the molecular-dynamics
       // drivers and in cycles for the Monte Carlo drivers).
+      // (the polymerization driver integrates molecular dynamics as well, a cycle a time step)
       const bool timeAxisInPicoseconds = simulationType == SimulationType::MolecularDynamics ||
                                          simulationType == SimulationType::ParallelTemperingMolecularDynamics ||
-                                         simulationType == SimulationType::MolecularDynamicsSpatialDecomposition;
+                                         simulationType == SimulationType::MolecularDynamicsSpatialDecomposition ||
+                                         simulationType == SimulationType::Polymerization;
       systems[systemId].initializeMoleculeProperties(jsonNumberOfBlocks, timeAxisInPicoseconds);
 
       if (value.contains("ComputeDensityGrid") && value["ComputeDensityGrid"].is_boolean())

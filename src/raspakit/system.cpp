@@ -4,6 +4,8 @@ module system;
 
 import std;
 
+import finite_value;
+
 import archive;
 import randomnumbers;
 import stringutils;
@@ -1967,6 +1969,14 @@ void System::setNumberOfBlocks(std::size_t blocks)
     if (reaction.lambda.numberOfSamplePoints != 0uz) reaction.lambda.setNumberOfBlocks(blocks);
     if (reaction.lambdaProductSide.numberOfSamplePoints != 0uz) reaction.lambdaProductSide.setNumberOfBlocks(blocks);
   }
+  // the per-molecule properties keep blocks of their own (they were left at the blocks they were made with, and a
+  // driver of another number of blocks indexed past them)
+  if (propertyMoleculeProperties.has_value() && propertyMoleculeProperties->numberOfBlocks != blocks)
+    propertyMoleculeProperties = PropertyMoleculeProperties(blocks, components);
+  if (propertyMoleculeShape.has_value() && propertyMoleculeShape->numberOfBlocks != blocks)
+    propertyMoleculeShape = PropertyMoleculeShape(blocks, forceField, components);
+  if (propertyMoleculeBackbone.has_value() && propertyMoleculeBackbone->numberOfBlocks != blocks)
+    propertyMoleculeBackbone = PropertyMoleculeBackbone(blocks, components);
 
   if (averageEnergies.numberOfBlocks == blocks) return;
 
@@ -1996,7 +2006,7 @@ void System::setNumberOfBlocks(std::size_t blocks)
 
 void System::setTimeStep(double dt)
 {
-  if (!(dt > 0.0) || !std::isfinite(dt)) throw std::invalid_argument("System: the time step must be positive");
+  if (!(dt > 0.0) || !isFiniteValue(dt)) throw std::invalid_argument("System: the time step must be positive");
   timeStep = dt;
   if (thermostat.has_value()) thermostat->timeStep = dt;
   if (thermobarostat.has_value()) thermobarostat->timeStep = dt;
@@ -2703,6 +2713,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
     s.polymerLinks.activate(s.components, s.numberOfMoleculesPerComponent);
     s.polymerLinks.rebuild(s.forceField, s.components, s.numberOfMoleculesPerComponent, s.spanOfMoleculeAtoms());
   }
+
+  // The cell lists describe the atoms they were built from, and are current by their count, cut-off and box alone: a
+  // system read into one that was in use (with as many atoms in the same box) kept the list of its old positions
+  s.invalidateCellList();
+  s.invalidateFrameworkCellList();
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

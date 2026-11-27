@@ -4,6 +4,8 @@ module molecular_dynamics;
 
 import std;
 
+import finite_value;
+
 import stringutils;
 import hardware_info;
 import archive;
@@ -271,7 +273,7 @@ void propagateCell(System& system, const double3x3& cellVelocity, BarostatCoupli
   const bool upper = system.thermobarostat->cellType == CellMinimizationType::RegularUpperTriangle ||
                      system.thermobarostat->cellType == CellMinimizationType::MonoclinicUpperTriangle;
   propagateCellAndPosition(cell, positions, velocities, cellVelocity, system.timeStep, upper);
-  if (!std::isfinite(cell.determinant()) || cell.determinant() <= 1.0e-10)
+  if (!isFiniteValue(cell.determinant()) || cell.determinant() <= 1.0e-10)
     throw std::runtime_error("Thermobarostat produced an invalid or singular cell");
   for (std::size_t i = 0; i != targets.size(); ++i)
   {

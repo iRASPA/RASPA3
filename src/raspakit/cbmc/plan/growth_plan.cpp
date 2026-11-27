@@ -102,7 +102,8 @@ static void rejectExternalClosure(const ConnectivityTable& connectivity, const s
 // or of a bridge closure and every FIXED torsion across a sampled bond were left free. A reptation that met such
 // a bend as the anchor bend from one end and as a sibling bend from the other also carried its cone
 // normalization in one direction only. The plan is refused, with the term.
-static void rejectUnenforcedHolonomicTerms(const CBMC::GrowStep &step, const FragmentGraph &graph)
+static void rejectUnenforcedHolonomicTerms(const CBMC::GrowStep& step, const FragmentGraph& graph,
+                                           const Potentials::IntraMolecularPotentials& intraMolecularPotentials)
 {
   const auto insideOneRigidBody = [&](std::span<const std::size_t> identifiers)
   {
@@ -167,12 +168,41 @@ static void rejectUnenforcedHolonomicTerms(const CBMC::GrowStep &step, const Fra
     if (ureyBradley.type != UreyBradleyType::Fixed) continue;
     if (insideOneRigidBody(ureyBradley.identifiers)) continue;
     const std::size_t a = ureyBradley.identifiers[0], b = ureyBradley.identifiers[1];
-    const bool heldByBend = std::ranges::any_of(step.intra.bends, [&](const BendPotential &bend)
+    // The bend holds the distance only when its arms are FIXED bonds as well (the growth then places them at their
+    // lengths) and the triangle they make has the distance of the term: with a sampled arm it varies, and with other
+    // lengths the two constraints contradict each other (as the constraints of the dynamics take it,
+    // Component::buildDistanceConstraints).
+    const auto fixedLength = [&](std::size_t i, std::size_t j) -> std::optional<double>
     {
-      return (bend.type == BendType::Fixed || bend.type == BendType::Rigid) &&
-             ((bend.identifiers[0] == a && bend.identifiers[2] == b) ||
-              (bend.identifiers[0] == b && bend.identifiers[2] == a));
-    });
+      for (const BondPotential& bond : intraMolecularPotentials.bonds)
+      {
+        if (bond.type != BondType::Fixed) continue;
+        if ((bond.identifiers[0] == i && bond.identifiers[1] == j) ||
+            (bond.identifiers[0] == j && bond.identifiers[1] == i))
+        {
+          return bond.parameters[0];
+        }
+      }
+      return std::nullopt;
+    };
+    const bool heldByBend = std::ranges::any_of(
+        step.intra.bends,
+        [&](const BendPotential& bend)
+        {
+          if (!(bend.type == BendType::Fixed || bend.type == BendType::Rigid)) return false;
+          if (!((bend.identifiers[0] == a && bend.identifiers[2] == b) ||
+                (bend.identifiers[0] == b && bend.identifiers[2] == a)))
+          {
+            return false;
+          }
+          const std::optional<double> first = fixedLength(bend.identifiers[0], bend.identifiers[1]);
+          const std::optional<double> second = fixedLength(bend.identifiers[1], bend.identifiers[2]);
+          if (!first.has_value() || !second.has_value()) return false;
+          const double closing =
+              std::sqrt(std::max(0.0, first.value() * first.value() + second.value() * second.value() -
+                                          2.0 * first.value() * second.value() * std::cos(bend.parameters[0])));
+          return std::fabs(closing - ureyBradley.parameters[0]) <= 1.0e-6 * std::max(1.0, ureyBradley.parameters[0]);
+        });
     if (heldByBend) continue;
     throw std::runtime_error(std::format(
         "CBMC growth plan: the FIXED Urey-Bradley distance {}-{} is not held as a constraint when atom(s) {} are "
@@ -754,7 +784,7 @@ std::vector<CBMC::GrowStep> CBMC::buildGrowthPlan(
     for (std::size_t bead : placed) placedFlags[bead] = true;
     CBMC::prepareStep(step, connectivity, fragmentGraph, placedFlags, intraMolecularPotentials.chiralCenters);
 
-    rejectUnenforcedHolonomicTerms(step, fragmentGraph);
+    rejectUnenforcedHolonomicTerms(step, fragmentGraph, intraMolecularPotentials);
 
     attachLookaheadGuide(step, connectivity, fragmentGraph, placedFlags, intraMolecularPotentials);
 

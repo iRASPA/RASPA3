@@ -40,10 +40,13 @@ export struct PropertyDensityGrid
         numberOfComponents(numberOfComponents),
         numberOfChannels((densityGridPseudoAtomsList.empty() ? 1uz : densityGridPseudoAtomsList.size())),
         grid_cell(numberOfComponents * numberOfChannels *
-                  static_cast<std::size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
+                  static_cast<std::size_t>(numberOfGridPoints.x) * static_cast<std::size_t>(numberOfGridPoints.y) *
+                      static_cast<std::size_t>(numberOfGridPoints.z)),
         grid_unitcell(numberOfComponents * numberOfChannels *
-                      static_cast<std::size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
-        totalGridSize(static_cast<std::size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
+                      static_cast<std::size_t>(numberOfGridPoints.x) * static_cast<std::size_t>(numberOfGridPoints.y) *
+                      static_cast<std::size_t>(numberOfGridPoints.z)),
+        totalGridSize(static_cast<std::size_t>(numberOfGridPoints.x) * static_cast<std::size_t>(numberOfGridPoints.y) *
+                      static_cast<std::size_t>(numberOfGridPoints.z)),
         numberOfGridPoints(numberOfGridPoints),
         gridSize(static_cast<double>(numberOfGridPoints.x), static_cast<double>(numberOfGridPoints.y),
                  static_cast<double>(numberOfGridPoints.z)),

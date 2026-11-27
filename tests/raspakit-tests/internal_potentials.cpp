@@ -872,3 +872,40 @@ TEST(internal_potentials, the_inversion_bend_gradient_follows_a_small_lift_out_o
   EXPECT_NEAR(liftGradient(1.0e-8) / reference, 1.0e-3, 1.0e-7);
   EXPECT_NEAR(liftGradient(1.0e-10) / reference, 1.0e-5, 1.0e-9);
 }
+
+// An inversion angle of 90 degrees (A on the normal of the plane B-C-D): |r_AB|^2 - e^2 / c is zero there and comes
+// out a roundoff either side. The energy took its root unclamped (NaN, which the clamp of cos(chi) after it does not
+// catch) and the gradient divided by the root of it; chi has a cusp there, and the gradient is taken as zero.
+TEST(internal_potentials, inversion_bend_at_ninety_degrees_is_finite)
+{
+  std::size_t trials = 0;
+  for (std::size_t k = 0; k < 400; ++k)
+  {
+    const double phase = 0.0137 * static_cast<double>(k);
+    const double3 B(0.3 * std::sin(3.1 * phase), -0.7 + 0.2 * std::cos(phase), 1.1 * std::sin(phase));
+    const double3 C = B + double3(1.0 + 0.3 * std::cos(2.0 * phase), 0.2 * std::sin(5.0 * phase), 0.4 * phase);
+    const double3 D = B + double3(0.1 * std::sin(phase), 1.3 + 0.2 * std::cos(7.0 * phase), -0.3 * std::cos(phase));
+    const double3 normal = double3::normalize(double3::cross(C - B, D - B));
+    const double3 A = B + (1.0 + 0.37 * std::sin(11.0 * phase)) * normal;
+    for (const InversionBendType type : {InversionBendType::Harmonic, InversionBendType::HarmonicCosine,
+                                         InversionBendType::Planar, InversionBendType::MM3})
+    {
+      const std::vector<double> parameters =
+          type == InversionBendType::Planar ? std::vector<double>{30000.0} : std::vector<double>{30000.0, 10.0};
+      const InversionBendPotential inversion({0, 1, 2, 3}, type, parameters);
+      EXPECT_EQ(std::to_string(inversion.calculateEnergy(A, B, C, D)).find("nan"), std::string::npos) << k;
+      const auto [energy, gradient, strain] = inversion.potentialEnergyGradientStrain(A, B, C, D);
+      EXPECT_EQ(std::to_string(energy).find("nan"), std::string::npos) << k;
+      for (const double3& g : gradient)
+      {
+        for (const double value : {g.x, g.y, g.z})
+        {
+          EXPECT_EQ(std::to_string(value).find("nan"), std::string::npos) << k;
+          EXPECT_EQ(std::to_string(value).find("inf"), std::string::npos) << k;
+        }
+      }
+      ++trials;
+    }
+  }
+  EXPECT_EQ(trials, 1600uz);
+}

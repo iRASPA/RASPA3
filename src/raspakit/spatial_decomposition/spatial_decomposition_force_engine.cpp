@@ -1091,7 +1091,8 @@ DeviceResident::Coupling SpatialDecompositionForceEngine::residentBarostatFirstH
   coupling.driftFactor = dt * (argument != 0.0 ? std::expm1(argument) / argument : 1.0);
 
   const double3x3 cell = coupling.cellFactor * system.simulationBox.cell;
-  if (!std::isfinite(cell.determinant()) || cell.determinant() <= 1.0e-10)
+  // (the bit test of nonFinite: std::isfinite is true of everything under the fast-math flags)
+  if (nonFinite(cell.determinant()) || cell.determinant() <= 1.0e-10)
   {
     throw std::runtime_error("[Spatial decomposition]: the barostat produced an invalid or singular cell\n");
   }

@@ -10,6 +10,7 @@ import connectivity_table;
 import intra_molecular_potentials;
 import bond_potential;
 import bend_potential;
+import urey_bradley_potential;
 import chiral_center;
 import cbmc_grow_step;
 import cbmc_growth_plan;
@@ -144,4 +145,40 @@ TEST(CBMC_PLAN_FIXES, the_rigid_tilt_keeps_a_fixed_junction_bend_at_its_angle)
     }
     EXPECT_GT(numberOfTilts, 0uz);
   }
+}
+
+// A FIXED Urey-Bradley distance between the ends of a FIXED bend is held by the bend only when both arms are FIXED
+// bonds whose triangle has that distance: with a sampled arm the 1-3 distance varies, and with other lengths the two
+// constraints contradict each other. The plan exempted it on the bend alone.
+TEST(CBMC_PLAN_FIXES, a_fixed_urey_bradley_distance_needs_fixed_arms_of_its_length)
+{
+  const ForceField forceField({{"C", false, 12.0, 0.0, 0.0, 6, false}}, {{50.0, 3.5}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
+  const double angle = 109.5 * std::numbers::pi / 180.0;
+  const double closing = std::sqrt(2.0 * 1.54 * 1.54 * (1.0 - std::cos(angle)));
+  const auto plan = [&](BondType arms, double distance)
+  {
+    ConnectivityTable connectivity(3);
+    for (const auto [a, b] : std::array<std::pair<std::size_t, std::size_t>, 2>{{{0, 1}, {1, 2}}})
+    {
+      connectivity[a, b] = true;
+      connectivity[b, a] = true;
+    }
+    Potentials::IntraMolecularPotentials potentials;
+    const std::vector<double> bondParameters =
+        arms == BondType::Fixed ? std::vector<double>{1.54} : std::vector<double>{96500.0, 1.54};
+    potentials.bonds = {BondPotential({0, 1}, arms, bondParameters), BondPotential({1, 2}, arms, bondParameters)};
+    potentials.bends = {BendPotential({0, 1, 2}, BendType::Fixed, {109.5})};
+    potentials.ureyBradleys = {UreyBradleyPotential({0, 2}, UreyBradleyType::Fixed, {distance})};
+    Component component(forceField, "triangle", 300.0, 1.0e6, 0.1,
+                        {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false),
+                         Atom({1.54, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false),
+                         Atom({2.05, 1.45, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)},
+                        connectivity, potentials, 0, 0);
+    component.buildFragmentGraph({});
+    return planFrom(component, {0});
+  };
+  EXPECT_NO_THROW(static_cast<void>(plan(BondType::Fixed, closing)));
+  EXPECT_THROW(static_cast<void>(plan(BondType::Harmonic, closing)), std::runtime_error);
+  EXPECT_THROW(static_cast<void>(plan(BondType::Fixed, closing + 0.2)), std::runtime_error);
 }

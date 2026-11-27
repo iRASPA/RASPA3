@@ -185,7 +185,9 @@ double InversionBendPotential::calculateEnergy(const double3 &posA, const double
   }
 
   double e = double3::dot(Rab, double3::cross(Rbd, Rbc));
-  double cos_chi = std::sqrt(double3::dot(Rab, Rab) - e * e / c) / rrab;
+  // (clamped as in the gradient: at chi = 90 degrees the difference is a roundoff away from zero, either side, and its
+  // root was NaN, which the clamp below does not catch)
+  double cos_chi = std::sqrt(std::max(0.0, double3::dot(Rab, Rab) - e * e / c)) / rrab;
   cos_chi = std::clamp(cos_chi, -1.0, 1.0);
 
   switch (type)
@@ -270,6 +272,11 @@ std::tuple<double, std::array<double3, 4>, double3x3> InversionBendPotential::po
   e = double3::dot(Rab, double3::cross(Rbd, Rbc));
   double cos_chi = std::sqrt(std::max(0.0, rab2 - e * e / c)) / rrab;
   cos_chi = std::clamp(cos_chi, -1.0, 1.0);
+  // The factors below are per sqrt(c) |r_AB| cos(chi). At chi = 90 degrees (A on the normal of the plane) that is zero:
+  // chi has a cusp there (moving A any way lowers it linearly) and no gradient, which is taken as zero (it was a
+  // division by zero, or by the root of a negative roundoff).
+  const double denominator = std::sqrt(c * std::max(0.0, rab2 - e * e / c));
+  const double inverseDenominator = denominator > 0.0 ? 1.0 / denominator : 0.0;
 
   double U{};
   switch (type)
@@ -279,20 +286,20 @@ std::tuple<double, std::array<double3, 4>, double3x3> InversionBendPotential::po
       chi = accurateChi(e, c, rrab);
       temp = chi - parameters[1];
       U = 0.5 * parameters[0] * temp * temp;
-      dedcos = -std::copysign(1.0, e) * (parameters[0] * temp / std::sqrt(c * (rab2 - e * e / c)));
+      dedcos = -std::copysign(1.0, e) * (parameters[0] * temp * inverseDenominator);
       break;
     case InversionBendType::HarmonicCosine:
     case InversionBendType::HarmonicCosine2:
       chi = accurateChi(e, c, rrab);
       temp = cos_chi - parameters[1];
       U = 0.5 * parameters[0] * temp * temp;
-      dedcos = std::copysign(1.0, e) * parameters[0] * temp * std::sin(chi) / std::sqrt(c * (rab2 - e * e / c));
+      dedcos = std::copysign(1.0, e) * parameters[0] * temp * std::sin(chi) * inverseDenominator;
       break;
     case InversionBendType::Planar:
     case InversionBendType::Planar2:
       chi = accurateChi(e, c, rrab);
       U = parameters[0] * (1.0 - cos_chi);
-      dedcos = -std::copysign(1.0, e) * parameters[0] * std::sin(chi) / std::sqrt(c * (rab2 - e * e / c));
+      dedcos = -std::copysign(1.0, e) * parameters[0] * std::sin(chi) * inverseDenominator;
       break;
     case InversionBendType::MM3:
       chi = accurateChi(e, c, rrab);
@@ -302,8 +309,8 @@ std::tuple<double, std::array<double3, 4>, double3x3> InversionBendPotential::po
           (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
       dedcos = -std::copysign(1.0, e) * parameters[0] * temp * Units::RadiansToDegrees *
                (2.0 - 3.0 * 0.014 * temp + 4.0 * 5.6e-5 * temp2 - 5.0 * 7.0e-7 * temp * temp2 +
-                6.0 * 2.2e-8 * temp2 * temp2) /
-               std::sqrt(c * (rab2 - e * e / c));
+                6.0 * 2.2e-8 * temp2 * temp2) *
+               inverseDenominator;
       break;
     default:
       std::unreachable();

@@ -13,6 +13,7 @@ import running_energy;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 import mc_moves_deletion_cbmc;
+import mc_moves_insertion_cbmc;
 import cbmc;
 
 // The Ewald, tail and polarization energy differences of the swap-type moves enter the acceptance rule in
@@ -65,4 +66,34 @@ TEST(MC_ACCEPTANCE_LOG_SPACE, deletion_with_an_enormous_tail_correction_keeps_th
   EXPECT_TRUE(std::isfinite(Pacc));
   EXPECT_NEAR(std::log(Pacc), expectedLogPacc, 1e-6);
   EXPECT_FALSE(energy.has_value());  // exp(-200) is never accepted
+}
+
+// A reservoir of no fugacity (an external pressure of zero, a desorption into vacuum, or a mole fraction of zero): an
+// insertion from it is never accepted, a deletion into it always. The logarithm of the prefactor beta f V / (N + 1)
+// was log(0) and the prefactor N / (beta f V) of the deletion a division by zero, infinities the fast-math flags of
+// the build assume never occur. (NaN read off the printed value: the fast-math build folds the comparisons.)
+TEST(MC_ACCEPTANCE_LOG_SPACE, swap_moves_with_a_reservoir_of_no_fugacity)
+{
+  const ForceField forceField({{"X", false, 16.0, 0.0, 0.0, 6, false}}, {{100.0, 3.0}},
+                              ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, false, false, false);
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::SwapCBMC, 1.0);
+  const Component x(forceField, "X", 190.0, 4.5e6, 0.01, {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 0, 0, false, false)}, {},
+                    {}, 5, 21, probabilities, std::nullopt, false);
+  System system(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {x}, {}, {3}, 5);
+  system.pressure = 0.0;
+  system.runningEnergies = system.computeTotalEnergies();
+
+  RandomNumber random(7);
+  for (std::size_t attempt = 0; attempt < 20; ++attempt)
+  {
+    const auto [energy, acceptance] = MC_Moves::insertionMoveCBMC(random, system, 0);
+    EXPECT_FALSE(energy.has_value());
+    EXPECT_EQ(std::to_string(acceptance.z), std::to_string(0.0));
+  }
+  const auto [energy, acceptance] = MC_Moves::deletionMoveCBMC(random, system, 0, 0);
+  EXPECT_TRUE(energy.has_value());
+  EXPECT_EQ(std::to_string(acceptance.x).find("nan"), std::string::npos);
+  EXPECT_EQ(std::to_string(acceptance.x).find("inf"), std::string::npos);
+  EXPECT_GE(acceptance.x, 1.0);
 }

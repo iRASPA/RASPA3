@@ -87,11 +87,14 @@ SKRotationMatrix::RotationType SKRotationMatrix::type() const
 
 int3 SKRotationMatrix::rotationAxis() const
 {
-  // rotation axis is the eigenvector with eigenvalue lambda==1
+  // rotation axis is the eigenvector with eigenvalue lambda==1 of the proper rotation (as orthogonalToAxisDirection):
+  // an improper one (a rotoinversion, a mirror) has the axis as eigenvector of eigenvalue -1, and gave no axis (-3, -4,
+  // -6) or a direction in the mirror plane
+  const SKRotationMatrix properRotation = this->proper();
   for (std::size_t i = 0; i < SKRotationMatrix::allPossibleRotationAxes.size(); i++)
   {
     int3 axis = SKRotationMatrix::allPossibleRotationAxes[i];
-    if ((this->int3x3_m * axis) == axis)
+    if ((properRotation.int3x3_m * axis) == axis)
     {
       return axis;
     }

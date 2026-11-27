@@ -4,6 +4,8 @@ module thermobarostat;
 
 import std;
 
+import finite_value;
+
 import archive;
 import double3;
 import double3x3;
@@ -193,13 +195,13 @@ Thermobarostat::Thermobarostat(MolecularDynamicsEnsemble ensemble, CellMinimizat
     throw std::runtime_error("Thermobarostat requires an NPT, NPTPR, MuPT, or MuPTPR ensemble");
   if (molecularDynamicsUsesFlexibleBarostat(ensemble) && cellDegreesOfFreedom == 0)
     throw std::runtime_error("NPTPR/MuPTPR requires a variable CellType");
-  if (!(temperature > 0.0) || !std::isfinite(temperature))
+  if (!(temperature > 0.0) || !isFiniteValue(temperature))
     throw std::runtime_error("Thermobarostat temperature must be positive and finite");
-  if (!(timeStep > 0.0) || !std::isfinite(timeStep))
+  if (!(timeStep > 0.0) || !isFiniteValue(timeStep))
     throw std::runtime_error("Thermobarostat timestep must be positive and finite");
-  if (!(timeScaleParameterBarostat > 0.0) || !std::isfinite(timeScaleParameterBarostat))
+  if (!(timeScaleParameterBarostat > 0.0) || !isFiniteValue(timeScaleParameterBarostat))
     throw std::runtime_error("Thermobarostat time scale must be positive and finite");
-  if (!std::isfinite(pressure)) throw std::runtime_error("Thermobarostat pressure must be finite");
+  if (!isFiniteValue(pressure)) throw std::runtime_error("Thermobarostat pressure must be finite");
   if (chainLength == 0) throw std::runtime_error("BarostatChainLength must be positive");
   const double particleScale = static_cast<double>(translationalDegreesOfFreedom + 3) * Units::KB * temperature;
   logVolumeMass = particleScale * timeScaleParameterBarostat * timeScaleParameterBarostat;
@@ -212,7 +214,7 @@ Thermobarostat::Thermobarostat(MolecularDynamicsEnsemble ensemble, CellMinimizat
 void Thermobarostat::refreshDegreesOfFreedom(std::size_t newTranslationalDegreesOfFreedom,
                                              std::size_t newCenterOfMassConstraint, double volume)
 {
-  if (!(volume > 0.0) || !std::isfinite(volume)) throw std::runtime_error("Thermobarostat requires positive volume");
+  if (!(volume > 0.0) || !isFiniteValue(volume)) throw std::runtime_error("Thermobarostat requires positive volume");
   translationalDegreesOfFreedom = newTranslationalDegreesOfFreedom;
   centerOfMassConstraint = newCenterOfMassConstraint;
 

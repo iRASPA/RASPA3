@@ -2379,3 +2379,42 @@ TEST(system, group_data_follows_inserted_and_deleted_molecules)
   ASSERT_EQ(system.groupData.size(), 2uz);
   EXPECT_EQ(system.groupData[0].velocity.y, 2.0);
 }
+
+// The forces on the chain beyond its first element, G_k = (Q_(k-1) v_(k-1)^2 - k_B T) / Q_k, are carried between the
+// sweeps, and the first inward half step applies them before they are formed again. A change of the degrees of
+// freedom (an exchanged molecule, a polymer bond) changes Q_0; G_1 kept the value of the old mass. A chain of no
+// thermostats indexed its first element and is refused.
+TEST(thermostat, a_change_of_the_degrees_of_freedom_refreshes_the_chain_forces)
+{
+  Thermostat thermostat(300.0, 0.0005, 300, 120, 3, 3, 0.15);
+  RandomNumber random(31);
+  thermostat.initialize(random);
+  thermostat.refreshDegreesOfFreedom(900, 240, 3);
+  for (std::size_t k = 1; k < 3; ++k)
+  {
+    const double translation =
+        (thermostat.thermostatMassTranslation[k - 1] * thermostat.thermostatVelocityTranslation[k - 1] *
+             thermostat.thermostatVelocityTranslation[k - 1] -
+         thermostat.thermostatDegreesOfFreedomTranslation[k]) /
+        thermostat.thermostatMassTranslation[k];
+    const double rotation = (thermostat.thermostatMassRotation[k - 1] * thermostat.thermostatVelocityRotation[k - 1] *
+                                 thermostat.thermostatVelocityRotation[k - 1] -
+                             thermostat.thermostatDegreesOfFreedomRotation[k]) /
+                            thermostat.thermostatMassRotation[k];
+    EXPECT_NEAR(thermostat.thermostatForceTranslation[k], translation, 1e-12 * std::abs(translation)) << k;
+    EXPECT_NEAR(thermostat.thermostatForceRotation[k], rotation, 1e-12 * std::abs(rotation)) << k;
+  }
+  EXPECT_THROW(Thermostat(300.0, 0.0005, 300, 0, 0, 3, 0.15), std::runtime_error);
+}
+
+// The barostat refuses a pressure that is no number: its test was std::isfinite, which the fast-math flags of the
+// build compile to true. (The infinity is made from its bit pattern: the compiler may assume a computation gives none.)
+TEST(thermobarostat, an_infinite_pressure_is_refused)
+{
+  const double infinity = std::bit_cast<double>(0x7ff0000000000000ull);
+  EXPECT_THROW(Thermobarostat(MolecularDynamicsEnsemble::NPT, CellMinimizationType::Isotropic,
+                              MonoclinicAngleType::Beta, 300.0, infinity, 1.0e-3, 300, 3, 1, 0.5),
+               std::runtime_error);
+  EXPECT_NO_THROW(Thermobarostat(MolecularDynamicsEnsemble::NPT, CellMinimizationType::Isotropic,
+                                 MonoclinicAngleType::Beta, 300.0, 1.0e5, 1.0e-3, 300, 3, 1, 0.5));
+}

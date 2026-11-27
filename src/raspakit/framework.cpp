@@ -8,6 +8,8 @@ module framework;
 
 import std;
 
+import finite_value;
+
 import archive;
 import int3;
 import double3;
@@ -117,7 +119,7 @@ double readScalingFactor(const nlohmann::basic_json<nlohmann::raspa_map>& data, 
   }
 
   const double scaling = data[key].get<double>();
-  if (!std::isfinite(scaling) || scaling < 0.0)
+  if (!isFiniteValue(scaling) || scaling < 0.0)
   {
     throw std::runtime_error(std::format("[Framework reader]: '{}' must be a finite non-negative number\n", key));
   }

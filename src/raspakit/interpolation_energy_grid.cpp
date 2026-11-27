@@ -892,11 +892,20 @@ void InterpolationEnergyGrid::makeFrameworkInterpolationGrid(std::ostream& strea
 
 namespace
 {
+// The fractional coordinate of a position on the grid: wrapped into [0, 1) on a periodic grid, held to [0, 1] on one
+// that is not (an analytic external field over the cell, whose covers() the callers check). Wrapped there as well, the
+// upper face s = 1 was taken for s = 0, the value of the opposite wall.
+double3 gridCoordinate(double3 s, bool periodic)
+{
+  if (periodic) return s.fract();
+  return double3(std::clamp(s.x, 0.0, 1.0), std::clamp(s.y, 0.0, 1.0), std::clamp(s.z, 0.0, 1.0));
+}
+
 // The separable polynomial scheme: successive one-dimensional Lagrange interpolations (Numerical Recipes 3.6),
 // energy only.
 template <std::make_signed_t<std::size_t> NumPoints>
 double polynomialInterpolate(const std::vector<double>& data, const uint3& numberOfGridPoints,
-                             const uint3& numberOfCells, double3 s)
+                             const uint3& numberOfCells, double3 s, bool periodic)
 {
   using Index = std::make_signed_t<std::size_t>;
 
@@ -924,36 +933,41 @@ double polynomialInterpolate(const std::vector<double>& data, const uint3& numbe
   const Index mend = NumPoints / 2;
   const Index mstart = mend + 1 - NumPoints;  // for 4: -1, for 5: -2, for 6: -2
 
-  // The stencil reaches across the cell boundaries. The grid is periodic with a period of numberOfCells
-  // planes: the last stored plane (index numberOfCells) is the copy of the first one (s = 0 and s = 1), so the
-  // wrap is modulo numberOfCells, not modulo numberOfGridPoints.
+  // The stencil reaches across the cell boundaries. A periodic grid has a period of numberOfCells planes: the last
+  // stored plane (index numberOfCells) is the copy of the first one (s = 0 and s = 1), so the wrap is modulo
+  // numberOfCells, not modulo numberOfGridPoints. A grid that is not periodic has no planes beyond its faces: the
+  // stencil is moved inside (one-sided at a face; it wrapped onto the opposite wall, a polynomial through a jump).
+  // Along a direction of fewer points than the stencil spans there is no inside to move it to: it wraps there as well.
+  const auto wraps = [&](Index points) { return periodic || points < NumPoints; };
+  const auto stencilStart = [&](Index cell0, Index points)
+  { return wraps(points) ? cell0 + mstart : std::clamp(cell0 + mstart, Index{0}, points - NumPoints); };
+  const auto gridIndex = [&](Index index, Index cells, Index points)
+  { return wraps(points) ? ((index % cells) + cells) % cells : index; };
+  const Index zStart = stencilStart(z0, static_cast<Index>(numberOfGridPoints.z));
+  const Index yStart = stencilStart(y0, static_cast<Index>(numberOfGridPoints.y));
+  const Index xStart = stencilStart(x0, static_cast<Index>(numberOfGridPoints.x));
 
   for (Index l0 = 0; l0 < NumPoints; ++l0)
   {
-    zt[static_cast<std::size_t>(l0)] = static_cast<double>(l0 + mstart);
+    zt[static_cast<std::size_t>(l0)] = static_cast<double>(zStart + l0 - z0);
 
-    Index lp = z0 + l0 + mstart;
     // modulo the period: a grid of fewer cells than the stencil half-width wraps more than once
-    lp = ((lp % static_cast<Index>(numberOfCells.z)) + static_cast<Index>(numberOfCells.z)) %
-         static_cast<Index>(numberOfCells.z);
+    const Index lp =
+        gridIndex(zStart + l0, static_cast<Index>(numberOfCells.z), static_cast<Index>(numberOfGridPoints.z));
 
     for (Index k0 = 0; k0 < NumPoints; ++k0)
     {
-      yt[static_cast<std::size_t>(k0)] = static_cast<double>(k0 + mstart);
+      yt[static_cast<std::size_t>(k0)] = static_cast<double>(yStart + k0 - y0);
 
-      Index kp = y0 + k0 + mstart;
-      // modulo the period: a grid of fewer cells than the stencil half-width wraps more than once
-      kp = ((kp % static_cast<Index>(numberOfCells.y)) + static_cast<Index>(numberOfCells.y)) %
-           static_cast<Index>(numberOfCells.y);
+      const Index kp =
+          gridIndex(yStart + k0, static_cast<Index>(numberOfCells.y), static_cast<Index>(numberOfGridPoints.y));
 
       for (Index j0 = 0; j0 < NumPoints; ++j0)
       {
-        xt[static_cast<std::size_t>(j0)] = static_cast<double>(j0 + mstart);
+        xt[static_cast<std::size_t>(j0)] = static_cast<double>(xStart + j0 - x0);
 
-        Index jp = x0 + j0 + mstart;
-        // modulo the period: a grid of fewer cells than the stencil half-width wraps more than once
-        jp = ((jp % static_cast<Index>(numberOfCells.x)) + static_cast<Index>(numberOfCells.x)) %
-             static_cast<Index>(numberOfCells.x);
+        const Index jp =
+            gridIndex(xStart + j0, static_cast<Index>(numberOfCells.x), static_cast<Index>(numberOfGridPoints.x));
 
         yjtmp[static_cast<std::size_t>(j0)] =
             data_cell[0, static_cast<std::size_t>(jp), static_cast<std::size_t>(kp), static_cast<std::size_t>(lp)];
@@ -977,7 +991,7 @@ bool InterpolationEnergyGrid::covers(double3 pos) const
 
 InterpolationEnergyGrid::Cell InterpolationEnergyGrid::locateCell(double3 pos) const
 {
-  const double3 s = (unitCellBox.inverseCell * (pos + shift)).fract();
+  const double3 s = gridCoordinate(unitCellBox.inverseCell * (pos + shift), periodic);
 
   // the scaled coordinate; the case s == 1.0 is handled by the last cell
   const double sx = s.x * static_cast<double>(numberOfCells.x);
@@ -1060,8 +1074,9 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
   switch (order)
   {
     case ForceFieldSettings::InterpolationScheme::Polynomial:
-      return polynomialInterpolate<num_points_interpolation>(data, numberOfGridPoints, numberOfCells,
-                                                             (unitCellBox.inverseCell * (pos + shift)).fract());
+      return polynomialInterpolate<num_points_interpolation>(
+          data, numberOfGridPoints, numberOfCells, gridCoordinate(unitCellBox.inverseCell * (pos + shift), periodic),
+          periodic);
     case ForceFieldSettings::InterpolationScheme::Tricubic:
     {
       const Cell cell = locateCell(pos);
@@ -1090,8 +1105,9 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
   switch (order)
   {
     case ForceFieldSettings::InterpolationScheme::Polynomial:
-      return {polynomialInterpolate<num_points_interpolation>(data, numberOfGridPoints, numberOfCells,
-                                                              (unitCellBox.inverseCell * (pos + shift)).fract()),
+      return {polynomialInterpolate<num_points_interpolation>(
+                  data, numberOfGridPoints, numberOfCells,
+                  gridCoordinate(unitCellBox.inverseCell * (pos + shift), periodic), periodic),
               double3(0.0, 0.0, 0.0)};
     case ForceFieldSettings::InterpolationScheme::Tricubic:
     {
@@ -1121,8 +1137,9 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
   switch (order)
   {
     case ForceFieldSettings::InterpolationScheme::Polynomial:
-      return {polynomialInterpolate<num_points_interpolation>(data, numberOfGridPoints, numberOfCells,
-                                                              (unitCellBox.inverseCell * (pos + shift)).fract()),
+      return {polynomialInterpolate<num_points_interpolation>(
+                  data, numberOfGridPoints, numberOfCells,
+                  gridCoordinate(unitCellBox.inverseCell * (pos + shift), periodic), periodic),
               double3(0.0, 0.0, 0.0), double3x3{}};
     case ForceFieldSettings::InterpolationScheme::Tricubic:
     {

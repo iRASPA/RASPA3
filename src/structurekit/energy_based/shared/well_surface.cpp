@@ -4,6 +4,8 @@ module energy_shared_well_surface;
 
 import std;
 
+import finite_value;
+
 import uint3;
 import int3;
 import grid_connected_components;
@@ -1007,7 +1009,7 @@ WellSurface wellSurfaceOfField(const Crystal &framework, const PairInteractions 
                   double3::cross(nearestImageEdge(framework.unitCell.cell, corners[i], corners[i + 1]),
                                  nearestImageEdge(framework.unitCell.cell, corners[i], corners[i + 2]))
                       .length();
-    if (!(std::isfinite(area) && area < largestPlausible))
+    if (!(isFiniteValue(area) && area < largestPlausible))
     {
       ++result.numberOfRejectedTriangles;
       continue;

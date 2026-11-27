@@ -19,10 +19,16 @@ export struct PropertyNumberOfMoleculesEvolution
                                      std::size_t sampleEvery, std::optional<std::size_t> writeEvery)
       : numberOfComponents(numberOfComponents),
         sampleEvery(sampleEvery),
-        writeEvery(writeEvery),
-        totalSamples((numberOfProductionCycles + sampleEvery - 1) / sampleEvery),
-        result(numberOfComponents, std::vector<std::size_t>(totalSamples))
+        writeEvery(writeEvery)
   {
+    // an interval of zero is a division by zero at the first sample (and in the number of samples)
+    if (sampleEvery == 0uz) throw std::runtime_error("PropertyNumberOfMoleculesEvolution: the sampling interval must be at least 1\n");
+    if (writeEvery.has_value() && writeEvery.value() == 0uz)
+    {
+      throw std::runtime_error("PropertyNumberOfMoleculesEvolution: the writing interval must be at least 1\n");
+    }
+    totalSamples = (numberOfProductionCycles + sampleEvery - 1) / sampleEvery;
+    result.assign(numberOfComponents, std::vector<std::size_t>(totalSamples));
   }
 
   std::uint64_t versionNumber{1};
@@ -30,7 +36,7 @@ export struct PropertyNumberOfMoleculesEvolution
   std::size_t numberOfComponents;
   std::size_t sampleEvery;
   std::optional<std::size_t> writeEvery;
-  std::size_t totalSamples;
+  std::size_t totalSamples{0};
   std::vector<std::vector<std::size_t>> result;
 
   void addSample(std::size_t absoluteCurrentCycle, const std::vector<std::size_t> &numberOfIntegerMoleculesPerComponent);

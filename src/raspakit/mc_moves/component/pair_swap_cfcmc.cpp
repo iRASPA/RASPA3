@@ -869,16 +869,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     }
 
     // Calculate acceptance probability: exact reciprocal of the insertion prefactor.
-    const double preFactor = (static_cast<double>(oldN_A) / (system.beta * fugacityA * system.simulationBox.volume)) *
-                             (static_cast<double>(oldN_B) / (system.beta * fugacityB * sphereVolume));
+    // (a reservoir of no fugacity takes every deletion: see 'logSwapPrefactor')
+    const double logPreFactor =
+        MC_Moves::logSwapPrefactor(static_cast<double>(oldN_A), system.beta * fugacityA * system.simulationBox.volume) +
+        MC_Moves::logSwapPrefactor(static_cast<double>(oldN_B), system.beta * fugacityB * sphereVolume);
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // the reverse insertion draws the removed conformations at full coupling and places them at the old lambda
     // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
     const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
-        preFactor,
-        -system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy() -
-                        system.intraCoulombScalingEnergy(oldFractionalMoleculeA) -
-                        system.intraCoulombScalingEnergy(oldFractionalMoleculeB)),
+        logPreFactor + (-system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy() -
+                                        system.intraCoulombScalingEnergy(oldFractionalMoleculeA) -
+                                        system.intraCoulombScalingEnergy(oldFractionalMoleculeB))),
         biasTerm);
     const double physicalPacc = acceptance.physical;
     const double samplingPacc = acceptance.sampling;

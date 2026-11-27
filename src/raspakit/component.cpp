@@ -4020,8 +4020,16 @@ std::vector<ReactiveSite> Component::readReactiveSites(
           {
             throw std::runtime_error(std::format("unknown bend potential '{}'", bend[0].get<std::string>()));
           }
-          site.linkBend = BendPotential({0, 1, 2}, BendPotential::definitionForString.at(bendName),
-                                        bend[1].get<std::vector<double>>());
+          // a FIXED or RIGID bend is a constraint without energy, which nothing holds across a link: it had no force
+          // at all (as the polymer bends, which refuse it)
+          const BendType linkType = BendPotential::definitionForString.at(bendName);
+          if (linkType == BendType::Fixed || linkType == BendType::Rigid)
+          {
+            throw std::runtime_error(
+                "'LinkBend' cannot be FIXED or RIGID (it would have no force); use a stiff "
+                "HARMONIC bend");
+          }
+          site.linkBend = BendPotential({0, 1, 2}, linkType, bend[1].get<std::vector<double>>());
         }
       }
       else
@@ -4588,6 +4596,21 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.constraintMaximumIterations;
   // the constraints follow from the potentials and the fragments
   c.buildDistanceConstraints();
+
+  // The derived data of the topology, never serialized: a component read into one that was in use (not a fresh one)
+  // kept the plans, guides and move topologies of the molecule it held before
+  c.growthPlanCache.clear();
+  c.growthPlanBeta.reset();
+  c.baseCouplingConstantsMemo.clear();
+  c.closureGuideMemo.clear();
+  c.lookaheadGuideMemo.clear();
+  c.recoilReferenceStepEnergiesCache.clear();
+  c.pivotBondsCache.reset();
+  c.crankshaftUnitsCache.reset();
+  c.concertedRotationWindowsCache.reset();
+  c.bridgingTopologyCache.reset();
+  c.displaceableBeadsCache.reset();
+  c.flipBeadsCache.reset();
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

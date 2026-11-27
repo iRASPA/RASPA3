@@ -17,22 +17,34 @@ export struct PropertyConservedEnergyEvolution
         sampleEvery(sampleEvery),
         writeEvery(writeEvery)
   {
+    // an interval of zero is a division by zero at the first sample (and in the number of samples)
+    if (sampleEvery == 0uz) throw std::runtime_error("PropertyConservedEnergyEvolution: the sampling interval must be at least 1\n");
+    if (writeEvery.has_value() && writeEvery.value() == 0uz)
+    {
+      throw std::runtime_error("PropertyConservedEnergyEvolution: the writing interval must be at least 1\n");
+    }
   }
 
   PropertyConservedEnergyEvolution(std::size_t numberOfProductionCycles, std::size_t sampleEvery,
                                    std::optional<std::size_t> writeEvery)
       : sampleEvery(sampleEvery),
-        writeEvery(writeEvery),
-        totalSamples((numberOfProductionCycles + sampleEvery - 1) / sampleEvery),
-        data(totalSamples)
+        writeEvery(writeEvery)
   {
+    // an interval of zero is a division by zero at the first sample (and in the number of samples)
+    if (sampleEvery == 0uz) throw std::runtime_error("PropertyConservedEnergyEvolution: the sampling interval must be at least 1\n");
+    if (writeEvery.has_value() && writeEvery.value() == 0uz)
+    {
+      throw std::runtime_error("PropertyConservedEnergyEvolution: the writing interval must be at least 1\n");
+    }
+    totalSamples = (numberOfProductionCycles + sampleEvery - 1) / sampleEvery;
+    data.resize(totalSamples);
   }
 
   std::uint64_t versionNumber{1};
 
   std::size_t sampleEvery;
   std::optional<std::size_t> writeEvery;
-  std::size_t totalSamples;
+  std::size_t totalSamples{0};  // (it was left undefined by the constructor without a number of cycles)
   std::vector<RunningEnergy> data;
 
   const std::vector<RunningEnergy> result() const {return data;}

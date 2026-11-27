@@ -13,6 +13,7 @@ import component;
 import move_statistics;
 import chiral_center;
 import bond_potential;
+import bend_potential;
 import intra_molecular_potentials;
 import cbmc_util;
 import cbmc_constants;
@@ -150,12 +151,44 @@ class RingSampler
   {
     if (!(random_.uniform() < 0.5)) return;
     const double energy = baseEnergy();
+    const std::vector<double> constrained = constrainedGeometry();
     saveNextBeads();
     reflectThroughPlane(normal());
-    if (!parityPreserved() || std::abs(baseEnergy() - energy) > 1.0e-8 * (1.0 + std::abs(energy)))
+    // The energy does not see the constraints: a FIXED bond (and a FIXED or RIGID bend) has no energy at any
+    // geometry, so a mirror image that tore a closure bond to an atom of the unit off the plane passed the energy
+    // test (and was kept by the relaxation). The constrained lengths and angles have to come out as they were.
+    const std::vector<double> reflected = constrainedGeometry();
+    bool constraintsHeld = true;
+    for (std::size_t i = 0; i < constrained.size(); ++i)
+    {
+      constraintsHeld =
+          constraintsHeld && std::abs(reflected[i] - constrained[i]) <= 1.0e-8 * (1.0 + std::abs(constrained[i]));
+    }
+    if (!parityPreserved() || !constraintsHeld || std::abs(baseEnergy() - energy) > 1.0e-8 * (1.0 + std::abs(energy)))
     {
       restoreNextBeads();
     }
+  }
+
+  // The lengths of the FIXED bonds and the angles of the FIXED and RIGID bends of the ring, in the order of its
+  // potentials.
+  std::vector<double> constrainedGeometry() const
+  {
+    const Potentials::IntraMolecularPotentials& intra = ring_.internalPotentials;
+    std::vector<double> values;
+    for (const BondPotential& bond : intra.bonds)
+    {
+      if (bond.type != BondType::Fixed) continue;
+      values.push_back((chain_[bond.identifiers[0]].position - chain_[bond.identifiers[1]].position).length());
+    }
+    for (const BendPotential& bend : intra.bends)
+    {
+      if (bend.type != BendType::Fixed && bend.type != BendType::Rigid) continue;
+      const double3 u = chain_[bend.identifiers[0]].position - chain_[bend.identifiers[1]].position;
+      const double3 v = chain_[bend.identifiers[2]].position - chain_[bend.identifiers[1]].position;
+      values.push_back(std::atan2(double3::cross(u, v).length(), double3::dot(u, v)));
+    }
+    return values;
   }
 
   // Anchored ring (see 'GrowStep::RingSamplerData::placedFrame'): the seed is laid onto the placed rigid unit, the

@@ -168,7 +168,9 @@ PropertyConventionalRadialDistributionFunction::result() const
     {
       if (pairCount[channel(atomTypeB, atomTypeA)] > 0)
       {
-        const auto [y, error_y] = normalized(atomTypeA, atomTypeB, volumeCumulative / volumeSampleCount);
+        // (samples of no weight: no volume, rather than 0 / 0)
+        const double averageVolume = volumeSampleCount > 0.0 ? volumeCumulative / volumeSampleCount : 0.0;
+        const auto [y, error_y] = normalized(atomTypeA, atomTypeB, averageVolume);
         std::vector<double> x(numberOfBins);
         for (std::size_t bin = 0; bin != numberOfBins; ++bin) x[bin] = (static_cast<double>(bin) + 0.5) * deltaR;
 

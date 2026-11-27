@@ -284,6 +284,8 @@ class Archive
   {
     std::size_t len;
     *this >> len;
+    // (an entry takes at least one byte of the stream: a corrupted length reserved, or read, without end)
+    requireBytes(len, 1);
     // the archive holds the whole map: what was in it before is replaced, not merged
     v.clear();
     for (std::size_t i = 0; i < len; ++i)
@@ -312,6 +314,8 @@ class Archive
   {
     std::size_t len;
     *this >> len;
+    // (an entry takes at least one byte of the stream: a corrupted length reserved, or read, without end)
+    requireBytes(len, 1);
     // the archive holds the whole map: what was in it before is replaced, not merged
     v.clear();
     v.reserve(len);

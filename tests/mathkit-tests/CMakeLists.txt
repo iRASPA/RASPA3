@@ -11,6 +11,7 @@ add_executable(unit_tests_mathkit
   symmetric_matrix_layout.cpp
   random.cpp
   random_archive.cpp
+  special_functions.cpp
   main.cpp)
 
 raspa_target_link_libraries(unit_tests_mathkit)

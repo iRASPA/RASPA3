@@ -4,6 +4,8 @@ module forcefield;
 
 import std;
 
+import finite_value;
+
 import archive;
 import json;
 import skelement;
@@ -1534,7 +1536,7 @@ void ForceField::initializeEwaldParameters(const SimulationBox& simulationBox)
 
 void ForceField::updateEwaldRealSpaceTable()
 {
-  if (!useEwaldRealSpaceTable || !(EwaldAlpha > 0.0) || !(cutOffCoulomb > 0.0) || !std::isfinite(cutOffCoulomb))
+  if (!useEwaldRealSpaceTable || !(EwaldAlpha > 0.0) || !(cutOffCoulomb > 0.0) || !isFiniteValue(cutOffCoulomb))
   {
     ewaldRealSpaceTable = EwaldRealSpaceTable{};
     return;

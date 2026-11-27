@@ -60,8 +60,9 @@ export class HDF5Writer
     H5::Group group = file.openGroup(groupName.c_str());
     std::vector<hsize_t> vec_hsize_t(dimensions.begin(), dimensions.end());
     H5::DataSpace dataspace(static_cast<int>(vec_hsize_t.size()), vec_hsize_t.data());
-    // a string type of no length is refused by HDF5 (all strings empty): one character, the terminator
-    H5::StrType strtype(H5::PredType::C_S1, std::max<size_t>(maxLength, 1));
+    // room for the terminator of a null-terminated string type (the default pad): a string of 'maxLength' characters
+    // lost its last one in a type of that size (and a type of no length is refused by HDF5)
+    H5::StrType strtype(H5::PredType::C_S1, maxLength + 1);
     H5::DataSet dataset = group.createDataSet(datasetName.c_str(), strtype, dataspace);
   }
 

@@ -476,3 +476,29 @@ TEST(external_field, periodic_cube_file_gets_the_plane_at_the_cell_boundary)
   EXPECT_EQ(own.x, 4u);
   EXPECT_EQ(own.z, 4u);
 }
+
+// An analytic field held on a grid over the cell is no periodic function: on its upper faces (s = 1) the grid took the
+// value of the opposite wall (the coordinate was wrapped to s = 0), and near the faces the polynomial stencil reached
+// across to the other side, a polynomial through the jump between the walls. Every scheme agrees with the field there.
+TEST(external_field, a_grid_that_is_not_periodic_holds_the_field_up_to_its_faces)
+{
+  const SimulationBox box(4.0, 4.0, 4.0);
+  const std::optional<InterpolationEnergyGrid> noGrid = std::nullopt;
+  ForceField forceField = makeForceField(ForceField::PotentialEnergySurfaceType::SecondOrderPolynomialTestFunction);
+  for (const ForceFieldSettings::InterpolationScheme scheme :
+       {ForceFieldSettings::InterpolationScheme::Polynomial, ForceFieldSettings::InterpolationScheme::Tricubic,
+        ForceFieldSettings::InterpolationScheme::Triquintic})
+  {
+    std::optional<InterpolationEnergyGrid> grid = InterpolationEnergyGrid(box, double3(), uint3{33, 33, 33}, scheme);
+    std::stringstream stream;
+    grid->makeExternalFieldInterpolationGrid(stream, forceField, box);
+    ASSERT_FALSE(grid->periodic);
+    for (const double3 position : {double3(4.0, 2.1, 1.3), double3(3.95, 3.9, 0.05), double3(4.0, 4.0, 4.0)})
+    {
+      const std::vector<Atom> atom{makeAtom(position)};
+      const double expected = totalEnergy(forceField, box, noGrid, atom);
+      EXPECT_NEAR(totalEnergy(forceField, box, grid, atom), expected, 1e-4 * std::max(1.0, std::abs(expected)))
+          << "scheme " << std::to_underlying(scheme) << " at " << position.x << " " << position.y << " " << position.z;
+    }
+  }
+}

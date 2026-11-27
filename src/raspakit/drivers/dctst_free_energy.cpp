@@ -309,6 +309,16 @@ void validateDcTSTSystem(const System& system, std::size_t taggedComponent, std:
     throw std::runtime_error(std::format(
         "dcTST: '{}' does not support bonds between molecules (cross-links or polymer bonds)\n", driverName));
   }
+  // The transmission coefficient takes the mean speed of the tagged bead from its effective mass along the normal,
+  // which a FIXED bond (held by RATTLE) changes: the bead and its constrained partners move together. That mass is
+  // the one of the free bead here, and k_TST came out too large against the projected kappa.
+  if (!system.components[taggedComponent].distanceConstraints.empty())
+  {
+    throw std::runtime_error(
+        std::format("dcTST: '{}': the tagged component '{}' has FIXED bonds (distance "
+                    "constraints), which are not supported; use stiff bond potentials\n",
+                    driverName, system.components[taggedComponent].name));
+  }
   if (!integratesTrajectories) return;
   if (system.forceField.computePolarization)
   {

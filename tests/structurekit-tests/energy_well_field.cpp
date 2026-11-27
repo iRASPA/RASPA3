@@ -415,3 +415,22 @@ TEST(energy_well_field, a_boltzmann_average_past_the_range_of_a_double_keeps_its
   EXPECT_EQ(result.boltzmannAverage, std::numeric_limits<double>::max());
   EXPECT_FALSE(result.readsAsFraction);
 }
+
+// The other end: every site more than 700 kT up (a closed or repulsive framework). The logarithm is a number there
+// as well, and so is the excess chemical potential; it was left at the ideal-gas zero.
+TEST(energy_well_field, a_repulsive_grid_keeps_its_large_excess_chemical_potential)
+{
+  const double temperature = 77.0;
+  const double kT = Units::KB * temperature;
+
+  MolecularEnergyGrid grid;
+  grid.gridSize = uint3(2, 1, 1);
+  grid.freeEnergy = {static_cast<float>(800.0 * kT), static_cast<float>(900.0 * kT)};
+  grid.minimumEnergy = grid.freeEnergy;
+
+  Crystal framework = oneAtomAt(double3(0.0, 0.0, 0.0), true);
+  MolecularVoidFraction result = MolecularVoidFraction::fromGrid(grid, framework, temperature);
+
+  // -ln((e^-800 + e^-900) / 2) = 800 + ln 2 (to within e^-100)
+  EXPECT_NEAR(result.excessChemicalPotential / kT, 800.0 + std::log(2.0), 1.0e-3);
+}
