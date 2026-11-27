@@ -2160,6 +2160,38 @@ TEST_P(SpatialDecompositionDevice, engine_device_bonded_terms_follow_a_cutoff_ch
   EXPECT_LT(rmsDifference(changedGradient, expectedGradient), 1e-5 * rmsNorm(expectedGradient));
 }
 
+// The mesh on the host next to the bonded terms on the device (DeviceMesh false, DeviceBonded true): the device
+// forces are complete except for the mesh gradients, which the scatter phase used to skip together with their
+// atomic-to-molecular virial correction (the centers of mass of which the host bonded work, not run, stores).
+// Compared with the engine on the host; molecules on a lattice, so that the mesh is a large part of the forces.
+TEST_P(SpatialDecompositionDevice, engine_device_bonded_terms_with_the_mesh_on_the_host_match_host)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  RandomNumber random(13);
+  System system = makeChainSystem(false, random, 6);
+  SpatialDecompositionForceEngine host(settingsFor(4, 1.5, 0.5));
+  host.initialize(system);
+  const RunningEnergy expected = host.computeGradients(system, true);
+  const std::vector<double3> expectedGradient = gradientsOf(system);
+  ASSERT_NE(expected.ewald_fourier, 0.0);
+
+  SpatialDecompositionSettings settings = settingsFor(4, 1.5, 0.5);
+  settings.pairDevice = pairDevice;
+  settings.deviceMesh = false;
+  SpatialDecompositionForceEngine engine(settings);
+  engine.initialize(system);
+  ASSERT_FALSE(engine.usesDeviceMesh());
+  ASSERT_TRUE(engine.usesDeviceBonded());
+  const RunningEnergy energy = engine.computeGradients(system, true);
+  const std::vector<double3> gradient = gradientsOf(system);
+
+  EXPECT_NEAR(energy.potentialEnergy(), expected.potentialEnergy(), 1e-5 * std::abs(expected.potentialEnergy()));
+  EXPECT_LT(rmsDifference(gradient, expectedGradient), 1e-5 * rmsNorm(expectedGradient));
+  EXPECT_LT(maxAbsDifference(engine.molecularPressureTensor(), host.molecularPressureTensor()),
+            1e-5 * maxAbs(host.molecularPressureTensor()));
+}
+
 // Without the Fourier sum (Ewald real space only) a scaled 1-4 Coulomb pair is its scaled real-space term and there
 // are no self or exclusion corrections, on the host. The device bonded terms must agree: they used to switch their
 // Coulomb part off altogether, which dropped the 1-4 pairs.
@@ -4306,6 +4338,123 @@ TEST(spatial_decomposition, engine_polymer_broken_bond_matches_the_product_topol
   const RunningEnergy partialEnergy = partialEngine.computeGradients(untouched, true);
   EXPECT_GT(std::abs(partialEnergy.potentialEnergy() - referenceEnergy.potentialEnergy()),
             1e-3 * std::abs(referenceEnergy.potentialEnergy()));
+}
+
+namespace
+{
+/// A charged dimer (+0.4 / -0.4, Lennard-Jones sites) whose bond a dissociation ('BreakBonds' alone) broke at step
+/// 0, its ramp complete: two independent fragments of one molecule, 4 Angstrom apart at the minimum image. The
+/// tail is stored 'tailShift' box lengths along x from there (the same system in another stored geometry).
+System makeDissociatedDimerSystem(double tailShift)
+{
+  ForceField forceField = ForceField(
+      {{"CH3", false, 15.03452, 0.4, 0.0, 6, false}, {"CH2", false, 14.02658, -0.4, 0.0, 6, false}},
+      {{98.0, 3.75}, {46.0, 3.95}}, ForceField::MixingRule::Lorentz_Berthelot, 9.0, 9.0, 9.0, false, false, true);
+  forceField.automaticEwald = false;
+  forceField.EwaldAlpha = 0.32;
+  forceField.numberOfWaveVectors = int3(20, 20, 20);
+  forceField.reciprocalCutOffSquared = std::numeric_limits<double>::max();
+  forceField.reciprocalIntegerCutOffSquared = 400;
+
+  ConnectivityTable connectivityTable(2);
+  connectivityTable[0, 1] = true;
+  connectivityTable[1, 0] = true;
+  Potentials::IntraMolecularPotentials potentials{};
+  // a soft bond: its removal by the overlay cancels the stretched bond of the stored geometry in single precision
+  // on the device as well
+  potentials.bonds.push_back(BondPotential({0, 1}, BondType::Harmonic, {100.0, 1.54}));
+  Component dimer = Component(forceField, "dimer", 425.0, 3796000.0, 0.199,
+                              {Atom({0.0, 0.0, 0.0}, 0.4, 1.0, 0, 0, 0, false, false),
+                               Atom({1.54, 0.0, 0.0}, -0.4, 1.0, 0, 1, 0, false, false)},
+                              connectivityTable, potentials, 5, 21);
+  dimer.reactiveGroups.push_back(
+      ReactiveGroup{.type = "pair", .atoms = {{"head", 0}, {"tail", 1}}, .initialState = "intact"});
+
+  const double boxLength = 30.0;
+  System system = System(forceField, SimulationBox(boxLength, boxLength, boxLength), false, 300.0, 1e5, 1.0, {},
+                         {dimer}, {}, {1}, 5);
+  std::span<Atom> atoms = system.spanOfMoleculeAtoms();
+  atoms[0].position = double3(13.0, 15.0, 15.0);
+  atoms[1].position = double3(17.0 + tailShift * boxLength, 15.3, 14.8);
+
+  ReactionRule dissociation{};
+  dissociation.name = "dissociation";
+  dissociation.reactants = {{.label = "D", .type = "pair", .state = "intact"}};
+  dissociation.products = {{.state = "split"}};
+  dissociation.breakBonds = {{RoleRef{"D", "head"}, RoleRef{"D", "tail"}}};
+  PolymerLinkTable& table = system.polymerLinks;
+  table.scheme.rules = {dissociation};
+  table.scheme.resolve(system.components, forceField);
+  table.activate(system.components, system.numberOfMoleculesPerComponent);
+  table.relaxationSteps = 100;
+  table.currentStep = 1000;
+  const std::array<std::size_t, 1> group{table.groupIndex(0, 0, 0)};
+  table.apply(0, group, {}, {}, forceField, system.components, atoms, std::span<Molecule>(system.moleculeData),
+              system.simulationBox, 0);
+  table.rebuild(forceField, system.components, system.numberOfMoleculesPerComponent, atoms);
+  return system;
+}
+}  // namespace
+
+// The fragments of a molecule split by a broken bond are independent: storing one of them a box vector away changes
+// nothing but the stored geometry. Their pair was completed at the stored separation, where it lost its interaction
+// once the fragments were more than half a box apart while their minimum images stayed close. It is at the
+// minimum image now, like the pairs of the pair lists; the exclusion it replaces stays at the stored separation,
+// where the intramolecular exclusion took it.
+TEST(spatial_decomposition, engine_polymer_dissociated_fragments_interact_at_the_minimum_image)
+{
+  System near = makeDissociatedDimerSystem(0.0);
+  System far = makeDissociatedDimerSystem(1.0);
+  ASSERT_EQ(near.polymerLinks.numberOfBrokenBonds(), 1uz);
+  ASSERT_EQ(near.polymerLinks.pairCorrections.size(), 1uz);
+  EXPECT_EQ(near.polymerLinks.pairCorrections[0].counted, PolymerLinkTable::PairState::Excluded);
+  EXPECT_EQ(near.polymerLinks.pairCorrections[0].wanted, PolymerLinkTable::PairState::Full);
+  EXPECT_FALSE(near.polymerLinks.rampsActive());
+
+  // the host sums (exact Ewald)
+  const RunningEnergy nearTotal = near.computeTotalEnergies();
+  const RunningEnergy farTotal = far.computeTotalEnergies();
+  ASSERT_LT(nearTotal.moleculeMoleculeCharge, -100.0);
+  ASSERT_LT(nearTotal.moleculeMoleculeVDW, -10.0);
+  EXPECT_NEAR(farTotal.moleculeMoleculeVDW, nearTotal.moleculeMoleculeVDW,
+              1e-8 * std::abs(nearTotal.moleculeMoleculeVDW));
+  EXPECT_NEAR(farTotal.potentialEnergy(), nearTotal.potentialEnergy(), 1e-6 * std::abs(nearTotal.potentialEnergy()));
+
+  // the engine on the host
+  SpatialDecompositionForceEngine nearEngine(settingsFor(1, 1.5, 0.5));
+  nearEngine.initialize(near);
+  const RunningEnergy nearEnergy = nearEngine.computeGradients(near, false);
+  const std::vector<double3> nearGradient = gradientsOf(near);
+  SpatialDecompositionForceEngine farEngine(settingsFor(1, 1.5, 0.5));
+  farEngine.initialize(far);
+  const RunningEnergy farEnergy = farEngine.computeGradients(far, false);
+  const std::vector<double3> farGradient = gradientsOf(far);
+  EXPECT_NEAR(farEnergy.potentialEnergy(), nearEnergy.potentialEnergy(), 1e-6 * std::abs(nearEnergy.potentialEnergy()));
+  EXPECT_LT(rmsDifference(farGradient, nearGradient), 1e-6 * rmsNorm(nearGradient));
+}
+
+// The same on the device: the pair correction of the overlay kernel takes the full pair at the minimum image and
+// the exclusion at the stored separation (as the bonded kernel does).
+TEST_P(SpatialDecompositionDevice, engine_device_polymer_dissociated_fragments_interact_at_the_minimum_image)
+{
+  const PairDevice pairDevice = GetParam();
+  if (!DeviceStep::available(pairDevice)) GTEST_SKIP() << "no " << pairDeviceName(pairDevice) << " device";
+  System near = makeDissociatedDimerSystem(0.0);
+  SpatialDecompositionForceEngine host(settingsFor(1, 1.5, 0.5));
+  host.initialize(near);
+  const RunningEnergy expected = host.computeGradients(near, false);
+  const std::vector<double3> expectedGradient = gradientsOf(near);
+
+  System far = makeDissociatedDimerSystem(1.0);
+  SpatialDecompositionSettings settings = settingsFor(1, 1.5, 0.5);
+  settings.pairDevice = pairDevice;
+  SpatialDecompositionForceEngine engine(settings);
+  engine.initialize(far);
+  ASSERT_TRUE(engine.usesDevicePolymerOverlay());
+  const RunningEnergy energy = engine.computeGradients(far, false);
+  const std::vector<double3> gradient = gradientsOf(far);
+  EXPECT_NEAR(energy.potentialEnergy(), expected.potentialEnergy(), 1e-5 * std::abs(expected.potentialEnergy()));
+  EXPECT_LT(rmsDifference(gradient, expectedGradient), 1e-5 * rmsNorm(expectedGradient));
 }
 
 // A second bond at an atom of an earlier bond: the pairs of the earlier bond are within three bonds of the new one

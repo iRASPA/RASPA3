@@ -340,24 +340,44 @@ void polymerTerms(GLOBAL const float4* RESTRICT position,     // per slot: wrapp
       }
       else if (kind == 6u)
       {
-        const float3 dr = pos[0] - pos[1];
-        const float rr = dot(dr, dr);
+        // Each treatment at the separation its sum takes: the pair kernel (full) the minimum image, the bonded
+        // kernel (scaled pairs, exclusions) the molecule as stored. (Two fragments of a molecule split by a broken
+        // bond, or the ends of a molecule closed into a ring, that are more than half a box apart in the stored
+        // geometry meet at the minimum image.)
+        const float3 stored = pos[0] - pos[1];
+        const float3 imaged = polymerMinimumImage(pos4[0].xyz - pos4[1].xyz, p);
+        const float3 drWanted = (term.type == 0u) ? imaged : stored;
+        const float3 drCounted = (term.type2 == 0u) ? imaged : stored;
         // An intramolecular correction (a scaled pair with a retyped atom, flag 2) differs between its two
         // treatments in the Lennard-Jones parameters only: the Coulomb parts would cancel exactly in the energy and
         // up to rounding in the gradient factor. Evaluated with zero charge, so that neither is computed.
         const float qq = ((term.flags & 2u) != 0u) ? 0.0f : pos4[0].w * pos4[1].w;
         float wVDW, wCoulomb, wExclusion, wFactor, cVDW, cCoulomb, cExclusion, cFactor;
-        polymerPairState(term.type, P, rr, qq, p, &wVDW, &wCoulomb, &wExclusion, &wFactor);
-        polymerPairState(term.type2, Q, rr, qq, p, &cVDW, &cCoulomb, &cExclusion, &cFactor);
+        polymerPairState(term.type, P, dot(drWanted, drWanted), qq, p, &wVDW, &wCoulomb, &wExclusion, &wFactor);
+        polymerPairState(term.type2, Q, dot(drCounted, drCounted), qq, p, &cVDW, &cCoulomb, &cExclusion, &cFactor);
         // the pair lists supply the counted value of a listed pair, nothing of an unlisted one
         const float countedWeight = unlisted ? (1.0f - lam) : -lam;
         acc[((term.flags & 2u) != 0u) ? 7u : 4u] = lam * wVDW + countedWeight * cVDW;
         acc[5] = lam * wCoulomb + countedWeight * cCoulomb;
         acc[6] = lam * wExclusion + countedWeight * cExclusion;
-        const float factor = lam * wFactor + countedWeight * cFactor;
-        gA = factor * dr;
+        const float3 gWanted = (lam * wFactor) * drWanted;
+        const float3 gCounted = (countedWeight * cFactor) * drCounted;
+        gA = gWanted + gCounted;
         gB = -gA;
         scale = 1.0f;
+        if (inter)
+        {
+          // the strain derivative of each treatment at its own separation (dr (x) g_A)
+          acc[8] += drWanted.x * gWanted.x + drCounted.x * gCounted.x;
+          acc[9] += drWanted.x * gWanted.y + drCounted.x * gCounted.y;
+          acc[10] += drWanted.x * gWanted.z + drCounted.x * gCounted.z;
+          acc[11] += drWanted.y * gWanted.x + drCounted.y * gCounted.x;
+          acc[12] += drWanted.y * gWanted.y + drCounted.y * gCounted.y;
+          acc[13] += drWanted.y * gWanted.z + drCounted.y * gCounted.z;
+          acc[14] += drWanted.z * gWanted.x + drCounted.z * gCounted.x;
+          acc[15] += drWanted.z * gWanted.y + drCounted.z * gCounted.y;
+          acc[16] += drWanted.z * gWanted.z + drCounted.z * gCounted.z;
+        }
       }
       else
       {
@@ -377,7 +397,7 @@ void polymerTerms(GLOBAL const float4* RESTRICT position,     // per slot: wrapp
       gB *= scale;
       gC *= scale;
       gD *= scale;
-      if (inter)
+      if (inter && kind != 6u)
       {
         // strain derivative sum_i (r_i - r_0) (x) g_i (the first atom contributes nothing; the gradients of the
         // atoms a term does not have are zero)

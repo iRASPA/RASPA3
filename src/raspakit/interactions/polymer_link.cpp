@@ -194,10 +194,11 @@ RunningEnergy evaluate(const ForceField &forceField, const SimulationBox &simula
     }
     return positions;
   };
-  // The terms of the atoms of one molecule are those of its stored geometry, as the intramolecular potentials, the
-  // exclusions and the molecular virial see it (and not the minimum image): an override cancels the monomer term
-  // the intramolecular potentials evaluate, and a pair correction the pair they count. Once a broken bond has split
-  // a molecule into two fragments that drift more than half a box apart, the minimum image is another geometry.
+  // The bonded terms of the atoms of one molecule are those of its stored geometry, as the intramolecular
+  // potentials and the molecular virial see it (and not the minimum image): an override cancels the monomer term
+  // the intramolecular potentials evaluate. Once a broken bond has split a molecule into two fragments that drift
+  // more than half a box apart, the minimum image is another geometry. (The pair corrections below take the
+  // geometry of each pair sum.)
   auto stored = [&](std::span<const std::uint32_t> ids)
   {
     std::array<double3, 4> positions{};
@@ -302,23 +303,35 @@ RunningEnergy evaluate(const ForceField &forceField, const SimulationBox &simula
     const double countedWeight = supplied ? -lambda : 1.0 - lambda;
     const Atom &a = atoms[pair.atoms[0]];
     const Atom &b = atoms[pair.atoms[1]];
-    const double3 dr = layout.ref(pair.atoms[0]).sameMolecule(layout.ref(pair.atoms[1]))
-                           ? a.position - b.position
-                           : simulationBox.applyPeriodicBoundaryConditions(a.position - b.position);
-    const double rr = double3::dot(dr, dr);
-    const PairValue wanted = pairValue<Order>(forceField, a, b, dr, rr, pair.wanted, pair.wantedScaling);
-    const PairValue counted = pairValue<Order>(forceField, a, b, dr, rr, pair.counted, pair.countedScaling);
+    // Each treatment at the separation its sum takes: the pair lists and the scaled pairs of the intramolecular
+    // potentials the minimum image, the exclusions of a molecule its stored geometry. (Two fragments of a molecule
+    // split by a broken bond, or the ends of a molecule closed into a ring, that are more than half a box apart in
+    // the stored geometry meet at the minimum image.)
+    const double3 imaged = simulationBox.applyPeriodicBoundaryConditions(a.position - b.position);
+    const double3 excluded =
+        layout.ref(pair.atoms[0]).sameMolecule(layout.ref(pair.atoms[1])) ? a.position - b.position : imaged;
+    const double3 drWanted = pair.wanted == PairState::Excluded ? excluded : imaged;
+    const double3 drCounted = pair.counted == PairState::Excluded ? excluded : imaged;
+    const PairValue wanted =
+        pairValue<Order>(forceField, a, b, drWanted, double3::dot(drWanted, drWanted), pair.wanted, pair.wantedScaling);
+    const PairValue counted = pairValue<Order>(forceField, a, b, drCounted, double3::dot(drCounted, drCounted),
+                                               pair.counted, pair.countedScaling);
     energy.moleculeMoleculeVDW += lambda * wanted.vdw + countedWeight * counted.vdw;
     energy.moleculeMoleculeCharge += lambda * wanted.coulomb + countedWeight * counted.coulomb;
     energy.ewald_exclusion += lambda * wanted.exclusion + countedWeight * counted.exclusion;
     if constexpr (Order >= 1)
     {
-      const double factor = lambda * wanted.factor + countedWeight * counted.factor;
-      if (factor == 0.0) continue;
-      const double3 gradient = factor * dr;
+      const double3 gradientWanted = (lambda * wanted.factor) * drWanted;
+      const double3 gradientCounted = (countedWeight * counted.factor) * drCounted;
+      const double3 gradient = gradientWanted + gradientCounted;
+      if (gradient.x == 0.0 && gradient.y == 0.0 && gradient.z == 0.0) continue;
       applyLink(pair.atoms[0], gradient);
       applyLink(pair.atoms[1], -gradient);
-      if (strain) Interactions::accumulateStrainDerivative(*strain, gradient, dr);
+      if (strain)
+      {
+        Interactions::accumulateStrainDerivative(*strain, gradientWanted, drWanted);
+        Interactions::accumulateStrainDerivative(*strain, gradientCounted, drCounted);
+      }
     }
   }
 

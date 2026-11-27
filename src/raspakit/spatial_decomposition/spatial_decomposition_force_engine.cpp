@@ -1336,7 +1336,30 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
         [&]
         {
           if (thread == 0) pppm.forwardTransform();
-          if (!deviceBonded) bondedWork(system);
+          if (!deviceBonded)
+          {
+            bondedWork(system);
+          }
+          else if (virialRequested)
+          {
+            // the centers of mass of the virial correction of the mesh gradients (the scatter phase), which the
+            // host bonded work stores when it runs
+            std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+            for (std::size_t m = thread; m < system.moleculeData.size(); m += threads)
+            {
+              const Molecule& molecule = system.moleculeData[m];
+              double totalMass = 0.0;
+              double3 com(0.0, 0.0, 0.0);
+              for (const Atom& atom : atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms))
+              {
+                const double mass = system.forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
+                com += mass * atom.position;
+                totalMass += mass;
+              }
+              com = com / totalMass;
+              for (std::size_t k = 0; k < molecule.numberOfAtoms; ++k) atomCenterOfMass[molecule.atomIndex + k] = com;
+            }
+          }
         });
     workers.phase([&] { pppm.applyInfluence(thread, threads, virialRequested); });
     workers.phase(
@@ -2206,12 +2229,35 @@ void SpatialDecompositionForceEngine::scatterPhase(std::size_t thread, System& s
   std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
   if (deviceKernel && deviceBonded)
   {
-    // the device forces are the complete gradients (pairs, mesh, exclusions, bonded terms) and the device did
-    // the virial correction
+    // the device forces are the complete gradients (pairs, exclusions, bonded terms, the mesh when on the device)
+    // and the device did their virial correction; a mesh on the host adds its gradients and their correction here
+    const bool hostMesh = useMesh && !deviceMesh;
+    if (hostMesh)
+    {
+      for (const std::uint32_t i : domain.ownedAtoms)
+      {
+        fx[i] = 0.0;
+        fy[i] = 0.0;
+        fz[i] = 0.0;
+      }
+      pppm.interpolate(domain.ownedAtoms, cellList.x.data(), cellList.y.data(), cellList.z.data(),
+                       cellList.charge.data(), cellList.scalingCoulomb.data(), fx.data(), fy.data(), fz.data());
+    }
+    std::span<const Atom> atoms = system.spanOfMoleculeAtoms();
+    double3x3 correction{};
     for (const std::uint32_t i : domain.ownedAtoms)
     {
-      dynamics[cellList.sortedToOriginal[i]].gradient = devicePairs.force(i);
+      const std::uint32_t original = cellList.sortedToOriginal[i];
+      dynamics[original].gradient = devicePairs.force(i);
+      if (!hostMesh) continue;
+      const double3 gradient(fx[i], fy[i], fz[i]);
+      dynamics[original].gradient += gradient;
+      if (virialRequested)
+      {
+        addOuterProduct(correction, atoms[original].position - atomCenterOfMass[original], gradient);
+      }
     }
+    threadCorrection[thread] += correction;
     return;
   }
   if (deviceKernel)
