@@ -120,10 +120,23 @@ monomers initially radical, capture radius 4 &Aring;, reaction probability 0.5,
 proximity check every 10 ps): a
 spatial-decomposition MD run (`"PairDevice" : "GPU"`) in which, during the production stage, the vinyl
 groups react by stochastic free-radical chain growth. The monomer file
-`HDDA.json` is the 16-bead TraPPE-UA acrylate of the pHDDA examples (the
+`HDDA.json` is the TraPPE-UA acrylate of the pHDDA examples (the
 polymer file `pHDDA-20.json` of
 `examples/polymers/2_mc_end_to_end_distance_phdda_20_in_box` is a *pre-built*
-chain of twenty such units); its two double bonds are declared as reactive
+chain of twenty such units) with one change: the hydrogen of each acrylate
+`=CH–` is an explicit site `H_CH` (atoms 16 and 17), which gives 18 sites
+instead of 16. The site has a mass, a bond and bends, but no Lennard-Jones
+interaction and no charge, so the non-bonded model is still TraPPE-UA. It is
+there for the stereochemistry: once the carbon has reacted it has four
+explicit substituents and can no longer invert, so the configuration of a
+backbone stereocentre is fixed by the reaction that created it (a
+three-coordinate united-atom CH is held by its bends alone and inverts
+at this temperature). The
+C–H bond and the H–C–C force constants are those of OPLS-AA; the H–C–C
+angles (120.15&deg; on the \f$sp^2\f$ carbon, 104.4&deg; on the \f$sp^3\f$
+carbon) are the ones that leave the TraPPE-UA angles between the heavy
+atoms unstrained, and the torsions that end on the hydrogen are zero. The
+two double bonds are declared as reactive
 groups of type `acrylate`, each with its `head` (the `CH2=` a radical adds
 to), `tail` (the `=CH–` that carries the radical afterwards) and `side`
 (the ester carbon on the tail) atoms named by role:
@@ -139,7 +152,8 @@ The `"Polymerization"` block of the system spells out the chemistry as
 reaction rules between the states of the groups and gives the bonded tables
 of the product by pseudo-atom type (the `CH2_bb`/`CH_bb` entries of the
 pHDDA-20 molecule file, extended with the `CH_bb–CH_bb` and `CH2_bb–CH2_bb`
-terms that a termination by combination and the head-to-head linkages need).
+terms that a termination by combination and the head-to-head linkages need,
+and with the terms of the hydrogen on `CH_bb`).
 The radical of a group is located by its state: `radical_tail` is the usual
 secondary radical on the `tail` carbon (`–CH•–COOR`), `radical_head` the
 primary radical on the `head` carbon (`–CH2•`) that a mis-addition leaves
@@ -291,7 +305,8 @@ same monomers with the slow, orientation-weighted kinetics.
           [["CH2_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]],
           [["CH_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]],
           [["CH2_bb", "CH2_bb"], "HARMONIC", [301931.64, 1.54]],
-          [["CH_bb", "C_CO"], "HARMONIC", [301931.64, 1.52]]
+          [["CH_bb", "C_CO"], "HARMONIC", [301931.64, 1.52]],
+          [["CH_bb", "H_CH"], "HARMONIC", [342189.0, 1.09]]
         ],
         "Bends" : [ "..." ],
         "Torsions" : [ "..." ]

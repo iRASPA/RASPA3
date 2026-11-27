@@ -22,9 +22,9 @@
       "print_to_output" : true,
       "element" : "C",
       "print_as" : "C",
-      "mass" : 13.01864,
+      "mass" : 12.0107,
       "charge" : 0.0,
-      "source" : "vinyl =CH-, K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
+      "source" : "vinyl =CH- with its hydrogen as the explicit site H_CH, K. A. Maerzke, N. E. Schultz, R. B. Ross, J. I. Siepmann, J. Phys. Chem. B 2009, 113, 6415-6425"
     },
     {
       "name" : "C_CO",
@@ -92,9 +92,19 @@
       "print_to_output" : true,
       "element" : "C",
       "print_as" : "C",
-      "mass" : 13.01864,
+      "mass" : 12.0107,
       "charge" : 0.0,
-      "source" : "reacted (saturated) backbone CH, TraPPE-UA CH, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1999, 103, 4508-4517"
+      "source" : "reacted (saturated) backbone CH with its hydrogen as the explicit site H_CH, TraPPE-UA CH, M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1999, 103, 4508-4517"
+    },
+    {
+      "name" : "H_CH",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "H",
+      "print_as" : "H",
+      "mass" : 1.00794,
+      "charge" : 0.0,
+      "source" : "the hydrogen of the acrylate CH: a site with mass and bonded terms only, which makes the reacted CH a four-coordinate centre that can not invert; its non-bonded interaction stays in the united-atom CH bead"
     }
   ],
   "SelfInteractions" :
@@ -152,6 +162,12 @@
       "type" : "lennard-jones",
       "parameters" : [10.0, 4.68],
       "source" : "M. G. Martin, J. I. Siepmann, J. Phys. Chem. B 1999, 103, 4508-4517"
+    },
+    {
+      "name" : "H_CH",
+      "type" : "lennard-jones",
+      "parameters" : [0.0, 1.0],
+      "source" : "no non-bonded interaction: it is part of the united-atom CH bead"
     }
   ]
 }

@@ -381,18 +381,28 @@ A molecule file contains no chemistry. It only names atoms.
 
 #### 1. The monomer and its reactive groups
 
-HDDA is modelled with 16 united-atom sites. Numbered as in the molecule file:
+HDDA is modelled with 18 sites: the 16 united-atom sites of TraPPE-UA and
+the hydrogen of each acrylate CH. Numbered as in the molecule file:
 
 ```
    14 O                                              O 15
       ‖                                              ‖
  0    1    2    3    4    5    6    7    8    9   10   11   12   13
 CH2 = CH - C  - O  - CH2- CH2- CH2- CH2- CH2- CH2- O  - C  - CH = CH2
+      |                                                   |
+   16 H                                                   H 17
 head tail side                                         side tail head
 ```
 
 Atoms 0 and 13 have the type `CH2_sp2`, atoms 1 and 12 `CH_sp2`, atoms 2 and
-11 `C_CO`. The two double bonds are the two reactive groups:
+11 `C_CO`, atoms 16 and 17 `H_CH`. The hydrogen is a site with a mass, a
+bond and bends only: it has no Lennard-Jones interaction and no charge, and
+the carbon it sits on keeps the parameters of the united-atom CH. It is
+explicit for one reason. When the tail carbon has reacted it is a
+stereocentre, and with the hydrogen it has four explicit substituents, so
+it can not invert; a united-atom CH with three substituents is held by its
+bends alone, and at the 600 K of this example most such centres invert
+within tens of picoseconds. The two double bonds are the two reactive groups:
 
 ```json
 "ReactiveGroups" : [
@@ -430,7 +440,8 @@ pseudo-atoms, so `force_field.json` defines both:
 | tail | `CH_sp2` | 52.0, 3.71 | `CH_bb` | 10.0, 4.68 |
 
 No molecule contains `CH2_bb` or `CH_bb` at the start. They appear through
-the `"Retype"` of the rules.
+the `"Retype"` of the rules. The hydrogen `H_CH` is not retyped: its bond
+and bends are looked up with the new type of its carbon.
 
 #### 3. States
 
@@ -562,7 +573,7 @@ and the labels `A` and `B` are assigned at random.
 #### 6. Stereocentres {#polymers-stereo}
 
 When a tail carbon gets its second backbone bond it has three different
-substituents besides its implicit hydrogen, and is a stereocentre. A
+substituents besides its hydrogen, and is a stereocentre. A
 `"Stereo"` entry declares it:
 
 ```json
@@ -586,9 +597,11 @@ creates two centres (the tail-to-tail additions, and termination) lists two
 entries.
 
 The HDDA example sets no `"Tacticity"`, so the configurations are recorded
-and the dyad and triad fractions reported, but nothing is selected or
-restrained. With `"Tacticity"` the configuration of each new centre is
-prescribed and held with a restraint on \f$\hat V\f$; see example 10 of the
+and the dyad and triad fractions reported, but nothing is selected. Nothing
+needs to be restrained either: the explicit hydrogen of the centre keeps the
+configuration the reaction produced. With `"Tacticity"` the configuration of
+each new centre is prescribed and held with a restraint on \f$\hat V\f$,
+which a model without that hydrogen needs to keep it; see example 10 of the
 [polymer examples](\ref examples_polymers).
 
 #### 7. The conversion
@@ -627,7 +640,7 @@ by pseudo-atom *type*:
 ]
 ```
 
-(an excerpt; the example lists 6 bonds, 11 bends and 18 torsions). The lookup
+(an excerpt; the example lists 8 bonds, 16 bends and 27 torsions). The lookup
 is by the types the atoms have *after* the reaction, in either direction.
 `"TemplateFile" : "pHDDA-20.json"` reads the tables from a molecule file of
 the polymer instead, and inline entries are added to it.
@@ -640,12 +653,14 @@ Follow one regular propagation to see which entries are used. The tail of
 | Bond | `R.tail`–`M.head` | `CH_bb`–`CH2_bb` |
 | Bends at `R.tail` | `R.head`–`R.tail`–`M.head` | `CH2_bb`–`CH_bb`–`CH2_bb` |
 | | `R.side`–`R.tail`–`M.head` | `C_CO`–`CH_bb`–`CH2_bb` |
+| | `H`–`R.tail`–`M.head` | `H_CH`–`CH_bb`–`CH2_bb` |
 | Bend at `M.head` | `R.tail`–`M.head`–`M.tail` | `CH_bb`–`CH2_bb`–`CH_bb` |
 | Torsions about the new bond | `R.head`–`R.tail`–`M.head`–`M.tail` | `CH2_bb`–`CH_bb`–`CH2_bb`–`CH_bb` |
 | | `R.side`–`R.tail`–`M.head`–`M.tail` | `C_CO`–`CH_bb`–`CH2_bb`–`CH_bb` |
 | Torsions ending on the new bond | O–`R.side`–`R.tail`–`M.head` (twice) | `O_CO`–`C_CO`–`CH_bb`–`CH2_bb`, `O_es`–`C_CO`–`CH_bb`–`CH2_bb` |
 | | previous unit–`R.head`–`R.tail`–`M.head` | `CH_bb`–`CH2_bb`–`CH_bb`–`CH2_bb` |
 | | `R.tail`–`M.head`–`M.tail`–`M.side` | `CH_bb`–`CH2_bb`–`CH_bb`–`C_CO` |
+| | `H`–`R.tail`–`M.head`–`M.tail` and `R.tail`–`M.head`–`M.tail`–`H` | `H_CH`–`CH_bb`–`CH2_bb`–`CH_bb` (zero) |
 
 The same reaction retypes the head and tail of `M`, so the terms of that
 molecule that contain them are overridden:
@@ -657,6 +672,8 @@ molecule that contain them are overridden:
 | Bend `CH2_sp2`–`CH_sp2`–`C_CO`, 119.7° | `CH2_bb`–`CH_bb`–`C_CO`, 114° |
 | Bends `CH_sp2`–`C_CO`–`O_CO` and `CH_sp2`–`C_CO`–`O_es` | the same with `CH_bb` |
 | Torsions `CH2_sp2`–`CH_sp2`–`C_CO`–O and `CH2_O`–`O_es`–`C_CO`–`CH_sp2` | the same with `CH2_bb` and `CH_bb` |
+| Bond `CH_sp2`–`H_CH`, 1.08 Å | `CH_bb`–`H_CH`, 1.09 Å |
+| Bends `H_CH`–`CH_sp2`–`CH2_sp2` and `H_CH`–`CH_sp2`–`C_CO`, 120.15° | `H_CH`–`CH_bb`–`CH2_bb` and `H_CH`–`CH_bb`–`C_CO`, 104.4°: the hydrogen moves out of the plane and the centre becomes tetrahedral |
 
 And the non-bonded pairs across the new bond change: `R.tail`–`M.head` is
 now a 1-2 pair, and `R.head`–`M.head`, `R.side`–`M.head` and

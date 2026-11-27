@@ -128,8 +128,10 @@
           [["CH_bb", "CH_bb"], "HARMONIC", [301931.64, 1.54]],
           [["CH2_bb", "CH2_bb"], "HARMONIC", [301931.64, 1.54]],
           [["CH_bb", "C_CO"], "HARMONIC", [301931.64, 1.52]],
+          [["CH_bb", "H_CH"], "HARMONIC", [342189.0, 1.09]],
           [["CH2_sp2", "CH_sp2"], "HARMONIC", [301931.64, 1.33]],
-          [["CH_sp2", "C_CO"], "HARMONIC", [301931.64, 1.52]]
+          [["CH_sp2", "C_CO"], "HARMONIC", [301931.64, 1.52]],
+          [["CH_sp2", "H_CH"], "HARMONIC", [342189.0, 1.08]]
         ],
         "Bends" : [
           [["CH2_bb", "CH_bb", "CH2_bb"], "HARMONIC", [62500.0, 114.0]],
@@ -138,11 +140,16 @@
           [["CH2_bb", "CH_bb", "CH_bb"], "HARMONIC", [62500.0, 114.0]],
           [["CH2_bb", "CH2_bb", "CH_bb"], "HARMONIC", [62500.0, 114.0]],
           [["C_CO", "CH_bb", "CH_bb"], "HARMONIC", [62500.0, 114.0]],
+          [["CH2_bb", "CH_bb", "H_CH"], "HARMONIC", [37741.0, 104.4]],
+          [["CH_bb", "CH_bb", "H_CH"], "HARMONIC", [37741.0, 104.4]],
+          [["C_CO", "CH_bb", "H_CH"], "HARMONIC", [37741.0, 104.4]],
           [["CH_bb", "C_CO", "O_CO"], "HARMONIC", [40300.0, 126.0]],
           [["CH_bb", "C_CO", "O_es"], "HARMONIC", [70591.62, 110.0]],
           [["CH2_sp2", "CH_sp2", "C_CO"], "HARMONIC", [70420.0, 119.7]],
           [["CH_sp2", "C_CO", "O_CO"], "HARMONIC", [40300.0, 126.0]],
-          [["CH_sp2", "C_CO", "O_es"], "HARMONIC", [70591.62, 110.0]]
+          [["CH_sp2", "C_CO", "O_es"], "HARMONIC", [70591.62, 110.0]],
+          [["CH2_sp2", "CH_sp2", "H_CH"], "HARMONIC", [35225.0, 120.15]],
+          [["C_CO", "CH_sp2", "H_CH"], "HARMONIC", [35225.0, 120.15]]
         ],
         "Torsions" : [
           [["CH2_O", "O_es", "C_CO", "CH_bb"], "TRAPPE_EXTENDED", [1820.74, 417.41, -1373.14, 30.19, 0.0]],
@@ -160,9 +167,18 @@
           [["CH2_bb", "CH2_bb", "CH_bb", "C_CO"], "TRAPPE_EXTENDED", [1078.16, 355.03, 68.19, 791.32, 0.0]],
           [["O_CO", "C_CO", "CH_bb", "CH_bb"], "TRAPPE_EXTENDED", [823.03, -47.91, -773.13, -1.99, 0.0]],
           [["O_es", "C_CO", "CH_bb", "CH_bb"], "TRAPPE_EXTENDED", [823.03, 47.91, -773.13, 1.99, 0.0]],
+          [["H_CH", "CH_bb", "CH2_bb", "CH_bb"], "TRAPPE_EXTENDED", [0.0, 0.0, 0.0, 0.0, 0.0]],
+          [["H_CH", "CH_bb", "CH2_bb", "CH2_bb"], "TRAPPE_EXTENDED", [0.0, 0.0, 0.0, 0.0, 0.0]],
+          [["H_CH", "CH_bb", "CH_bb", "CH2_bb"], "TRAPPE_EXTENDED", [0.0, 0.0, 0.0, 0.0, 0.0]],
+          [["H_CH", "CH_bb", "CH_bb", "C_CO"], "TRAPPE_EXTENDED", [0.0, 0.0, 0.0, 0.0, 0.0]],
+          [["H_CH", "CH_bb", "CH_bb", "H_CH"], "TRAPPE_EXTENDED", [0.0, 0.0, 0.0, 0.0, 0.0]],
+          [["H_CH", "CH_bb", "C_CO", "O_CO"], "TRAPPE_EXTENDED", [0.0, 0.0, 0.0, 0.0, 0.0]],
+          [["H_CH", "CH_bb", "C_CO", "O_es"], "TRAPPE_EXTENDED", [0.0, 0.0, 0.0, 0.0, 0.0]],
           [["CH2_O", "O_es", "C_CO", "CH_sp2"], "TRAPPE_EXTENDED", [1820.74, 417.41, -1373.14, 30.19, 0.0]],
           [["CH2_sp2", "CH_sp2", "C_CO", "O_CO"], "TRAPPE_EXTENDED", [823.03, -47.91, -773.13, -1.99, 0.0]],
-          [["CH2_sp2", "CH_sp2", "C_CO", "O_es"], "TRAPPE_EXTENDED", [823.03, 47.91, -773.13, 1.99, 0.0]]
+          [["CH2_sp2", "CH_sp2", "C_CO", "O_es"], "TRAPPE_EXTENDED", [823.03, 47.91, -773.13, 1.99, 0.0]],
+          [["H_CH", "CH_sp2", "C_CO", "O_CO"], "TRAPPE_EXTENDED", [0.0, 0.0, 0.0, 0.0, 0.0]],
+          [["H_CH", "CH_sp2", "C_CO", "O_es"], "TRAPPE_EXTENDED", [0.0, 0.0, 0.0, 0.0, 0.0]]
         ]
       },
       "ComputeRadicalWaitingTimes" : true,

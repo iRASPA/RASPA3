@@ -2152,7 +2152,9 @@ centre is then held by the restraint
 \f$U = \tfrac{1}{2} k (\hat V - \chi \hat V_0)^2\f$ (\f$\chi = \pm 1\f$),
 ramped in with the bond, because nothing else in a united-atom model prevents
 a CH bead from inverting through the planar configuration (the barrier of the
-three bends alone is a few \f$k_B T\f$). \f$\hat V_0\f$ is 0.61 for three
+three bends alone is a few \f$k_B T\f$). The alternative is a model with
+the hydrogen of the centre as an explicit site, as in the HDDA examples: a
+centre with four substituents keeps its configuration without a restraint. \f$\hat V_0\f$ is 0.61 for three
 substituents at 114° and 0.77 for a tetrahedral centre. Without
 `"Tacticity"` no configuration is selected or restrained; the dyad statistics
 of the chains are reported in either case.
