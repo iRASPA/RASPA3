@@ -126,5 +126,47 @@ TEST(opencl_handles, a_handle_that_was_never_made_is_left_alone)
 {
   // A buffer that failed to be made comes back as nothing, and is kept with the rest all the same.
   OpenCL::Handles handles;
-  EXPECT_EQ(handles.keep(nullptr), nullptr);
+  EXPECT_EQ(handles.keep(cl_mem{nullptr}), nullptr);
+}
+
+TEST(opencl_handles, further_kernels_and_programs_kept_are_let_go_of_when_thrown_out_of)
+{
+  OpenCL::initialize();
+  if (!OpenCL::clContext.has_value()) GTEST_SKIP() << "no OpenCL device";
+
+  // A routine with two programs and two kernels of one of them (as the strongest-atom and void-fraction routes).
+  cl_program first = nullptr;
+  cl_program second = nullptr;
+  cl_kernel kernels[2] = {nullptr, nullptr};
+  auto routine = [&]()
+  {
+    OpenCL::Handles handles;
+    cl_int err = CL_SUCCESS;
+    first = handles.keep(clCreateProgramWithSource(OpenCL::clContext.value(), 1, &nothingMuch, nullptr, &err));
+    second = handles.keep(clCreateProgramWithSource(OpenCL::clContext.value(), 1, &nothingMuch, nullptr, &err));
+    EXPECT_EQ(clBuildProgram(first, 0, nullptr, nullptr, nullptr, nullptr), CL_SUCCESS);
+    clRetainProgram(first);
+    clRetainProgram(second);
+    for (cl_kernel &kernel : kernels)
+    {
+      kernel = handles.keep(clCreateKernel(first, "Nothing", &err));
+      EXPECT_EQ(err, CL_SUCCESS);
+      clRetainKernel(kernel);
+    }
+    throw std::runtime_error("a call on the device failed");
+  };
+  EXPECT_THROW(routine(), std::runtime_error);
+
+  for (cl_kernel kernel : kernels)
+  {
+    EXPECT_EQ(holdersOf(kernel), 1u);
+    clReleaseKernel(kernel);
+  }
+  for (cl_program program : {first, second})
+  {
+    cl_uint holders = 0;
+    clGetProgramInfo(program, CL_PROGRAM_REFERENCE_COUNT, sizeof(holders), &holders, nullptr);
+    EXPECT_EQ(holders, 1u);
+    clReleaseProgram(program);
+  }
 }

@@ -209,8 +209,11 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
     }
   }
 
-  cl_mem inputPos =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) * pos.size(), nullptr, &err);
+  // what is made on the device below is released on leaving, by a return or a throw (it was released
+  // by hand at the end only, and an error on the way left it on the device)
+  OpenCL::Handles made;
+  cl_mem inputPos = made.keep(
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) * pos.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -223,8 +226,8 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
     throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  cl_mem inputGridPos = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                       sizeof(cl_float4) * gridPositions.size(), nullptr, &err);
+  cl_mem inputGridPos = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                 sizeof(cl_float4) * gridPositions.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -237,8 +240,8 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
     throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  cl_mem inputEpsilon =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * epsilon.size(), nullptr, &err);
+  cl_mem inputEpsilon = made.keep(
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * epsilon.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -251,8 +254,8 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
     throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  cl_mem inputSigma =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * sigma.size(), nullptr, &err);
+  cl_mem inputSigma = made.keep(
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * sigma.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -265,8 +268,8 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
     throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  cl_mem inputShift =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * shift.size(), nullptr, &err);
+  cl_mem inputShift = made.keep(
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * shift.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -299,8 +302,8 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
     }
   }
 
-  cl_mem replicaCellBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                            sizeof(cl_float4) * replicaVector.size(), nullptr, &err);
+  cl_mem replicaCellBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                      sizeof(cl_float4) * replicaVector.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -313,8 +316,8 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
     throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  cl_mem outputMemory =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float) * output.size(), nullptr, &err);
+  cl_mem outputMemory = made.keep(
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float) * output.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -377,12 +380,6 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
     unitsOfWorkDone += sizeOfWorkBatch;
   }
 
-  clReleaseMemObject(inputPos);
-  clReleaseMemObject(inputGridPos);
-  clReleaseMemObject(inputEpsilon);
-  clReleaseMemObject(inputSigma);
-  clReleaseMemObject(inputShift);
-  clReleaseMemObject(replicaCellBuffer);
 
   // Hand the energy field to the iso-surface extraction, which no longer cares how the field was made.
   err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), outputMemory, CL_TRUE, 0, sizeof(cl_float) * output.size(),
@@ -392,7 +389,6 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
     throw std::runtime_error(std::format("OpenCL clEnqueueReadBuffer failed at {} line {}\n", __FILE__, __LINE__));
   }
   clFinish(OpenCL::clCommandQueue.value());
-  clReleaseMemObject(outputMemory);
 
   // The pockets the probe cannot reach, written onto the field the way the backend writes them onto its own.
   applyBlockingSpheresToEnergy(std::span(output).first(temp), grid_size, framework.unitCell, blockingSpheres,

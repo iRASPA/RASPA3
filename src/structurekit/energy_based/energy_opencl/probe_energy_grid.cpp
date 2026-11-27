@@ -112,7 +112,10 @@ ProbeEnergyGrid ProbeEnergyGridOpenCL::compute(const PairInteractions &interacti
   cl_int err;
 
   const char *source = ProbeEnergyGridOpenCL::energyKernelSource;
-  cl_program program = clCreateProgramWithSource(OpenCL::clContext.value(), 1, &source, nullptr, &err);
+  // what is made on the device below is released on leaving, by a return or a throw (it was released
+  // by hand at the end only, and an error on the way left it on the device)
+  OpenCL::Handles made;
+  cl_program program = made.keep(clCreateProgramWithSource(OpenCL::clContext.value(), 1, &source, nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("ProbeEnergyGridOpenCL: OpenCL clCreateProgramWithSource failed at {}\n", __LINE__));
@@ -128,28 +131,27 @@ ProbeEnergyGrid ProbeEnergyGridOpenCL::compute(const PairInteractions &interacti
                                          __LINE__, std::string(buffer)));
   }
 
-  cl_kernel kernel = clCreateKernel(program, "ProbeEnergyField", &err);
+  cl_kernel kernel = made.keep(clCreateKernel(program, "ProbeEnergyField", &err));
   if (err != CL_SUCCESS)
   {
-    clReleaseProgram(program);
     throw std::runtime_error(std::format("ProbeEnergyGridOpenCL: OpenCL clCreateKernel failed at {}\n", __LINE__));
   }
 
   cl_int shiftError;
   cl_int positionError, epsilonError, sigmaError, energyError;
-  cl_mem positionBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                         sizeof(cl_float4) * positions.size(), nullptr, &positionError);
-  cl_mem epsilonBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                        sizeof(cl_float) * epsilonTimesFour.size(), nullptr, &epsilonError);
-  cl_mem sigmaBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                      sizeof(cl_float) * sigmaSquared.size(), nullptr, &sigmaError);
-  cl_mem shiftBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                      sizeof(cl_float) * shiftValue.size(), nullptr, &shiftError);
-  cl_mem energyBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY, sizeof(cl_float) * numberOfVoxels,
-                                       nullptr, &energyError);
+  cl_mem positionBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                   sizeof(cl_float4) * positions.size(), nullptr, &positionError));
+  cl_mem epsilonBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                  sizeof(cl_float) * epsilonTimesFour.size(), nullptr, &epsilonError));
+  cl_mem sigmaBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                sizeof(cl_float) * sigmaSquared.size(), nullptr, &sigmaError));
+  cl_mem shiftBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                sizeof(cl_float) * shiftValue.size(), nullptr, &shiftError));
+  cl_mem energyBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY,
+                                                 sizeof(cl_float) * numberOfVoxels, nullptr, &energyError));
   cl_int strongestError;
-  cl_mem strongestBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY,
-                                          sizeof(cl_int) * numberOfVoxels, nullptr, &strongestError);
+  cl_mem strongestBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY,
+                                                    sizeof(cl_int) * numberOfVoxels, nullptr, &strongestError));
   if (positionError != CL_SUCCESS || epsilonError != CL_SUCCESS || sigmaError != CL_SUCCESS ||
       shiftError != CL_SUCCESS || energyError != CL_SUCCESS || strongestError != CL_SUCCESS)
   {
@@ -222,14 +224,6 @@ ProbeEnergyGrid ProbeEnergyGridOpenCL::compute(const PairInteractions &interacti
 
   clFinish(OpenCL::clCommandQueue.value());
 
-  clReleaseMemObject(positionBuffer);
-  clReleaseMemObject(epsilonBuffer);
-  clReleaseMemObject(sigmaBuffer);
-  clReleaseMemObject(shiftBuffer);
-  clReleaseMemObject(energyBuffer);
-  clReleaseMemObject(strongestBuffer);
-  clReleaseKernel(kernel);
-  clReleaseProgram(program);
 
   std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - time_begin;
   grid.seconds = elapsed.count();

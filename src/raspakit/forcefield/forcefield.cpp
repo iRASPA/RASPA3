@@ -379,6 +379,14 @@ ForceField::ForceField(std::string filePath)
       if (item.contains("parameters"))
       {
         VDWParameters binaryInteraction = VDWParameters(type, scannedJsonParameters);
+        // a pair of a zero epsilon or sigma has no interaction, as a pseudo-atom of one has (mixTable): an override
+        // [0.0, 0.0] between two interacting atoms stayed Lennard-Jones with a sigma of zero (1 / sigma^2 in the
+        // kernels)
+        if (VDWParameters::isLennardJonesForm(binaryInteraction.type) &&
+            (binaryInteraction.parameters.x == 0.0 || binaryInteraction.parameters.y == 0.0))
+        {
+          binaryInteraction.type = VDWParameters::Type::None;
+        }
         data[indexA.value() * numberOfPseudoAtoms + indexB.value()] = binaryInteraction;
         data[indexB.value() * numberOfPseudoAtoms + indexA.value()] = binaryInteraction;
         // the 1-4 table was mixed from the regular pairs: an override of the regular pair is also the 1-4 pair,

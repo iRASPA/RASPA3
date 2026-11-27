@@ -241,8 +241,11 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
     }
   }
 
-  cl_mem inputPos =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) * pos.size(), nullptr, &err);
+  // what is made on the device below is released on leaving, by a return or a throw (it was released
+  // by hand at the end only, and an error on the way left it on the device)
+  OpenCL::Handles made;
+  cl_mem inputPos = made.keep(
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) * pos.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -255,8 +258,8 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
     throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  cl_mem inputGridPos = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                       sizeof(cl_float4) * gridPositions.size(), nullptr, &err);
+  cl_mem inputGridPos = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                 sizeof(cl_float4) * gridPositions.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -269,8 +272,8 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
     throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  cl_mem inputEpsilon =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * epsilon.size(), nullptr, &err);
+  cl_mem inputEpsilon = made.keep(
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * epsilon.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -283,8 +286,8 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
     throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  cl_mem inputShift =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * shift.size(), nullptr, &err);
+  cl_mem inputShift = made.keep(
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * shift.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -297,8 +300,8 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
     throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  cl_mem inputSigma =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * sigma.size(), nullptr, &err);
+  cl_mem inputSigma = made.keep(
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * sigma.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -331,8 +334,8 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
     }
   }
 
-  cl_mem replicaCellBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                            sizeof(cl_float4) * replicaVector.size(), nullptr, &err);
+  cl_mem replicaCellBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                      sizeof(cl_float4) * replicaVector.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -345,8 +348,8 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
     throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  cl_mem outputMemory =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float) * output.size(), nullptr, &err);
+  cl_mem outputMemory = made.keep(
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float) * output.size(), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -439,8 +442,8 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
   // Every group writes its partial sum here and nothing is sent down beforehand, so the buffer is the
   // kernel's to write and starts empty.
   std::vector<float> sumReduction(nWorkGroups, 0.0f);
-  cl_mem reductionBuffer =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY, nWorkGroups * sizeof(float), nullptr, &err);
+  cl_mem reductionBuffer = made.keep(
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY, nWorkGroups * sizeof(float), nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
@@ -515,14 +518,6 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
          << std::endl;
   myfile.close();
 
-  clReleaseMemObject(inputPos);
-  clReleaseMemObject(inputGridPos);
-  clReleaseMemObject(inputEpsilon);
-  clReleaseMemObject(inputSigma);
-  clReleaseMemObject(inputShift);
-  clReleaseMemObject(replicaCellBuffer);
-  clReleaseMemObject(outputMemory);
-  clReleaseMemObject(reductionBuffer);
 }
 
 const char* EnergyOpenCLVoidFraction::energyGridKernelSource = R"foo(

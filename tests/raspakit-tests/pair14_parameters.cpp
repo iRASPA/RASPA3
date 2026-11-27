@@ -351,3 +351,39 @@ TEST(pair14_parameters, binary_override_of_the_regular_pair_follows_into_the_14_
   EXPECT_NEAR(forceField(0, 2).parameters.x * Units::EnergyToKelvin, 90.0, 1e-10);
   EXPECT_NEAR(forceField.pair14(0, 2).parameters.x * Units::EnergyToKelvin, std::sqrt(20.0 * 60.0), 1e-10);
 }
+
+// An explicit binary interaction of zero epsilon and sigma between two interacting pseudo-atoms is no interaction, as a
+// pseudo-atom of zero parameters has: it stayed Lennard-Jones with a sigma of zero, and the pair kernel of the spatial
+// decomposition took 1 / sigma^2.
+TEST(pair14_parameters, a_binary_interaction_of_zero_parameters_is_none)
+{
+  const std::filesystem::path directory = std::filesystem::temp_directory_path() / "raspa_zero_binary_test";
+  std::filesystem::create_directories(directory);
+  {
+    std::ofstream file(directory / "force_field.json");
+    file << R"({
+  "MixingRule": "Lorentz-Berthelot",
+  "TruncationMethod": "truncated",
+  "TailCorrections": false,
+  "CutOff": 12.0,
+  "ChargeMethod": "None",
+  "PseudoAtoms": [
+    {"name": "A", "framework": false, "element": "C", "mass": 14.0, "charge": 0.0},
+    {"name": "B", "framework": false, "element": "O", "mass": 16.0, "charge": 0.0}
+  ],
+  "SelfInteractions": [
+    {"name": "A", "type": "lennard-jones", "parameters": [80.0, 3.5]},
+    {"name": "B", "type": "lennard-jones", "parameters": [50.0, 3.0]}
+  ],
+  "BinaryInteractions": [
+    {"names": ["A", "B"], "type": "lennard-jones", "parameters": [0.0, 0.0]}
+  ]
+})";
+  }
+  const ForceField forceField((directory / "force_field.json").string());
+  std::filesystem::remove_all(directory);
+
+  EXPECT_EQ(forceField(0, 1).type, VDWParameters::Type::None);
+  EXPECT_EQ(forceField(1, 0).type, VDWParameters::Type::None);
+  EXPECT_NE(forceField(0, 0).type, VDWParameters::Type::None);
+}

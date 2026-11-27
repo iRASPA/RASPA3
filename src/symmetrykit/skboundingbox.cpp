@@ -96,6 +96,8 @@ double3 SKBoundingBox::aspectRatio()
 {
   double3 edgeLengths = _maximum - _minimum;
   double max = std::max({edgeLengths.x, edgeLengths.y, edgeLengths.z});
+  // a box of no size (a point, or an empty scene) has no shape to compare: (1, 1, 1), not 0 / 0
+  if (!(max > 0.0)) return double3(1.0, 1.0, 1.0);
   return edgeLengths / max;
 }
 
@@ -209,5 +211,13 @@ SKBoundingBox SKBoundingBox::adjustForTransformation(double4x4 transformation)
     min.z += transformation[2][2] * (this->_maximum.z - centerOfScene.z);
     max.z += transformation[2][2] * (this->_minimum.z - centerOfScene.z);
   }
-  return SKBoundingBox(min + centerOfScene, max + centerOfScene);
+  // the extent about the centre takes the linear part; the centre itself moves with the whole transformation, the
+  // translation of its fourth column included (it was left where it was)
+  const double3 transformedCenter(transformation[0][0] * centerOfScene.x + transformation[1][0] * centerOfScene.y +
+                                      transformation[2][0] * centerOfScene.z + transformation[3][0],
+                                  transformation[0][1] * centerOfScene.x + transformation[1][1] * centerOfScene.y +
+                                      transformation[2][1] * centerOfScene.z + transformation[3][1],
+                                  transformation[0][2] * centerOfScene.x + transformation[1][2] * centerOfScene.y +
+                                      transformation[2][2] * centerOfScene.z + transformation[3][2]);
+  return SKBoundingBox(min + transformedCenter, max + transformedCenter);
 }

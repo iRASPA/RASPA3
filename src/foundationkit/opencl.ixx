@@ -41,6 +41,9 @@ struct Handles
   cl_program program{nullptr};
   cl_kernel kernel{nullptr};
   std::vector<cl_mem> buffers;
+  // the further kernels and programs of a routine that makes more than one (see 'keep')
+  std::vector<cl_kernel> kernels;
+  std::vector<cl_program> programs;
 
   Handles() = default;
   Handles(const Handles &) = delete;
@@ -49,5 +52,8 @@ struct Handles
 
   // Takes a buffer to be released with the rest and hands it back, so that it can be made and kept in a line.
   cl_mem keep(cl_mem buffer);
+  // The same for a kernel and for a program (released after the buffers: the kernels, then the programs).
+  cl_kernel keep(cl_kernel madeKernel);
+  cl_program keep(cl_program madeProgram);
 };
 }  // namespace OpenCL

@@ -700,7 +700,10 @@ void exclusiveScan(LewinerGpu &gpu, cl_mem counts, cl_mem offsets, std::size_t n
   std::size_t global = nBlocks * group;
   cl_uint n = static_cast<cl_uint>(nCubes);
 
-  cl_mem blockSums = buffer(CL_MEM_READ_WRITE, nBlocks * sizeof(cl_uint), nullptr);
+  // what is made on the device below is released on leaving, by a return or a throw (it was released
+  // by hand at the end only, and an error on the way left it on the device)
+  OpenCL::Handles made;
+  cl_mem blockSums = made.keep(buffer(CL_MEM_READ_WRITE, nBlocks * sizeof(cl_uint), nullptr));
 
   check(clSetKernelArg(gpu.scan, 0, sizeof(cl_mem), &counts), "clSetKernelArg scan", __LINE__);
   check(clSetKernelArg(gpu.scan, 1, sizeof(cl_mem), &offsets), "clSetKernelArg scan", __LINE__);
@@ -726,7 +729,6 @@ void exclusiveScan(LewinerGpu &gpu, cl_mem counts, cl_mem offsets, std::size_t n
   }
   if (running > std::numeric_limits<cl_uint>::max() / 6)
   {
-    clReleaseMemObject(blockSums);
     throw std::runtime_error(std::format(
         "LewinerIsosurface: a surface of {} triangles is more than the device kernels can index ({})\n", running,
         std::numeric_limits<cl_uint>::max() / 6));
@@ -734,7 +736,6 @@ void exclusiveScan(LewinerGpu &gpu, cl_mem counts, cl_mem offsets, std::size_t n
   total = static_cast<cl_uint>(running);
   if (total == 0)
   {
-    clReleaseMemObject(blockSums);
     return;
   }
 
@@ -747,7 +748,6 @@ void exclusiveScan(LewinerGpu &gpu, cl_mem counts, cl_mem offsets, std::size_t n
   check(clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), gpu.addBlocks, 1, nullptr, &global, &group, 0, nullptr,
                                nullptr),
         "clEnqueueNDRangeKernel addBlocks", __LINE__);
-  clReleaseMemObject(blockSums);
 }
 
 }  // namespace
@@ -799,9 +799,12 @@ std::vector<double3> trianglesOfLewinerIsosurface(std::span<const float> field, 
   std::size_t group = std::min(maxGroup, std::size_t{256});
   std::size_t global = ((nCubes + group - 1) / group) * group;
 
-  cl_mem fieldBuf = buffer(CL_MEM_READ_ONLY, nVoxels * sizeof(cl_float), field.data());
-  cl_mem counts = buffer(CL_MEM_READ_WRITE, global * sizeof(cl_uint), nullptr);
-  cl_mem offsets = buffer(CL_MEM_READ_WRITE, global * sizeof(cl_uint), nullptr);
+  // what is made on the device below is released on leaving, by a return or a throw (it was released
+  // by hand at the end only, and an error on the way left it on the device)
+  OpenCL::Handles made;
+  cl_mem fieldBuf = made.keep(buffer(CL_MEM_READ_ONLY, nVoxels * sizeof(cl_float), field.data()));
+  cl_mem counts = made.keep(buffer(CL_MEM_READ_WRITE, global * sizeof(cl_uint), nullptr));
+  cl_mem offsets = made.keep(buffer(CL_MEM_READ_WRITE, global * sizeof(cl_uint), nullptr));
 
   check(clSetKernelArg(gpu.classify, 0, sizeof(cl_mem), &fieldBuf), "clSetKernelArg classify", __LINE__);
   check(clSetKernelArg(gpu.classify, 1, sizeof(cl_mem), &counts), "clSetKernelArg classify", __LINE__);
@@ -818,14 +821,12 @@ std::vector<double3> trianglesOfLewinerIsosurface(std::span<const float> field, 
   exclusiveScan(gpu, counts, offsets, nCubes, total);
   if (total == 0)
   {
-    clReleaseMemObject(offsets);
-    clReleaseMemObject(counts);
-    clReleaseMemObject(fieldBuf);
     if (gradients != nullptr) gradients->clear();
     return {};
   }
 
-  cl_mem vertices = buffer(CL_MEM_WRITE_ONLY, static_cast<std::size_t>(total) * 6 * sizeof(cl_float4), nullptr);
+  cl_mem vertices =
+      made.keep(buffer(CL_MEM_WRITE_ONLY, static_cast<std::size_t>(total) * 6 * sizeof(cl_float4), nullptr));
   check(clSetKernelArg(gpu.emit, 0, sizeof(cl_mem), &fieldBuf), "clSetKernelArg emit", __LINE__);
   check(clSetKernelArg(gpu.emit, 1, sizeof(cl_mem), &offsets), "clSetKernelArg emit", __LINE__);
   check(clSetKernelArg(gpu.emit, 2, sizeof(cl_mem), &vertices), "clSetKernelArg emit", __LINE__);
@@ -841,10 +842,6 @@ std::vector<double3> trianglesOfLewinerIsosurface(std::span<const float> field, 
   std::vector<float> packed(static_cast<std::size_t>(total) * 6 * 4);
   OpenCL::readBuffer(vertices, packed.size() * sizeof(float), packed.data());
 
-  clReleaseMemObject(vertices);
-  clReleaseMemObject(offsets);
-  clReleaseMemObject(counts);
-  clReleaseMemObject(fieldBuf);
 
   std::vector<double3> corners;
   corners.reserve(3 * static_cast<std::size_t>(total));

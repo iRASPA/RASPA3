@@ -13,6 +13,9 @@ import skspacegroupdatabase;
 import skspacegroupsetting;
 import skpointgroup;
 import sktransformationmatrix;
+import skboundingbox;
+import double4;
+import double4x4;
 
 // The symmetry operations of every space-group setting are held in the database as a
 // string, three characters per operation and one character per row of the Seitz matrix.
@@ -224,4 +227,22 @@ TEST(space_group_database, rotation_axis_of_an_improper_rotation_is_that_of_its_
     EXPECT_EQ(axis.y, 0);
     EXPECT_EQ(std::abs(axis.z), 1);
   }
+}
+
+// The bounding box under a transformation: the translation (the fourth column) moves it, and was left out; a box of no
+// size has the aspect ratio of a cube rather than 0 / 0.
+TEST(space_group_database, bounding_box_follows_the_translation_and_a_point_has_an_aspect_ratio)
+{
+  SKBoundingBox box(double3(0.0, 0.0, 0.0), double3(2.0, 2.0, 2.0));
+  double4x4 translation(1.0, 1.0, 1.0, 1.0);
+  translation[3] = double4(5.0, -1.0, 0.5, 1.0);
+  const SKBoundingBox moved = box.adjustForTransformation(translation);
+  EXPECT_NEAR(moved.minimum().x, 5.0, 1e-12);
+  EXPECT_NEAR(moved.minimum().y, -1.0, 1e-12);
+  EXPECT_NEAR(moved.maximum().z, 2.5, 1e-12);
+
+  SKBoundingBox point(double3(1.0, 1.0, 1.0), double3(1.0, 1.0, 1.0));
+  const double3 ratio = point.aspectRatio();
+  EXPECT_EQ(std::to_string(ratio.x), std::to_string(1.0));
+  EXPECT_EQ(std::to_string(ratio.z), std::to_string(1.0));
 }

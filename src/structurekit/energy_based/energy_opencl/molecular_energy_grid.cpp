@@ -169,7 +169,10 @@ MolecularEnergyGrid MolecularEnergyGridOpenCL::compute(const PairInteractions &i
   cl_int err;
 
   const char *source = MolecularEnergyGridOpenCL::molecularKernelSource;
-  cl_program program = clCreateProgramWithSource(OpenCL::clContext.value(), 1, &source, nullptr, &err);
+  // what is made on the device below is released on leaving, by a return or a throw (it was released
+  // by hand at the end only, and an error on the way left it on the device)
+  OpenCL::Handles made;
+  cl_program program = made.keep(clCreateProgramWithSource(OpenCL::clContext.value(), 1, &source, nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(
@@ -186,36 +189,35 @@ MolecularEnergyGrid MolecularEnergyGridOpenCL::compute(const PairInteractions &i
                                          __LINE__, std::string(buffer)));
   }
 
-  cl_kernel kernel = clCreateKernel(program, "MolecularEnergyField", &err);
+  cl_kernel kernel = made.keep(clCreateKernel(program, "MolecularEnergyField", &err));
   if (err != CL_SUCCESS)
   {
-    clReleaseProgram(program);
     throw std::runtime_error(std::format("MolecularEnergyGridOpenCL: OpenCL clCreateKernel failed at {}\n", __LINE__));
   }
 
   cl_int positionError, epsilonError, sigmaError, offsetError, freeError, minimumError;
   cl_int chargeError, siteChargeError, potentialError, shiftError;
-  cl_mem positionBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                         sizeof(cl_float4) * positions.size(), nullptr, &positionError);
-  cl_mem epsilonBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                        sizeof(cl_float) * epsilonTimesFour.size(), nullptr, &epsilonError);
-  cl_mem sigmaBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                      sizeof(cl_float) * sigmaSquared.size(), nullptr, &sigmaError);
-  cl_mem offsetBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                       sizeof(cl_float4) * siteOffsets.size(), nullptr, &offsetError);
-  cl_mem freeBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY, sizeof(cl_float) * numberOfVoxels,
-                                     nullptr, &freeError);
-  cl_mem minimumBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY,
-                                        sizeof(cl_float) * numberOfVoxels, nullptr, &minimumError);
-  cl_mem chargeBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                       sizeof(cl_float) * chargeProduct.size(), nullptr, &chargeError);
-  cl_mem shiftBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                      sizeof(cl_float) * shiftValue.size(), nullptr, &shiftError);
-  cl_mem siteChargeBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                                           sizeof(cl_float) * siteCharge.size(), nullptr, &siteChargeError);
-  cl_mem potentialBuffer =
-      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
-                     sizeof(cl_float) * (grid.chargesIncluded ? numberOfVoxels : 1), nullptr, &potentialError);
+  cl_mem positionBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                   sizeof(cl_float4) * positions.size(), nullptr, &positionError));
+  cl_mem epsilonBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                  sizeof(cl_float) * epsilonTimesFour.size(), nullptr, &epsilonError));
+  cl_mem sigmaBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                sizeof(cl_float) * sigmaSquared.size(), nullptr, &sigmaError));
+  cl_mem offsetBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                 sizeof(cl_float4) * siteOffsets.size(), nullptr, &offsetError));
+  cl_mem freeBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY,
+                                               sizeof(cl_float) * numberOfVoxels, nullptr, &freeError));
+  cl_mem minimumBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_WRITE_ONLY,
+                                                  sizeof(cl_float) * numberOfVoxels, nullptr, &minimumError));
+  cl_mem chargeBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                 sizeof(cl_float) * chargeProduct.size(), nullptr, &chargeError));
+  cl_mem shiftBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                sizeof(cl_float) * shiftValue.size(), nullptr, &shiftError));
+  cl_mem siteChargeBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                     sizeof(cl_float) * siteCharge.size(), nullptr, &siteChargeError));
+  cl_mem potentialBuffer = made.keep(clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                                    sizeof(cl_float) * (grid.chargesIncluded ? numberOfVoxels : 1),
+                                                    nullptr, &potentialError));
   if (positionError != CL_SUCCESS || epsilonError != CL_SUCCESS || sigmaError != CL_SUCCESS ||
       offsetError != CL_SUCCESS || freeError != CL_SUCCESS || minimumError != CL_SUCCESS ||
       chargeError != CL_SUCCESS || shiftError != CL_SUCCESS || siteChargeError != CL_SUCCESS || potentialError != CL_SUCCESS)
@@ -322,18 +324,6 @@ MolecularEnergyGrid MolecularEnergyGridOpenCL::compute(const PairInteractions &i
 
   clFinish(OpenCL::clCommandQueue.value());
 
-  clReleaseMemObject(positionBuffer);
-  clReleaseMemObject(epsilonBuffer);
-  clReleaseMemObject(sigmaBuffer);
-  clReleaseMemObject(offsetBuffer);
-  clReleaseMemObject(freeBuffer);
-  clReleaseMemObject(minimumBuffer);
-  clReleaseMemObject(chargeBuffer);
-  clReleaseMemObject(shiftBuffer);
-  clReleaseMemObject(siteChargeBuffer);
-  clReleaseMemObject(potentialBuffer);
-  clReleaseKernel(kernel);
-  clReleaseProgram(program);
 
   std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - time_begin;
   grid.seconds = elapsed.count();
@@ -454,7 +444,10 @@ std::vector<std::int32_t> MolecularEnergyGridOpenCL::strongestAtoms(const PairIn
   cl_int err;
 
   const char *source = MolecularEnergyGridOpenCL::tessellationKernelSource;
-  cl_program program = clCreateProgramWithSource(OpenCL::clContext.value(), 1, &source, nullptr, &err);
+  // what is made on the device below is released on leaving, by a return or a throw (it was released
+  // by hand at the end only, and an error on the way left it on the device)
+  OpenCL::Handles made;
+  cl_program program = made.keep(clCreateProgramWithSource(OpenCL::clContext.value(), 1, &source, nullptr, &err));
   if (err != CL_SUCCESS)
   {
     throw std::runtime_error(
@@ -467,26 +460,24 @@ std::vector<std::int32_t> MolecularEnergyGridOpenCL::strongestAtoms(const PairIn
     std::size_t length;
     char buffer[4096];
     clGetProgramBuildInfo(program, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &length);
-    clReleaseProgram(program);
     throw std::runtime_error(std::format(
         "MolecularEnergyGridOpenCL: OpenCL failed to build program at {} (error: {})\n", __LINE__,
         std::string(buffer)));
   }
 
-  cl_kernel energyKernel = clCreateKernel(program, "MolecularOrientationEnergies", &err);
+  cl_kernel energyKernel = made.keep(clCreateKernel(program, "MolecularOrientationEnergies", &err));
   cl_int labelError;
-  cl_kernel labelKernel = clCreateKernel(program, "MolecularStrongestAtom", &labelError);
+  cl_kernel labelKernel = made.keep(clCreateKernel(program, "MolecularStrongestAtom", &labelError));
   if (err != CL_SUCCESS || labelError != CL_SUCCESS)
   {
-    clReleaseProgram(program);
     throw std::runtime_error(std::format("MolecularEnergyGridOpenCL: OpenCL clCreateKernel failed at {}\n", __LINE__));
   }
 
   auto buffer = [&](cl_mem_flags flags, std::size_t bytes)
   {
     cl_int bufferError;
-    cl_mem memory = clCreateBuffer(OpenCL::clContext.value(), flags, std::max(bytes, std::size_t{1}), nullptr,
-                                   &bufferError);
+    cl_mem memory = made.keep(
+        clCreateBuffer(OpenCL::clContext.value(), flags, std::max(bytes, std::size_t{1}), nullptr, &bufferError));
     if (bufferError != CL_SUCCESS)
     {
       throw std::runtime_error(
@@ -648,19 +639,6 @@ std::vector<std::int32_t> MolecularEnergyGridOpenCL::strongestAtoms(const PairIn
 
   clFinish(OpenCL::clCommandQueue.value());
 
-  clReleaseMemObject(positionBuffer);
-  clReleaseMemObject(epsilonBuffer);
-  clReleaseMemObject(sigmaBuffer);
-  clReleaseMemObject(offsetBuffer);
-  clReleaseMemObject(chargeBuffer);
-  clReleaseMemObject(shiftBuffer);
-  clReleaseMemObject(siteChargeBuffer);
-  clReleaseMemObject(potentialBuffer);
-  clReleaseMemObject(energyBuffer);
-  clReleaseMemObject(labelBuffer);
-  clReleaseKernel(energyKernel);
-  clReleaseKernel(labelKernel);
-  clReleaseProgram(program);
 
   return labels;
 }

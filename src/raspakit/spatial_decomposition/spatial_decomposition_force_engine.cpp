@@ -1437,8 +1437,10 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
                                                                                                      : 3u;
       if (mode < 3u)
       {
-        pair.epsilon4 = 4.0 * parameters.parameters.x;
-        pair.inverseSigma2 = 1.0 / (parameters.parameters.y * parameters.parameters.y);
+        // (a pair of no sigma is no interaction: zero, rather than the infinity of 1 / 0)
+        const bool interacts = parameters.parameters.y > 0.0;
+        pair.epsilon4 = interacts ? 4.0 * parameters.parameters.x : 0.0;
+        pair.inverseSigma2 = interacts ? 1.0 / (parameters.parameters.y * parameters.parameters.y) : 0.0;
         pair.shift = parameters.shift;
         if (mode == 2u)
         {

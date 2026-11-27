@@ -322,8 +322,25 @@ GpuPack packNeighbourhood(const PairInteractions &interactions, const Crystal &f
   return pack;
 }
 
+// The buffers of the field on the device, released when it is left: by the end of the routine, or by a throw on the
+// way (in 'uploadPack' as well, where a failed upload left the buffers made before it). Moved, never copied.
 struct DeviceBuffers
 {
+  DeviceBuffers() = default;
+  DeviceBuffers(const DeviceBuffers&) = delete;
+  DeviceBuffers& operator=(const DeviceBuffers&) = delete;
+  DeviceBuffers(DeviceBuffers&& other) noexcept { take(other); }
+  DeviceBuffers& operator=(DeviceBuffers&& other) noexcept
+  {
+    if (this != &other)
+    {
+      release();
+      take(other);
+    }
+    return *this;
+  }
+  ~DeviceBuffers() { release(); }
+
   cl_mem position{};
   cl_mem epsilon{};
   cl_mem sigma{};
@@ -339,22 +356,26 @@ struct DeviceBuffers
   cl_mem potential{};
   cl_mem spheres{};
 
-  void release() const
+  std::array<cl_mem*, 14> members()
   {
-    if (position) clReleaseMemObject(position);
-    if (epsilon) clReleaseMemObject(epsilon);
-    if (sigma) clReleaseMemObject(sigma);
-    if (contact) clReleaseMemObject(contact);
-    if (shift) clReleaseMemObject(shift);
-    if (charge) clReleaseMemObject(charge);
-    if (siteOffset) clReleaseMemObject(siteOffset);
-    if (axes) clReleaseMemObject(axes);
-    if (siteCharge) clReleaseMemObject(siteCharge);
-    if (siteDispersion) clReleaseMemObject(siteDispersion);
-    if (siteLength) clReleaseMemObject(siteLength);
-    if (screened) clReleaseMemObject(screened);
-    if (potential) clReleaseMemObject(potential);
-    if (spheres) clReleaseMemObject(spheres);
+    return {&position, &epsilon,    &sigma,          &contact,    &shift,    &charge,    &siteOffset,
+            &axes,     &siteCharge, &siteDispersion, &siteLength, &screened, &potential, &spheres};
+  }
+
+  void release()
+  {
+    for (cl_mem* buffer : members())
+    {
+      if (*buffer != nullptr) clReleaseMemObject(*buffer);
+      *buffer = nullptr;
+    }
+  }
+
+  void take(DeviceBuffers& other)
+  {
+    const std::array<cl_mem*, 14> mine = members();
+    const std::array<cl_mem*, 14> theirs = other.members();
+    for (std::size_t m = 0; m < mine.size(); ++m) *mine[m] = std::exchange(*theirs[m], nullptr);
   }
 };
 
@@ -521,15 +542,18 @@ WellField WellFieldOpenCL::compute(const PairInteractions &interactions, const C
     return field;
   }
 
-  cl_program program = buildProgram();
+  // what is made on the device below is released on leaving, by a return or a throw (it was released
+  // by hand at the end only, and an error on the way left it on the device)
+  OpenCL::Handles made;
+  cl_program program = made.keep(buildProgram());
   cl_int err = CL_SUCCESS;
-  cl_kernel kernel = clCreateKernel(program, "WellField", &err);
+  cl_kernel kernel = made.keep(clCreateKernel(program, "WellField", &err));
   check(err, "clCreateKernel WellField", __LINE__);
 
   DeviceBuffers buffers = uploadPack(pack, numberOfVoxels);
-  cl_mem energyBuffer = bufferOf(CL_MEM_WRITE_ONLY, sizeof(cl_float) * numberOfVoxels, nullptr);
-  cl_mem distanceBuffer = bufferOf(CL_MEM_WRITE_ONLY, sizeof(cl_float) * numberOfVoxels, nullptr);
-  cl_mem reliabilityBuffer = bufferOf(CL_MEM_WRITE_ONLY, sizeof(cl_float) * numberOfVoxels, nullptr);
+  cl_mem energyBuffer = made.keep(bufferOf(CL_MEM_WRITE_ONLY, sizeof(cl_float) * numberOfVoxels, nullptr));
+  cl_mem distanceBuffer = made.keep(bufferOf(CL_MEM_WRITE_ONLY, sizeof(cl_float) * numberOfVoxels, nullptr));
+  cl_mem reliabilityBuffer = made.keep(bufferOf(CL_MEM_WRITE_ONLY, sizeof(cl_float) * numberOfVoxels, nullptr));
 
   // U(r, omega) orientation by orientation, under the same soft guard as the CPU field and, since it has to
   // sit on the device in one piece, within the device's largest single allocation. Left out when it would
@@ -547,7 +571,7 @@ WellField WellFieldOpenCL::compute(const PairInteractions &interactions, const C
     }
   }
   const std::size_t orientationFloats = keepOrientations ? numberOfVoxels * nOrient : 1;
-  cl_mem orientationBuffer = bufferOf(CL_MEM_WRITE_ONLY, sizeof(cl_float) * orientationFloats, nullptr);
+  cl_mem orientationBuffer = made.keep(bufferOf(CL_MEM_WRITE_ONLY, sizeof(cl_float) * orientationFloats, nullptr));
   cl_int clKeepOrientations = keepOrientations ? 1 : 0;
 
   cl_int3 clGridSize = {{cl_int(gridSize.x), cl_int(gridSize.y), cl_int(gridSize.z), 0}};
@@ -577,13 +601,6 @@ WellField WellFieldOpenCL::compute(const PairInteractions &interactions, const C
   }
   clFinish(OpenCL::clCommandQueue.value());
 
-  clReleaseMemObject(energyBuffer);
-  clReleaseMemObject(distanceBuffer);
-  clReleaseMemObject(reliabilityBuffer);
-  clReleaseMemObject(orientationBuffer);
-  buffers.release();
-  clReleaseKernel(kernel);
-  clReleaseProgram(program);
 
   field.seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - time_begin).count();
   return field;
@@ -614,9 +631,12 @@ void WellFieldOpenCL::refineVertices(std::vector<double3> &corners, std::vector<
     return;
   }
 
-  cl_program program = buildProgram();
+  // what is made on the device below is released on leaving, by a return or a throw (it was released
+  // by hand at the end only, and an error on the way left it on the device)
+  OpenCL::Handles made;
+  cl_program program = made.keep(buildProgram());
   cl_int err = CL_SUCCESS;
-  cl_kernel kernel = clCreateKernel(program, "RefineWellVertices", &err);
+  cl_kernel kernel = made.keep(clCreateKernel(program, "RefineWellVertices", &err));
   check(err, "clCreateKernel RefineWellVertices", __LINE__);
 
   std::vector<cl_float4> cornerData(corners.size());
@@ -628,8 +648,8 @@ void WellFieldOpenCL::refineVertices(std::vector<double3> &corners, std::vector<
 
   DeviceBuffers buffers = uploadPack(pack, pack.chargesIncluded ? pack.smoothPotential.size() : 0);
   cl_mem cornerBuffer =
-      bufferOf(CL_MEM_READ_WRITE, sizeof(cl_float4) * cornerData.size(), cornerData.data());
-  cl_mem energyBuffer = bufferOf(CL_MEM_WRITE_ONLY, sizeof(cl_float) * energyData.size(), nullptr);
+      made.keep(bufferOf(CL_MEM_READ_WRITE, sizeof(cl_float4) * cornerData.size(), cornerData.data()));
+  cl_mem energyBuffer = made.keep(bufferOf(CL_MEM_WRITE_ONLY, sizeof(cl_float) * energyData.size(), nullptr));
 
   cl_int numberOfVertices = static_cast<cl_int>(corners.size());
   cl_float clIso = cl_float(iso);
@@ -663,11 +683,6 @@ void WellFieldOpenCL::refineVertices(std::vector<double3> &corners, std::vector<
     energies[i] = static_cast<double>(energyData[i]);
   }
 
-  clReleaseMemObject(cornerBuffer);
-  clReleaseMemObject(energyBuffer);
-  buffers.release();
-  clReleaseKernel(kernel);
-  clReleaseProgram(program);
 }
 
 

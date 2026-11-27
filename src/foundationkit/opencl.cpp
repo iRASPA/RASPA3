@@ -420,11 +420,31 @@ OpenCL::Handles::~Handles()
     if (buffer != nullptr) clReleaseMemObject(buffer);
   }
   if (this->kernel != nullptr) clReleaseKernel(this->kernel);
+  for (cl_kernel madeKernel : this->kernels)
+  {
+    if (madeKernel != nullptr) clReleaseKernel(madeKernel);
+  }
   if (this->program != nullptr) clReleaseProgram(this->program);
+  for (cl_program madeProgram : this->programs)
+  {
+    if (madeProgram != nullptr) clReleaseProgram(madeProgram);
+  }
 }
 
 cl_mem OpenCL::Handles::keep(cl_mem buffer)
 {
   this->buffers.push_back(buffer);
   return buffer;
+}
+
+cl_kernel OpenCL::Handles::keep(cl_kernel madeKernel)
+{
+  this->kernels.push_back(madeKernel);
+  return madeKernel;
+}
+
+cl_program OpenCL::Handles::keep(cl_program madeProgram)
+{
+  this->programs.push_back(madeProgram);
+  return madeProgram;
 }
