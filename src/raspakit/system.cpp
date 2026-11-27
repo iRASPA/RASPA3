@@ -290,6 +290,26 @@ void System::assignFrameworkPseudoAtoms()
   }
   forceField.preComputeCutOffDependentParameters();
 
+  // The Ewald reciprocal field of the induced-dipole model holds the framework through the structure factor of its
+  // lab-fixed atoms (the Monte Carlo differences, the analytic derivatives and the pressure): the charges of mobile
+  // (flexible or rigid-group) framework atoms would be missing from the differences, so that the field drifted
+  // with every move, and the derivatives refuse them. The input reader refuses the mix; a system built in code
+  // (or from Python) is held here.
+  if (forceField.computePolarization && forceField.usesEwaldFourier() && framework.has_value() &&
+      framework->hasMobileAtoms())
+  {
+    const std::span<const Atom> mobile =
+        std::span<const Atom>(framework->atoms)
+            .subspan(std::min(framework->atoms.size(), framework->numberOfFixedAtoms()));
+    if (std::ranges::any_of(mobile, [](const Atom& atom) { return atom.scalingCoulomb * atom.charge != 0.0; }))
+    {
+      throw std::runtime_error(
+          "[System]: polarization with the Ewald summation is not supported for a framework with charged mobile "
+          "(flexible or rigid-group) atoms; use a rigid framework, uncharged mobile atoms, or a real-space charge "
+          "method\n");
+    }
+  }
+
   if (forceField.cutOffFrameworkVDW == forceField.cutOffMoleculeVDW) return;
   for (const Component& component : components)
   {
@@ -924,7 +944,10 @@ void System::accountConservedEnergy()
   }
   polymerRampWasActive = ramping;
 
-  accumulatedDrift += std::abs((conservedEnergy - referenceEnergy) / referenceEnergy);
+  // relative to the reference; a reference of zero (an empty start, no molecules and no kinetic energy) takes the
+  // scale of the conserved energy, and there is no drift while both are zero (it was 0 / 0)
+  const double scale = referenceEnergy != 0.0 ? std::abs(referenceEnergy) : std::abs(conservedEnergy);
+  if (scale > 0.0) accumulatedDrift += std::abs(conservedEnergy - referenceEnergy) / scale;
 }
 
 void System::accountTopologyChange()
@@ -1384,6 +1407,19 @@ std::optional<std::vector<std::size_t>> System::crossLinkRegrowthPlacedSet(
   std::ranges::sort(placed);
   placed.erase(std::ranges::unique(placed).begin(), placed.end());
   if (placed.size() >= components[selectedComponent].atoms.size()) return std::nullopt;
+  // The links of the molecule pin its linked sites, and a pinned set can be one no growth plan regrows from (a rigid
+  // group or ring between two linked sites, a FIXED bend left unheld by a bridge closure): the plan builder refuses
+  // it, and the exception ended the simulation. Whether the set is constructible does not change while the links
+  // stand, so refusing the move keeps detailed balance among the moves at the present links. (A plan that can be
+  // built is cached by the component and taken by the regrowth.)
+  try
+  {
+    static_cast<void>(components[selectedComponent].growthPlan(placed));
+  }
+  catch (const std::runtime_error&)
+  {
+    return std::nullopt;
+  }
   return placed;
 }
 
@@ -1481,7 +1517,7 @@ void System::computeTotalElectricField() noexcept
                                                  netChargeFramework, framework, frameworkAtomPositions);
 }
 
-std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
+std::pair<EnergyStatus, double3x3> System::computeMolecularPressure()
 {
   // Scratch buffer so molecular-pressure sampling does not mutate live MD site gradients.
   // Strain-derivative routines write intermolecular/framework forces here for the atomic-to-molecular
@@ -1639,6 +1675,43 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
         polymerLinks, true);
     pressureInfo.first.crossLinkEnergy += EnergyDuDlambda(polymerEnergy.potentialEnergy(), 0.0);
     pressureInfo.second += polymerStrain;
+  }
+
+  // The non-excluded intramolecular pairs (Van der Waals and Coulomb, at the minimum image, as the intramolecular
+  // energy takes them): their atomic virial dr (x) g_A and its correction about the center of mass,
+  // (r_A - r_B) (x) g_A, leave (dr - (r_A - r_B)) (x) g_A. That is zero unless the molecule reaches past half the box
+  // and the pair interacts through another image of B, which the center-of-mass scaling of the box does stretch (as
+  // the volume moves see it); it was left out with the cancelling part.
+  for (const Molecule& molecule : moleculeData)
+  {
+    const Component& component = components[molecule.componentId];
+    if (component.rigid) continue;
+    const std::span<const Atom> atoms = moleculeAtoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+    component.intraMolecularPotentials.forEachVanDerWaalsPair(
+        [&](std::size_t A, std::size_t B, double scaling, bool pair14)
+        {
+          const double3 stored = atoms[A].position - atoms[B].position;
+          const double3 dr = simulationBox.applyPeriodicBoundaryConditions(stored);
+          const double3 shift = dr - stored;
+          if (double3::dot(shift, shift) == 0.0) return;
+          const Potentials::PairDerivatives<1> factors = Potentials::intraMolecularVDW<1>(
+              forceField, scaling, double3::dot(dr, dr), static_cast<std::size_t>(atoms[A].type),
+              static_cast<std::size_t>(atoms[B].type), pair14);
+          Interactions::accumulateStrainDerivative(pressureInfo.second, factors.firstDerivativeFactor * dr, shift);
+        });
+    if (!forceField.useCharge) continue;
+    component.intraMolecularPotentials.forEachCoulombPair(
+        [&](std::size_t A, std::size_t B, double scaling)
+        {
+          const double3 stored = atoms[A].position - atoms[B].position;
+          const double3 dr = simulationBox.applyPeriodicBoundaryConditions(stored);
+          const double3 shift = dr - stored;
+          if (double3::dot(shift, shift) == 0.0) return;
+          const Potentials::PairDerivatives<1> factors = Potentials::intraMolecularCoulomb<1>(
+              forceField, scaling, atoms[A].scalingCoulomb, atoms[B].scalingCoulomb, dr.length(), atoms[A].charge,
+              atoms[B].charge);
+          Interactions::accumulateStrainDerivative(pressureInfo.second, factors.firstDerivativeFactor * dr, shift);
+        });
   }
 
   std::size_t molecule_index = 0;

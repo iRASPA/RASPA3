@@ -134,42 +134,21 @@ Centring SKPointGroup::computeCentering(SKTransformationMatrix basis)
       return Centring::primitive;
     case 2:
     {
-      // detect a-center
-      for (int i = 0; i < 3; i++)
+      // The columns of 'basis' are the conventional axes in the primitive basis: a centring vector t (in the
+      // conventional basis) is a lattice vector when basis * t is integer, i.e. when basis * (2 t) is even. With two
+      // lattice points per cell exactly one of the four candidates is. (The tests on single rows of the matrix,
+      // after spglib, hold for the matrices with entries in {0, +-1} only and misclassified a skewed or reduced
+      // basis such as the A-centred one with the columns (0, 1, 0), (1, 1, 0), (1, 1, 2), which they took for body
+      // centred. A basis that doubles a single axis, which none of the four fits, is no centring.)
+      auto even = [&](int3 n)
       {
-        // if (1,0,0) is found, then 'a' is detected
-        if (std::abs(basis[0][i]) == 1 && basis[1][i] == 0 && basis[2][i] == 0)
-        {
-          return Centring::a_face;
-        }
-      }
-
-      // detect b-center
-      for (int i = 0; i < 3; i++)
-      {
-        // if (0,1,0) is found, then 'b' is detected
-        if (basis[0][i] == 0 && std::abs(basis[1][i]) == 1 && basis[2][i] == 0)
-        {
-          return Centring::b_face;
-        }
-      }
-
-      // detect c-center
-      for (int i = 0; i < 3; i++)
-      {
-        // if (0,0,1) is found, then 'b' is detected
-        if (basis[0][i] == 0 && basis[1][i] == 0 && std::abs(basis[2][i]) == 1)
-        {
-          return Centring::c_face;
-        }
-      }
-
-      // detect body-center
-      int sum = std::abs(basis[0][0]) + std::abs(basis[1][0]) + std::abs(basis[2][0]);
-      if (sum == 2)
-      {
-        return Centring::body;
-      }
+        const int3 m = basis * n;
+        return m.x % 2 == 0 && m.y % 2 == 0 && m.z % 2 == 0;
+      };
+      if (even(int3(0, 1, 1))) return Centring::a_face;
+      if (even(int3(1, 0, 1))) return Centring::b_face;
+      if (even(int3(1, 1, 0))) return Centring::c_face;
+      if (even(int3(1, 1, 1))) return Centring::body;
       return Centring::none;
     }
     case 3:

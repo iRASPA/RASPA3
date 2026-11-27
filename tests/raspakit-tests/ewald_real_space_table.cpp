@@ -205,3 +205,29 @@ TEST(ewald_real_space_table, scaled_coulomb_derivative_factors_vanish_at_zero_se
     EXPECT_LT(std::abs(first.energy), 1.0e9) << scaling;
   }
 }
+
+// The field and derivative kernels of the polarization evaluate every pair at unit scaling, also a fractional (ghost)
+// molecule on the molecule it was copied from: at r = 0 the fully coupled phi'(0) is infinite and the factor per r
+// was infinity * 0, not a number, which poisoned the electric field. The gradient of a pair at zero separation has
+// no direction: zero, for Ewald and the finite-cutoff methods. (NaN read off the printed value: the fast-math build
+// folds the comparisons.)
+TEST(ewald_real_space_table, unit_scaled_coulomb_derivative_factors_vanish_at_zero_separation)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  forceField.EwaldAlpha = 0.265;
+  forceField.modifiedShiftedForceBeta = 0.3;
+  for (const ForceField::ChargeMethod method :
+       {ForceField::ChargeMethod::Ewald, ForceField::ChargeMethod::Coulomb, ForceField::ChargeMethod::Wolf,
+        ForceField::ChargeMethod::DampedShiftedForce, ForceField::ChargeMethod::ModifiedShiftedForce,
+        ForceField::ChargeMethod::ZeroDipole})
+  {
+    forceField.chargeMethod = method;
+    const Potentials::PairDerivatives<1> first = Potentials::potentialCoulomb<1>(forceField, 1.0, 1.0, 0.0, 1.0, 1.0);
+    const Potentials::PairDerivatives<3> third = Potentials::potentialCoulomb<3>(forceField, 1.0, 1.0, 0.0, 1.0, 1.0);
+    for (const double factor : {first.firstDerivativeFactor, third.firstDerivativeFactor, third.secondDerivativeFactor,
+                                third.thirdDerivativeFactor})
+    {
+      EXPECT_EQ(std::to_string(factor), std::to_string(0.0)) << static_cast<int>(method);
+    }
+  }
+}

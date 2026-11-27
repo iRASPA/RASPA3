@@ -60,8 +60,9 @@ export std::array<double, 36> computeAffineBornTensor(const System& system);
  */
 export std::array<double, 36> computeGreenLagrangeBornTensor(const System& system);
 
-/// Elastic constants need cell derivatives, which mixed frameworks do not have; the drivers call this before a run.
-export void throwIfMixedFramework(const System& system);
+/// Elastic constants need cell derivatives, which mixed frameworks and bonds between molecules (cross-links, polymer
+/// bonds) do not have; the drivers call this before a run.
+export void throwIfElasticConstantsUnsupported(const System& system);
 
 /**
  * Mass, centre-of-mass position and centre-of-mass velocity of one molecule. A rigid molecule returns its

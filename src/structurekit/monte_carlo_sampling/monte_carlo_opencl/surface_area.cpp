@@ -183,6 +183,12 @@ void MC_OpenCL_SurfaceArea::run(const SampledStructure &structure, const Sampled
 
     // The widths across the cell, which bound the images of an atom that can reach a point.
     double3 widths = structure.unitCell.perpendicularWidths();
+    // a cell without volume has widths of zero: their inverse an infinity, and the image loops of the kernel ran from
+    // minus to plus infinity
+    if (!(std::fabs(structure.unitCell.volume) > 0.0))
+    {
+      throw std::invalid_argument("MC_SurfaceArea: the unit cell has no volume (coplanar or zero cell vectors)\n");
+    }
     cl_float4 inverseWidths = {{cl_float(1.0 / widths.x), cl_float(1.0 / widths.y), cl_float(1.0 / widths.z), cl_float(0.0)}};
 
     std::size_t number_of_random_unit_vectors{number_of_inner_steps};

@@ -25,6 +25,11 @@ simd_quatd::simd_quatd(double real, double3 imag)
 
 simd_quatd simd_quatd::fromAxisAngle(double angle, double3 axis)
 {
+  // a rotation about the direction of 'axis' (normalised: a non-unit axis used to give a quaternion that is no
+  // rotation); about the zero axis (coincident points that were to define it) there is no rotation: the identity
+  const double lengthSquared = double3::dot(axis, axis);
+  if (lengthSquared == 0.0) return simd_quatd(0.0, 0.0, 0.0, 1.0);
+  if (lengthSquared != 1.0) axis = axis / std::sqrt(lengthSquared);
   double s = std::sin(0.5 * angle);
   return simd_quatd(std::cos(0.5 * angle), double3{s * axis.x, s * axis.y, s * axis.z});
 }

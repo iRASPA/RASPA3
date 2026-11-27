@@ -413,8 +413,9 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
       {
         if (!component.rigidFragmentContaining(i).has_value())
         {
+          // a massless (virtual) site takes no kick: its constraints carry it
           double mass = component.atomMass(i, atoms[i]);
-          span[i].velocity -= 0.5 * dt * span[i].gradient / mass;
+          if (mass > 0.0) span[i].velocity -= 0.5 * dt * span[i].gradient / mass;
         }
       }
       syncNonRigidMoleculeCenterOfMass(molecule, atoms, span, component, groupData, groupIndex);
@@ -433,8 +434,9 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
       std::span<const Atom> atoms = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
       for (std::size_t i = 0; i != span.size(); i++)
       {
+        // a massless (virtual) site takes no kick: its constraints carry it
         double mass = component.atomMass(i, atoms[i]);
-        span[i].velocity -= 0.5 * dt * span[i].gradient / mass;
+        if (mass > 0.0) span[i].velocity -= 0.5 * dt * span[i].gradient / mass;
       }
       syncNonRigidMoleculeCenterOfMass(molecule, atoms, span, component, {}, 0);
     }
@@ -459,7 +461,7 @@ void Integrators::updateVelocities(std::span<Molecule> moleculeData, std::span<A
     {
       if (!framework->isFlexibleAtom(i)) continue;
       double mass = forceField->pseudoAtoms[frameworkAtomPositions[i].type].mass;
-      frameworkDynamics[i].velocity -= 0.5 * dt * frameworkDynamics[i].gradient / mass;
+      if (mass > 0.0) frameworkDynamics[i].velocity -= 0.5 * dt * frameworkDynamics[i].gradient / mass;
     }
   }
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
@@ -862,9 +864,11 @@ void Integrators::initializeMoleculeVelocity(RandomNumber& random, Molecule& mol
       throw std::runtime_error("Flexible-molecule dynamics span has the wrong size");
     for (std::size_t i = 0; i != moleculeDynamics.size(); i++)
     {
+      // a massless (virtual) site has no thermal velocity (sqrt(kT / 0) is an infinity)
       const double mass = component.atomMass(i, moleculeAtoms[i]);
-      moleculeDynamics[i].velocity =
-          double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
+      moleculeDynamics[i].velocity = mass > 0.0 ? double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
+                                                      std::sqrt(Units::KB * temperature / mass)
+                                                : double3(0.0, 0.0, 0.0);
     }
     // The Maxwell-Boltzmann distribution of a constrained molecule is that of its free atoms projected on the
     // velocities the constraints allow.
@@ -960,8 +964,9 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
           continue;
         }
         double mass = component.atomMass(i, atoms[i]);
-        dynamics[i].velocity =
-            double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
+        dynamics[i].velocity = mass > 0.0 ? double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
+                                                std::sqrt(Units::KB * temperature / mass)
+                                          : double3(0.0, 0.0, 0.0);
       }
       constrainMoleculeVelocities(component, atoms, dynamics);
       syncNonRigidMoleculeCenterOfMass(molecule, atoms, dynamics, component, groupData, groupIndex);
@@ -994,8 +999,9 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
         continue;
       }
       double mass = forceField->pseudoAtoms[frameworkAtomPositions[i].type].mass;
-      frameworkDynamics[i].velocity =
-          double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * std::sqrt(Units::KB * temperature / mass);
+      frameworkDynamics[i].velocity = mass > 0.0 ? double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
+                                                       std::sqrt(Units::KB * temperature / mass)
+                                                 : double3(0.0, 0.0, 0.0);
     }
   }
 }

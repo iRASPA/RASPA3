@@ -445,6 +445,26 @@ void refreshParticleNumberDependentState(RandomNumber& random, System& system, s
                                                         system.spanOfGroupData(), system.framework,
                                                         system.spanOfFrameworkDynamics(),
                                                         system.spanOfFrameworkGroupData());
+
+  // The exchange changes the Hamiltonian (the potential energy of the swap, the momentum the molecule brings or
+  // takes, the degrees of freedom of the thermostat and the barostat): the jump of the conserved energy shifts the
+  // drift reference, so that 'conservedEnergy - referenceEnergy' stays the integration drift. It used to be counted
+  // as drift.
+  system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components,
+      system.framework, system.spanOfFrameworkAtoms(), system.spanOfFrameworkDynamics(), &system.forceField,
+      system.spanOfGroupData(), system.spanOfFrameworkGroupData());
+  system.runningEnergies.rotationalKineticEnergy =
+      Integrators::computeRotationalKineticEnergy(system.moleculeData, system.components, system.spanOfGroupData(),
+                                                  system.framework, system.spanOfFrameworkGroupData());
+  if (system.thermostat.has_value()) system.runningEnergies.NoseHooverEnergy = system.thermostat->getEnergy();
+  if (system.thermobarostat.has_value())
+  {
+    system.runningEnergies.thermobarostatEnergy = system.thermobarostat->energy(system.simulationBox.volume);
+  }
+  const double previous = system.conservedEnergy;
+  system.conservedEnergy = system.runningEnergies.conservedEnergy();
+  system.referenceEnergy += system.conservedEnergy - previous;
 }
 
 // The barostat is driven by the virial of the points it couples to (molecular coupling: the centres of mass of
@@ -836,7 +856,7 @@ void MolecularDynamics::setup()
     {
       if (system.molecularDynamicsEnsemble != MolecularDynamicsEnsemble::NVT)
         throw std::runtime_error("Stress-fluctuation elastic constants require fixed-cell NVT molecular dynamics");
-      throwIfMixedFramework(system);
+      throwIfElasticConstantsUnsupported(system);
       if (system.elasticConstantsSampleEvery == 0)
         throw std::runtime_error("ElasticConstantsSampleEvery must be positive");
       if (system.hasExternalField || system.forceField.computePolarization)

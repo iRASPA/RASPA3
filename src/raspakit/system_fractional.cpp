@@ -594,8 +594,10 @@ void System::initializeGibbsConventionalFractionalMolecules(bool complementaryBo
     }
   }
   // the fractional molecules were created switched off: the effective pseudo-atom counts of the tail corrections and
-  // the net charge (refreshed with them) follow their scaling
+  // the net charge (refreshed with them) follow their scaling; so do the copies of the atoms in the cell list, which
+  // held them at the scaling they were created with
   computeTailCorrectionCounts();
+  moleculeCellList.invalidate();
 }
 
 // Fixed-lambda thermodynamic integration: pin the fractional molecule(s) of each component with a
@@ -634,17 +636,28 @@ void System::initializeFixedLambdaFractionalMolecules()
                                              .groupId = groupId,
                                              .isFractional = true};
 
-    // The molecule is regrown under its own id, so it is excluded from its own background by the grow.
+    // The molecule is regrown under its own id, so it is excluded from its own background by the grow. Retried until
+    // it is placed, but not for ever (as 'createInitialMolecules'): a solute pinned at a lambda that fits nowhere in
+    // a dense or narrow pore kept the start of the run in this loop.
+    constexpr std::size_t maximumNumberOfAttempts = 1'000'000uz;
     std::optional<CBMC::GrowResult> growData = std::nullopt;
-    do
+    for (std::size_t attempt = 0uz;
+         !growData.has_value() || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria; ++attempt)
     {
+      if (attempt == maximumNumberOfAttempts)
+      {
+        throw std::runtime_error(std::format(
+            "[System]: no room was found for the fractional molecule of component '{}' at its fixed lambda {} in {} "
+            "attempts\n",
+            component.name, lambda, maximumNumberOfAttempts));
+      }
       growData = CBMC::growNewMolecule(
           random,
           makeGrowContext(CBMC::CutOffMode::Full)
               .withChainScheme(CBMC::ChainScheme::ConfigurationalBias)
               .forPlacement(),
           component, identity);
-    } while (!growData.has_value() || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
+    }
 
     std::copy(growData->atoms.begin(), growData->atoms.end(), molecule.begin());
     for (Atom& atom : molecule)
@@ -704,6 +717,9 @@ void System::initializeFixedLambdaFractionalMolecules()
       }
     }
   }
+  // the pinned scalings and group ids of the slots: the copies of their atoms in the cell list held the switched-off
+  // ones they were created with
+  moleculeCellList.invalidate();
 }
 
 // Serial Gibbs CFCMC: only the system that owns the active fractional molecule contributes dUdlambda.
@@ -729,8 +745,10 @@ void System::initializeGibbsSwapFractionalMoleculeGroupIds() noexcept
   }
   // The tail-correction counts per dU/dlambda group follow the group ids. Left as they were, the inactive box kept
   // the counts of the group its placeholder was created in, and its total energy started with a tail dU/dlambda of
-  // a fractional molecule it does not hold (until the first accepted transfer recounted them).
+  // a fractional molecule it does not hold (until the first accepted transfer recounted them). The copies of the
+  // atoms in the cell list carry the group ids as well.
   computeTailCorrectionCounts();
+  moleculeCellList.invalidate();
 }
 
 bool System::hasReactionFractionalMolecules() const noexcept

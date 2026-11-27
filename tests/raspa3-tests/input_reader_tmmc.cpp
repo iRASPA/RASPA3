@@ -16,6 +16,7 @@ import json;
 import thermobarostat;
 import units;
 import parallel_tempering;
+import parallel_tempering_molecular_dynamics;
 
 namespace
 {
@@ -1742,6 +1743,51 @@ TEST(INPUT_READER_MD, parallel_tempering_replicas_take_the_state_point_of_their_
   EXPECT_GT(std::abs(hotReplica.pressure - coldReplica.pressure), 1.0e-6 * coldReplica.pressure);
 }
 
+// The same for the replicas of replica-exchange molecular dynamics (the reservoir quantities its properties, such as
+// the Widom fugacity, are measured against): the driver set the temperatures and the heat baths of the replicas, but
+// kept the fugacity coefficients and the pressure from a chemical potential of the first temperature of the ladder.
+TEST(INPUT_READER_MD, molecular_dynamics_replicas_take_the_state_point_of_their_temperature)
+{
+  TemporaryDirectory workspace = makeBoxMdWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+
+  nlohmann::json remd = readNVTExample();
+  remd["SimulationType"] = "ParallelTemperingMolecularDynamics";
+  for (const char* key : {"ExternalTemperature", "ComputeMSD", "SampleMSDEvery", "WriteMSDEvery"})
+  {
+    remd["Systems"][0].erase(key);
+  }
+  remd["Systems"][0]["Ensemble"] = "NVT";
+  remd["Systems"][0]["ExternalTemperatures"] = {250.0, 350.0};
+  remd["Systems"][0]["ExternalPressure"] = 1.0e6;
+  remd["Components"][0]["SwapProbability"] = 1.0;
+  TemporaryInput remdInput(remd, "remd_state_point", workspace.path());
+  InputReader remdReader(remdInput.path().filename().string());
+  ParallelTemperingMolecularDynamics simulation(remdReader);
+  ASSERT_EQ(simulation.systems.size(), 2uz);
+
+  TemporaryInput hotInput(methaneMonteCarloInput(350.0), "remd_reference_350", workspace.path());
+  InputReader hotReader(hotInput.path().filename().string());
+  const double expected = hotReader.systems[0].components[0].fugacityCoefficient.value();
+  const double cold = simulation.systems[0].components[0].fugacityCoefficient.value();
+  const double hot = simulation.systems[1].components[0].fugacityCoefficient.value();
+  EXPECT_GT(std::abs(hot - cold), 1.0e-6);
+  EXPECT_NEAR(hot, expected, 1.0e-12);
+
+  nlohmann::json mu = remd;
+  mu["Systems"][0].erase("ExternalPressure");
+  mu["Components"][0]["ChemicalPotential"] = -2500.0;
+  TemporaryInput muInput(mu, "remd_chemical_potential", workspace.path());
+  InputReader muReader(muInput.path().filename().string());
+  ParallelTemperingMolecularDynamics muSimulation(muReader);
+  const System& coldReplica = muSimulation.systems[0];
+  const System& hotReplica = muSimulation.systems[1];
+  const double kT0 = Units::KB * coldReplica.temperature;
+  const double kT1 = Units::KB * hotReplica.temperature;
+  const double muInternal = kT0 * std::log(coldReplica.pressure / kT0);
+  EXPECT_NEAR(hotReplica.pressure, kT1 * std::exp(muInternal / kT1), 1.0e-9 * hotReplica.pressure);
+}
+
 // "FugacityCoefficient" : 0 asks for the Peng-Robinson value, as documented; it used to be taken as a given
 // coefficient of zero, which sets the reservoir fugacity to zero.
 TEST(INPUT_READER, zero_fugacity_coefficient_asks_for_peng_robinson)
@@ -1846,7 +1892,8 @@ TEST(INPUT_READER, rejects_an_interval_of_zero_cycles)
 TEST(INPUT_READER, time_correlation_properties_refuse_the_moves_that_change_the_molecules_of_a_component)
 {
   TemporaryDirectory workspace = makeBoxMdWorkspace();
-  for (const char* keyword : {"SwapProbability", "CFCMC_CBMC_SwapProbability"})
+  // (the double bridging exchanges the chain ends of two molecules at the same number of molecules)
+  for (const char* keyword : {"SwapProbability", "CFCMC_CBMC_SwapProbability", "DoubleBridgingProbability"})
   {
     SCOPED_TRACE(keyword);
     nlohmann::json input = readNVTExample();

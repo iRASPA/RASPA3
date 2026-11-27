@@ -120,9 +120,11 @@ export template <std::size_t Order>
         // The offset form is finite at r = 0 for a scaled pair, so two atoms can sit on top of each other (a
         // fractional molecule on the molecule it was copied from). The derivative factors are per r: there 1 / r
         // is an infinity and the gradient factor * dr, with dr = 0, not a number. The gradient of a pair at zero
-        // separation has no direction and is taken as zero.
-        double inverseR = (r > 0.0) ? 1.0 / r : 0.0;
-        double firstDerivativeFactor = scaling * prefactor * phiPrime * inverseR;
+        // separation has no direction and is taken as zero, also for a fully coupled pair (the unit-scaled field
+        // kernels of the polarization), whose phi'(0) is infinite: infinity * 0 is not a number either.
+        const bool separated = r > 0.0;
+        double inverseR = separated ? 1.0 / r : 0.0;
+        double firstDerivativeFactor = separated ? scaling * prefactor * phiPrime * inverseR : 0.0;
 
         if constexpr (Order == 1)
         {
@@ -134,7 +136,7 @@ export template <std::size_t Order>
           double phiSecond = 2.0 * erfcTerm * inverseSS * inverseS +
                              4.0 * alpha * gaussian * (inverseSS + alphaSquared);
           double secondDerivativeFactor =
-              scaling * prefactor * (phiSecond - phiPrime * inverseR) * inverseR * inverseR;
+              separated ? scaling * prefactor * (phiSecond - phiPrime * inverseR) * inverseR * inverseR : 0.0;
 
           if constexpr (Order == 2)
           {
@@ -146,9 +148,11 @@ export template <std::size_t Order>
                               2.0 * alpha * gaussian *
                                   (4.0 * alphaSquared * alphaSquared * s + 4.0 * alphaSquared * inverseS +
                                    6.0 * inverseS * inverseSS);
-            double thirdDerivativeFactor = scaling * prefactor *
-                                           (phiThird - 3.0 * phiSecond * inverseR + 3.0 * phiPrime * inverseR * inverseR) *
-                                           inverseR * inverseR * inverseR;
+            double thirdDerivativeFactor =
+                separated ? scaling * prefactor *
+                                (phiThird - 3.0 * phiSecond * inverseR + 3.0 * phiPrime * inverseR * inverseR) *
+                                inverseR * inverseR * inverseR
+                          : 0.0;
 
             return {scaling * prefactor * phi, dUdlambda, firstDerivativeFactor, secondDerivativeFactor,
                     thirdDerivativeFactor};
@@ -162,8 +166,19 @@ export template <std::size_t Order>
     case ForceField::ChargeMethod::ModifiedShiftedForce:
     case ForceField::ChargeMethod::ZeroDipole:
     {
-      const CoulombRealSpaceFactors factors = coulombRealSpaceFactors(forcefield, r);
+      CoulombRealSpaceFactors factors = coulombRealSpaceFactors(forcefield, r);
       const double prefactor = Units::CoulombicConversionFactor * chargeA * chargeB;
+      if constexpr (Order >= 1)
+      {
+        // a pair at zero separation (a fractional molecule on the one it was copied from): its factors per r are
+        // infinite, and times dr = 0 (or a zero charge scaling) not a number; the gradient has no direction
+        if (!(r > 0.0))
+        {
+          factors.firstDerivativeFactor = 0.0;
+          factors.secondDerivativeFactor = 0.0;
+          factors.thirdDerivativeFactor = 0.0;
+        }
+      }
 
       if constexpr (Order == 0)
       {

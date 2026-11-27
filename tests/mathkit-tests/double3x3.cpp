@@ -326,3 +326,41 @@ TEST(double3x3, Test_rotation_matrix_from_svd)
     EXPECT_NEAR(c.z, b.z, 1e-6);
   }
 }
+
+// The zero quaternion (default constructed) is no rotation: buildRotationMatrix[Inverse] gave -I (an inversion,
+// det -1) where double3x3(simd_quatd) gives the identity. A drifted (non-unit) quaternion gives the rotation of its
+// direction, and fromAxisAngle normalises its axis (the zero axis of two coincident points is no rotation; it gave
+// cos(angle) I).
+TEST(double3x3, rotation_matrices_of_zero_drifted_and_axis_angle_quaternions_are_rotations)
+{
+  const simd_quatd zero{};
+  for (const double3x3& m : {double3x3::buildRotationMatrix(zero), double3x3::buildRotationMatrixInverse(zero)})
+  {
+    EXPECT_EQ(m.ax, 1.0);
+    EXPECT_EQ(m.by, 1.0);
+    EXPECT_EQ(m.cz, 1.0);
+    EXPECT_EQ(m.bx, 0.0);
+    EXPECT_EQ(m.az, 0.0);
+  }
+
+  const simd_quatd unit = simd_quatd::fromAxisAngle(0.7, double3(1.0, 2.0, -0.5));
+  const simd_quatd drifted(1.3 * unit.ix, 1.3 * unit.iy, 1.3 * unit.iz, 1.3 * unit.r);
+  const double3x3 expected = double3x3(unit);
+  for (const double3x3& m :
+       {double3x3::buildRotationMatrixInverse(drifted), double3x3::transpose(double3x3::buildRotationMatrix(drifted))})
+  {
+    EXPECT_NEAR(m.determinant(), 1.0, 1e-12);
+    EXPECT_NEAR(m.ax, expected.ax, 1e-12);
+    EXPECT_NEAR(m.bx, expected.bx, 1e-12);
+    EXPECT_NEAR(m.cz, expected.cz, 1e-12);
+    EXPECT_NEAR(m.ay, expected.ay, 1e-12);
+  }
+  // the axis (1, 2, -0.5) normalised: a unit quaternion
+  EXPECT_NEAR(unit.r * unit.r + unit.ix * unit.ix + unit.iy * unit.iy + unit.iz * unit.iz, 1.0, 1e-14);
+
+  const simd_quatd noAxis = simd_quatd::fromAxisAngle(2.5, double3(0.0, 0.0, 0.0));
+  const double3x3 none = double3x3::buildRotationMatrixInverse(noAxis);
+  EXPECT_EQ(none.ax, 1.0);
+  EXPECT_EQ(none.by, 1.0);
+  EXPECT_EQ(none.cz, 1.0);
+}

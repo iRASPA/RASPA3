@@ -253,3 +253,22 @@ TEST(sampled_structure, queries_from_many_threads_after_a_change_all_see_the_str
 
   EXPECT_EQ(wrong, 0uz) << "of " << numberOfRounds * points.size() << " answers";
 }
+
+// A cell without volume (default constructed, or coplanar vectors) has bins of no width: the bin counts were an
+// integer conversion of x / 0 and the shell searches walked outward for ever. The queries refuse it, and the
+// density and the gravimetric factors stay finite.
+TEST(sampled_structure, a_cell_without_volume_is_refused)
+{
+  const double3 a(10.0, 0.0, 0.0);
+  const double3 b(0.0, 10.0, 0.0);
+  SampledStructure structure;
+  structure.name = "flat";
+  structure.unitCell = UnitCell(double3x3(a, b, a + b));
+  structure.positions = {double3(1.0, 2.0, 0.0), double3(5.0, 5.0, 0.0)};
+  structure.radii = {1.0, 1.0};
+  ASSERT_EQ(structure.unitCell.volume, 0.0);
+  EXPECT_THROW(static_cast<void>(structure.overlaps(double3(3.0, 3.0, 0.0), 2)), std::invalid_argument);
+  EXPECT_THROW(static_cast<void>(structure.clearance(double3(3.0, 3.0, 0.0))), std::invalid_argument);
+  EXPECT_EQ(std::to_string(structure.density()), std::to_string(0.0));
+  EXPECT_EQ(std::to_string(structure.gravimetricFactor()), std::to_string(0.0));
+}

@@ -24,6 +24,7 @@ import bond_potential;
 import cross_links;
 import bend_potential;
 import torsion_potential;
+import van_der_waals_potential;
 import connectivity_table;
 import intra_molecular_potentials;
 import molecule;
@@ -1019,4 +1020,53 @@ TEST(BAROSTAT_VIRIAL, energy_status_holds_the_cross_link_energy)
   ASSERT_GT(std::abs(running.crossLink), 1.0);
   const EnergyStatus status = system.computeMolecularPressure().first;
   EXPECT_NEAR(status.totalEnergy.energy, running.potentialEnergy(), 1e-6 * std::abs(running.potentialEnergy()));
+}
+
+// A chain that reaches past half the box: its end beads, 11.6 A apart in the stored molecule, interact at the
+// minimum image 4.4 A away, which the center-of-mass scaling of the box (the Monte Carlo volume move) stretches. The
+// molecular virial left all intramolecular pairs out (their forces cancel against the center-of-mass correction for
+// the stored geometry, not for an image): it has to match -dU/dV under that scaling.
+TEST(BAROSTAT_VIRIAL, molecular_virial_holds_intramolecular_pairs_through_a_periodic_image)
+{
+  ForceField forceField = ForceField(
+      {{"CH3", false, 15.03452, 0.0, 0.0, 8, false}, {"CH2", false, 14.02658, 0.0, 0.0, 8, false}},
+      {{98.0, 3.75}, {46.0, 3.95}}, ForceField::MixingRule::Lorentz_Berthelot, 7.5, 7.5, 7.5, false, false, false);
+  forceField.useCharge = false;
+  forceField.omitEwaldFourier = true;
+  useSecondOrderTaylorShiftedLennardJones(forceField);
+
+  const std::size_t n = 10;
+  ConnectivityTable connectivityTable(n);
+  Potentials::IntraMolecularPotentials potentials{};
+  for (std::size_t i = 0; i + 1 < n; ++i)
+  {
+    connectivityTable[i, i + 1] = true;
+    connectivityTable[i + 1, i] = true;
+    potentials.bonds.emplace_back(std::array<std::size_t, 2>{i, i + 1}, BondType::Harmonic,
+                                  std::vector<double>{96500.0, 1.54});
+  }
+  // the end beads as an explicit pair at full strength
+  potentials.vanDerWaals.push_back(
+      VanDerWaalsPotential({0, n - 1}, VDWParameters::Type::LennardJones, {98.0, 3.75}, 1.0));
+  std::vector<Atom> atoms;
+  for (std::size_t a = 0; a < n; ++a)
+  {
+    atoms.push_back(Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, (a == 0 || a + 1 == n) ? 0 : 1, 0, false, false));
+  }
+  Component chain(forceField, "chain", 540.13, 2736000.0, 0.349, atoms, connectivityTable, potentials, 5, 21);
+  System system = System(forceField, SimulationBox(16.0, 16.0, 16.0), false, 300.0, 1e5, 1.0, {}, {chain}, {}, {1}, 5);
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  for (std::size_t a = 0; a < n; ++a)
+  {
+    atomData[a].position = double3((a % 2 == 0) ? 8.0 : 8.84, 8.0, 2.2 + 1.29 * static_cast<double>(a));
+  }
+  const double3 stored = atomData[0].position - atomData[n - 1].position;
+  const double3 imaged = system.simulationBox.applyPeriodicBoundaryConditions(stored);
+  ASSERT_GT(stored.length(), 8.0);
+  ASSERT_LT(imaged.length(), 5.0);
+
+  const double fd = centerOfMassScalingExcessPressure(system);
+  ASSERT_GT(std::abs(fd), 1.0e-8);
+  const double3x3 virial = system.computeMolecularPressure().second;
+  EXPECT_NEAR(virial.trace() / (3.0 * system.simulationBox.volume), fd, 1.0e-5 * std::abs(fd));
 }

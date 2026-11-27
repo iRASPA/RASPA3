@@ -511,7 +511,30 @@ std::vector<std::vector<double>> Preparation::prepareIdealGasReferences(std::spa
   for (std::size_t componentId = 0; !oneTemperature && componentId < numberOfComponents; ++componentId)
   {
     const Component& reference = systems.front().components[componentId];
-    if (!isFlexibleOpenComponent(reference)) continue;
+    if (!isFlexibleOpenComponent(reference))
+    {
+      // A rigid or single-site open component under a finite-cutoff charge method: the energy of the isolated
+      // molecule ('System::isolatedChargeCorrectionEnergy', which the box adds to every insertion) is its
+      // intramolecular energy, q(beta) = exp(-beta U), and its computed weight (setRigidChargeCorrectionWeights) is
+      // exactly that. Its normalization L(beta) = -beta U enters the reweighting between the temperatures like the
+      // one of a flexible molecule; left at zero, the reweighted states were biased by N (beta_k - beta) U.
+      if (!reference.swappable || reference.atoms.empty() || reference.idealGasRosenbluthWeight.has_value() ||
+          !(reference.rigid || reference.atoms.size() <= 1uz))
+      {
+        continue;
+      }
+      const double correction = systems.front().isolatedChargeCorrectionEnergy(referenceAtoms(reference, componentId));
+      if (correction == 0.0) continue;
+      for (std::size_t i = 0; i < numberOfSystems; ++i)
+      {
+        systems[i].components[componentId].logInsertionNormalization = -systems[i].beta * correction;
+      }
+      for (std::size_t i = 0; i < otherTemperatures.size(); ++i)
+      {
+        others[componentId][i] = -correction / (Units::KB * otherTemperatures[i]);
+      }
+      continue;
+    }
     // one number, copied to every replica of the ladder, is the weight of one temperature
     if (!ladderTemperatures.empty() && reference.idealGasRosenbluthWeightLadder.empty() &&
         reference.idealGasRosenbluthWeight.has_value() && !reference.idealGasRosenbluthWeightEstimate.has_value() &&

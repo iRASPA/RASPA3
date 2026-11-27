@@ -1886,3 +1886,51 @@ TEST(MC_CROSS_LINKS, a_bond_in_a_well_deeper_than_a_double_holds_is_sampled)
   EXPECT_GT(logNormalization, wellDepth / temperature - 10.0);
   EXPECT_LT(logNormalization, wellDepth / temperature + 1.0);
 }
+
+// A pinned set no growth plan regrows from: the same doubly linked chains with FIXED bends, which the bridge
+// closure between the two linked ends does not hold. The plan builder refuses the set, and the exception ended the
+// simulation in the first reinsertion; the move is refused instead (the set stays unconstructible while the links
+// stand), and the molecule keeps its positions.
+TEST(MC_CROSS_LINKS, regrowth_of_an_unconstructible_linked_set_is_refused)
+{
+  const ForceField forceField = makeForceField(40.0, 0.0, 0.0, false);
+  MCMoveProbabilities componentMoves;
+  componentMoves.setProbability(Move::Types::ReinsertionCBMC, 1.0);
+  const std::string json = R"({
+  "CriticalTemperature" : 190.6,
+  "CriticalPressure" : 4599200.0,
+  "AcentricFactor" : 0.011,
+  "pseudoAtoms" : [["B", [0.0, 0.0, 0.0]], ["A", [1.54, 0.0, 0.0]], ["A", [2.166, 1.407, 0.0]], ["B", [3.706, 1.407, 0.0]]],
+  "Connectivity" : [[0, 1], [1, 2], [2, 3]],
+  "Bonds" : [[["B", "A"], "HARMONIC", [96500.0, 1.54]], [["A", "A"], "HARMONIC", [96500.0, 1.54]]],
+  "Bends" : [[["B", "A", "A"], "FIXED", [114.0]]],
+  "Torsions" : [[["B", "A", "A", "B"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]],
+  "ReactiveSites" : [[0, "X"], [3, "X"]],
+  "VanDerWaals" : "auto",
+  "Coulomb" : "auto"
+}
+)";
+  TemporaryFile file("xl-fixed-bend-ring.json", json);
+  Component chain = Component(Component::Type::Adsorbate, 0, forceField, "xl-fixed-bend-ring", file.stemPath().string(),
+                              5, 21, componentMoves, std::nullopt, false);
+  const std::vector<double3> zigzag{double3(10.0, 10.0, 10.0), double3(11.54, 10.0, 10.0),
+                                    double3(12.166, 11.407, 10.0), double3(13.706, 11.407, 10.0)};
+  std::vector<double3> positions = zigzag;
+  for (const double3& p : zigzag) positions.push_back(p + double3(0.0, 0.0, 3.8));
+  System system = makeSystem(forceField, {chain}, {positions});
+  system.crossLinks.bondTypes.push_back(harmonicBondType("X", "X", 1000.0, 3.8, 6.0));
+  system.crossLinks.addLink(CrossLink{site(0, 0, 0), site(0, 1, 0), 0});
+  system.crossLinks.addLink(CrossLink{site(0, 0, 3), site(0, 1, 3), 0});
+  system.runningEnergies = system.computeTotalEnergies();
+
+  EXPECT_FALSE(system.crossLinkRegrowthPlacedSet(0, 0).has_value());
+  const std::vector<Atom> before(system.spanOfMolecule(0, 0).begin(), system.spanOfMolecule(0, 0).end());
+  RandomNumber random(5);
+  std::optional<RunningEnergy> energy{};
+  ASSERT_NO_THROW(energy = MC_Moves::reinsertionMove(random, system, 0, 0));
+  EXPECT_FALSE(energy.has_value());
+  for (std::size_t k = 0; k < before.size(); ++k)
+  {
+    EXPECT_EQ(system.spanOfMolecule(0, 0)[k].position.x, before[k].position.x);
+  }
+}

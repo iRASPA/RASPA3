@@ -5668,17 +5668,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                                  systems[i].propertyEndToEndACF.has_value();
     if (!timeCorrelation) continue;
     static constexpr std::array componentMoves{
-        Move::Types::IdentityChangeCBMC,      Move::Types::IdentitySwitchCBMC,
-        Move::Types::GibbsIdentityChangeCBMC, Move::Types::Swap,
-        Move::Types::SwapCBMC,                Move::Types::SwapMultiTrialCBMC,
-        Move::Types::SwapCFCMC,               Move::Types::SwapCBCFCMC,
-        Move::Types::GibbsSwapCBMC,           Move::Types::GibbsSwapMultiTrialCBMC,
-        Move::Types::GibbsSwapCFCMC,          Move::Types::GibbsSwapCBCFCMC,
-        Move::Types::GibbsConventionalCFCMC,  Move::Types::GibbsConventionalCBCFCMC,
-        Move::Types::PairSwap,                Move::Types::PairSwapCBMC,
-        Move::Types::PairSwapCFCMC,           Move::Types::PairSwapCBCFCMC,
-        Move::Types::GroupSwap,               Move::Types::GroupSwapCBMC,
-        Move::Types::GroupSwapCFCMC,          Move::Types::GroupSwapCBCFCMC};
+        Move::Types::IdentityChangeCBMC, Move::Types::IdentitySwitchCBMC, Move::Types::GibbsIdentityChangeCBMC,
+        Move::Types::Swap, Move::Types::SwapCBMC, Move::Types::SwapMultiTrialCBMC, Move::Types::SwapCFCMC,
+        Move::Types::SwapCBCFCMC, Move::Types::GibbsSwapCBMC, Move::Types::GibbsSwapMultiTrialCBMC,
+        Move::Types::GibbsSwapCFCMC, Move::Types::GibbsSwapCBCFCMC, Move::Types::GibbsConventionalCFCMC,
+        Move::Types::GibbsConventionalCBCFCMC, Move::Types::PairSwap, Move::Types::PairSwapCBMC,
+        Move::Types::PairSwapCFCMC, Move::Types::PairSwapCBCFCMC, Move::Types::GroupSwap, Move::Types::GroupSwapCBMC,
+        Move::Types::GroupSwapCFCMC, Move::Types::GroupSwapCBCFCMC,
+        // the double bridging exchanges the chain ends of two molecules at the same count: the segments of a
+        // molecule jump to another one between two samples
+        Move::Types::DoubleBridging};
     for (const Component& component : systems[i].components)
     {
       if (std::ranges::any_of(componentMoves, [&](Move::Types move)
@@ -5686,8 +5685,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         throw std::runtime_error(std::format(
             "[Input reader]: system {}: MSD, VACF and end-to-end ACF are not supported with insertion, deletion, "
-            "swap or identity-change moves (component '{}'): they track molecules by their index within a "
-            "component\n",
+            "swap, identity-change or double-bridging moves (component '{}'): they track molecules by their index "
+            "within a component\n",
             i, component.name));
       }
     }

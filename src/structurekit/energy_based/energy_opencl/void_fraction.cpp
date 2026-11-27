@@ -177,6 +177,13 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
   const size_t paddingUnit = std::lcm(energyGridWorkGroupSize, energyVoidFractionWorkGroupSize);
   size_t numberOfGridPoints = ((temp + paddingUnit - 1) / paddingUnit) * paddingUnit;
   size_t global_work_size = numberOfGridPoints;
+  // the rounding up to whole work groups adds points: the index of the kernel is checked with them
+  if (numberOfGridPoints > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+  {
+    throw std::runtime_error(std::format(
+        "EnergyOpenCLVoidFraction: the grid of {} points (padded to whole work groups) exceeds the maximum of {}\n",
+        numberOfGridPoints, std::numeric_limits<std::int32_t>::max()));
+  }
 
   // A cell with no atoms in it is a field of nought everywhere, and an average of one. It goes the way every
   // other cell goes, with no batch of atoms to run: the device will not make a buffer of no size, so the
@@ -304,7 +311,9 @@ void EnergyOpenCLVoidFraction::run(const PairInteractions& interactions, const C
     throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  size_t totalNumberOfReplicas = static_cast<size_t>(numberOfReplicas.x * numberOfReplicas.y * numberOfReplicas.z);
+  size_t totalNumberOfReplicas = static_cast<std::size_t>(numberOfReplicas.x) *
+                                 static_cast<std::size_t>(numberOfReplicas.y) *
+                                 static_cast<std::size_t>(numberOfReplicas.z);
   cl_int clNumberOfReplicas = cl_int(totalNumberOfReplicas);
   std::vector<cl_float4> replicaVector(totalNumberOfReplicas);
   index = 0;
@@ -534,7 +543,7 @@ __kernel void ComputeEnergyGrid(__global float4 *position,
                                 const float ceiling,
                                 const int lastBatch)
 {
-  int igrid = get_global_id(0);
+  size_t igrid = get_global_id(0);
   int lsize = get_local_size(0);
   int lid = get_local_id(0);
 

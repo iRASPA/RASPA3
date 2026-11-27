@@ -187,23 +187,46 @@ struct BlockAverage
   /// Mean and confidence-interval error of any (possibly non-linear) function of the averages.
   /// The mean is the transform of the overall average; the error is estimated from the spread of
   /// the transformed block averages.
+  /// A transform that returns a std::optional says where its value is undefined (a logarithm of a term without
+  /// samples): those blocks are left out of the error, and an undefined overall value is the default of the type
+  /// (a stand-in such as zero for an undefined block was mixed into the error).
   template <typename Transform>
   auto statistics(Transform transform) const
   {
-    auto mean = transform(averaged());
-    // the sufficiently-filled blocks (more than half the weight of the first), those whose value is defined
-    using Result = decltype(mean);
-    std::vector<Result> blockAverages;
-    for (std::size_t blockIndex = 0; blockIndex != bookKeeping.size(); ++blockIndex)
+    using Raw = decltype(transform(averaged()));
+    if constexpr (requires {
+                    typename Raw::value_type;
+                    requires std::same_as<Raw, std::optional<typename Raw::value_type>>;
+                  })
     {
-      if (filled(blockIndex))
+      using Result = typename Raw::value_type;
+      const Result mean = transform(averaged()).value_or(Result{});
+      std::vector<Result> blockAverages;
+      for (std::size_t blockIndex = 0; blockIndex != bookKeeping.size(); ++blockIndex)
       {
-        Result value = transform(averaged(blockIndex));
-        if (usable(value)) blockAverages.push_back(value);
+        if (!filled(blockIndex)) continue;
+        const Raw value = transform(averaged(blockIndex));
+        if (value.has_value() && usable(value.value())) blockAverages.push_back(value.value());
       }
+      return std::make_pair(mean, blockErrorEstimate<Result>(blockAverages, mean));
     }
-    auto confidenceIntervalError = blockErrorEstimate<Result>(blockAverages, mean);
-    return std::make_pair(mean, confidenceIntervalError);
+    else
+    {
+      auto mean = transform(averaged());
+      // the sufficiently-filled blocks (more than half the weight of the first), those whose value is defined
+      using Result = decltype(mean);
+      std::vector<Result> blockAverages;
+      for (std::size_t blockIndex = 0; blockIndex != bookKeeping.size(); ++blockIndex)
+      {
+        if (filled(blockIndex))
+        {
+          Result value = transform(averaged(blockIndex));
+          if (usable(value)) blockAverages.push_back(value);
+        }
+      }
+      auto confidenceIntervalError = blockErrorEstimate<Result>(blockAverages, mean);
+      return std::make_pair(mean, confidenceIntervalError);
+    }
   }
 
   /// Overall average together with its confidence-interval error.

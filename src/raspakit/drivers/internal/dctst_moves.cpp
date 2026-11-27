@@ -115,6 +115,17 @@ void DcTSTMoves::validate(const System& system, std::size_t taggedComponent, std
       }
     }
   }
+  // the system moves (volume, Gibbs volume, hybrid MC, reactions, cross-link moves) as well: run in the pilot stage
+  // they rescaled the box behind the coordinate grid, moved all molecules at once or changed the molecule counts
+  for (std::size_t index = 0; index < std::to_underlying(Move::Types::Count); ++index)
+  {
+    const Move::Types move = static_cast<Move::Types>(index);
+    if (!(system.mc_moves_probabilities.getProbability(move) > 0.0) || supported(move)) continue;
+    throw std::runtime_error(
+        std::format("dcTST: '{}' is a fixed-loading (NVT) method with a constraint on one molecule and performs the "
+                    "single-molecule moves only; remove the system move '{}'\n",
+                    driverName, Move::moveNames[index]));
+  }
   if (taggedComponent < system.components.size())
   {
     const Component& tagged = system.components[taggedComponent];

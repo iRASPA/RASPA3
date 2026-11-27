@@ -118,17 +118,52 @@ export struct RandomNumber
     // when that had no weight at all. A zero weight adds a zero-width interval, which upper_bound never lands in;
     // a draw that rounds up to the total steps back to the last category that has weight.
     thread_local std::vector<double> cumulative{};
+    thread_local std::vector<std::uint8_t> isInfinite{};
     const std::size_t n = weights.size();
     cumulative.resize(n);
+    // The exponent bits of a weight (all ones: infinite or NaN), read as bytes through a reference: the library is
+    // compiled with finite mathematics only, under which std::isinf / std::isnan, a comparison with a NaN and a bit
+    // test of a value the compiler holds to be finite are folded away.
+    auto bitsOf = [](const double &value)
+    {
+      std::uint64_t bits{};
+      std::memcpy(&bits, &value, sizeof(bits));
+      return bits;
+    };
+    constexpr std::uint64_t exponent = 0x7ff0000000000000ull;
+    isInfinite.assign(n, 0);
+    double largest = 0.0;
+    std::size_t infinite = 0;
+    for (std::size_t i = 0; i < n; ++i)
+    {
+      const std::uint64_t bits = bitsOf(weights[i]);
+      const bool nonFinite = (bits & exponent) == exponent;
+      // a negative weight makes the sums fall, which the search for the draw assumes they never do
+      const bool nan = nonFinite && (bits & 0x000fffffffffffffull) != 0;
+      const bool negative = (bits >> 63) != 0 && weights[i] != 0.0;
+      if (nan || negative)
+      {
+        throw std::invalid_argument("RandomNumber::categoricalDistribution: the weights must not be negative or NaN");
+      }
+      if (nonFinite)
+      {
+        isInfinite[i] = 1;
+        ++infinite;
+      }
+      else
+      {
+        largest = std::max(largest, weights[i]);
+      }
+    }
+    // An infinite weight (an overflowed Boltzmann factor) outweighs every finite one: the draw is among the infinite
+    // weights, with equal chances (the draw used to be infinite itself, past every running sum, and took the last
+    // category). Finite weights large enough for their sum to overflow are scaled by the largest.
+    const double scale =
+        (largest > std::numeric_limits<double>::max() / static_cast<double>(n + 1)) ? 1.0 / largest : 1.0;
     double total = 0.0;
     for (std::size_t i = 0; i < n; ++i)
     {
-      // a negative weight makes the sums fall, which the search for the draw assumes they never do
-      if (!(weights[i] >= 0.0))
-      {
-        throw std::invalid_argument("RandomNumber::categoricalDistribution: the weights must not be negative");
-      }
-      total += weights[i];
+      total += (infinite > 0) ? static_cast<double>(isInfinite[i]) : scale * weights[i];
       cumulative[i] = total;
     }
     if (!(total > 0.0))
@@ -139,7 +174,8 @@ export struct RandomNumber
     std::size_t index =
         static_cast<std::size_t>(std::upper_bound(cumulative.begin(), cumulative.end(), draw) - cumulative.begin());
     if (index >= n) index = n - 1;
-    while (!(weights[index] > 0.0)) --index;
+    auto hasWeight = [&](std::size_t i) { return infinite > 0 ? isInfinite[i] != 0 : weights[i] > 0.0; };
+    while (!hasWeight(index)) --index;
     return index;
   }
 

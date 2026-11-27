@@ -975,7 +975,8 @@ std::string PropertyEnergy::repr() const
 {
   std::ostringstream stream;
 
-  std::print(stream, "{}\n", bookKeeping[0].first.repr());
+  // the average over the blocks (the first block's raw sum was printed, and read past the end without blocks)
+  std::print(stream, "{}\n", averaged().repr());
 
   return stream.str();
 }

@@ -53,8 +53,14 @@ export struct PropertyGibbsWidom
     //      PropertyWidom, whose <N / V> / <W> = beta f has no N = 0 boundary term).
     // An empty box (N = 0) has no volume per molecule: it gives no chemical-potential sample (counted as one
     // molecule, it gave V W, a finite fugacity for a box without molecules).
+    // The cycle counts for the block all the same (a sample of no weight): a dilute vapour box that is empty half
+    // of the time or more had too few samples for its block to take part in the statistics.
     rosenbluthWeight.addSample(blockIndex, RosenbluthValue, weight);
-    if (N == 0uz) return;
+    if (N == 0uz)
+    {
+      chemicalPotentialTerms.addSample(blockIndex, WidomData{}, 0.0);
+      return;
+    }
     const double volumePerMolecule = V / static_cast<double>(N);
     chemicalPotentialTerms.addSample(
         blockIndex, WidomData(volumePerMolecule * RosenbluthValue, RosenbluthValue, volumePerMolecule), weight);
@@ -87,10 +93,23 @@ export struct PropertyGibbsWidom
     return chemicalPotentialTransform(chemicalPotentialTerms.averaged(blockIndex), beta);
   }
 
+  /// Each term from the blocks where it is defined (their zero stand-in was mixed into the error).
   std::pair<WidomData, WidomData> chemicalPotentialResult(double beta) const
   {
-    return chemicalPotentialTerms.statistics(
-        [beta](const WidomData &terms) { return chemicalPotentialTransform(terms, beta); });
+    const auto term = [&](double WidomData::*member)
+    {
+      return chemicalPotentialTerms.statistics(
+          [beta, member](const WidomData &terms) -> std::optional<double>
+          {
+            if (!(terms.*member > 0.0)) return std::nullopt;
+            return chemicalPotentialTransform(terms, beta).*member;
+          });
+    };
+    const auto total = term(&WidomData::total);
+    const auto excess = term(&WidomData::excess);
+    const auto idealGas = term(&WidomData::idealGas);
+    return {WidomData(total.first, excess.first, idealGas.first),
+            WidomData(total.second, excess.second, idealGas.second)};
   }
 
   //====================================================================================================================
@@ -109,7 +128,12 @@ export struct PropertyGibbsWidom
 
   std::pair<double, double> fugacityResult(double beta) const
   {
-    return chemicalPotentialTerms.statistics([beta](const WidomData &terms) { return fugacityTransform(terms, beta); });
+    return chemicalPotentialTerms.statistics(
+        [beta](const WidomData &terms) -> std::optional<double>
+        {
+          if (!(terms.total > 0.0)) return std::nullopt;
+          return fugacityTransform(terms, beta);
+        });
   }
 
   //====================================================================================================================

@@ -289,7 +289,9 @@ class argparser
             break;
           case required_argument:
           {
-            if (std::next(arg) != std::end(args_))
+            // the next argument is the value unless it is an option itself: '--grid-size --gpu' took '--gpu' for
+            // the grid size (and dropped the option); a value such as '-1' that is no option is passed on
+            if (std::next(arg) != std::end(args_) && !find(*std::next(arg)))
             {
               opt.handler(*(++arg));
             }

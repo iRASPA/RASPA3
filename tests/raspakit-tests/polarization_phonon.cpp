@@ -604,3 +604,39 @@ TEST(polarization_phonon, gamma_point_matches_normal_modes_rigid_molecule_in_fra
   }
 }
 
+// The Ewald reciprocal field of the induced-dipole model holds the framework through the structure factor of its
+// lab-fixed atoms: with charged mobile framework atoms the Monte Carlo differences missed their field (it drifted
+// with every move) and the pressure terminated the program (a throw from inside a noexcept function). The input
+// reader refused the mix; the System does as well now, for a system built in code or from Python. Uncharged mobile
+// atoms contribute nothing to the field and are accepted.
+TEST(polarization_phonon, system_refuses_charged_mobile_framework_atoms_with_ewald_polarization)
+{
+  ForceField forceField({{"P", false, 15.0, 0.4, 1.5, 8, false}, {"N", false, 14.0, -0.4, 1.2, 8, false}},
+                        {{60.0, 3.0}, {40.0, 3.2}}, ForceField::MixingRule::Lorentz_Berthelot, 11.0, 11.0, 11.0, true,
+                        false, true);
+  forceField.computePolarization = true;
+  forceField.automaticEwald = false;
+  forceField.EwaldAlpha = 0.3;
+  forceField.numberOfWaveVectors = int3(8, 8, 8);
+  const SimulationBox box(24.0, 24.0, 24.0);
+  Component cation(forceField, "cation", 30.0, 1.0e6, 0.011, {Atom({0.0, 0.0, 0.0}, 0.4, 1.0, 0, 0, 0, false, false)},
+                   ConnectivityTable(1), Potentials::IntraMolecularPotentials{}, 0, 0);
+
+  for (const double charge : {0.4, 0.0})
+  {
+    std::vector<Atom> frameworkAtoms{chargedFrameworkAtom({0.25, 0.5, 0.5}, charge, 0),
+                                     chargedFrameworkAtom({0.75, 0.5, 0.5}, -charge, 1)};
+    Framework framework(forceField, "flexible", box, 1, frameworkAtoms, frameworkAtoms, {1, 1, 1});
+    framework.rigid = false;
+    ASSERT_TRUE(framework.hasMobileAtoms());
+    if (charge != 0.0)
+    {
+      EXPECT_THROW(System(forceField, box, false, 300.0, 1e4, 1.0, {framework}, {cation}, {}, {1}, 5),
+                   std::runtime_error);
+    }
+    else
+    {
+      EXPECT_NO_THROW(System(forceField, box, false, 300.0, 1e4, 1.0, {framework}, {cation}, {}, {1}, 5));
+    }
+  }
+}

@@ -597,3 +597,43 @@ TEST(IDEAL_GAS_REFERENCES, tolerance_of_the_component_sets_the_number_of_grows)
   EXPECT_FALSE(capped.converged);
   EXPECT_EQ(capped.numberOfGrows, 40000uz);
 }
+
+// A rigid or single-site molecule under a finite-cutoff charge method has the energy of the isolated molecule (the
+// self term of its charges), which the box adds to every insertion and the computed weight exp(-beta U) divides
+// out: its configuration integral is exp(-beta U), and the normalization of its insertions L(beta) = -beta U enters
+// the reweighting between the temperatures like that of a flexible molecule. It was left at zero for these
+// components, which biased the reweighted states by N (beta_k - beta) U.
+TEST(IDEAL_GAS_REFERENCES, charged_single_site_molecule_has_the_normalization_of_its_charge_correction)
+{
+  ForceField forceField({{"Na", false, 22.99, 0.8, 0.0, 11, false}}, {{50.0, 2.5}},
+                        ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
+  forceField.chargeMethod = ForceField::ChargeMethod::Wolf;
+  forceField.EwaldAlpha = 0.2;
+  constexpr std::string_view ionJson = R"({
+  "CriticalTemperature" : 300.0,
+  "CriticalPressure" : 4000000.0,
+  "AcentricFactor" : 0.0,
+  "pseudoAtoms" : [["Na", [0.0, 0.0, 0.0]]]
+}
+)";
+  const std::vector<double> temperatures{300.0, 400.0};
+  std::vector<System> systems;
+  systems.push_back(makeSystem(forceField, "ion", ionJson, 300.0));
+  systems.push_back(makeSystem(forceField, "ion", ionJson, 400.0));
+  const double correction = systems[0].isolatedChargeCorrectionEnergy(systems[0].components[0].atoms);
+  ASSERT_NE(correction, 0.0);
+
+  const std::vector<double> other{350.0};
+  const std::vector<std::vector<double>> others = Preparation::prepareIdealGasReferences(systems, temperatures, other);
+  for (const System& system : systems)
+  {
+    const Component& component = system.components[0];
+    ASSERT_TRUE(component.idealGasRosenbluthWeight.has_value());
+    EXPECT_NEAR(std::log(component.idealGasRosenbluthWeight.value()), -system.beta * correction,
+                1e-12 * std::abs(system.beta * correction));
+    ASSERT_TRUE(component.logInsertionNormalization.has_value());
+    EXPECT_NEAR(component.logInsertionNormalization.value(), -system.beta * correction,
+                1e-12 * std::abs(system.beta * correction));
+  }
+  EXPECT_NEAR(others[0][0], -correction / (Units::KB * 350.0), 1e-12 * std::abs(correction / (Units::KB * 350.0)));
+}

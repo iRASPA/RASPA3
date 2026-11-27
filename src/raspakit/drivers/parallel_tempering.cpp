@@ -80,8 +80,6 @@ static void writeReplicaAnalysisOutputs(System& system, std::size_t replicaId, s
   }
 }
 
-namespace
-{
 // The state-point quantities of 'system' at temperature T (its pressure is kept): fugacities from the components'
 // 'ChemicalPotential' (f = kT exp(mu / kT), the reservoir an ideal-gas mixture of them), otherwise the Peng-Robinson
 // fugacity coefficients of the components that were not given one; the equation of state (bulk density, excess
@@ -122,7 +120,6 @@ void refreshStatePoint(System& system, double T)
 
   for (Component& component : system.components) component.updateLnPartitionFunction(T);
 }
-}  // namespace
 
 ParallelTempering::ParallelTempering(InputReader& reader)
     : random(reader.randomSeed),

@@ -35,6 +35,10 @@ export struct PropertyVelocityAutoCorrelationFunction
       throw std::runtime_error("PropertyVelocityAutoCorrelationFunction: the sampling interval must be at least 1\n");
     if (writeEvery.has_value() && writeEvery.value() == 0uz)
       throw std::runtime_error("PropertyVelocityAutoCorrelationFunction: the writing interval must be at least 1\n");
+    // a buffer of no length was written past its end at the first sample, and no buffers spaced the origins by 0 / 0
+    if (bufferLengthVACF == 0uz || numberOfBuffersVACF == 0uz)
+      throw std::runtime_error(
+          "PropertyVelocityAutoCorrelationFunction: the number of buffers and their length must be at least 1\n");
   }
 
   PropertyVelocityAutoCorrelationFunction(const std::vector<std::size_t> &numberOfMoleculesPerComponent,
@@ -77,6 +81,10 @@ export struct PropertyVelocityAutoCorrelationFunction
       throw std::runtime_error("PropertyVelocityAutoCorrelationFunction: the sampling interval must be at least 1\n");
     if (writeEvery.has_value() && writeEvery.value() == 0uz)
       throw std::runtime_error("PropertyVelocityAutoCorrelationFunction: the writing interval must be at least 1\n");
+    // a buffer of no length was written past its end at the first sample, and no buffers spaced the origins by 0 / 0
+    if (bufferLengthVACF == 0uz || numberOfBuffersVACF == 0uz)
+      throw std::runtime_error(
+          "PropertyVelocityAutoCorrelationFunction: the number of buffers and their length must be at least 1\n");
     // trick to space the origins evenly (see for example Rapaport 2004)
     for (std::size_t currentBuffer = 0; currentBuffer < numberOfBuffersVACF; ++currentBuffer)
     {

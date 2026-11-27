@@ -2138,6 +2138,59 @@ TEST(molecular_dynamics, barostat_pressure_ideal_part_counts_the_coupled_points)
   }
 }
 
+// A particle exchange changes the Hamiltonian (the swap energy, the momentum of the molecule): the jump shifts the
+// drift reference instead of being counted as integration drift, and the running energies hold the kinetic energy
+// of the new state. An empty start (a reference of zero) gave a drift of 0 / 0.
+TEST(molecular_dynamics, particle_exchange_shifts_the_drift_reference_by_its_jump)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, false, false, false);
+  Component methane = Component::makeMethane(forceField, 0);
+  methane.fugacityCoefficient = 1.0;
+  methane.idealGasRosenbluthWeight = 1.0;
+  methane.mc_moves_probabilities.setProbability(Move::Types::SwapCBMC, 1.0);
+
+  System empty(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1.0e12, 1.0, std::nullopt, {methane}, {}, {0},
+               5);
+  empty.runningEnergies = empty.computeTotalEnergies();
+  empty.resetConservedEnergyBookkeeping();
+  ASSERT_EQ(empty.referenceEnergy, 0.0);
+  empty.accountConservedEnergy();
+  EXPECT_EQ(std::to_string(empty.accumulatedDrift), std::to_string(0.0));
+
+  System system(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1.0e12, 1.0, std::nullopt, {methane}, {},
+                {4}, 5);
+  system.molecularDynamicsEnsemble = MolecularDynamicsEnsemble::MuVT;
+  system.initializeGroupData();
+  RandomNumber random(211);
+  Integrators::initializeVelocities(random, system.moleculeData, system.spanOfMoleculeAtoms(),
+                                    system.spanOfMoleculeDynamics(), system.components, system.temperature);
+  Integrators::removeCenterOfMassVelocityDrift(system.moleculeData, system.spanOfMoleculeAtoms(),
+                                               system.spanOfMoleculeDynamics(), system.components);
+  system.runningEnergies = system.computeTotalEnergies();
+  system.runningEnergies.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+      system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components);
+  system.resetConservedEnergyBookkeeping();
+
+  for (const MC_Moves::ParticleExchangeResult wanted :
+       {MC_Moves::ParticleExchangeResult::Inserted, MC_Moves::ParticleExchangeResult::Deleted})
+  {
+    system.pressure = wanted == MC_Moves::ParticleExchangeResult::Inserted ? 1.0e12 : 1.0e-12;
+    const double before = system.conservedEnergy;
+    MC_Moves::ParticleExchangeResult result = MC_Moves::ParticleExchangeResult::Rejected;
+    for (std::size_t attempt = 0; attempt != 100 && result != wanted; ++attempt)
+    {
+      result = attemptParticleExchange(random, system);
+    }
+    ASSERT_EQ(result, wanted);
+    EXPECT_GT(std::abs(system.conservedEnergy - before), 1.0);
+    EXPECT_NEAR(system.conservedEnergy - system.referenceEnergy, 0.0, 1e-9 * std::abs(system.referenceEnergy));
+    RunningEnergy recomputed = system.computeTotalEnergies();
+    recomputed.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+        system.moleculeData, system.spanOfMoleculeAtoms(), system.spanOfMoleculeDynamics(), system.components);
+    EXPECT_NEAR(system.conservedEnergy, recomputed.conservedEnergy(), 1e-6 * std::abs(recomputed.conservedEnergy()));
+  }
+}
+
 // The constraint on the centre-of-mass degrees of freedom holds through a particle exchange: an inserted molecule
 // brings thermal momentum and a deleted one takes its momentum with it, so the rest has to be brought back to P = 0.
 // Without a conserved momentum (here: an external field) the velocities are left alone.

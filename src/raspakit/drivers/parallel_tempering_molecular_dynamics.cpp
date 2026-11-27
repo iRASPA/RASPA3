@@ -34,6 +34,7 @@ import integrators_compute;
 import integrators_update;
 import integrators_cputime;
 import molecular_dynamics;
+import parallel_tempering;
 import thermobarostat;
 import elastic_constants;
 import json;
@@ -181,6 +182,10 @@ ParallelTemperingMolecularDynamics::ParallelTemperingMolecularDynamics(InputRead
       system.forceField.preComputePotentialShift();
       system.forceField.preComputeTailCorrection();
     }
+
+    // the reservoir of the particle exchanges (MuVT, MuPT, MuPTPR) and the properties of the replica at its own
+    // temperature: the reader derived them at the first temperature of the ladder (as the Monte Carlo ladder does)
+    refreshStatePoint(system, T);
 
     randoms.emplace_back(random.seed + replicaId + 1);
   }

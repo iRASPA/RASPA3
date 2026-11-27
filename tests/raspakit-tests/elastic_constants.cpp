@@ -5,6 +5,7 @@ import std;
 import atom;
 import archive;
 import bond_potential;
+import cross_links;
 import component;
 import double3;
 import double3x3;
@@ -404,4 +405,30 @@ TEST(elastic_constants_fluctuation, ideal_gas_has_bulk_modulus_p_and_no_shear_st
   {
     EXPECT_NEAR(result.tangentStiffness[shear * 6 + shear], 0.0, 1.0e-14) << shear;
   }
+}
+
+// The cell derivatives hold neither the terms of a bond between molecules nor the removal of the pair it excludes:
+// two linked methanes at the bond length kept their full Lennard-Jones repulsion in the Born term. The static and the
+// stress-fluctuation elastic constants refuse such a system rather than report them.
+TEST(elastic_constants, bonds_between_molecules_are_refused)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component methane = Component::makeMethane(forceField, 0);
+  methane.rigid = false;
+  System system =
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {methane}, {}, {2}, 5);
+  for (std::size_t i = 0; i < 2; ++i)
+  {
+    const double3 position(12.0 + 1.6 * static_cast<double>(i), 12.5, 12.5);
+    system.moleculeData[i].centerOfMassPosition = position;
+    system.spanOfMoleculeAtoms()[i].position = position;
+  }
+  EXPECT_NO_THROW(throwIfElasticConstantsUnsupported(system));
+  system.crossLinks.bondTypes.push_back(CrossLinkBondType{});
+  system.crossLinks.bondTypes.back().bond = BondPotential({0, 0}, BondType::Harmonic, {1000.0, 1.5});
+  system.crossLinks.links.push_back(CrossLink{{0, 0, 0}, {0, 1, 0}, 0});
+  system.crossLinks.rebuildIndex();
+  EXPECT_THROW(throwIfElasticConstantsUnsupported(system), std::runtime_error);
+  EXPECT_THROW(static_cast<void>(computeElasticConstants(system)), std::runtime_error);
+  EXPECT_THROW(static_cast<void>(computeAffineBornTensor(system)), std::runtime_error);
 }

@@ -312,6 +312,29 @@ export struct SimulationBox
     }
   }
 
+  /// Whether 'cell' is rotated out of the orientation that 'formCellMatrix' builds from the lengths and the angles (a
+  /// along x, b in the xy-plane): a cell taken as a matrix, after a symmetric-strain cell minimization or under a
+  /// flexible barostat.
+  bool rotated() const { return cell.ay != 0.0 || cell.az != 0.0 || cell.bz != 0.0; }
+
+  /// Multiplies the lengths of a, b and c by 'factors': a rotated cell by scaling its columns, which keeps its
+  /// orientation (rebuilt from the lengths and the angles it snapped into the canonical one, without the positions
+  /// of the framework or the molecules turning along), every other cell through 'formCellMatrix'.
+  void scaleLengths(double3 factors)
+  {
+    lengthA *= factors.x;
+    lengthB *= factors.y;
+    lengthC *= factors.z;
+    if (rotated())
+    {
+      cell = double3x3(factors.x * cell[0], factors.y * cell[1], factors.z * cell[2]);
+      inverseCell = cell.inverse();
+      volume = cell.determinant();
+      return;
+    }
+    formCellMatrix();
+  }
+
   /**
    * \brief Scales the simulation box by a scalar factor.
    *
@@ -320,13 +343,7 @@ export struct SimulationBox
    *
    * \param scale The scalar factor to scale the box by.
    */
-  void scale(double factor)
-  {
-    lengthA *= factor;
-    lengthB *= factor;
-    lengthC *= factor;
-    formCellMatrix();
-  }
+  void scale(double factor) { scaleLengths(double3(factor, factor, factor)); }
 
   /**
    * \brief Scales the simulation box by integer factors along each axis.
@@ -338,10 +355,7 @@ export struct SimulationBox
    */
   void scale(int3 scale)
   {
-    lengthA *= static_cast<double>(scale.x);
-    lengthB *= static_cast<double>(scale.y);
-    lengthC *= static_cast<double>(scale.z);
-    formCellMatrix();
+    scaleLengths(double3(static_cast<double>(scale.x), static_cast<double>(scale.y), static_cast<double>(scale.z)));
   }
 
   /**
@@ -355,17 +369,8 @@ export struct SimulationBox
    */
   SimulationBox scaled(double scale)
   {
-    SimulationBox v;
-
-    v.type = type;
-    v.lengthA = scale * lengthA;
-    v.lengthB = scale * lengthB;
-    v.lengthC = scale * lengthC;
-    v.angleAlpha = angleAlpha;
-    v.angleBeta = angleBeta;
-    v.angleGamma = angleGamma;
-    v.formCellMatrix();
-
+    SimulationBox v = *this;
+    v.scaleLengths(double3(scale, scale, scale));
     return v;
   }
 
@@ -380,17 +385,8 @@ export struct SimulationBox
    */
   SimulationBox scaled(double3 scale) const
   {
-    SimulationBox v;
-
-    v.type = type;
-    v.lengthA = scale.x * lengthA;
-    v.lengthB = scale.y * lengthB;
-    v.lengthC = scale.z * lengthC;
-    v.angleAlpha = angleAlpha;
-    v.angleBeta = angleBeta;
-    v.angleGamma = angleGamma;
-    v.formCellMatrix();
-
+    SimulationBox v = *this;
+    v.scaleLengths(scale);
     return v;
   }
 
@@ -405,17 +401,8 @@ export struct SimulationBox
    */
   SimulationBox scaled(int3 scale) const
   {
-    SimulationBox v;
-
-    v.type = type;
-    v.lengthA = static_cast<double>(scale.x) * lengthA;
-    v.lengthB = static_cast<double>(scale.y) * lengthB;
-    v.lengthC = static_cast<double>(scale.z) * lengthC;
-    v.angleAlpha = angleAlpha;
-    v.angleBeta = angleBeta;
-    v.angleGamma = angleGamma;
-    v.formCellMatrix();
-
+    SimulationBox v = *this;
+    v.scaleLengths(double3(static_cast<double>(scale.x), static_cast<double>(scale.y), static_cast<double>(scale.z)));
     return v;
   }
 
@@ -560,10 +547,22 @@ export void to_json(nlohmann::json& j, const SimulationBox& b)
                      {"angle-alpha", b.angleAlpha * Units::RadiansToDegrees},
                      {"angle-beta", b.angleBeta * Units::RadiansToDegrees},
                      {"angle-gamma", b.angleGamma * Units::RadiansToDegrees}};
+  // a rotated cell (see SimulationBox::rotated) is not the one its lengths and angles rebuild: its matrix, by columns
+  if (b.rotated())
+  {
+    j["cell"] = {{b.cell.ax, b.cell.ay, b.cell.az}, {b.cell.bx, b.cell.by, b.cell.bz}, {b.cell.cx, b.cell.cy, b.cell.cz}};
+  }
 }
 
 export void from_json(const nlohmann::json& j, SimulationBox& b)
 {
+  if (j.contains("cell"))
+  {
+    const auto column = [&](std::size_t i)
+    { return double3(j["cell"][i][0].get<double>(), j["cell"][i][1].get<double>(), j["cell"][i][2].get<double>()); };
+    b = SimulationBox(double3x3(column(0), column(1), column(2)));
+    return;
+  }
   j.at("length-a").get_to(b.lengthA);
   j.at("length-b").get_to(b.lengthB);
   j.at("length-c").get_to(b.lengthC);

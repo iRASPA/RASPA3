@@ -271,10 +271,12 @@ void Units::setUnits(Units::System unit_system)
 
       EnergyToKelvin = 1.0;
       KelvinToEnergy = 1.0;
-      EnergyToKJPerMol = 0.0;
-      EnergyToEV = 0.0;
-      EnergyToKCalPerMol = 0.0;
-      KCalPerMolToEnergy = 0.0;
+      // every energy unit is the reduced energy: a parameter given in kcal/mol, kJ/mol or eV is taken in units of
+      // epsilon (as one in Kelvin is), not zeroed
+      EnergyToKJPerMol = 1.0;
+      EnergyToEV = 1.0;
+      EnergyToKCalPerMol = 1.0;
+      KCalPerMolToEnergy = 1.0;
 
       unitOfLengthString = "σ";
       unitOfEnergyString = "ε";

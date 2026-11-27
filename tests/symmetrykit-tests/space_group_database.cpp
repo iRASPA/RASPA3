@@ -11,6 +11,8 @@ import skseitzintegermatrix;
 import skspacegroup;
 import skspacegroupdatabase;
 import skspacegroupsetting;
+import skpointgroup;
+import sktransformationmatrix;
 
 // The symmetry operations of every space-group setting are held in the database as a
 // string, three characters per operation and one character per row of the Seitz matrix.
@@ -183,4 +185,27 @@ TEST(SpaceGroupDatabase, SettingOfAHallNumberPastTheTableIsRefused)
 {
   EXPECT_NO_THROW(static_cast<void>(SKSpaceGroupDataBase::setting(530)));
   EXPECT_THROW(static_cast<void>(SKSpaceGroupDataBase::setting(531)), std::out_of_range);
+}
+
+// The centring of a basis with two lattice points per cell (its columns the conventional axes in the primitive
+// basis) is the centring vector t with basis * t integer. The tests on single rows of the matrix took the A-centred
+// basis (0, 1, 0), (1, 1, 0), (1, 1, 2) for body centred and the A-centred (1, 0, 0), (1, 1, 0), (1, 1, 2) for no
+// centring.
+TEST(space_group_database, centring_of_a_skewed_basis_is_its_centring_vector)
+{
+  SKPointGroup pointGroup = SKPointGroup::pointGroupData[1];
+  EXPECT_EQ(pointGroup.computeCentering(SKTransformationMatrix(int3(0, 1, 0), int3(1, 1, 0), int3(1, 1, 2))),
+            Centring::a_face);
+  EXPECT_EQ(pointGroup.computeCentering(SKTransformationMatrix(int3(1, 0, 0), int3(1, 1, 0), int3(1, 1, 2))),
+            Centring::a_face);
+  // the standard forms
+  EXPECT_EQ(pointGroup.computeCentering(SKTransformationMatrix(int3(1, 1, 0), int3(-1, 1, 0), int3(0, 0, 1))),
+            Centring::c_face);
+  EXPECT_EQ(pointGroup.computeCentering(SKTransformationMatrix(int3(1, 0, 1), int3(0, 1, 0), int3(-1, 0, 1))),
+            Centring::b_face);
+  EXPECT_EQ(pointGroup.computeCentering(SKTransformationMatrix(int3(0, 1, 1), int3(1, 0, 1), int3(1, 1, 0))),
+            Centring::body);
+  // one axis doubled: no centring
+  EXPECT_EQ(pointGroup.computeCentering(SKTransformationMatrix(int3(1, 0, 0), int3(0, 1, 0), int3(0, 0, 2))),
+            Centring::none);
 }

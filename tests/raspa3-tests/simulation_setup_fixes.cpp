@@ -14,6 +14,7 @@ import component;
 import fragment;
 import simulationbox;
 import system;
+import mc_cell_list;
 import thermobarostat;
 import minimization_cell_layout;
 import simd_quatd;
@@ -195,6 +196,36 @@ TEST(SIMULATION_SETUP_FIXES, pinned_fractional_molecule_is_regrown_out_of_an_ove
       system.spanOfMolecule(0, fractional)[0].position - occupied);
   EXPECT_GT(separation.length(), 2.0);
   EXPECT_GT(system.spanOfMolecule(0, fractional)[0].scalingVDW, 0.5);
+}
+
+// The pinning changes the scaling and the group id of the atoms in place: the cell list of the Monte Carlo moves
+// holds copies of both, which kept the switched-off values the slot was created with (and every query through the
+// list saw the fractional molecule decoupled) until something else invalidated it.
+TEST(SIMULATION_SETUP_FIXES, pinned_fractional_molecule_refreshes_the_cell_list)
+{
+  // a 7 A cut-off in a 30 A box: four cells along every direction, so that the cell list is in use
+  const ForceField forceField({{"Ar", false, 39.948, 0.0, 0.0, 18, false}}, {VDWParameters(119.8, 3.4)},
+                              ForceField::MixingRule::Lorentz_Berthelot, 7.0, 7.0, 7.0, true, false, false);
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::Translation, 1.0);
+  Component argon(forceField, "argon", 150.86, 4.898e6, -0.00219,
+                  {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 0, 0, false, false)}, {}, {}, 5, 21, probabilities);
+  argon.fixedLambdaCoordinate = Component::FixedLambdaCoordinate::GC;
+  argon.fixedLambdaBin = 18;
+  System system(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e5, 1.0, {}, {argon}, {}, {20}, 5);
+
+  // the slot as it is created: switched off, and the cell list built from it
+  std::span<Atom> molecule = system.spanOfMolecule(0, system.indexOfGCFractionalMoleculesPerComponent_CFCMC(0));
+  const double pinned = molecule[0].scalingVDW;
+  ASSERT_GT(pinned, 0.5);
+  molecule[0].setScalingToFractional(0.0, molecule[0].groupId);
+  system.invalidateCellList();
+  ASSERT_TRUE(system.cellList().enabled);
+  ASSERT_TRUE(system.verifyCellList());
+
+  system.initializeFixedLambdaFractionalMolecules();
+  EXPECT_EQ(molecule[0].scalingVDW, pinned);
+  EXPECT_TRUE(system.verifyCellList());
 }
 
 // A FIXED bond between flexible atoms has no energy, gradient or Hessian: the dynamics holds it with SHAKE/RATTLE.

@@ -79,13 +79,22 @@ std::vector<double> pseudoInverse(const std::vector<double>& matrix, std::size_t
 }
 }  // namespace
 
-void throwIfMixedFramework(const System& system)
+void throwIfElasticConstantsUnsupported(const System& system)
 {
   if (system.framework && system.framework->isMixed())
   {
     throw std::runtime_error(
         "Elastic constants do not support mixed fixed/rigid/flexible frameworks: the cell derivatives are not "
         "implemented for them");
+  }
+  // The analytic derivatives and the Born tensors hold neither the bonded terms of the bonds between molecules nor
+  // the removal of the non-bonded pairs those bonds exclude: two linked atoms at the bond length kept their full
+  // r^-12 repulsion in the Born term, off by orders of magnitude.
+  if (!system.crossLinks.empty() || !system.polymerLinks.empty())
+  {
+    throw std::runtime_error(
+        "Elastic constants do not support bonds between molecules (cross-links or polymer bonds): their terms are "
+        "not part of the cell derivatives");
   }
 }
 
@@ -98,7 +107,7 @@ namespace
 std::array<double, 36> affineBornTensor(const System& system, double geometricFactor)
 {
   if (system.hasExternalField) throw std::runtime_error("Elastic constants do not support an external field");
-  throwIfMixedFramework(system);
+  throwIfElasticConstantsUnsupported(system);
 
   System derivativeSystem = system;
   derivativeSystem.pressure = 0.0;
@@ -402,7 +411,7 @@ ElasticConstantsResult computeElasticConstants(const System& system, double rela
   {
     throw std::runtime_error("Elastic constants do not support an external field");
   }
-  throwIfMixedFramework(system);
+  throwIfElasticConstantsUnsupported(system);
 
   const double externalPressure = system.pressure;
   System derivativeSystem = system;

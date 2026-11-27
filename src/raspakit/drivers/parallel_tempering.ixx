@@ -14,6 +14,12 @@ import simulation_schedule;
 import json;
 import replica_round_trips;
 
+/// The state-point quantities of a replica at its temperature T (its pressure kept): the fugacities from the
+/// components' 'ChemicalPotential', otherwise the Peng-Robinson fugacity coefficients of the components that were not
+/// given one, the equation of state and the log partition functions. Shared by the Monte Carlo and the molecular
+/// dynamics ladders.
+export void refreshStatePoint(System& system, double T);
+
 /**
  * \brief Multithreaded parallel-tempering driver for Monte Carlo.
  *

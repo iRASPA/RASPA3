@@ -1302,7 +1302,31 @@ void bindDriver(nanobind::module_& m, const char* name)
         for (const System& system : d.systems) devices.push_back(system.cbmcDevice);
         const bool outputToFiles = d.outputToFiles;
 
+        // The reader refills the vectors of systems, components and reactions, which frees the objects a Python
+        // reference ('driver.systems[0]', 'system.components[0]') still points at: the restored state is moved
+        // into the old objects instead, where their counts agree, so that those references stay valid and see it.
+        std::vector<System> held = std::move(d.systems);
         readBinaryRestartFile(static_cast<Driver&>(d), file_name);
+        if (held.size() == d.systems.size())
+        {
+          for (std::size_t i = 0; i < held.size(); ++i)
+          {
+            std::vector<Component> components = std::move(held[i].components);
+            std::vector<Reaction> reactions = std::move(held[i].reactions.list);
+            held[i] = std::move(d.systems[i]);
+            if (components.size() == held[i].components.size())
+            {
+              for (std::size_t k = 0; k < components.size(); ++k) components[k] = std::move(held[i].components[k]);
+              held[i].components = std::move(components);
+            }
+            if (reactions.size() == held[i].reactions.list.size())
+            {
+              for (std::size_t k = 0; k < reactions.size(); ++k) reactions[k] = std::move(held[i].reactions.list[k]);
+              held[i].reactions.list = std::move(reactions);
+            }
+          }
+          d.systems = std::move(held);
+        }
 
         d.outputToFiles = outputToFiles;
         if (devices.size() == d.systems.size())
@@ -2870,10 +2894,8 @@ EXPAND_MODULE(MODULE_NAME)
            },
            nanobind::arg("number_of_bins"), nanobind::arg("value_range"), nanobind::arg("sample_every") = 1,
            nanobind::arg("write_every") = nanobind::none())
-      // convert result to units of Kelvin
-      .def("result", [](PropertyEnergyHistogram& p) { auto [bins, average, error] = p.result(); 
-           return std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<AverageEnergyType>>
-                                                                 {Units::EnergyToKelvin * bins, average, error};});
+      // the bins are in Kelvin already (PropertyEnergyHistogram::bins): converting again scaled them twice
+      .def("result", [](PropertyEnergyHistogram& p) { return p.result(); });
 
   nanobind::class_<PropertyNumberOfMoleculesHistogram>(m, "PropertyNumberOfMoleculesHistogram")
       .def(nanobind::init<std::size_t, std::pair<std::size_t, std::size_t>, std::size_t, std::optional<std::size_t>>(),

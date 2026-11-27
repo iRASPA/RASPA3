@@ -574,14 +574,17 @@ void bondedCenters(GLOBAL const float4* RESTRICT relative,          // per atom 
   GLOBAL const float4* RESTRICT pos = relative + info.firstAtom;
   GLOBAL const float* RESTRICT mass = massOfAtom + info.firstAtom;
   float3 com = FLOAT3(0.0f, 0.0f, 0.0f);
+  float3 centroid = FLOAT3(0.0f, 0.0f, 0.0f);
   float totalMass = 0.0f;
   for (uint b = 0; b < info.numberOfAtoms; ++b)
   {
     const float mb = mass[b];
     com += mb * pos[b].xyz;
+    centroid += pos[b].xyz;
     totalMass += mb;
   }
-  com /= totalMass;
+  // a massless (probe) molecule: its geometric center, as the host
+  com = (totalMass > 0.0f) ? com / totalMass : centroid / (float)info.numberOfAtoms;
   moleculeCenter[m] = FLOAT4(com.x, com.y, com.z, totalMass);
 }
 

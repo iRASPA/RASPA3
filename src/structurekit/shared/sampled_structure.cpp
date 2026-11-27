@@ -107,6 +107,12 @@ double ensureNeighborGrid(const SampledStructure &structure)
   const double3x3 &cell = unitCell.cell;
   const double volume = std::fabs(unitCell.volume);
   const double3 perpendicularWidths = unitCell.perpendicularWidths();
+  // a cell without volume (default constructed, or coplanar vectors) has bins of no width: the bin counts were an
+  // integer conversion of 0 / 0 or x / 0 (undefined), and the shell searches never reached their end
+  if (!(volume > 0.0))
+  {
+    throw std::invalid_argument("SampledStructure: the unit cell has no volume (coplanar or zero cell vectors)\n");
+  }
 
   // Roughly four atoms per bin; bin counts proportional to the perpendicular widths so the bins are
   // approximately metrically cubic (same construction as PoreAccessibility / SKVoronoi).
@@ -141,6 +147,8 @@ double ensureNeighborGrid(const SampledStructure &structure)
 
 double SampledStructure::density() const
 {
+  // (no cell volume: no density, rather than an infinity)
+  if (!(std::fabs(this->unitCell.volume) > 0.0)) return 0.0;
   return 1e-3 * this->mass /
          (this->unitCell.volume * Units::Angstrom * Units::Angstrom * Units::Angstrom *
           Units::AvogadroConstant);
@@ -148,11 +156,14 @@ double SampledStructure::density() const
 
 double SampledStructure::gravimetricFactor() const
 {
+  // (no mass: no amount per gram, rather than an infinity)
+  if (!(this->mass > 0.0)) return 0.0;
   return Units::Angstrom * Units::Angstrom * Units::AvogadroConstant / this->mass;
 }
 
 double SampledStructure::gravimetricVolumeFactor() const
 {
+  if (!(this->mass > 0.0)) return 0.0;
   return (Units::Angstrom * Units::Angstrom * Units::Angstrom * 1.0e6) * Units::AvogadroConstant / this->mass;
 }
 

@@ -827,6 +827,15 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
   }
 
   // ---- atoms: wrapping helper -------------------------------------------------------------------------
+  // The LAMMPS box is the canonical cell of the lengths and angles (a along x, b in the xy-plane): a rotated cell
+  // (SimulationBox::rotated) carries its positions and velocities rotated into it, R = H_lammps H^-1; they were
+  // written as they were, in a box turned against them.
+  const double3x3 rotation =
+      simulationBox.rotated()
+          ? double3x3::fromCellParameters(simulationBox.lengthA, simulationBox.lengthB, simulationBox.lengthC,
+                                          simulationBox.angleAlpha, simulationBox.angleBeta, simulationBox.angleGamma) *
+                simulationBox.inverseCell
+          : double3x3::identity();
   auto makeAtom = [&](const Atom &atom, std::size_t id, std::size_t molecule, double3 velocity)
   {
     AtomEntry entry{};
@@ -839,9 +848,9 @@ Topology buildTopology(std::span<const Component> components, std::span<const At
                      static_cast<std::int32_t>(std::floor(s.z))};
     const double3 shift = simulationBox.cell * double3{static_cast<double>(image.x), static_cast<double>(image.y),
                                                        static_cast<double>(image.z)};
-    entry.position = (atom.position - shift) * toAngstrom;
+    entry.position = (rotation * (atom.position - shift)) * toAngstrom;
     entry.image = image;
-    entry.velocity = velocity * toAngstromPerFemtosecond;
+    entry.velocity = (rotation * velocity) * toAngstromPerFemtosecond;
     return entry;
   };
 

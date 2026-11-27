@@ -223,10 +223,31 @@ export struct PropertyWidom
     return chemicalPotentialTransform(chemicalPotentialTerms.averaged(blockIndex), beta);
   }
 
+  /// Each term from the blocks where it is defined: a block where every insertion overlapped has no excess term,
+  /// one without molecules no ideal-gas term, and their zero stand-in was mixed into the error. (The excess term of
+  /// an infinite-dilution run, whose blocks have no molecules at all, stands on its own.)
   std::pair<WidomData, WidomData> chemicalPotentialResult(double beta) const
   {
-    return chemicalPotentialTerms.statistics(
-        [beta](const WidomData &terms) { return chemicalPotentialTransform(terms, beta); });
+    const auto excess = chemicalPotentialTerms.statistics(
+        [beta](const WidomData &terms) -> std::optional<double>
+        {
+          if (!(terms.excess > 0.0)) return std::nullopt;
+          return chemicalPotentialTransform(terms, beta).excess;
+        });
+    const auto idealGas = chemicalPotentialTerms.statistics(
+        [beta](const WidomData &terms) -> std::optional<double>
+        {
+          if (!(terms.idealGas > 0.0)) return std::nullopt;
+          return chemicalPotentialTransform(terms, beta).idealGas;
+        });
+    const auto total = chemicalPotentialTerms.statistics(
+        [beta](const WidomData &terms) -> std::optional<double>
+        {
+          if (!(terms.excess > 0.0 && terms.idealGas > 0.0)) return std::nullopt;
+          return chemicalPotentialTransform(terms, beta).total;
+        });
+    return {WidomData(total.first, excess.first, idealGas.first),
+            WidomData(total.second, excess.second, idealGas.second)};
   }
 
   //====================================================================================================================
@@ -251,7 +272,13 @@ export struct PropertyWidom
 
   std::pair<double, double> fugacityResult(double beta) const
   {
-    return chemicalPotentialTerms.statistics([beta](const WidomData &terms) { return fugacityTransform(terms, beta); });
+    // (the blocks without an estimate are left out of the error)
+    return chemicalPotentialTerms.statistics(
+        [beta](const WidomData &terms) -> std::optional<double>
+        {
+          if (!(terms.idealGas > 0.0 && terms.excess > 0.0)) return std::nullopt;
+          return fugacityTransform(terms, beta);
+        });
   }
 
   //====================================================================================================================

@@ -1677,7 +1677,7 @@ export struct System
    * forces (no intramolecular) into a scratch gradient buffer, then applies the atomic-to-molecular
    * virial correction. Does not mutate live AtomDynamics gradients used by MD.
    */
-  [[nodiscard]] std::pair<EnergyStatus, double3x3> computeMolecularPressure() noexcept;
+  [[nodiscard]] std::pair<EnergyStatus, double3x3> computeMolecularPressure();
 
   /// True when the force-based RDF is enabled and should sample on this cycle.
   [[nodiscard]] bool forceBasedRDFSampleDue(std::size_t currentCycle) const;

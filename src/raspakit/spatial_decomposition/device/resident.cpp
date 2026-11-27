@@ -338,7 +338,8 @@ void DeviceResident::upload(const System& system, DeviceStep& step, const CellLi
       atomInfoValues[4 * i + 3] = component.rigid ? 0u : 1u;
       // the mass of the current pseudo-atom type (a polymerization reaction may have retyped the atom)
       const double massValue = component.atomMass(b, atomData[i]);
-      const Float2 am = split(massValue), aim = split(1.0 / massValue);
+      // a massless (virtual) site has no inverse mass (1 / 0 is an infinity, and its two-float split not a number)
+      const Float2 am = split(massValue), aim = massValue > 0.0 ? split(1.0 / massValue) : Float2{0.0f, 0.0f};
       atomMasses[4 * i] = am.x;
       atomMasses[4 * i + 1] = am.y;
       atomMasses[4 * i + 2] = aim.x;

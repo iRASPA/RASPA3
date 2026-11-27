@@ -145,6 +145,13 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
   // than by masking: masking off the bits of a size like that gives a count that is no multiple of it.
   std::size_t numberOfGridPoints = ((temp + energyGridWorkGroupSize - 1) / energyGridWorkGroupSize) * energyGridWorkGroupSize;
   std::size_t energy_global_work_size = numberOfGridPoints;
+  // the rounding up to whole work groups adds points: the index of the kernel is checked with them
+  if (numberOfGridPoints > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()))
+  {
+    throw std::runtime_error(std::format(
+        "EnergyOpenCLSurfaceArea: the grid of {} points (padded to whole work groups) exceeds the maximum of {}\n",
+        numberOfGridPoints, std::numeric_limits<std::int32_t>::max()));
+  }
 
   // A cell with no atoms in it is a field of nought everywhere, with no surface in it unless a pocket is
   // written onto it. It goes the way every other cell goes, with no batch of atoms to run: the device will
@@ -272,8 +279,9 @@ void EnergyOpenCLSurfaceArea::run(const PairInteractions &interactions, const Cr
     throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  std::size_t totalNumberOfReplicas =
-      static_cast<std::size_t>(numberOfReplicas.x * numberOfReplicas.y * numberOfReplicas.z);
+  std::size_t totalNumberOfReplicas = static_cast<std::size_t>(numberOfReplicas.x) *
+                                      static_cast<std::size_t>(numberOfReplicas.y) *
+                                      static_cast<std::size_t>(numberOfReplicas.z);
   cl_int clNumberOfReplicas = cl_int(totalNumberOfReplicas);
   std::vector<cl_float4> replicaVector(totalNumberOfReplicas);
   index = 0;
@@ -448,7 +456,7 @@ IsosurfaceArea EnergyOpenCLSurfaceArea::areaOfIsosurface(const Crystal &framewor
   return accumulateTriangleAreas(framework.unitCell.cell, grid_size, corners, gradients, FieldSense::GrowsIntoSolid);
 }
 
-const char *EnergyOpenCLSurfaceArea::energyGridKernelSource = R"foo(
+const char* EnergyOpenCLSurfaceArea::energyGridKernelSource = R"foo(
 __kernel void ComputeEnergyGrid(__global float4 *position,
                                 __global float4 *gridposition,
                                 __global float *epsilon,
@@ -466,7 +474,7 @@ __kernel void ComputeEnergyGrid(__global float4 *position,
                                 const float ceiling,
                                 const int lastBatch)
 {
-  int igrid = get_global_id(0);
+  size_t igrid = get_global_id(0);
   int lsize = get_local_size(0);
   int lid = get_local_id(0);
 

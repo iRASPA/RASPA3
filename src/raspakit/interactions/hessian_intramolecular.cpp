@@ -190,11 +190,11 @@ bool hasPeriodicShift(const std::array<int3, N>& shifts)
 }
 
 template <std::size_t N>
-void addFrameworkTermCellCorrection(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
-                                    const CellMinimizationLayout& cellLayout, const std::array<std::size_t, N>& atomIds,
-                                    const std::array<double3, N>& positions,
-                                    const std::array<double3, N>& shiftedPositions,
-                                    const std::array<double3, N>& gradients, const GeneralizedHessian& localHessian)
+void addPeriodicTermCellCorrection(GeneralizedHessian& hessian, const MinimizationDofLayout& layout,
+                                   const CellMinimizationLayout& cellLayout, const std::array<std::size_t, N>& dofBases,
+                                   const std::array<double3, N>& positions,
+                                   const std::array<double3, N>& shiftedPositions,
+                                   const std::array<double3, N>& gradients, const GeneralizedHessian& localHessian)
 {
   if (cellLayout.empty()) return;
   std::array<double3, N> shift{};
@@ -221,7 +221,7 @@ void addFrameworkTermCellCorrection(GeneralizedHessian& hessian, const Minimizat
 
     for (std::size_t i = 0; i < N; ++i)
     {
-      const std::size_t globalBase = *layout.frameworkAtomDof(atomIds[i], MinimizationDofAxis::X);
+      const std::size_t globalBase = dofBases[i];
       for (std::size_t axisI = 0; axisI < 3; ++axisI)
       {
         double value = 0.0;
@@ -338,10 +338,10 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     {
       GeneralizedHessian localHessian(6, 0);
       Minimization::scatterAtomicPositionPositionByDof(localHessian, 0, 3, f1, f2, dr);
-      addFrameworkTermCellCorrection(hessian, layout, cellLayout, std::array<std::size_t, 2>{A, B},
-                                     std::array<double3, 2>{atoms[A].position, atoms[B].position},
-                                     std::array<double3, 2>{positionA, positionB},
-                                     std::array<double3, 2>{gradientA, -gradientA}, localHessian);
+      addPeriodicTermCellCorrection(hessian, layout, cellLayout, std::array<std::size_t, 2>{dofBase(A), dofBase(B)},
+                                    std::array<double3, 2>{atoms[A].position, atoms[B].position},
+                                    std::array<double3, 2>{positionA, positionB},
+                                    std::array<double3, 2>{gradientA, -gradientA}, localHessian);
     }
   };
 
@@ -394,9 +394,9 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     {
       GeneralizedHessian localHessian(6, 0);
       Minimization::scatterAtomicPositionPositionByDof(localHessian, 0, 3, f1, f2, positionA - positionB);
-      addFrameworkTermCellCorrection(hessian, layout, cellLayout, std::array<std::size_t, 2>{A, B},
-                                     std::array<double3, 2>{atoms[A].position, atoms[B].position},
-                                     std::array<double3, 2>{positionA, positionB}, gradient, localHessian);
+      addPeriodicTermCellCorrection(hessian, layout, cellLayout, std::array<std::size_t, 2>{dofBase(A), dofBase(B)},
+                                    std::array<double3, 2>{atoms[A].position, atoms[B].position},
+                                    std::array<double3, 2>{positionA, positionB}, gradient, localHessian);
     }
   }
 
@@ -425,8 +425,8 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     {
       GeneralizedHessian localHessian(9, 0);
       Minimization::scatterBendHessianByDof(localHessian, {0, 3, 6}, geometry);
-      addFrameworkTermCellCorrection(
-          hessian, layout, cellLayout, ids,
+      addPeriodicTermCellCorrection(
+          hessian, layout, cellLayout, std::array<std::size_t, 3>{dofBase(ids[0]), dofBase(ids[1]), dofBase(ids[2])},
           std::array<double3, 3>{atoms[ids[0]].position, atoms[ids[1]].position, atoms[ids[2]].position}, shifted,
           gradient, localHessian);
     }
@@ -463,10 +463,12 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
       {
         GeneralizedHessian localHessian(12, 0);
         Minimization::scatterTorsionHessianByDof(localHessian, {0, 3, 6, 9}, geometry);
-        addFrameworkTermCellCorrection(hessian, layout, cellLayout, ids,
-                                       std::array<double3, 4>{atoms[ids[0]].position, atoms[ids[1]].position,
-                                                              atoms[ids[2]].position, atoms[ids[3]].position},
-                                       shifted, gradient, localHessian);
+        addPeriodicTermCellCorrection(
+            hessian, layout, cellLayout,
+            std::array<std::size_t, 4>{dofBase(ids[0]), dofBase(ids[1]), dofBase(ids[2]), dofBase(ids[3])},
+            std::array<double3, 4>{atoms[ids[0]].position, atoms[ids[1]].position, atoms[ids[2]].position,
+                                   atoms[ids[3]].position},
+            shifted, gradient, localHessian);
       }
     }
   };
@@ -727,7 +729,7 @@ RunningEnergy Interactions::computeIntraMolecularUreyBradleyHessian(
 RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Molecule> moleculeData,
     std::span<const Atom> atoms, std::span<const Component> components, const MinimizationDofLayout& layout,
-    GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics)
+    GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics, const CellMinimizationLayout& cellLayout)
 {
   RunningEnergy energies{};
 
@@ -778,8 +780,18 @@ RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
       strain.cz = dr.z * gradientA.z;
       hessian.strainGradient() += strain;
 
+      // The pair is at the minimum image, which for a molecule reaching past half the box is another image of B
+      // than the stored one: the affine cell derivatives, built from the stored positions, miss that shift.
+      const double3 storedSeparation = atom_molecule_span[A].position - atom_molecule_span[B].position;
+      const bool shifted = !cellLayout.empty() && double3::dot(dr - storedSeparation, dr - storedSeparation) > 0.0;
       if (semiFlexible)
       {
+        if (shifted)
+        {
+          throw std::runtime_error(
+              "[Hessian]: a non-bonded pair of a semi-flexible molecule that interacts through a periodic image (the "
+              "molecule reaches past half the box) is not supported with cell degrees of freedom\n");
+        }
         removeRigidOffsetStrainGradient<2>(hessian, layout, rigidCache, moleculeIndex, atom_molecule_span, {A, B},
                                            {gradientA, -1.0 * gradientA});
         Minimization::scatterRadialHessianSites(
@@ -791,6 +803,18 @@ RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
         return;
       }
       Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2, dr);
+      if (shifted)
+      {
+        GeneralizedHessian localHessian(6, 0);
+        Minimization::scatterAtomicPositionPositionByDof(localHessian, 0, 3, f1, f2, dr);
+        addPeriodicTermCellCorrection(
+            hessian, layout, cellLayout,
+            std::array<std::size_t, 2>{layout.flexibleAtomDofBase(moleculeIndex, A),
+                                       layout.flexibleAtomDofBase(moleculeIndex, B)},
+            std::array<double3, 2>{atom_molecule_span[A].position, atom_molecule_span[B].position},
+            std::array<double3, 2>{atom_molecule_span[A].position, atom_molecule_span[A].position - dr},
+            std::array<double3, 2>{gradientA, -1.0 * gradientA}, localHessian);
+      }
       if (hessian.numStrain() == 1)
       {
         Minimization::scatterAtomicPositionStrainIsotropic(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2,
@@ -808,7 +832,7 @@ RunningEnergy Interactions::computeIntraMolecularVanDerWaalsHessian(
 RunningEnergy Interactions::computeIntraMolecularCoulombHessian(
     const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Molecule> moleculeData,
     std::span<const Atom> atoms, std::span<const Component> components, const MinimizationDofLayout& layout,
-    GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics)
+    GeneralizedHessian& hessian, std::span<AtomDynamics> dynamics, const CellMinimizationLayout& cellLayout)
 {
   RunningEnergy energies{};
   if (!forceField.useCharge) return energies;
@@ -860,8 +884,18 @@ RunningEnergy Interactions::computeIntraMolecularCoulombHessian(
       strain.cz = dr.z * gradientA.z;
       hessian.strainGradient() += strain;
 
+      // The pair is at the minimum image, which for a molecule reaching past half the box is another image of B
+      // than the stored one: the affine cell derivatives, built from the stored positions, miss that shift.
+      const double3 storedSeparation = atom_molecule_span[A].position - atom_molecule_span[B].position;
+      const bool shifted = !cellLayout.empty() && double3::dot(dr - storedSeparation, dr - storedSeparation) > 0.0;
       if (semiFlexible)
       {
+        if (shifted)
+        {
+          throw std::runtime_error(
+              "[Hessian]: a non-bonded pair of a semi-flexible molecule that interacts through a periodic image (the "
+              "molecule reaches past half the box) is not supported with cell degrees of freedom\n");
+        }
         removeRigidOffsetStrainGradient<2>(hessian, layout, rigidCache, moleculeIndex, atom_molecule_span, {A, B},
                                            {gradientA, -1.0 * gradientA});
         Minimization::scatterRadialHessianSites(
@@ -873,6 +907,18 @@ RunningEnergy Interactions::computeIntraMolecularCoulombHessian(
         return;
       }
       Minimization::scatterAtomicPositionPosition(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2, dr);
+      if (shifted)
+      {
+        GeneralizedHessian localHessian(6, 0);
+        Minimization::scatterAtomicPositionPositionByDof(localHessian, 0, 3, f1, f2, dr);
+        addPeriodicTermCellCorrection(
+            hessian, layout, cellLayout,
+            std::array<std::size_t, 2>{layout.flexibleAtomDofBase(moleculeIndex, A),
+                                       layout.flexibleAtomDofBase(moleculeIndex, B)},
+            std::array<double3, 2>{atom_molecule_span[A].position, atom_molecule_span[B].position},
+            std::array<double3, 2>{atom_molecule_span[A].position, atom_molecule_span[A].position - dr},
+            std::array<double3, 2>{gradientA, -1.0 * gradientA}, localHessian);
+      }
       if (hessian.numStrain() == 1)
       {
         Minimization::scatterAtomicPositionStrainIsotropic(hessian, layout, moleculeIndex, A, moleculeIndex, B, f1, f2,

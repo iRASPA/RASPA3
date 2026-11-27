@@ -266,17 +266,23 @@ void double3x3::EigenSystemSymmetric(double3& eigenvalues, double3x3& eigenvecto
 // it as w in the body-fixed frame w_b=R(q) v_s
 double3x3 double3x3::buildRotationMatrix(const simd_quatd& q)
 {
+  // the rotation of the normalised quaternion (2 / |q|^2 in place of 2), so that a drifted quaternion stays a
+  // rotation; the zero quaternion (a default-constructed one) is no rotation: the identity, and not -I (an
+  // inversion), as in double3x3(simd_quatd)
+  const double lengthSquared = q.r * q.r + q.ix * q.ix + q.iy * q.iy + q.iz * q.iz;
+  if (lengthSquared == 0.0) return double3x3::identity();
+  const double s = 2.0 / lengthSquared;
   double3x3 R{};
 
-  R.ax = 2.0 * (q.r * q.r + q.ix * q.ix) - 1.0;
-  R.bx = 2.0 * (q.ix * q.iy + q.r * q.iz);
-  R.cx = 2.0 * (q.ix * q.iz - q.r * q.iy);
-  R.ay = 2.0 * (q.ix * q.iy - q.r * q.iz);
-  R.by = 2.0 * (q.iy * q.iy + q.r * q.r) - 1.0;
-  R.cy = 2.0 * (q.iy * q.iz + q.r * q.ix);
-  R.az = 2.0 * (q.ix * q.iz + q.r * q.iy);
-  R.bz = 2.0 * (q.iy * q.iz - q.r * q.ix);
-  R.cz = 2.0 * (q.r * q.r + q.iz * q.iz) - 1.0;
+  R.ax = s * (q.r * q.r + q.ix * q.ix) - 1.0;
+  R.bx = s * (q.ix * q.iy + q.r * q.iz);
+  R.cx = s * (q.ix * q.iz - q.r * q.iy);
+  R.ay = s * (q.ix * q.iy - q.r * q.iz);
+  R.by = s * (q.iy * q.iy + q.r * q.r) - 1.0;
+  R.cy = s * (q.iy * q.iz + q.r * q.ix);
+  R.az = s * (q.ix * q.iz + q.r * q.iy);
+  R.bz = s * (q.iy * q.iz - q.r * q.ix);
+  R.cz = s * (q.r * q.r + q.iz * q.iz) - 1.0;
 
   return R;
 }
@@ -285,16 +291,20 @@ double3x3 double3x3::buildRotationMatrix(const simd_quatd& q)
 // body-fixed frame), and express it as w in the space-fixed frame, we have w_s=R(q)^-1 v_b=R(q)^T v_b
 double3x3 double3x3::buildRotationMatrixInverse(const simd_quatd& q)
 {
+  // normalised as in buildRotationMatrix (the zero quaternion is the identity)
+  const double lengthSquared = q.r * q.r + q.ix * q.ix + q.iy * q.iy + q.iz * q.iz;
+  if (lengthSquared == 0.0) return double3x3::identity();
+  const double s = 2.0 / lengthSquared;
   double3x3 R{};
-  R.ax = 2.0 * (q.r * q.r + q.ix * q.ix) - 1.0;
-  R.bx = 2.0 * (q.ix * q.iy - q.r * q.iz);
-  R.cx = 2.0 * (q.ix * q.iz + q.r * q.iy);
-  R.ay = 2.0 * (q.ix * q.iy + q.r * q.iz);
-  R.by = 2.0 * (q.iy * q.iy + q.r * q.r) - 1.0;
-  R.cy = 2.0 * (q.iy * q.iz - q.r * q.ix);
-  R.az = 2.0 * (q.ix * q.iz - q.r * q.iy);
-  R.bz = 2.0 * (q.iy * q.iz + q.r * q.ix);
-  R.cz = 2.0 * (q.r * q.r + q.iz * q.iz) - 1.0;
+  R.ax = s * (q.r * q.r + q.ix * q.ix) - 1.0;
+  R.bx = s * (q.ix * q.iy - q.r * q.iz);
+  R.cx = s * (q.ix * q.iz + q.r * q.iy);
+  R.ay = s * (q.ix * q.iy + q.r * q.iz);
+  R.by = s * (q.iy * q.iy + q.r * q.r) - 1.0;
+  R.cy = s * (q.iy * q.iz - q.r * q.ix);
+  R.az = s * (q.ix * q.iz - q.r * q.iy);
+  R.bz = s * (q.iy * q.iz + q.r * q.ix);
+  R.cz = s * (q.r * q.r + q.iz * q.iz) - 1.0;
 
   return R;
 }

@@ -47,7 +47,8 @@ RunningEnergy computeIntraMolecularVanDerWaalsHessian(const ForceField& forceFie
                                                       std::span<const Atom> atoms,
                                                       std::span<const Component> components,
                                                       const MinimizationDofLayout& layout, GeneralizedHessian& hessian,
-                                                      std::span<AtomDynamics> dynamics);
+                                                      std::span<AtomDynamics> dynamics,
+                                                      const CellMinimizationLayout& cellLayout = {});
 
 /// The non-excluded intramolecular Coulomb pairs (Potentials::intraMolecularCoulomb, including the Ewald or
 /// shifted-potential completion of the pair).
@@ -55,7 +56,8 @@ RunningEnergy computeIntraMolecularCoulombHessian(const ForceField& forceField, 
                                                   std::span<const Molecule> moleculeData, std::span<const Atom> atoms,
                                                   std::span<const Component> components,
                                                   const MinimizationDofLayout& layout, GeneralizedHessian& hessian,
-                                                  std::span<AtomDynamics> dynamics);
+                                                  std::span<AtomDynamics> dynamics,
+                                                      const CellMinimizationLayout& cellLayout = {});
 
 RunningEnergy computeIntraMolecularTorsionHessian(std::span<const Molecule> moleculeData, std::span<const Atom> atoms,
                                                   std::span<const Component> components,

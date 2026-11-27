@@ -157,6 +157,19 @@ void CommandLine::run(int argc, char *argv[])
   // traced back to the source that produced it. The same text heads every output file.
   const std::string versionText = BuildInfo::summary();
 
+  // A count given on the command line: a whole positive number ('-1' wrapped to the largest count in std::stoul, and
+  // a count of zero ran nothing, or divided by it)
+  const auto positiveCount = [](std::string const &arg, std::string_view option) -> std::size_t
+  {
+    std::size_t parsed = 0;
+    const auto [end, error] = std::from_chars(arg.data(), arg.data() + arg.size(), parsed);
+    if (error != std::errc{} || end != arg.data() + arg.size() || parsed == 0)
+    {
+      throw std::runtime_error(std::format("Invalid {}: expected a positive integer, got '{}'", option, arg));
+    }
+    return parsed;
+  };
+
   // definition of command-line switches
   using argparser = argparser::argparser;
   argparser opt(argc, argv);
@@ -176,17 +189,17 @@ void CommandLine::run(int argc, char *argv[])
            "NUM_ITERATIONS",  // will be used in help to illustrate the argument
            argparser::required_argument,
            "Set number of iterations",  // will be displayed in help
-           [&number_of_iterations](std::string const &arg) { number_of_iterations = std::stoul(arg); })
+           [&](std::string const &arg) { number_of_iterations = positiveCount(arg, "--number-of-iterations"); })
       .reg({"-M", "--number-of-inner-steps"},
            "NUM_INNER_ITERATIONS",  // will be used in help to illustrate the argument
            argparser::required_argument,
            "Set number of inner steps",  // will be displayed in help
-           [&number_of_inner_steps](std::string const &arg) { number_of_inner_steps = std::stoul(arg); })
+           [&](std::string const &arg) { number_of_inner_steps = positiveCount(arg, "--number-of-inner-steps"); })
       .reg({"--threads"},
            "NUM_THREADS",  // will be used in help to illustrate the argument
            argparser::required_argument,
            "Set number of threads the analyses may run on (default 1, one thread)",
-           [&num_threads](std::string const &arg) { num_threads = std::stoul(arg); })
+           [&](std::string const &arg) { num_threads = positiveCount(arg, "--threads"); })
       .reg({"-f", "--force-field"},
            "FILE_NAME",  // will be used in help to illustrate the argument
            argparser::required_argument,
@@ -261,10 +274,10 @@ void CommandLine::run(int argc, char *argv[])
       .reg({"--brute-force-samples"}, argparser::required_argument,
            "Directions thrown at each atom by the brute-force check, default 20000. The surface areas converge "
            "as one over the root of this",
-           [&brute_force_samples](std::string const &arg) { brute_force_samples = std::stoul(arg); })
+           [&](std::string const &arg) { brute_force_samples = positiveCount(arg, "--brute-force-samples"); })
       .reg({"--brute-force-points"}, argparser::required_argument,
            "Points thrown at the cell by the brute-force check, default 4000000",
-           [&brute_force_points](std::string const &arg) { brute_force_points = std::stoul(arg); })
+           [&](std::string const &arg) { brute_force_points = positiveCount(arg, "--brute-force-points"); })
       .reg({"--brute-force-skip-excluded"}, argparser::no_argument,
            "Leave the convex/saddle/concave decomposition out of the brute-force check, which is the slowest "
            "part of it",
@@ -276,6 +289,10 @@ void CommandLine::run(int argc, char *argv[])
            [&temperature, &temperature_set](std::string const &arg)
            {
              temperature = std::stod(arg);
+             if (!(temperature > 0.0))
+             {
+               throw std::runtime_error(std::format("Invalid --temperature: expected a positive value, got '{}'", arg));
+             }
              temperature_set = true;
            })
       .reg({"--molecule"}, argparser::required_argument,
@@ -285,7 +302,7 @@ void CommandLine::run(int argc, char *argv[])
       .reg({"--orientations"}, argparser::required_argument,
            "Number of orientations to average a molecular property over, default 128. An area needs more of "
            "them than a barrier does",
-           [&number_of_orientations](std::string const &arg) { number_of_orientations = std::stoul(arg); })
+           [&](std::string const &arg) { number_of_orientations = positiveCount(arg, "--orientations"); })
       .reg({"--charges-from"}, argparser::required_argument,
            "Where framework charges come from: 'cif' (default), 'pseudo-atoms' or 'charge-equilibration' (EQeq, "
            "with the oxidation states of the force field; --mof gives the metals their charge centres). A CIF "
@@ -384,28 +401,10 @@ void CommandLine::run(int argc, char *argv[])
            [&blocking_threshold](std::string const &arg) { blocking_threshold = std::stod(arg); })
       .reg({"--number-of-slices"}, argparser::required_argument,
            "Set number of slices: of the energy integration, or of each smooth piece of the exact surface area",
-           [&number_of_slices](std::string const &arg)
-           {
-             std::istringstream iss(arg);
-             std::size_t x;
-             if (!(iss >> x))
-             {
-               throw std::runtime_error("Invalid --number-of-slices: expected a single integer");
-             }
-             number_of_slices = x;
-           })
+           [&](std::string const &arg) { number_of_slices = positiveCount(arg, "--number-of-slices"); })
       .reg({"--number-of-bins"}, argparser::required_argument,
            "Set the number of pore sizes the pore-size distribution is evaluated at",
-           [&number_of_bins](std::string const &arg)
-           {
-             std::istringstream iss(arg);
-             std::size_t x;
-             if (!(iss >> x))
-             {
-               throw std::runtime_error("Invalid --number-of-bins: expected a single integer");
-             }
-             number_of_bins = x;
-           })
+           [&](std::string const &arg) { number_of_bins = positiveCount(arg, "--number-of-bins"); })
       .reg({"-e", "--energy-grid-computation"}, argparser::required_argument,
            "Compute Energy grid for given list of pseudo atoms",
            [&state, &pseudoAtomsGrid](std::string const &arg)
@@ -641,6 +640,22 @@ void CommandLine::run(int argc, char *argv[])
       !state.test(State::BlockingSpheres) && !poreSizeDistribution && !state.test(State::PSD_BV))
   {
     state.set(State::PoreAnalysis);
+  }
+
+  // The Ban-Vlugt pore-size distribution runs on the device grid only, and the tessellation from the device clearance
+  // grid or from the energy: asked for otherwise they printed their header, ran nothing and exited as if they had
+  // succeeded.
+  if (state.test(State::PSD_BV) && !(use_gridbased_methods && use_gpu))
+  {
+    std::cerr << "\u001b[31;1mERROR: --pore-size-distribution-ban-vlugt runs on the device grid only: add --grids --gpu"
+                 "\u001b[0m\n";
+    std::exit(-1);
+  }
+  if (state.test(State::TessellationComputation) && !(use_gridbased_methods && use_gpu) && !use_energy_methods)
+  {
+    std::cerr << "\u001b[31;1mERROR: --tessellation needs --grids --gpu (the geometric tessellation of the device "
+                 "clearance grid) or --energy (the energy tessellation)\u001b[0m\n";
+    std::exit(-1);
   }
 
   // start running
@@ -1037,18 +1052,9 @@ void CommandLine::run(int argc, char *argv[])
     {
       std::cout << "Compute pore size distribution using the method from the Ban, Vlugt paper" << std::endl;
 
-      if(use_gridbased_methods)
-      {
-        if(use_cpu)
-        {
-        }
-
-        if(use_gpu)
-        {
-          BanVlugtPoreSizeDistribution s(gridSize);
-          s.run(forceField.value(), framework);
-        }
-      }
+      // (the device grid only: refused otherwise before the run)
+      BanVlugtPoreSizeDistribution s(gridSize);
+      s.run(forceField.value(), framework);
     }
 
     if (state.test(CommandLine::State::SurfaceArea))
@@ -1790,6 +1796,16 @@ void CommandLine::run(int argc, char *argv[])
 
     if (state.test(CommandLine::State::EnergyGrid))
     {
+      // the indices before the output file: opening it truncates a file of that name, which a refused index left
+      // empty
+      for (std::size_t pseudoAtomIdx : pseudoAtomsGrid)
+      {
+        if (pseudoAtomIdx >= forceField->pseudoAtoms.size())
+        {
+          throw std::runtime_error(std::format("-e: pseudo-atom index {} is out of range (the force field has {})\n",
+                                               pseudoAtomIdx, forceField->pseudoAtoms.size()));
+        }
+      }
       HDF5Writer h5File(
           std::format("{}_{}_{}.h5", framework.name,
                       (order == ForceFieldSettings::InterpolationScheme::Tricubic) ? "Tricubic" : "Triquintic",
@@ -1800,11 +1816,6 @@ void CommandLine::run(int argc, char *argv[])
       forceField->initializeEwaldParameters(systemBox);
       for (std::size_t pseudoAtomIdx : pseudoAtomsGrid)
       {
-        if (pseudoAtomIdx >= forceField->pseudoAtoms.size())
-        {
-          throw std::runtime_error(std::format("-e: pseudo-atom index {} is out of range (the force field has {})\n",
-                                               pseudoAtomIdx, forceField->pseudoAtoms.size()));
-        }
         InterpolationEnergyGrid grid(framework.simulationBox, double3{},
                                      gridSize, order);
         std::ostream nullStream{nullptr};

@@ -84,3 +84,18 @@ TEST(DCTST_MOVES, a_polyatomic_tagged_molecule_needs_its_reinsertion)
   EXPECT_TRUE(refusal(system, 0.3).empty());
   EXPECT_NE(refusal(system, 0.0).find("reinsertion probability"), std::string::npos);
 }
+
+// The system moves were not looked at: a volume move rescaled the box behind the coordinate grid of the pilot stage,
+// hybrid MC moved all molecules at once and a reaction changed the molecule counts.
+TEST(DCTST_MOVES, system_moves_are_refused)
+{
+  for (const Move::Types move : {Move::Types::VolumeChange, Move::Types::HybridMC, Move::Types::ReactionCBMC})
+  {
+    System system = makeSystem({{Move::Types::Translation, 1.0}});
+    ASSERT_TRUE(refusal(system).empty());
+    system.mc_moves_probabilities.setProbability(move, 1.0);
+    const std::string message = refusal(system);
+    EXPECT_NE(message.find(Move::moveNames[std::to_underlying(move)]), std::string::npos)
+        << Move::moveNames[std::to_underlying(move)] << ": '" << message << "'";
+  }
+}

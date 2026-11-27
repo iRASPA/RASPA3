@@ -303,6 +303,9 @@ RunningEnergy retraceEwaldTailDifference(
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConventionalCommon::gibbsConventionalMove(
     RandomNumber& random, System& systemA, System& systemB, std::size_t selectedComponent, bool useCBMC)
 {
+  // the transfers move molecules between the boxes without the induced-dipole terms (the input reader refuses the
+  // mix up front; a system built in code is held here)
+  if (systemA.forceField.computePolarization || systemB.forceField.computePolarization) return std::nullopt;
   const Move::Types move = useCBMC ? Move::Types::GibbsConventionalCBCFCMC : Move::Types::GibbsConventionalCFCMC;
   Component& componentA = systemA.components[selectedComponent];
   Component& componentB = systemB.components[selectedComponent];

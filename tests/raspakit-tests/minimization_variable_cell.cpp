@@ -27,6 +27,7 @@ import simd_quatd;
 import system;
 import torsion_potential;
 import vdwparameters;
+import van_der_waals_potential;
 
 namespace
 {
@@ -501,6 +502,41 @@ TEST(minimization_variable_cell, periodic_image_blocks_match_finite_difference)
   System system = makeLennardJonesPair(CellMinimizationType::Regular);
   system.spanOfMoleculeAtoms()[0].position = double3(0.7, 10.0, 10.0);
   system.spanOfMoleculeAtoms()[1].position = double3(23.0, 10.2, 9.8);
+  expectCellDerivativesMatchFiniteDifference(std::move(system), 3.0e-5, 6.0e-4);
+}
+
+// A non-bonded intramolecular pair through a periodic image: the end sites of a flexible chain, stored 18.5 A
+// apart (more than half the box), interact at the minimum image 5.5 A away. The affine cell derivatives are built
+// from the stored positions and missed the image shift in the position-cell and cell-cell blocks.
+TEST(minimization_variable_cell, periodic_intramolecular_pair_blocks_match_finite_difference)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(10.0, true, false, true);
+  useSecondOrderTaylorShiftedLennardJones(forceField);
+  const std::uint16_t type = Component::makeMethane(forceField, 0).atoms[0].type;
+  // a three-site chain of two soft bonds at their rest length; its end sites the explicit pair
+  ConnectivityTable connectivity(3);
+  Potentials::IntraMolecularPotentials potentials{};
+  for (std::size_t i = 0; i < 2; ++i)
+  {
+    connectivity[i, i + 1] = true;
+    connectivity[i + 1, i] = true;
+    potentials.bonds.push_back(BondPotential({i, i + 1}, BondType::Harmonic, {10.0, 9.25}));
+  }
+  Component chain(forceField, "chain", 190.6, 4599200.0, 0.011,
+                  {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                   Atom({9.25, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, false, false),
+                   Atom({18.5, 0.0, 0.0}, 0.0, 1.0, 0, type, 0, false, false)},
+                  connectivity, potentials, 5, 21);
+  chain.rigid = false;
+  // (after the construction, which builds the non-bonded pairs of the component from its connectivity)
+  chain.intraMolecularPotentials.vanDerWaals.push_back(
+      VanDerWaalsPotential({0, 2}, VDWParameters::Type::LennardJones, {158.5, 3.72}, 1.0));
+  System system(forceField, SimulationBox(24.0, 22.0, 20.0), false, 300.0, 2.0e5, 1.0, {}, {chain}, {}, {1}, 5);
+  system.spanOfMoleculeAtoms()[0].position = double3(2.5, 10.0, 10.0);
+  system.spanOfMoleculeAtoms()[1].position = double3(11.75, 10.2, 9.9);
+  system.spanOfMoleculeAtoms()[2].position = double3(21.0, 10.4, 9.7);
+  system.cellMinimizationType = CellMinimizationType::Regular;
+  ASSERT_LT(system.computeTotalEnergies().intraVDW, -1.0);
   expectCellDerivativesMatchFiniteDifference(std::move(system), 3.0e-5, 6.0e-4);
 }
 

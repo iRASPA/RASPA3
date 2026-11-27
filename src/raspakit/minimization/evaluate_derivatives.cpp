@@ -594,12 +594,12 @@ void evaluateDerivatives(System& system, const MinimizationDofLayout& layout, De
 
     RunningEnergy intraVDWEnergy = Interactions::computeIntraMolecularVanDerWaalsHessian(
         system.forceField, system.simulationBox, system.moleculeData, moleculeAtomPositions, system.components, layout,
-        results.hessian, moleculeDynamics);
+        results.hessian, moleculeDynamics, cellLayout);
     results.energy += intraVDWEnergy.intraVDW;
 
     RunningEnergy intraCoulombEnergy = Interactions::computeIntraMolecularCoulombHessian(
         system.forceField, system.simulationBox, system.moleculeData, moleculeAtomPositions, system.components, layout,
-        results.hessian, moleculeDynamics);
+        results.hessian, moleculeDynamics, cellLayout);
     results.energy += intraCoulombEnergy.intraCoul;
 
     RunningEnergy bondBondEnergy = Interactions::computeIntraMolecularBondBondHessian(

@@ -1350,13 +1350,16 @@ void SpatialDecompositionForceEngine::step(std::size_t thread, System& system)
               const Molecule& molecule = system.moleculeData[m];
               double totalMass = 0.0;
               double3 com(0.0, 0.0, 0.0);
+              double3 centroid(0.0, 0.0, 0.0);
               for (const Atom& atom : atoms.subspan(molecule.atomIndex, molecule.numberOfAtoms))
               {
                 const double mass = system.forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
                 com += mass * atom.position;
+                centroid += atom.position;
                 totalMass += mass;
               }
-              com = com / totalMass;
+              // a massless (probe) molecule: its geometric center, as System::computeMolecularPressure
+              com = totalMass > 0.0 ? com / totalMass : centroid / static_cast<double>(molecule.numberOfAtoms);
               for (std::size_t k = 0; k < molecule.numberOfAtoms; ++k) atomCenterOfMass[molecule.atomIndex + k] = com;
             }
           }
@@ -1931,13 +1934,16 @@ void SpatialDecompositionForceEngine::bondedMoleculesUnit(System& system, const 
       // mass stored per atom); the bonded gradients added below cancel in the molecular virial
       double totalMass = 0.0;
       double3 com(0.0, 0.0, 0.0);
+      double3 centroid(0.0, 0.0, 0.0);
       for (const Atom& atom : moleculeAtoms)
       {
         const double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
         com += mass * atom.position;
+        centroid += atom.position;
         totalMass += mass;
       }
-      com = com / totalMass;
+      // a massless (probe) molecule: its geometric center, as System::computeMolecularPressure
+      com = totalMass > 0.0 ? com / totalMass : centroid / static_cast<double>(moleculeAtoms.size());
       for (std::size_t k = 0; k < moleculeAtoms.size(); ++k)
       {
         atomCenterOfMass[molecule.atomIndex + k] = com;
@@ -2318,7 +2324,8 @@ void SpatialDecompositionForceEngine::scatterPhase(std::size_t thread, System& s
         massPosition += unitMassPosition[u];
         mass += unitMass[u];
       }
-      const double3 com = massPosition / mass;
+      // (a massless molecule has no center of mass; the origin keeps the correction finite)
+      const double3 com = mass > 0.0 ? massPosition / mass : double3(0.0, 0.0, 0.0);
       splitCenter[s] = com;
       if (thread == 0)
       {

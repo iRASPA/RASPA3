@@ -742,7 +742,7 @@ void Minimization::runPhase()
           "Minimization does not support cross-links or polymer links: the derivative evaluation has no link "
           "bonded terms or link exclusions");
     }
-    if (options.computeElasticConstants) throwIfMixedFramework(system);
+    if (options.computeElasticConstants) throwIfElasticConstantsUnsupported(system);
     const MinimizationDofLayout layout = buildMinimizationDofLayout(
         system.moleculeData, system.components, numberOfFrameworkAtoms, cellLayout.size(), frameworkPtr);
     // Seed the authoritative rigid-group state once (single Procrustes fit); afterwards
