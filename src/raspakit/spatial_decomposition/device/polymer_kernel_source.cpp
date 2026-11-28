@@ -151,11 +151,23 @@ DEVICE_FUNCTION void polymerPairState(uint state, PRIVATE const float* P, float 
   *uCoulomb = 0.0f;
   *uExclusion = 0.0f;
   *factor = 0.0f;
-  if (!(rr > 0.0f)) return;
+  const bool charged = p->useCharge != 0u && qq != 0.0f;
+  if (!(rr > 0.0f))
+  {
+    // two sites on one point (a core and its shell): the excluded pair still has the finite limit of its Ewald
+    // exclusion energy, -C qq 2 alpha / sqrt(pi), which the early return left out; every other state has no
+    // separation to work with and no force along it
+    if (state != 0u && state != 1u && charged && p->fourier != 0u)
+    {
+      const float prefactor = p->coulombFactor * qq;
+      *uExclusion = -prefactor * p->alpha * (erfOverXMinusLimit(0.0f) + TWO_OVER_SQRT_PI);
+      *factor -= prefactor * p->alpha * p->alpha * p->alpha * erfExclusionForceFactor(0.0f);
+    }
+    return;
+  }
   const float r = sqrt(rr);
   const float invR = 1.0f / r;
   const float invRR = invR * invR;
-  const bool charged = p->useCharge != 0u && qq != 0.0f;
   if (state == 0u)
   {
     if (rr < p->cutOffVDWSquared && P[0] != 0.0f)

@@ -6,6 +6,8 @@ module spatial_decomposition_pppm;
 
 import std;
 
+import finite_value;
+
 import int3;
 import double3;
 import double3x3;
@@ -406,6 +408,11 @@ void PPPM::spread(std::size_t thread, std::span<const std::uint32_t> atoms, cons
     if (q == 0.0) continue;
     const double3 r(x[i], y[i], z[i]);
     double3 s = inverseCell * r;
+    // (not a number: the index below would be the conversion of a NaN, a write far outside the histogram)
+    if (!isFiniteValue(s.x) || !isFiniteValue(s.y) || !isFiniteValue(s.z))
+    {
+      throw std::runtime_error("[Spatial decomposition]: an atom position is not a number; reduce the time step\n");
+    }
     s.x -= std::floor(s.x);
     s.y -= std::floor(s.y);
     s.z -= std::floor(s.z);
@@ -705,6 +712,10 @@ void PPPM::interpolate(std::span<const std::uint32_t> atoms, const double* x, co
     if (q == 0.0) continue;
     const double3 r(x[i], y[i], z[i]);
     double3 s = inverseCell * r;
+    if (!isFiniteValue(s.x) || !isFiniteValue(s.y) || !isFiniteValue(s.z))
+    {
+      throw std::runtime_error("[Spatial decomposition]: an atom position is not a number; reduce the time step\n");
+    }
     s.x -= std::floor(s.x);
     s.y -= std::floor(s.y);
     s.z -= std::floor(s.z);

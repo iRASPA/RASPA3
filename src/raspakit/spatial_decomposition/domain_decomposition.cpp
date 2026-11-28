@@ -4,6 +4,8 @@ module spatial_decomposition_domain_decomposition;
 
 import std;
 
+import finite_value;
+
 import int3;
 import double3;
 
@@ -123,6 +125,13 @@ void DomainDecomposition::build(int3 g, std::span<const double3> fractionalPosit
     sx[i] = fractionalPositions[i].x;
     sy[i] = fractionalPositions[i].y;
     sz[i] = fractionalPositions[i].z;
+    // (a position that is not a number breaks the ordering the sort of the cuts needs, and went on into the
+    // indexing of the domains)
+    if (!isFiniteValue(sx[i]) || !isFiniteValue(sy[i]) || !isFiniteValue(sz[i]))
+    {
+      throw std::runtime_error(
+          "[Spatial decomposition]: an atom position is not a number; reduce the time step\n");
+    }
   }
 
   std::vector<std::uint32_t> all(count);

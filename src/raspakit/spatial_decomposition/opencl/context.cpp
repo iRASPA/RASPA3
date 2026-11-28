@@ -78,6 +78,10 @@ class OpenCLContext final : public DeviceContext
   std::map<std::string, OpenCLDevice::ProgramHandle, std::less<>> programs{};
   std::uint64_t marks{0};
   std::deque<std::pair<std::uint64_t, OpenCLDevice::EventHandle>> pending{};
+  /// Host copies of the data of the writes that do not block, with the mark after which they are done: the queue
+  /// reads the source of such a write when it runs it, and the callers hand over data of their own stack (a
+  /// parameter block) that is gone by then. Metal and CUDA stage it the same way.
+  std::deque<std::pair<std::uint64_t, std::unique_ptr<std::byte[]>>> stagedWrites{};
 
   Buffer& at(DeviceBuffer buffer)
   {
@@ -192,9 +196,20 @@ void OpenCLContext::unmap(DeviceBuffer handle)
 void OpenCLContext::write(DeviceBuffer handle, std::size_t offset, std::size_t bytes, const void* data, bool blocking)
 {
   if (bytes == 0) return;
-  check(clEnqueueWriteBuffer(queue.get(), at(handle).memory.get(), blocking ? CL_TRUE : CL_FALSE, offset, bytes,
-                             data, 0, nullptr, nullptr),
+  if (blocking)
+  {
+    check(clEnqueueWriteBuffer(queue.get(), at(handle).memory.get(), CL_TRUE, offset, bytes, data, 0, nullptr,
+                               nullptr),
+          "clEnqueueWriteBuffer");
+    return;
+  }
+  std::unique_ptr<std::byte[]> copy = std::make_unique<std::byte[]>(bytes);
+  std::memcpy(copy.get(), data, bytes);
+  check(clEnqueueWriteBuffer(queue.get(), at(handle).memory.get(), CL_FALSE, offset, bytes, copy.get(), 0, nullptr,
+                             nullptr),
         "clEnqueueWriteBuffer");
+  // (done once the next mark is: the queue is in order)
+  stagedWrites.emplace_back(marks + 1, std::move(copy));
 }
 
 void OpenCLContext::read(DeviceBuffer handle, std::size_t offset, std::size_t bytes, void* data)
@@ -297,6 +312,7 @@ void OpenCLContext::wait(DeviceEvent event)
     }
     pending.pop_front();
   }
+  while (!stagedWrites.empty() && stagedWrites.front().first <= event.sequence) stagedWrites.pop_front();
 }
 
 void OpenCLContext::flush() { check(clFlush(queue.get()), "clFlush"); }
@@ -305,6 +321,7 @@ void OpenCLContext::finish()
 {
   check(clFinish(queue.get()), "clFinish");
   pending.clear();
+  stagedWrites.clear();
 }
 }  // namespace
 

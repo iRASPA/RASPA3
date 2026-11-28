@@ -53,6 +53,7 @@ import threadpool;
 // import multi_site_isotherm;
 // import pressure_range;
 import bond_potential;
+import bend_potential;
 import move_statistics;
 import mc_moves_probabilities;
 import mc_moves_move_types;
@@ -1137,6 +1138,31 @@ void System::reconcileDegreesOfFreedom()
 
 void System::requireSupportedDynamicsConstraints() const
 {
+  // A flexible framework is integrated atom by atom without SHAKE/RATTLE: a FIXED bond or a FIXED/RIGID bend that
+  // moves one of its flexible atoms has no energy and no force, and its atoms drifted apart (inside a rigid group or
+  // between lab-fixed atoms such a term is held by the group or the frame, and is no concern)
+  if (framework.has_value() && framework->hasMobileAtoms())
+  {
+    const auto touchesFlexibleAtom = [&](const auto& identifiers)
+    { return std::ranges::any_of(identifiers, [&](std::size_t atom) { return framework->isFlexibleAtom(atom); }); };
+    const bool unheld =
+        std::ranges::any_of(framework->intraMolecularPotentials.bonds, [&](const auto& bond)
+                            { return bond.type == BondType::Fixed && touchesFlexibleAtom(bond.identifiers); }) ||
+        std::ranges::any_of(framework->intraMolecularPotentials.bends,
+                            [&](const auto& bend)
+                            {
+                              return (bend.type == BendType::Fixed || bend.type == BendType::Rigid) &&
+                                     touchesFlexibleAtom(bend.identifiers);
+                            });
+    if (unheld)
+    {
+      throw std::runtime_error(
+          "[Molecular dynamics]: the flexible framework has FIXED bonds or FIXED/RIGID bends between flexible atoms, "
+          "which the integrator does not hold; use stiff potentials for these terms, or make the atoms a rigid "
+          "group\n");
+    }
+  }
+
   bool constrained = false;
   for (const Component& component : components)
   {

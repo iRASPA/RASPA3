@@ -4,6 +4,8 @@ module integrators_update;
 
 import std;
 
+import finite_value;
+
 import ewald_structure_factor;
 
 import molecule;
@@ -501,6 +503,15 @@ void constrainMoleculePositions(const Component& component, std::span<Atom> atom
       const double lengthSquared = constraints[k].length * constraints[k].length;
       const double3 separation = atoms[a].position - atoms[b].position;
       const double difference = lengthSquared - double3::dot(separation, separation);
+      // (a NaN is no converged constraint: the comparison is not defined to fail on one under -ffast-math, and a
+      // diverged molecule went on as converged)
+      if (!isFiniteValue(difference))
+      {
+        throw std::runtime_error(std::format(
+            "[Molecular dynamics]: SHAKE met a position that is not a number in a molecule of component '{}'; "
+            "reduce the time step.\n",
+            component.name));
+      }
       if (std::abs(difference) <= 2.0 * component.constraintTolerance * lengthSquared) continue;
       converged = false;
 
@@ -558,6 +569,13 @@ void Integrators::constrainMoleculeVelocities(const Component& component, std::s
       const double3 relativeVelocity = dynamics[a].velocity - dynamics[b].velocity;
       const double rate = double3::dot(separation, relativeVelocity);
       const double separationSquared = double3::dot(separation, separation);
+      if (!isFiniteValue(rate))
+      {
+        throw std::runtime_error(std::format(
+            "[Molecular dynamics]: RATTLE met a velocity that is not a number in a molecule of component '{}'; "
+            "reduce the time step.\n",
+            component.name));
+      }
       if (std::abs(rate) <= component.constraintTolerance * std::sqrt(separationSquared) * scale) continue;
       converged = false;
 
@@ -1149,16 +1167,46 @@ void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> 
                                                             std::span<Atom> moleculeAtomPositions,
                                                             std::span<const AtomDynamics> moleculeDynamics,
                                                             const std::vector<Component>& components,
-                                                            [[maybe_unused]] std::span<GroupState> groupData)
+                                                            std::span<GroupState> groupData)
 {
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
   std::size_t index{};
+  std::size_t groupIndex{};
   // Update center of mass velocities and orientation momenta for each molecule
   for (Molecule& molecule : moleculeData)
   {
     std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
     std::span<const AtomDynamics> spanDynamics = std::span(&moleculeDynamics[index], molecule.numberOfAtoms);
     const Component& component = components[molecule.componentId];
+
+    if (!component.rigid)
+    {
+      // A flexible molecule has no orientation of its own (no orientation momentum); its velocity is that of its
+      // momentum, of which the atoms of a rigid fragment of a semi-flexible molecule hold none themselves: their
+      // group state does.
+      const bool semiFlexible = component.isSemiFlexible() && !groupData.empty();
+      double3 momentum{};
+      for (std::size_t i = 0; i != span.size(); i++)
+      {
+        if (semiFlexible && component.rigidFragmentContaining(i).has_value()) continue;
+        momentum += component.atomMass(i, span[i]) * spanDynamics[i].velocity;
+      }
+      if (semiFlexible)
+      {
+        std::size_t rigidRank{};
+        for (const Fragment& group : component.fragmentGraph.fragments)
+        {
+          if (!group.isRigidBody()) continue;
+          momentum += group.mass * groupData[groupIndex + rigidRank].velocity;
+          ++rigidRank;
+        }
+      }
+      molecule.velocity = momentum * molecule.invMass;
+      molecule.orientationMomentum = simd_quatd{};
+      if (component.isSemiFlexible()) groupIndex += component.numberOfRigidFragments();
+      index += molecule.numberOfAtoms;
+      continue;
+    }
 
     double3 com{};
     for (std::size_t i = 0; i != span.size(); i++)
@@ -1182,7 +1230,13 @@ void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> 
 
     simd_quatd q = molecule.orientation;
     double3x3 M = double3x3::buildRotationMatrix(q);
-    simd_quatd omega(0.0, M * angularMomentum);
+    // in the body frame, without the axes of no moment of inertia (a linear or point molecule), which the
+    // integrator does not rotate about
+    double3 bodyAngularMomentum = M * angularMomentum;
+    if (component.inverseInertiaVector.x == 0.0) bodyAngularMomentum.x = 0.0;
+    if (component.inverseInertiaVector.y == 0.0) bodyAngularMomentum.y = 0.0;
+    if (component.inverseInertiaVector.z == 0.0) bodyAngularMomentum.z = 0.0;
+    simd_quatd omega(0.0, bodyAngularMomentum);
     molecule.orientationMomentum = 2.0 * q * omega;
 
     index += molecule.numberOfAtoms;

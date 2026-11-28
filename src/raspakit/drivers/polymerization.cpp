@@ -676,6 +676,22 @@ Polymerization::ReactionEvent Polymerization::react(std::size_t systemId, std::s
   event.radicalDied = applied.died;
   for (std::size_t i = brokenBefore; i < table.brokenBonds.size(); ++i) event.brokenBonds.push_back(i);
   completeRetyping(atoms, event);
+  // A retyped atom of another mass keeps its momentum, not its velocity: kept at its velocity it changed the total
+  // momentum by (m_after - m_before) v, a drift of the centre of mass the momentum constraint of the thermostat does
+  // not take back (the change of kinetic energy is the thermostat's to absorb). (A rigid body refuses a change of
+  // mass, see the check of the rules.)
+  {
+    const std::span<AtomDynamics> dynamics = system.spanOfMoleculeDynamics();
+    for (const auto& [g, before, after] : event.retyped)
+    {
+      const double massBefore = system.forceField.pseudoAtoms[before].mass;
+      const double massAfter = system.forceField.pseudoAtoms[after].mass;
+      if (g < dynamics.size() && massBefore != massAfter && massAfter > 0.0)
+      {
+        dynamics[g].velocity = (massBefore / massAfter) * dynamics[g].velocity;
+      }
+    }
+  }
   logEvent(systemId, event);
   return event;
 }

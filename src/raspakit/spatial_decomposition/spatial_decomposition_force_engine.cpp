@@ -1847,9 +1847,9 @@ inline void addOuterProduct(double3x3& tensor, const double3& arm, const double3
 /// The scaled (1-4) pairs of one molecule with the intramolecular pair model (Potentials::intraMolecularVDW /
 /// intraMolecularCoulomb at the pair's scaling). The cell lists leave these pairs out together with the excluded
 /// ones; every other pair of the molecule is evaluated by the pair kernels like a pair of two molecules.
-void addScaledPairGradient(RunningEnergy& energy, const ForceField& forceField, const SimulationBox& box,
-                           const IntraMolecularExclusions& exclusions, std::span<const Atom> atoms,
-                           std::span<AtomDynamics> dynamics)
+void addScaledPairGradient(RunningEnergy& energy, double3x3& strain, const ForceField& forceField,
+                           const SimulationBox& box, const IntraMolecularExclusions& exclusions,
+                           std::span<const Atom> atoms, std::span<AtomDynamics> dynamics)
 {
   for (const IntraMolecularExclusions::ScaledPair& pair : exclusions.scaledPairs)
   {
@@ -1876,6 +1876,10 @@ void addScaledPairGradient(RunningEnergy& energy, const ForceField& forceField, 
     const double3 gradient = factor * dr;
     dynamics[pair.atomA].gradient += gradient;
     dynamics[pair.atomB].gradient -= gradient;
+    // a pair of a molecule reaching past half the box interacts through another image of B: the part of its
+    // virial the centre-of-mass correction does not cancel, (dr - (r_A - r_B)) (x) g_A, as
+    // System::computeMolecularPressure (it was left out)
+    addOuterProduct(strain, dr - (atomA.position - atomB.position), gradient);
   }
 }
 }  // namespace
@@ -1958,8 +1962,8 @@ void SpatialDecompositionForceEngine::bondedMoleculesUnit(System& system, const 
     // the bonded terms and the scaled pairs (the non-excluded, unscaled pairs of the molecule are in the cell
     // lists and evaluated by the pair kernels with the molecule-molecule pairs)
     energy += component.intraMolecularPotentials.computeInternalBondedGradient(box, moleculeAtoms, moleculeDynamics);
-    addScaledPairGradient(energy, forceField, box, component.intraMolecularPotentials.exclusions, moleculeAtoms,
-                          moleculeDynamics);
+    addScaledPairGradient(energy, strain, forceField, box, component.intraMolecularPotentials.exclusions,
+                          moleculeAtoms, moleculeDynamics);
   }
   unitEnergies[index] = energy;
   unitStrain[index] = strain;
@@ -2057,6 +2061,7 @@ void SpatialDecompositionForceEngine::bondedTermsUnit(System& system, const Bond
     for (std::size_t k = 0; k < gradient.size(); ++k) slots[slot + k] = gradient[k];
   };
   auto position = [&](std::size_t i) -> const double3& { return atoms[i].position; };
+  double3x3 scaledPairStrain{};
   switch (unit.termKind)
   {
     case 0:
@@ -2223,13 +2228,15 @@ void SpatialDecompositionForceEngine::bondedTermsUnit(System& system, const Bond
         const double3 gradient = factor * dr;
         slots[2 * i] = gradient;
         slots[2 * i + 1] = -gradient;
+        // the image-shift part of the virial (see addScaledPairGradient)
+        addOuterProduct(scaledPairStrain, dr - (atomA.position - atomB.position), gradient);
       }
       break;
     default:
       break;
   }
   unitEnergies[index] = energy;
-  unitStrain[index] = double3x3{};
+  unitStrain[index] = scaledPairStrain;
   unitCorrection[index] = double3x3{};
 }
 

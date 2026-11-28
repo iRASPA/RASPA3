@@ -192,9 +192,13 @@ DEVICE_FUNCTION float bendTerm(uint type, PRIVATE const float* P, float3 posA, f
   const float r_cb = length(dr_cb);
   dr_cb /= r_cb;
   const float cos_theta = clamp(dot(dr_ab, dr_cb), -1.0f, 1.0f);
-  const float theta = acos(cos_theta);
+  // the angle from its sine and cosine, the sine from the cross product: in single precision cos(pi - d) rounds to
+  // -1 for every d below 3.5e-4 rad, so that acos(cos) and the root of 1 - cos^2 left a linear bend (CO2, a
+  // nitrile) without force in a cone about the straight line and with a jump at its edge
+  const float sin_theta = length(cross(dr_ab, dr_cb));
+  const float theta = atan2(sin_theta, dot(dr_ab, dr_cb));
   // bounded at a linear geometry, as the host (BendPotential::potentialEnergyGradientStrain)
-  const float DTDX = -1.0f / fmax(1.0e-8f, sqrt(fmax(0.0f, 1.0f - cos_theta * cos_theta)));
+  const float DTDX = -1.0f / fmax(1.0e-8f, sin_theta);
   float U = 0.0f;
   float DF = 0.0f;
   float temp, temp2;
@@ -438,7 +442,8 @@ DEVICE_FUNCTION float pairTerm(uint kind, PRIVATE const float* P, float4 posA, f
   float U = 0.0f, DF = 0.0f;
   if (kind == 4)
   {
-    if (rr < p->cutOffVDWSquared)
+    // (a pair of no strength has no energy, also on one point, where its divisions were 0 * inf)
+    if (rr < p->cutOffVDWSquared && P[0] != 0.0f)
     {
       const float invRR = 1.0f / rr;
       const float r = sqrt(rr);
@@ -480,7 +485,7 @@ DEVICE_FUNCTION float pairTerm(uint kind, PRIVATE const float* P, float4 posA, f
       DF = f;
     }
   }
-  else if (p->useCharge != 0 && rr < p->cutOffChargeSquared)
+  else if (p->useCharge != 0 && rr < p->cutOffChargeSquared && posA.w * posB.w != 0.0f)
   {
     const float r = sqrt(rr);
     const float x = p->alpha * r;
