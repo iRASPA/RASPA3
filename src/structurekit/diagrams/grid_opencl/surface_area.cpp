@@ -4,6 +4,8 @@ module opencl_surface_area;
 
 import std;
 
+import finite_value;
+
 import int3;
 import uint3;
 import double3;
@@ -18,17 +20,6 @@ import grid_connected_components;
 
 namespace
 {
-
-// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under
-// which `std::isfinite` is true of everything and a comparison with infinity is whatever the optimiser makes
-// of it. (Taken by reference and read as bytes: passed by value, the number is one the compiler holds to be
-// finite, and the test was folded away.)
-bool isFiniteNumber(const double &value)
-{
-  std::uint64_t bits{};
-  std::memcpy(&bits, &value, sizeof(bits));
-  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
-}
 
 }  // namespace
 
@@ -134,7 +125,7 @@ void GridSurfaceArea::run(const PairInteractions &interactions, const Crystal &f
     double3 pb = cell * b;
     double3 pc = cell * c;
     double area = 0.5 * double3::cross(pb - pa, pc - pa).length();
-    if (!isFiniteNumber(area)) continue;
+    if (!isFiniteValue(area)) continue;
 
     this->totalSurfaceArea += area;
 

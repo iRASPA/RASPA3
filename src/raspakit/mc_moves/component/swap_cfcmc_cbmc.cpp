@@ -365,7 +365,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
     // Compute acceptance probability
     double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
-    double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
+    const double logIdealGasRosenbluthWeight = component.logIdealGasRosenbluthWeight();
     double preFactor = system.beta * fugacity * system.simulationBox.volume /
                        static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     // On a TMMC (N, lambda) chain the transition matrix biases the whole chain, the endpoint jumps
@@ -377,7 +377,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
     const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
         preFactor,
-        logCorrectionFactorEwald + growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeight) -
+        logCorrectionFactorEwald + growData->logRosenbluthWeight - logIdealGasRosenbluthWeight -
             system.beta * energyDifference.potentialEnergy(),
         biasTerm);
     const double physicalPacc = acceptance.physical;
@@ -706,7 +706,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
       // Compute acceptance probability
       double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
-      double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
+      const double logIdealGasRosenbluthWeight = component.logIdealGasRosenbluthWeight();
       // (a reservoir of no fugacity takes every deletion: see 'logSwapPrefactor')
       const double logPreFactor =
           MC_Moves::logSwapPrefactor(double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]),
@@ -721,7 +721,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
       const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
           logPreFactor +
-              (logCorrectionFactorEwald + std::log(idealGasRosenbluthWeight) - retraceData.logRosenbluthWeight -
+              (logCorrectionFactorEwald + logIdealGasRosenbluthWeight - retraceData.logRosenbluthWeight -
                system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy())),
           biasTerm);
       const double physicalPacc = acceptance.physical;

@@ -1437,12 +1437,13 @@ void SpatialDecompositionForceEngine::prepareKernel(const System& system)
                                                                                                      : 3u;
       if (mode < 3u)
       {
-        // (a pair of no sigma is no interaction: zero, rather than the infinity of 1 / 0)
+        // (a pair of no sigma is no interaction: the entry of 'None', zero strength at unit sigma. A zero
+        // inverse sigma would make the kernels evaluate 0 * (inf - inf), and 1 / 0 in the sigma^6 tables)
         const bool interacts = parameters.parameters.y > 0.0;
         pair.epsilon4 = interacts ? 4.0 * parameters.parameters.x : 0.0;
-        pair.inverseSigma2 = interacts ? 1.0 / (parameters.parameters.y * parameters.parameters.y) : 0.0;
-        pair.shift = parameters.shift;
-        if (mode == 2u)
+        pair.inverseSigma2 = interacts ? 1.0 / (parameters.parameters.y * parameters.parameters.y) : 1.0;
+        pair.shift = interacts ? parameters.shift : 0.0;
+        if (mode == 2u && interacts)
         {
           // the constant energy offset below the switching distance (potentialVDW: switchedLennardJones)
           const double rc = parameters.parameters2.x;

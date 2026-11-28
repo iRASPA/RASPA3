@@ -218,11 +218,27 @@ export struct Component
   struct IdealGasRosenbluthWeightEstimate
   {
     double temperature{0.0};       ///< The temperature the weight was computed at [K].
+    /// The logarithm of the weight. The weight of a long chain or a low temperature is not a double (ln W beyond
+    /// -745 or 709): 'idealGasRosenbluthWeight' is then zero or infinite, and the moves use this.
+    double logRosenbluthWeight{0.0};
     double relativeError{0.0};     ///< The standard error of the mean weight over the mean weight [-].
     std::size_t numberOfGrows{0};  ///< The number of grows the weight is the mean of.
     bool converged{false};         ///< Whether the error came below the tolerance.
   };
   std::optional<IdealGasRosenbluthWeightEstimate> idealGasRosenbluthWeightEstimate{};
+  /// The logarithm of the ideal-gas Rosenbluth weight, zero without one: what the acceptance rules add and subtract.
+  /// A computed weight gives the logarithm it was computed as (the weight itself may have under- or overflowed);
+  /// a weight that was given, or set after it was computed, gives its own logarithm.
+  double logIdealGasRosenbluthWeight() const
+  {
+    if (!idealGasRosenbluthWeight.has_value()) return 0.0;
+    if (idealGasRosenbluthWeightEstimate.has_value() &&
+        idealGasRosenbluthWeight.value() == std::exp(idealGasRosenbluthWeightEstimate->logRosenbluthWeight))
+    {
+      return idealGasRosenbluthWeightEstimate->logRosenbluthWeight;
+    }
+    return std::log(idealGasRosenbluthWeight.value());
+  }
   /// The standard error of the mean over the mean to which a weight that is not given is computed
   /// ('IdealGasRosenbluthWeightTolerance'); without it, that of 'Preparation::IdealGasSettings'.
   std::optional<double> idealGasRosenbluthWeightTolerance{};

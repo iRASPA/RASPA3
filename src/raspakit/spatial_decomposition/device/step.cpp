@@ -385,7 +385,8 @@ void DeviceStep::setParameters(std::span<const LennardJonesPair> lennardJones, s
   for (std::size_t k = 0; k < types * types; ++k)
   {
     const LennardJonesPair& pair = lennardJones[k];
-    const double sigma2 = 1.0 / pair.inverseSigma2;
+    // (a table entry of no inverse sigma is no interaction: sigma^6 of zero, not the infinity of 1 / 0)
+    const double sigma2 = pair.inverseSigma2 > 0.0 ? 1.0 / pair.inverseSigma2 : 0.0;
     lennardJonesTable[4 * k] = static_cast<float>(pair.epsilon4);
     lennardJonesTable[4 * k + 1] = static_cast<float>(sigma2 * sigma2 * sigma2);
     lennardJonesTable[4 * k + 2] = static_cast<float>(pair.shift);

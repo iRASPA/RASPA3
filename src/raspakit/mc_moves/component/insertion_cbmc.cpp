@@ -130,7 +130,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
 
   // Compute the acceptance probability pre-factor
   double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
-  double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
+  const double logIdealGasRosenbluthWeight = component.logIdealGasRosenbluthWeight();
   // (a reservoir of no fugacity gives no insertion: see 'logSwapPrefactor')
   const double logPreFactor =
       MC_Moves::logSwapPrefactor(system.beta * fugacity * system.simulationBox.volume,
@@ -140,7 +140,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // logarithm: the raw weight of a long chain underflows to zero, which would silently drive the
   // acceptance to zero regardless of the actual weight ratio.
   double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + logPreFactor + growData->logRosenbluthWeight -
-                                     std::log(idealGasRosenbluthWeight));
+                                     logIdealGasRosenbluthWeight);
 
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 

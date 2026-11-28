@@ -4,6 +4,8 @@ module mc_moves_reaction_common;
 
 import std;
 
+import finite_value;
+
 import mc_moves_acceptance;
 
 import ewald_structure_factor;
@@ -27,19 +29,6 @@ import property_lambda_probability_histogram;
 import interactions_external_field;
 import reaction;
 import mc_moves_move_types;
-
-namespace
-{
-// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under which
-// 'std::isfinite' is true of everything. (Taken by reference and read as bytes, so that the test is not folded
-// away with it.)
-[[maybe_unused]] bool isFiniteNumber(const double& value)
-{
-  std::uint64_t bits{};
-  std::memcpy(&bits, &value, sizeof(bits));
-  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
-}
-}  // namespace
 
 namespace MC_Moves::ReactionCommon
 {
@@ -366,7 +355,7 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
   // state (overlapping trials are discarded), corrupting the running energies. Reject instead.
   // The test uses the exact log-weight (an overlap drives it to -inf/NaN); the raw product
   // legitimately underflows to zero for long chains, so it cannot be thresholded directly.
-  if (!isFiniteNumber(result.logRosenbluthWeight))
+  if (!isFiniteValue(result.logRosenbluthWeight))
   {
     return std::nullopt;
   }
@@ -374,20 +363,20 @@ void applyLinearReactionScaling(std::span<Atom> atoms, bool isReactant, double l
   return result;
 }
 
-[[nodiscard]] double idealGasRosenbluthWeightProduct(const System& system,
-                                                     std::span<const std::size_t> stoichiometry) noexcept
+[[nodiscard]] double logIdealGasRosenbluthWeightProduct(const System& system,
+                                                        std::span<const std::size_t> stoichiometry) noexcept
 {
   // reference ideal-gas Rosenbluth weights: with W/W_IG ratios the full ideal-gas partition functions
-  // q_i can be used in the acceptance rules of reaction moves (Rosch and Maginn, eqs. 18-24)
-  double weight = 1.0;
+  // q_i can be used in the acceptance rules of reaction moves (Rosch and Maginn, eqs. 18-24). The logarithm of the
+  // product: the product itself of a few small weights underflows to zero where each of them is representable.
+  double logWeight = 0.0;
   for (std::size_t componentId = 0; componentId < stoichiometry.size(); ++componentId)
   {
-    for (std::size_t k = 0; k < stoichiometry[componentId]; ++k)
-    {
-      weight *= system.components[componentId].idealGasRosenbluthWeight.value_or(1.0);
-    }
+    if (stoichiometry[componentId] == 0uz) continue;
+    logWeight += static_cast<double>(stoichiometry[componentId]) *
+                 system.components[componentId].logIdealGasRosenbluthWeight();
   }
-  return weight;
+  return logWeight;
 }
 
 void setReactionFractionalScaling(System& system, Reaction& reaction, double lambda) noexcept
@@ -1017,12 +1006,12 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
       // partition functions q_i can be used in the equilibrium term
       const std::vector<std::size_t>& oldStoichiometry =
           reactantsToProducts ? reaction.reactantStoichiometry : reaction.productStoichiometry;
-      const double idealGasNew = idealGasRosenbluthWeightProduct(system, newStoichiometry);
-      const double idealGasOld = idealGasRosenbluthWeightProduct(system, oldStoichiometry);
+      const double logIdealGasNew = logIdealGasRosenbluthWeightProduct(system, newStoichiometry);
+      const double logIdealGasOld = logIdealGasRosenbluthWeightProduct(system, oldStoichiometry);
       // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
       acceptanceProbability =
-          MC_Moves::boundedExp(growData->logRosenbluthWeight - std::log(idealGasNew) - retraceData->logRosenbluthWeight +
-                   std::log(idealGasOld) + logCorrectionFactor + equilibriumTerm + biasNew - biasOld);
+          MC_Moves::boundedExp(growData->logRosenbluthWeight - logIdealGasNew - retraceData->logRosenbluthWeight +
+                   logIdealGasOld + logCorrectionFactor + equilibriumTerm + biasNew - biasOld);
     }
     else
     {
@@ -1433,12 +1422,12 @@ void insertSerialSideFractionalMolecules(System& system, Reaction& reaction, std
   {
     // grow and retrace referenced to the ideal-gas Rosenbluth weights, so that the full ideal-gas
     // partition functions q_i can be used in the acceptance rule
-    const double idealGasGrow = idealGasRosenbluthWeightProduct(system, growStoichiometry);
-    const double idealGasGhost = idealGasRosenbluthWeightProduct(system, demoteStoichiometry);
+    const double logIdealGasGrow = logIdealGasRosenbluthWeightProduct(system, growStoichiometry);
+    const double logIdealGasGhost = logIdealGasRosenbluthWeightProduct(system, demoteStoichiometry);
     // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
     acceptanceProbability =
-        MC_Moves::boundedExp(growData->logRosenbluthWeight - std::log(idealGasGrow) - retraceData->logRosenbluthWeight +
-                 std::log(idealGasGhost) + equilibriumTerm + biasNew - biasOld -
+        MC_Moves::boundedExp(growData->logRosenbluthWeight - logIdealGasGrow - retraceData->logRosenbluthWeight +
+                 logIdealGasGhost + equilibriumTerm + biasNew - biasOld -
                  system.beta * (rescaleDifference->potentialEnergy() + tailDifference.potentialEnergy() +
                                 fourierDifference.potentialEnergy()));
   }

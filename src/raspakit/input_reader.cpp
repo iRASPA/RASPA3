@@ -1387,8 +1387,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       throw std::runtime_error("[Input reader]: 'WHAMTolerance' must be a positive number\n");
     }
     whamTolerance = parsed_data["WHAMTolerance"].get<double>();
-    // a bound rather than std::isfinite, which -ffast-math compiles away
-    if (!(whamTolerance > 0.0) || !(whamTolerance < std::numeric_limits<double>::max()))
+    if (!isFiniteValue(whamTolerance) || !(whamTolerance > 0.0))
     {
       throw std::runtime_error("[Input reader]: 'WHAMTolerance' must be a positive finite number\n");
     }
@@ -3933,12 +3932,18 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         // the mole fractions relative to the largest chemical potential, so that a strongly negative one does not
         // underflow every exp(mu/kT) to zero and leave 0/0 mole fractions
-        double largestChemicalPotential = -std::numeric_limits<double>::infinity();
+        // (started from the first one that is given, not from minus infinity: the kits are compiled with
+        // -ffast-math, under which a comparison with an infinity is whatever the optimiser makes of it)
+        std::optional<double> largestGiven{};
         for (std::size_t i = 0; i != jsonNumberOfComponents; ++i)
         {
-          if (jsonChemicalPotentials[systemId][i].has_value())
-            largestChemicalPotential = std::max(largestChemicalPotential, jsonChemicalPotentials[systemId][i].value());
+          const std::optional<double>& given = jsonChemicalPotentials[systemId][i];
+          if (given.has_value() && (!largestGiven.has_value() || given.value() > largestGiven.value()))
+          {
+            largestGiven = given;
+          }
         }
+        const double largestChemicalPotential = largestGiven.value();
         double relativeFugacitySum = 0.0;
         for (std::size_t i = 0; i != jsonNumberOfComponents; ++i)
         {
@@ -5820,6 +5825,41 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
+  // An automatic Coulomb cut-off follows the box at every volume move. With a finite-cutoff charge method (Wolf,
+  // the shifted-force methods, zero dipole) the molecule then carries a self energy that depends on the volume
+  // through the cut-off. The volume moves weigh that energy; the moves that exchange molecules with a reservoir or
+  // another box take it off as part of the ideal-gas reference ('System::isolatedChargeCorrectionEnergy'). The two
+  // kinds of move then sample different distributions: around the cycle insert, change the volume, delete, change
+  // it back, the acceptance ratios leave the Boltzmann factor of the change of that self energy. (The Ewald
+  // summation has no such energy, and the automatic van der Waals cut-off no such reference.)
+  for (std::size_t i = 0uz; i < systems.size(); ++i)
+  {
+    const ForceField& forceField = systems[i].forceField;
+    if (!forceField.usesRealSpaceChargeCorrections() || !forceField.cutOffCoulombAutomatic) continue;
+    const bool exchangesChargedMolecules = std::ranges::any_of(
+        systems[i].components,
+        [](const Component& component)
+        {
+          return component.swappable &&
+                 std::ranges::any_of(component.atoms, [](const Atom& atom) { return atom.charge != 0.0; });
+        });
+    if (!exchangesChargedMolecules) continue;
+    for (const auto& [move, name] :
+         {std::pair{Move::Types::VolumeChange, "VolumeMoveProbability"},
+          std::pair{Move::Types::AnisotropicVolumeChange, "AnisotropicVolumeMoveProbability"},
+          std::pair{Move::Types::GibbsVolume, "GibbsVolumeMoveProbability"}})
+    {
+      if (systems[i].mc_moves_probabilities.getProbability(move) > 0.0)
+      {
+        throw std::runtime_error(std::format(
+            "[Input reader]: system {} combines a volume move ('{}') with moves that insert or remove charged "
+            "molecules under a finite-cutoff charge method and an automatic Coulomb cut-off (it would follow the "
+            "box, and with it the self energy the insertions take off); give 'CutOffCoulomb' a value\n",
+            i, name));
+      }
+    }
+  }
+
   // The Gibbs moves pair a system with a neighbour in the list of systems (see randomPairAdjacentIntegers): with a
   // single system the pair is that system twice, and the volume exchange then scaled it before saving it as the
   // second system, so a rejection restored the trial box. Both boxes are at one temperature, and the volume
@@ -6456,6 +6496,22 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           "[Input reader]: 'ComputeRDF' (the force-based RDF) is not available with an external field or with "
           "polarization (system {}): their forces are not evaluated; use 'ComputeConventionalRDF'\n",
           systemId));
+    }
+    // And it needs the force along the free displacement of each site. A rigid group carries the total force of
+    // its body, in which the constraint forces cancel; an atom held by a fixed bond length or angle outside a
+    // rigid group has a constraint force of its own, which the gradients do not hold: the estimator then
+    // converges to a g(r) with another limit than one.
+    if (systems[systemId].propertyRadialDistributionFunction.has_value())
+    {
+      for (const Component& component : systems[systemId].components)
+      {
+        if (component.rigid || component.distanceConstraints.empty()) continue;
+        throw std::runtime_error(std::format(
+            "[Input reader]: 'ComputeRDF' (the force-based RDF) is not available with the distance constraints of "
+            "component '{}' (system {}): the constraint forces are not part of the forces it uses; use "
+            "'ComputeConventionalRDF', or make the constrained atoms a rigid group\n",
+            component.name, systemId));
+      }
     }
   }
 

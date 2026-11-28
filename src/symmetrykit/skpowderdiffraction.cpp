@@ -4,6 +4,8 @@ module skpowderdiffraction;
 
 import std;
 
+import finite_value;
+
 import int3;
 import double3;
 import double3x3;
@@ -60,17 +62,6 @@ std::string elementSymbol(std::size_t atomicNumber)
   return std::format("of atomic number {}", atomicNumber);
 }
 
-// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under which
-// a comparison with infinity is whatever the optimiser makes of it.
-// (Taken by reference and read as bytes: passed by value, the number is one the compiler holds to be finite, and
-// the test was folded away.)
-bool isFiniteNumber(const double& value)
-{
-  std::uint64_t bits{};
-  std::memcpy(&bits, &value, sizeof(bits));
-  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
-}
-
 void validate(const SKPowderDiffraction::Settings& settings)
 {
   if (!(settings.twoThetaMin >= 0.0) || !(settings.twoThetaMax > settings.twoThetaMin) ||
@@ -92,8 +83,8 @@ void validate(const SKPowderDiffraction::Settings& settings)
   for (const SKPowderDiffraction::Line& line : settings.lines)
   {
     // (an infinite weight made the strongest peak infinite, and the scaling to 100 every intensity not a number)
-    if (!(line.wavelength > 0.0) || !(line.weight >= 0.0) || !isFiniteNumber(line.wavelength) ||
-        !isFiniteNumber(line.weight))
+    if (!(line.wavelength > 0.0) || !(line.weight >= 0.0) || !isFiniteValue(line.wavelength) ||
+        !isFiniteValue(line.weight))
     {
       throw std::invalid_argument(std::format(
           "powder diffraction: a wavelength of {} Angstrom with weight {} is not a line of the radiation",
@@ -213,7 +204,17 @@ std::vector<Reflection> reflections(const double3x3& unitCell, const std::vector
   // with (3,3,0). The peak then carried the index of the absent reflection, its multiplicity as well, and a mean
   // |F|^2 diluted by it.
   double strongest = 0.0;
-  for (const Reflection& reflection : result) strongest = std::max(strongest, reflection.structureFactorSquared);
+  for (const Reflection& reflection : result)
+  {
+    // (exp(-B s^2) of a large negative B overflows: against an infinite strongest reflection every one, the infinite
+    // ones included, was taken for extinguished, and the pattern came out empty instead of refused)
+    if (!isFiniteValue(reflection.structureFactorSquared))
+    {
+      throw std::invalid_argument(
+          "powder diffraction: the structure factors are not finite (check the displacement factors)");
+    }
+    strongest = std::max(strongest, reflection.structureFactorSquared);
+  }
   std::erase_if(result, [&](const Reflection& reflection)
                 { return !(reflection.structureFactorSquared > 1.0e-12 * strongest); });
   return result;
@@ -386,8 +387,8 @@ SKPowderDiffraction SKPowderDiffraction::compute(const double3x3& unitCell, std:
   for (const Peak& peak : result.peaks) strongest = std::max(strongest, peak.intensity);
   // (every reflection that is drawn, also those past the range whose tails reach into it: one that is not finite made
   // the whole pattern not a number)
-  if (!isFiniteNumber(strongest) ||
-      !std::ranges::all_of(drawn, [](const Bragg& bragg) { return isFiniteNumber(bragg.intensity); }))
+  if (!isFiniteValue(strongest) ||
+      !std::ranges::all_of(drawn, [](const Bragg& bragg) { return isFiniteValue(bragg.intensity); }))
   {
     // exp(-B s^2) of a large negative B overflows, and the scaling below made every intensity not a number
     throw std::invalid_argument("powder diffraction: the intensities are not finite (check the displacement factors)");

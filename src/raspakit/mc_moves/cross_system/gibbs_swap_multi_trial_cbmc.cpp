@@ -155,9 +155,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMoveMu
       timed(systemA, componentA, move, Move::Timing::Ewald,
             [&] { return longRangeDifference(systemB, {}, oldMolecule, true); });
 
+  // The energy a finite-cutoff charge method gives the isolated molecule (its self term and excluded pairs) is in
+  // the Fourier differences of both boxes and belongs to the ideal-gas reference: it cancels between boxes of one
+  // Coulomb cut-off, and with different cut-offs (an automatic cut-off follows each box) it was left in as a shift
+  // of the chemical potential between the boxes ('System::logIsolatedChargeWeightOfRigidComponent').
+  const double logIsolatedChargeWeight = systemB.logIsolatedChargeWeightOfRigidComponent(selectedComponent) -
+                                         systemA.logIsolatedChargeWeightOfRigidComponent(selectedComponent);
   const double physicalAcceptance = MC_Moves::boundedExp(
       growData->logMeanWeight - retraceData.logMeanWeight + growData->logProposalCorrection +
-      retraceData.logProposalCorrection +
+      retraceData.logProposalCorrection + logIsolatedChargeWeight +
       std::log((static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) *
                 systemA.simulationBox.volume) /
                ((1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent])) *

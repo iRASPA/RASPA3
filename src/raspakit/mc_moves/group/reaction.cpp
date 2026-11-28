@@ -118,13 +118,13 @@ std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, S
   const double logCorrectionFactorEwald = -system.beta * energyFourierDifference.potentialEnergy();
   // grow and retrace referenced to the ideal-gas Rosenbluth weights, so that the full ideal-gas
   // partition functions q_i can be used in the equilibrium term (Rosch and Maginn, eqs. 18-24)
-  const double idealGasInsert = ReactionCommon::idealGasRosenbluthWeightProduct(system, insertStoichiometry);
-  const double idealGasRemove = ReactionCommon::idealGasRosenbluthWeightProduct(system, removeStoichiometry);
+  const double logIdealGasInsert = ReactionCommon::logIdealGasRosenbluthWeightProduct(system, insertStoichiometry);
+  const double logIdealGasRemove = ReactionCommon::logIdealGasRosenbluthWeightProduct(system, removeStoichiometry);
   // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
   const double acceptanceProbability =
-      MC_Moves::boundedExp(logCorrectionFactorEwald + growData->logRosenbluthWeight - std::log(idealGasInsert) -
+      MC_Moves::boundedExp(logCorrectionFactorEwald + growData->logRosenbluthWeight - logIdealGasInsert -
                system.beta * tailEnergyDifference.potentialEnergy() - retraceData->logRosenbluthWeight +
-               std::log(idealGasRemove) + equilibriumTerm);
+               logIdealGasRemove + equilibriumTerm);
 
   // the trial configuration has been constructed; counted before the Metropolis test
   system.mc_moves_statistics.addConstructed(move);

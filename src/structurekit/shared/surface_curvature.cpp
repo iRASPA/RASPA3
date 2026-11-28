@@ -4,23 +4,14 @@ module surface_curvature;
 
 import std;
 
+import finite_value;
+
 import uint3;
 import double3;
 import double3x3;
 
 namespace
 {
-
-// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under
-// which `std::isfinite` is true of everything and a comparison with infinity is whatever the optimiser makes
-// of it. (Taken by reference and read as bytes: passed by value, the number is one the compiler holds to be
-// finite, and the test was folded away.)
-bool isFiniteNumber(const double &value)
-{
-  std::uint64_t bits{};
-  std::memcpy(&bits, &value, sizeof(bits));
-  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
-}
 
 // A 3 x 3 system by elimination with partial pivoting. The matrix is the normal-equations matrix of the fit
 // below, so it is symmetric and positive semi-definite, and the only way it is singular is that the triangle
@@ -73,7 +64,7 @@ bool solveThreeByThree(const double matrix[3][3], const double rightHandSide[3],
     solution[row] = sum / augmented[row][row];
   }
 
-  return isFiniteNumber(solution[0]) && isFiniteNumber(solution[1]) && isFiniteNumber(solution[2]);
+  return isFiniteValue(solution[0]) && isFiniteValue(solution[1]) && isFiniteValue(solution[2]);
 }
 
 }  // namespace
@@ -81,7 +72,7 @@ bool solveThreeByThree(const double matrix[3][3], const double rightHandSide[3],
 CurvatureKind classifyCurvature(const TriangleCurvature &curvature, const CurvatureBands &bands)
 {
   if (!curvature.resolved) return CurvatureKind::Unresolved;
-  if (!isFiniteNumber(curvature.kappa1) || !isFiniteNumber(curvature.kappa2)) return CurvatureKind::Unresolved;
+  if (!isFiniteValue(curvature.kappa1) || !isFiniteValue(curvature.kappa2)) return CurvatureKind::Unresolved;
   if (bands.sharpest > 0.0 && curvature.sharpest() > bands.sharpest) return CurvatureKind::Unresolved;
 
   if (curvature.sharpest() <= bands.flat) return CurvatureKind::Flat;
@@ -98,14 +89,14 @@ CurvatureKind classifyCurvature(const TriangleCurvature &curvature, const Curvat
 
 void CurvatureAreas::add(double area, const TriangleCurvature &curvature, const CurvatureBands &bands)
 {
-  if (!isFiniteNumber(area) || area <= 0.0) return;
+  if (!isFiniteValue(area) || area <= 0.0) return;
 
   // The two integrals take every triangle whose fit stood up, the band above them or not. They are the part of
   // this that converges as the grid is refined, and they converge precisely because the crease triangles are in
   // them: a crease contributes a curvature of one over the rounding radius over an area proportional to that
   // radius, and the product settles down while neither factor does. Holding those triangles back would leave
   // both integrals drifting with the grid, which is what the columns below do.
-  if (curvature.resolved && isFiniteNumber(curvature.kappa1) && isFiniteNumber(curvature.kappa2))
+  if (curvature.resolved && isFiniteValue(curvature.kappa1) && isFiniteValue(curvature.kappa2))
   {
     this->integratedMeanCurvature += area * curvature.mean();
     this->integratedGaussianCurvature += area * curvature.gaussian();
@@ -167,7 +158,7 @@ double3 cartesianNormalOfGridGradient(const double3x3 &inverseCell, uint3 gridSi
   if (sense == FieldSense::GrowsIntoSolid) cartesian = -cartesian;
 
   double length = cartesian.length();
-  if (!(length > 0.0) || !isFiniteNumber(length)) return double3(0.0, 0.0, 0.0);
+  if (!(length > 0.0) || !isFiniteValue(length)) return double3(0.0, 0.0, 0.0);
 
   return cartesian * (1.0 / length);
 }
@@ -178,7 +169,7 @@ TriangleCurvature triangleCurvature(const std::array<double3, 3> &corners, const
 
   double3 face = double3::cross(corners[1] - corners[0], corners[2] - corners[0]);
   double twiceArea = face.length();
-  if (!(twiceArea > 0.0) || !isFiniteNumber(twiceArea)) return result;
+  if (!(twiceArea > 0.0) || !isFiniteValue(twiceArea)) return result;
   face = face * (1.0 / twiceArea);
 
   // A corner whose field gradient vanished has no normal. Fitted through, a missing normal reads as a turn
@@ -187,7 +178,7 @@ TriangleCurvature triangleCurvature(const std::array<double3, 3> &corners, const
   for (const double3 &normal : normals)
   {
     double length = normal.length();
-    if (!(length > 0.0) || !isFiniteNumber(length)) return result;
+    if (!(length > 0.0) || !isFiniteValue(length)) return result;
   }
 
   // The frame is the triangle's own, but signed to agree with the field's normals, so that the sign of a
@@ -243,7 +234,7 @@ TriangleCurvature triangleCurvature(const std::array<double3, 3> &corners, const
 
   result.kappa1 = halfTrace + spread;
   result.kappa2 = halfTrace - spread;
-  result.resolved = isFiniteNumber(result.kappa1) && isFiniteNumber(result.kappa2);
+  result.resolved = isFiniteValue(result.kappa1) && isFiniteValue(result.kappa2);
 
   return result;
 }

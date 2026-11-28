@@ -364,7 +364,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
         }
 
         logRosenbluthRatio +=
-            growData->logRosenbluthWeight - std::log(memberComponent.idealGasRosenbluthWeight.value_or(1.0));
+            growData->logRosenbluthWeight - memberComponent.logIdealGasRosenbluthWeight();
         trialMolecules[i] = growData->molecule;
         trialAtoms[i] = std::move(growData->atoms);
         trialGrowEnergies[i] = growData->energies;
@@ -804,7 +804,7 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
             {.firstBead = (i == 0) ? CBMC::FirstBeadScheme::MultipleFirstBead : CBMC::FirstBeadScheme::Fixed});
 
         logRosenbluthRatio +=
-            std::log(memberComponent.idealGasRosenbluthWeight.value_or(1.0)) - retraceData.logRosenbluthWeight;
+            memberComponent.logIdealGasRosenbluthWeight() - retraceData.logRosenbluthWeight;
         retraceEnergies[i] = retraceData.energies;
       }
       time_end = std::chrono::steady_clock::now();

@@ -4,6 +4,8 @@ export module property_lambda_probability_histogram;
 
 import std;
 
+import finite_value;
+
 import randomnumbers;
 import archive;
 import averages;
@@ -196,7 +198,9 @@ export struct PropertyLambdaProbabilityHistogram
         // bounds rather than std::isfinite, which -ffast-math compiles away: an overflow of either weight gave
         // inf / inf, a NaN that stayed in the histogram and in dU/dlambda for the rest of the run
         const double own = weight();
-        weightOfTheOthers = (own > 0.0 && own < 1.0e300 && w >= 0.0 && w < 1.0e300) ? w / own : 1.0;
+        weightOfTheOthers = (isFiniteValue(own) && isFiniteValue(w) && own > 0.0 && own < 1.0e300 && w >= 0.0 && w < 1.0e300)
+                                ? w / own
+                                : 1.0;
       }
       bookKeepingLambda[blockIndex][currentBin] += weightOfTheOthers;
 

@@ -1179,6 +1179,19 @@ double System::isolatedChargeCorrectionEnergy(std::span<const Atom> atoms) const
       .potentialEnergy();
 }
 
+double System::logIsolatedChargeWeightOfRigidComponent(std::size_t componentId) const
+{
+  const Component& component = components[componentId];
+  if (!(component.rigid || component.atoms.size() <= 1uz) || component.atoms.empty()) return 0.0;
+  std::vector<Atom> atoms(component.atoms.begin(), component.atoms.end());
+  for (Atom& atom : atoms)
+  {
+    atom.componentId = static_cast<decltype(atom.componentId)>(componentId);
+    atom.moleculeId = 0;
+  }
+  return -beta * isolatedChargeCorrectionEnergy(atoms);
+}
+
 std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random, std::size_t selectedComponent,
                                                           bool singleTrialDirection)
 {

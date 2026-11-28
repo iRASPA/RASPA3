@@ -881,6 +881,8 @@ void MolecularDynamics::setup()
           "polarization forces");
     if (const std::optional<std::string> reason = system.thermobarostatUnsupportedReason())
       throw std::runtime_error(std::format("MolecularDynamics does not support {}\n", reason.value()));
+    if (const std::optional<std::string> reason = system.masslessFlexibleSiteReason())
+      throw std::runtime_error(std::format("MolecularDynamics can not integrate {}\n", reason.value()));
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
 

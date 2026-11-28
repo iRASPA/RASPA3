@@ -50,10 +50,14 @@ struct IdealGasGrows
 
   double logMeanWeight() const { return logSum(0.0) - std::log(static_cast<double>(attempts)); }
 
+  bool hasErrorEstimate() const { return !logWeight.empty() && attempts >= 2uz; }
+
   // the standard error of the mean weight over the mean weight (the grows are independent of each other)
   double relativeError() const
   {
-    if (logWeight.empty() || attempts < 2uz) return std::numeric_limits<double>::infinity();
+    // (no error estimate from fewer than two grows: the largest number, not an infinity, which a comparison under
+    // -ffast-math is free to call anything; 'hasErrorEstimate' is what the convergence test asks)
+    if (!hasErrorEstimate()) return std::numeric_limits<double>::max();
     const double largest = *std::ranges::max_element(logWeight);
     double sum = 0.0, sumOfSquares = 0.0;
     for (const double value : logWeight)
@@ -228,7 +232,7 @@ IdealGasGrows growIdealGas(const System& system, std::size_t componentId, std::s
           "[Ideal-gas reference]: no isolated molecule of component '{}' could be grown at {} K in {} attempts\n",
           prototype.name, system.temperature, grows.attempts));
     }
-    if (grows.relativeError() <= relativeTolerance)
+    if (grows.hasErrorEstimate() && grows.relativeError() <= relativeTolerance)
     {
       grows.converged = true;
       break;
@@ -285,6 +289,7 @@ void setComputedWeight(Component& component, const Preparation::IdealGasReferenc
   component.idealGasRosenbluthWeight = std::exp(reference.logRosenbluthWeight);
   component.idealGasRosenbluthWeightEstimate =
       Component::IdealGasRosenbluthWeightEstimate{.temperature = reference.temperature,
+                                                  .logRosenbluthWeight = reference.logRosenbluthWeight,
                                                   .relativeError = reference.relativeError,
                                                   .numberOfGrows = reference.numberOfGrows,
                                                   .converged = reference.converged};
@@ -563,7 +568,7 @@ std::vector<std::vector<double>> Preparation::prepareIdealGasReferences(std::spa
       if (insertionsDivideByIdealGasRosenbluthWeight(systems[i], componentId))
       {
         component.logInsertionNormalization.value() +=
-            std::log(component.idealGasRosenbluthWeight.value()) - references[i].logRosenbluthWeight;
+            component.logIdealGasRosenbluthWeight() - references[i].logRosenbluthWeight;
       }
     }
     for (std::size_t i = 0; i < otherTemperatures.size(); ++i)
@@ -577,16 +582,20 @@ std::vector<std::vector<double>> Preparation::prepareIdealGasReferences(std::spa
   // share the weight.
   for (std::size_t componentId = 0; componentId < numberOfComponents; ++componentId)
   {
-    std::map<double, IdealGasReference> computed;
+    // (of one temperature and one solute-tempering scaling: the replicas of a solute-tempering ladder are at one
+    // temperature with intramolecular potentials and charges scaled by their own lambda, and took the weight of
+    // the unscaled first replica)
+    std::map<std::pair<double, double>, IdealGasReference> computed;
     for (System& system : systems)
     {
       Component& component = system.components[componentId];
       if (component.idealGasRosenbluthWeight.has_value()) continue;
       if (!needsIdealGasRosenbluthWeight(system, componentId)) continue;
-      auto it = computed.find(system.temperature);
+      const std::pair<double, double> key{system.temperature, system.soluteTemperingLambda};
+      auto it = computed.find(key);
       if (it == computed.end())
       {
-        it = computed.emplace(system.temperature, idealGasRosenbluthWeight(system, componentId, settings)).first;
+        it = computed.emplace(key, idealGasRosenbluthWeight(system, componentId, settings)).first;
       }
       setComputedWeight(component, it->second);
     }

@@ -4,6 +4,8 @@ module parallel_tempering;
 
 import std;
 
+import finite_value;
+
 import stringutils;
 import hardware_info;
 import archive;
@@ -90,17 +92,35 @@ void refreshStatePoint(System& system, double T)
       system.components, [](const Component& component) { return component.chemicalPotential.has_value(); });
   if (hasChemicalPotentials)
   {
-    double totalFugacity = 0.0;
+    // the mole fractions relative to the largest chemical potential, as the input reader does: on a cold replica
+    // every exp(mu / kT) can underflow to zero, which left 0 / 0 mole fractions
+    std::optional<double> largestGiven{};
+    for (const Component& component : system.components)
+    {
+      const std::optional<double>& given = component.chemicalPotential;
+      if (given.has_value() && (!largestGiven.has_value() || given.value() > largestGiven.value())) largestGiven = given;
+    }
+    const double largestChemicalPotential = largestGiven.value();
+    double relativeFugacitySum = 0.0;
     for (Component& component : system.components)
     {
       if (!component.chemicalPotential.has_value()) continue;
-      component.molFraction = Units::KB * T * std::exp(component.chemicalPotential.value() / (Units::KB * T));
+      component.molFraction = std::exp((component.chemicalPotential.value() - largestChemicalPotential) / (Units::KB * T));
       component.fugacityCoefficient = 1.0;
-      totalFugacity += component.molFraction;
+      relativeFugacitySum += component.molFraction;
     }
     for (Component& component : system.components)
     {
-      if (component.chemicalPotential.has_value()) component.molFraction /= totalFugacity;
+      if (component.chemicalPotential.has_value()) component.molFraction /= relativeFugacitySum;
+    }
+    const double totalFugacity =
+        Units::KB * T * std::exp(largestChemicalPotential / (Units::KB * T)) * relativeFugacitySum;
+    if (!(totalFugacity > 0.0) || !isFiniteValue(totalFugacity))
+    {
+      throw std::runtime_error(std::format(
+          "[ParallelTempering]: the chemical potentials give a reservoir fugacity of {} at T = {} K (exp(mu/kT) "
+          "under- or overflows)\n",
+          totalFugacity, T));
     }
     system.pressure = totalFugacity;
     system.input_pressure = totalFugacity * Units::PressureConversionFactor;
@@ -381,6 +401,9 @@ void ParallelTempering::setup()
 
   // interpolation grids are computed once and shared (copied) between the replicas; under solute tempering the
   // solute-type grids are rescaled to the lambda of each replica
+  // (with gradients when a gradient-based move is on: the default polynomial scheme has none, and the hybrid
+  // and smart Monte Carlo moves ran without the forces of the framework)
+  for (System& system : systems) system.upgradeInterpolationSchemeForGradientMoves();
   systems.front().createExternalFieldInterpolationGrid(stream, 0);
   systems.front().createFrameworkInterpolationGrids(stream);
   for (std::size_t replicaId = 1; replicaId < systems.size(); ++replicaId)

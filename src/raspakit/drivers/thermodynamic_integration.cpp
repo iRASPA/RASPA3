@@ -116,6 +116,8 @@ void ThermodynamicIntegration::setup()
   for (std::size_t system_id{0}; System& system : systems)
   {
     std::ostream stream(streams[system_id].rdbuf());
+    // (with gradients when a gradient-based move is on: the default polynomial scheme has none)
+    system.upgradeInterpolationSchemeForGradientMoves();
     system.createExternalFieldInterpolationGrid(stream, system_id);
     system.createFrameworkInterpolationGrids(stream);
 

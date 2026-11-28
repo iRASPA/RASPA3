@@ -165,8 +165,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
   const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * system.pressure;
   const double fugacityB =
       componentBRef.molFraction * componentBRef.fugacityCoefficient.value_or(1.0) * system.pressure;
-  const double idealGasA = componentA.idealGasRosenbluthWeight.value_or(1.0);
-  const double idealGasB = componentBRef.idealGasRosenbluthWeight.value_or(1.0);
+  const double logIdealGasA = componentA.logIdealGasRosenbluthWeight();
+  const double logIdealGasB = componentBRef.logIdealGasRosenbluthWeight();
 
   // Snapshot the committed effective type counts; threaded across the sequential tail sub-steps of the move.
   std::vector<double> tailEffectiveCounts = system.effectiveNumberOfPseudoAtomsVDW;
@@ -498,8 +498,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
     const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
         preFactor,
-        logCorrectionFactorEwald + growDataA->logRosenbluthWeight - std::log(idealGasA) +
-            growDataB->logRosenbluthWeight - std::log(idealGasB) - system.beta * energyDifference.potentialEnergy(),
+        logCorrectionFactorEwald + growDataA->logRosenbluthWeight - logIdealGasA +
+            growDataB->logRosenbluthWeight - logIdealGasB - system.beta * energyDifference.potentialEnergy(),
         biasTerm);
     const double physicalPacc = acceptance.physical;
     const double samplingPacc = acceptance.sampling;
@@ -866,7 +866,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
     const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
         preFactor,
-        logCorrectionFactorEwald + std::log(idealGasA) - retraceDataA.logRosenbluthWeight + std::log(idealGasB) -
+        logCorrectionFactorEwald + logIdealGasA - retraceDataA.logRosenbluthWeight + logIdealGasB -
             retraceDataB.logRosenbluthWeight - system.beta * energyDifference.potentialEnergy(),
         biasTerm);
     const double physicalPacc = acceptance.physical;

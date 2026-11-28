@@ -4,6 +4,8 @@ module minimization;
 
 import std;
 
+import finite_value;
+
 import archive;
 import graceful_shutdown;
 import input_reader;
@@ -35,19 +37,6 @@ import phonon_kpath;
 import phonon_dynamical_matrix;
 import units;
 import system_preparation;
-
-namespace
-{
-// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under which
-// 'std::isfinite' is true of everything. (Taken by reference and read as bytes, so that the test is not folded
-// away with it.)
-[[maybe_unused]] bool isFiniteNumber(const double& value)
-{
-  std::uint64_t bits{};
-  std::memcpy(&bits, &value, sizeof(bits));
-  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
-}
-}  // namespace
 
 namespace
 {
@@ -776,7 +765,7 @@ void Minimization::runPhase()
     for (std::size_t iteration = startIteration; iteration < options.maximumNumberOfSteps; ++iteration)
     {
       evaluateDerivatives(system, layout, capabilities, derivatives);
-      if (!isFiniteNumber(derivatives.energy))
+      if (!isFiniteValue(derivatives.energy))
       {
         throw std::runtime_error(std::format("Minimization system {} produced a non-finite energy", systemIndex));
       }

@@ -646,6 +646,9 @@ void ReweightedHistogram::setup()
   }
 
   // interpolation grids are computed once and shared (copied) between the replicas
+  // (with gradients when a gradient-based move is on: the default polynomial scheme has none, and the hybrid
+  // and smart Monte Carlo moves ran without the forces of the framework)
+  for (System& system : systems) system.upgradeInterpolationSchemeForGradientMoves();
   systems.front().createExternalFieldInterpolationGrid(stream, 0);
   systems.front().createFrameworkInterpolationGrids(stream);
   for (std::size_t replicaId = 1; replicaId < systems.size(); ++replicaId)

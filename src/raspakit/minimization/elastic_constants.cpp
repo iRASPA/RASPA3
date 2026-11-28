@@ -4,6 +4,8 @@ module elastic_constants;
 
 import std;
 
+import finite_value;
+
 import archive;
 import units;
 import double3x3;
@@ -20,19 +22,6 @@ import molecule;
 import component;
 import framework;
 import thermobarostat;
-
-namespace
-{
-// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under which
-// 'std::isfinite' is true of everything. (Taken by reference and read as bytes, so that the test is not folded
-// away with it.)
-[[maybe_unused]] bool isFiniteNumber(const double& value)
-{
-  std::uint64_t bits{};
-  std::memcpy(&bits, &value, sizeof(bits));
-  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
-}
-}  // namespace
 
 namespace
 {
@@ -403,7 +392,7 @@ double3x3 barostatPressureTensor(const System& system, const double3x3& molecula
 
 ElasticConstantsResult computeElasticConstants(const System& system, double relativeEigenvalueTolerance)
 {
-  if (!(relativeEigenvalueTolerance > 0.0) || !isFiniteNumber(relativeEigenvalueTolerance))
+  if (!(relativeEigenvalueTolerance > 0.0) || !isFiniteValue(relativeEigenvalueTolerance))
   {
     throw std::invalid_argument("Elastic-constant eigenvalue tolerance must be finite and positive");
   }

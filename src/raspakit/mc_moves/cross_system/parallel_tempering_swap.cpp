@@ -4,6 +4,8 @@ module mc_moves_parallel_tempering_swap;
 
 import std;
 
+import finite_value;
+
 import ewald_structure_factor;
 
 import component;
@@ -671,12 +673,12 @@ std::optional<double> MC_Moves::ParallelTemperingLogAcceptance(const System& sys
         }
         return -system.beta * system.isolatedChargeCorrectionEnergy(atoms);
       }
-      return std::log(component.idealGasRosenbluthWeight.value_or(1.0));
+      return component.logIdealGasRosenbluthWeight();
     };
     const double betaFugacityA = systemA.beta * fugacityA;
     const double betaFugacityB = systemB.beta * fugacityB;
-    if (!(betaFugacityA > 0.0) || !(betaFugacityB > 0.0) || !(componentA.idealGasRosenbluthWeight.value_or(1.0) > 0.0) ||
-        !(componentB.idealGasRosenbluthWeight.value_or(1.0) > 0.0))
+    if (!(betaFugacityA > 0.0) || !(betaFugacityB > 0.0) || !isFiniteValue(componentA.logIdealGasRosenbluthWeight()) ||
+        !isFiniteValue(componentB.logIdealGasRosenbluthWeight()))
     {
       return std::nullopt;
     }

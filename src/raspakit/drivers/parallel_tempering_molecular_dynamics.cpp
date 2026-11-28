@@ -229,6 +229,9 @@ void ParallelTemperingMolecularDynamics::setup()
           "evaluates no polarization forces");
     if (const std::optional<std::string> reason = system.thermobarostatUnsupportedReason())
       throw std::runtime_error(std::format("ParallelTemperingMolecularDynamics does not support {}\n", reason.value()));
+    if (const std::optional<std::string> reason = system.masslessFlexibleSiteReason())
+      throw std::runtime_error(
+          std::format("ParallelTemperingMolecularDynamics can not integrate {}\n", reason.value()));
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);
 

@@ -180,23 +180,8 @@ void MonteCarlo::setup()
       system.runningEnergies = system.computeTotalEnergies();
     }
 
-    // if a gradient-based move is on (MC/MD hybrid or translation/rotation smart MC), make sure that the
-    // interpolation method includes gradients
-    bool usesGradientMove = system.mc_moves_probabilities.getProbability(Move::Types::HybridMC) > 0.0 ||
-                            system.mc_moves_probabilities.getProbability(Move::Types::TranslationSmartMCAll) > 0.0 ||
-                            system.mc_moves_probabilities.getProbability(Move::Types::RotationSmartMCAll) > 0.0;
-    for (const Component& component : system.components)
-    {
-      usesGradientMove |=
-          component.mc_moves_probabilities.getProbability(Move::Types::TranslationSmartMC) > 0.0 ||
-          component.mc_moves_probabilities.getProbability(Move::Types::RotationSmartMC) > 0.0 ||
-          component.mc_moves_probabilities.getProbability(Move::Types::TranslationRotationSmartMC) > 0.0;
-    }
-    if (usesGradientMove &&
-        system.forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Polynomial)
-    {
-      system.forceField.settings.interpolationScheme = ForceFieldSettings::InterpolationScheme::Tricubic;
-    }
+    // a gradient-based move (MC/MD hybrid, smart MC) needs an interpolation method with gradients
+    system.upgradeInterpolationSchemeForGradientMoves();
 
     ++system_id;
   }

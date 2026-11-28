@@ -605,9 +605,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
         // box deletes in the other, both boxes are at one temperature, and the true weights cancel (as in the
         // other Gibbs transfers). Read per box, two slightly different input values left their ratio behind as
         // a spurious fugacity ratio on every transfer.
+        // What does not cancel is the part of the weight that depends on the box: the ideal-gas weight a
+        // finite-cutoff charge method gives the molecule at the Coulomb cut-off of this box
+        // ('System::logIsolatedChargeWeightOfRigidComponent'), which the conventional variant takes off as well.
         // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero).
         trial.logAcceptanceFactor = trial.cbmcInsert->logRosenbluthWeight -
-                                    system.beta * ewaldTail.potentialEnergy() +
+                                    system.beta * ewaldTail.potentialEnergy() -
+                                    system.logIsolatedChargeWeightOfRigidComponent(selectedComponent) +
                                     std::log(volume / (integerCount + 1.0));
         return true;
       }
@@ -694,7 +698,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsConvention
       // Rosenbluth weight through its exact logarithm (raw weights of long chains underflow to zero,
       // which would turn this quotient into +inf). The ideal-gas weight cancels against that of the
       // insertion in the partner box and is left out of both (see 'constructBoundaryTrial').
-      return -prelude.logRosenbluthWeight - system.beta * prelude.retraceEwaldTail.potentialEnergy();
+      // (but for its part of the Coulomb cut-off of this box, 'System::logIsolatedChargeWeightOfRigidComponent')
+      return -prelude.logRosenbluthWeight - system.beta * prelude.retraceEwaldTail.potentialEnergy() +
+             system.logIsolatedChargeWeightOfRigidComponent(selectedComponent);
     }
     return -system.beta * (energyFirstStep.potentialEnergy() - prelude.intraCoulombScaling);
   };

@@ -164,8 +164,12 @@ bool performBoxIdentityChange(RandomNumber& random, System& system, Move::Types 
 
   // kept in log space: the Boltzmann factor of the Fourier/self terms of charged molecules overflows or
   // underflows on its own
+  // (with the ideal-gas weights a finite-cutoff charge method gives the two molecules in this box: over the two
+  // boxes they cancel at one Coulomb cut-off, and not at two, see 'System::logIsolatedChargeWeightOfRigidComponent')
   data.logCorrectionFactorEwald =
-      -system.beta * (data.energyFourierDifference.potentialEnergy() + data.polarizationDifference.potentialEnergy());
+      -system.beta * (data.energyFourierDifference.potentialEnergy() + data.polarizationDifference.potentialEnergy()) +
+      system.logIsolatedChargeWeightOfRigidComponent(oldComponent) -
+      system.logIsolatedChargeWeightOfRigidComponent(newComponent);
   // Rosenbluth weights are carried as exact logarithms: the raw weights of long chains underflow to zero.
   data.logRosenbluthNew =
       data.growData.logRosenbluthWeight - system.beta * data.tailEnergyDifference.potentialEnergy();

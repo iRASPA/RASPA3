@@ -678,7 +678,13 @@ std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentia
   double3 Dab = posA - posB;
   double3 Dcb = posC - posB;
   double rbc = std::sqrt(double3::dot(Dcb, Dcb));
-  double3 Dcb_unit = Dcb / rbc;
+  // Collinear arms (A, B, C or B, C, D on a line: an alkyne, a nitrile, a chain stretched straight) or a central
+  // bond of no length: the torsion angle is undefined. As the energy routine ('calculateEnergy', whose normalized
+  // zero vector stays zero) the energy is that of cos(phi) = 0, and as 'dihedralAngleDerivatives' the derivatives
+  // are zero; the divisions by r, s and the bond length gave NaN gradients.
+  constexpr double collinearLimit = 1.0e-10;
+  const bool degenerate = !(rbc > collinearLimit);
+  double3 Dcb_unit = degenerate ? double3(0.0, 0.0, 0.0) : Dcb / rbc;
 
   double3 Ddc = posD - posC;
   double dot_ab = double3::dot(Dab, Dcb_unit);
@@ -686,11 +692,11 @@ std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentia
 
   double3 dr = Dab - dot_ab * Dcb_unit;
   double r = std::sqrt(double3::dot(dr, dr));
-  dr /= r;
+  dr = r > collinearLimit ? dr / r : double3(0.0, 0.0, 0.0);
 
   double3 ds = Ddc - dot_cd * Dcb_unit;
   double s = std::sqrt(double3::dot(ds, ds));
-  ds /= s;
+  ds = s > collinearLimit ? ds / s : double3(0.0, 0.0, 0.0);
 
   cos_phi = double3::dot(dr, ds);
   cos_phi = std::clamp(cos_phi, -1.0, 1.0);
@@ -824,6 +830,12 @@ std::tuple<double, std::array<double3, 4>, double3x3> TorsionPotential::potentia
       break;
     default:
       std::unreachable();
+  }
+
+  if (degenerate || !(r > collinearLimit) || !(s > collinearLimit))
+  {
+    return {U, {double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0)},
+            double3x3{}};
   }
 
   const double d = dot_ab / rbc;

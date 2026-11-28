@@ -226,11 +226,22 @@ void addFrameworkIntramolecular(const System& system, ForceConstants& forceConst
       const std::size_t B = potential.identifiers[1];
       const double3 dr = shiftedPosition(A, coulombImages[index][0]) - shiftedPosition(B, coulombImages[index][1]);
       const double rr = double3::dot(dr, dr);
-      if (pairs14.contains({std::min(A, B), std::max(A, B)}) && potential.scaling != 1.0)
+      // The scaled 1-4 pair as the energy, the gradient and the Gamma-point Hessian have it
+      // (computeFrameworkIntraMolecularHessian): at its bonded image only when that is the minimum image, and
+      // through 'frameworkScaledPairCoulomb' (the charge method inside the cutoff, the compensation of the unscaled
+      // reciprocal-space weight beyond it). The bare, untruncated s q_A q_B / r that stood here made the force
+      // constants folded to Gamma disagree with the Hessian the structure was minimized with.
+      bool scaled14 = potential.scaling != 1.0 && pairs14.contains({std::min(A, B), std::max(A, B)});
+      if (scaled14)
       {
-        const double r = std::sqrt(rr);
-        const double k = potential.scaling * Units::CoulombicConversionFactor * potential.chargeA * potential.chargeB;
-        distributeRadial(A, B, coulombImages[index], -k / (r * rr), 3.0 * k / (r * rr * rr), dr);
+        const double3 minimumImage = box.applyPeriodicBoundaryConditions(dr);
+        scaled14 = rr <= double3::dot(minimumImage, minimumImage) * (1.0 + 1.0e-10);
+      }
+      if (scaled14)
+      {
+        const Potentials::PairDerivatives<2> factors = Potentials::frameworkScaledPairCoulomb<2>(
+            forceField, potential.scaling, std::sqrt(rr), potential.chargeA, potential.chargeB);
+        distributeRadial(A, B, coulombImages[index], factors.firstDerivativeFactor, factors.secondDerivativeFactor, dr);
       }
       else if (rr < forceField.cutOffCoulomb * forceField.cutOffCoulomb)
       {

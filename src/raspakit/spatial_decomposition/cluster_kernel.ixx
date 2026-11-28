@@ -160,7 +160,8 @@ class ClusterPairKernel
     for (std::size_t k = 0; k < types * types; ++k)
     {
       const LennardJonesPair& pair = lennardJones[k];
-      const double sigma2 = 1.0 / pair.inverseSigma2;
+      // (a table entry of no inverse sigma is no interaction: sigma^6 of zero, not the infinity of 1 / 0)
+      const double sigma2 = pair.inverseSigma2 > 0.0 ? 1.0 / pair.inverseSigma2 : 0.0;
       epsilon4[k] = static_cast<Real>(pair.epsilon4);
       sigma6[k] = static_cast<Real>(sigma2 * sigma2 * sigma2);
       shift[k] = static_cast<Real>(pair.shift);

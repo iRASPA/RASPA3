@@ -414,6 +414,12 @@ ForceField::ForceField(std::string filePath)
       try
       {
         VDWParameters binaryInteraction14 = VDWParameters(type, item["parameters14"].get<std::vector<double>>());
+        // (as for 'parameters': a 1-4 pair of a zero epsilon or sigma has no interaction)
+        if (VDWParameters::isLennardJonesForm(binaryInteraction14.type) &&
+            (binaryInteraction14.parameters.x == 0.0 || binaryInteraction14.parameters.y == 0.0))
+        {
+          binaryInteraction14.type = VDWParameters::Type::None;
+        }
         ensurePair14Table();
         data14[indexA.value() * numberOfPseudoAtoms + indexB.value()] = binaryInteraction14;
         data14[indexB.value() * numberOfPseudoAtoms + indexA.value()] = binaryInteraction14;

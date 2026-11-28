@@ -124,11 +124,15 @@ export struct RandomNumber
     // The exponent bits of a weight (all ones: infinite or NaN), read as bytes through a reference: the library is
     // compiled with finite mathematics only, under which std::isinf / std::isnan, a comparison with a NaN and a bit
     // test of a value the compiler holds to be finite are folded away.
+    // (And through a volatile copy, as 'isFiniteValue' does: without it the test of a weight that comes straight
+    // out of arithmetic, an overflowed std::exp, can still be folded.)
     auto bitsOf = [](const double &value)
     {
       std::uint64_t bits{};
       std::memcpy(&bits, &value, sizeof(bits));
-      return bits;
+      volatile std::uint64_t stored = bits;
+      const std::uint64_t copy = stored;
+      return copy;
     };
     constexpr std::uint64_t exponent = 0x7ff0000000000000ull;
     isInfinite.assign(n, 0);

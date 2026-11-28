@@ -2516,7 +2516,10 @@ of molecules or the volume fluctuates a sample counts by its pairs. Under a
 biased walk (CFCMC) every sample carries the weight of its configuration. The
 gradient routines evaluate no external-field and no polarization forces, so
 `"ComputeRDF"` is refused with an external field or with polarization; use the
-conventional RDF there. A restart file with a force-based RDF written by an
+conventional RDF there. It is also refused for a molecule with fixed bond lengths
+or angles outside a rigid group: the constraint forces are not part of the forces
+the estimator uses (a rigid group carries the total force of its body, in which
+they cancel). A restart file with a force-based RDF written by an
 older version cannot be continued.
 
 -   `"SampleRDFEvery" : integer`\

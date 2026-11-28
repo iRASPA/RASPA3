@@ -243,8 +243,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
   const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * system.pressure;
   const double fugacityB =
       componentBRef.molFraction * componentBRef.fugacityCoefficient.value_or(1.0) * system.pressure;
-  const double idealGasA = componentA.idealGasRosenbluthWeight.value_or(1.0);
-  const double idealGasB = componentBRef.idealGasRosenbluthWeight.value_or(1.0);
+  const double logIdealGasA = componentA.logIdealGasRosenbluthWeight();
+  const double logIdealGasB = componentBRef.logIdealGasRosenbluthWeight();
 
   const double N_A = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
   const double k_new = double(reversePairDeletionPartnerCount(
@@ -260,7 +260,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMoveCBMC
 
   // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
   const double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + logPreFactor + growDataA->logRosenbluthWeight -
-                                           std::log(idealGasA) + growDataB->logRosenbluthWeight - std::log(idealGasB));
+                                           logIdealGasA + growDataB->logRosenbluthWeight - logIdealGasB);
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 
@@ -497,8 +497,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
   const double fugacityA = componentA.molFraction * componentA.fugacityCoefficient.value_or(1.0) * system.pressure;
   const double fugacityB =
       componentBRef.molFraction * componentBRef.fugacityCoefficient.value_or(1.0) * system.pressure;
-  const double idealGasA = componentA.idealGasRosenbluthWeight.value_or(1.0);
-  const double idealGasB = componentBRef.idealGasRosenbluthWeight.value_or(1.0);
+  const double logIdealGasA = componentA.logIdealGasRosenbluthWeight();
+  const double logIdealGasB = componentBRef.logIdealGasRosenbluthWeight();
 
   const double N_A = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
   const double k_new = double(reversePairDeletionPartnerCount(
@@ -514,7 +514,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairInsertionMove(Ran
 
   // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
   const double Pacc = MC_Moves::boundedExp(logCorrectionFactorEwald + logPreFactor + growDataA->logRosenbluthWeight -
-                                           std::log(idealGasA) + growDataB->logRosenbluthWeight - std::log(idealGasB));
+                                           logIdealGasA + growDataB->logRosenbluthWeight - logIdealGasB);
 
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[tmmcMember.value_or(selectedComponent)];
 

@@ -1951,6 +1951,14 @@ image and are not performed in a smaller box. The volume is therefore sampled
 above that width only. The same holds for the anisotropic and the Gibbs volume
 change.
 
+A volume move is refused together with moves that insert or remove charged
+molecules (the swap moves, the Gibbs transfers) when the charge method is one of
+the finite-cutoff methods (Wolf, the shifted-force methods, zero dipole) and
+`"CutOffCoulomb"` is automatic. Those methods give a molecule a self energy
+that depends on the cut-off; the insertions take it off as part of the
+ideal-gas reference, while the volume move would weigh its change with the box.
+Give `"CutOffCoulomb"` a value.
+
 The volume moves are refused at input for a system with a framework (it is
 not scaled) and for a system with an external field on a grid
 (`"UseExternalFieldGrid"`, or a field read from a grid file): the grid is laid

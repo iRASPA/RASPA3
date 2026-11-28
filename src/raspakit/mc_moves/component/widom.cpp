@@ -128,11 +128,11 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
       -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
                       polarizationDifference.potentialEnergy());
 
-  double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
+  const double logIdealGasRosenbluthWeight = component.logIdealGasRosenbluthWeight();
 
   // The Rosenbluth weight enters through its exact logarithm: the raw weight of a long chain underflows
   // to zero even when the normalized sample W/W_ideal is of order one.
   // (held finite: an exponent beyond the range of a double is an infinity, which the averages do not survive)
   return MC_Moves::boundedExp(logCorrectionFactorEwald + growData->logRosenbluthWeight -
-                              std::log(idealGasRosenbluthWeight));
+                              logIdealGasRosenbluthWeight);
 }

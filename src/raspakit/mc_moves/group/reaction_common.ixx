@@ -65,7 +65,7 @@ struct MoleculeGroupRetraceData
     RandomNumber& random, System& system, std::span<const std::pair<std::size_t, std::size_t>> selectedMolecules,
     std::span<const std::pair<std::size_t, std::size_t>> excludeMolecules = {}, bool useCBMC = true);
 
-[[nodiscard]] double idealGasRosenbluthWeightProduct(const System& system,
+[[nodiscard]] double logIdealGasRosenbluthWeightProduct(const System& system,
                                                      std::span<const std::size_t> stoichiometry) noexcept;
 
 // Energy change of replacing the molecules 'oldAtoms' by 'newAtoms' (external field, framework, molecule-molecule

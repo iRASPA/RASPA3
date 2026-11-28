@@ -18,7 +18,12 @@ Potentials::Internal::torsionPotentialEnergyGradientHessianStrain(
   const double3 Dab = posA - posB;
   const double3 Dcb_raw = posC - posB;
   const double rbc = std::sqrt(double3::dot(Dcb_raw, Dcb_raw));
-  const double3 Dcb = Dcb_raw / rbc;
+  // collinear arms or a central bond of no length: the angle is undefined, the energy is that of cos(phi) = 0 and
+  // the derivatives are zero, as in 'TorsionPotential::potentialEnergyGradientStrain' (the divisions by r, s and the
+  // bond length filled the Hessian with NaN)
+  constexpr double collinearLimit = 1.0e-10;
+  const bool degenerate = !(rbc > collinearLimit);
+  const double3 Dcb = degenerate ? double3(0.0, 0.0, 0.0) : Dcb_raw / rbc;
   const double3 Ddc = posD - posC;
 
   const double dot_ab = double3::dot(Dab, Dcb);
@@ -26,11 +31,11 @@ Potentials::Internal::torsionPotentialEnergyGradientHessianStrain(
 
   double3 dr = Dab - dot_ab * Dcb;
   const double r = std::sqrt(double3::dot(dr, dr));
-  dr /= r;
+  dr = r > collinearLimit ? dr / r : double3(0.0, 0.0, 0.0);
 
   double3 ds = Ddc - dot_cd * Dcb;
   const double s = std::sqrt(double3::dot(ds, ds));
-  ds /= s;
+  ds = s > collinearLimit ? ds / s : double3(0.0, 0.0, 0.0);
 
   // Phi is defined in protein convention Phi(trans) = Pi.
   double cos_phi = std::clamp(double3::dot(dr, ds), -1.0, 1.0);
@@ -195,6 +200,15 @@ Potentials::Internal::torsionPotentialEnergyGradientHessianStrain(
       break;
     default:
       std::unreachable();
+  }
+
+  if (degenerate || !(r > collinearLimit) || !(s > collinearLimit))
+  {
+    // (a Cartesian Hessian of zeros: when set, it replaces the assembly from DF and DDF, which divides by r and s)
+    Minimization::TorsionHessianGeometry flat{};
+    flat.cartesianHessian = std::array<std::array<double, 12>, 12>{};
+    return {U, {double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0)},
+            double3x3{}, flat};
   }
 
   const double d = dot_ab / rbc;

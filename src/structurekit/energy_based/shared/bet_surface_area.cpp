@@ -4,6 +4,8 @@ module energy_shared_bet_surface_area;
 
 import std;
 
+import finite_value;
+
 import double3;
 import double3x3;
 import unit_cell;
@@ -11,13 +13,10 @@ import crystal;
 import energy_shared_well_field;
 import energy_shared_well_surface;
 
-// A finite-value test that survives -ffast-math: std::isfinite and std::isnan are compiled away under its
-// finite-math assumption, an ordinary comparison against the largest double is not (an overflow to infinity and a
-// NaN both fail it).
-static inline bool isBoundedValue(double value)
-{
-  return value > -std::numeric_limits<double>::max() && value < std::numeric_limits<double>::max();
-}
+// A finite-value test that survives -ffast-math ('isFiniteValue', read off the bits: the comparison with the
+// largest double that stood here let a NaN through, a comparison with a NaN being whatever the optimiser makes of
+// it).
+static inline bool isBoundedValue(double value) { return isFiniteValue(value); }
 
 BETSurfaceArea::BETSurfaceArea() {}
 

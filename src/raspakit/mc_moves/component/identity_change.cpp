@@ -201,8 +201,8 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   const double logCorrectionFactorEwald =
       -system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy());
 
-  const double idealGasRosenbluthWeightNew = newComponentData.idealGasRosenbluthWeight.value_or(1.0);
-  const double idealGasRosenbluthWeightOld = oldComponentData.idealGasRosenbluthWeight.value_or(1.0);
+  const double logIdealGasRosenbluthWeightNew = newComponentData.logIdealGasRosenbluthWeight();
+  const double logIdealGasRosenbluthWeightOld = oldComponentData.logIdealGasRosenbluthWeight();
   // The ratio of the two fugacities: the pressure they share cancels and is left out. With it, a fixed-N
   // semi-grand run without an external pressure (pressure zero) formed 0/0.
   const double fugacityNew = newComponentData.molFraction * newComponentData.fugacityCoefficient.value_or(1.0);
@@ -218,8 +218,8 @@ std::optional<RunningEnergy> MC_Moves::identityChangeMove(RandomNumber &random, 
   // underflow to zero, which would turn this cross-component ratio into 0/0 (NaN) or x/0 (inf).
   const double acceptanceProbability = MC_Moves::boundedExp(
       logCorrectionFactorEwald - system.beta * tailEnergyDifference.potentialEnergy() +
-      growData->logRosenbluthWeight - std::log(idealGasRosenbluthWeightNew) - retraceData.logRosenbluthWeight +
-      std::log(idealGasRosenbluthWeightOld) +
+      growData->logRosenbluthWeight - logIdealGasRosenbluthWeightNew - retraceData.logRosenbluthWeight +
+      logIdealGasRosenbluthWeightOld +
       std::log(fugacityNew * numberOfMoleculesOld / (fugacityOld * (numberOfMoleculesNew + 1.0))));
 
   if (random.uniform() < acceptanceProbability)

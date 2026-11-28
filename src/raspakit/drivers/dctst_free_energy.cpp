@@ -4,6 +4,8 @@ module dctst_free_energy;
 
 import std;
 
+import finite_value;
+
 import mc_moves_acceptance;
 
 import stringutils;
@@ -422,7 +424,7 @@ DynamicallyCorrectedTSTFreeEnergy::DynamicallyCorrectedTSTFreeEnergy(System temp
   // the settings a programmatic construction can get wrong (the input reader checks the keywords it reads)
   auto requirePositive = [](double value, std::string_view name)
   {
-    if (!(value > 0.0) || !(value < 1.0e300))
+    if (!isFiniteValue(value) || !(value > 0.0) || !(value < 1.0e300))
     {
       throw std::runtime_error(std::format("dcTST: '{}' must be positive and finite (got {})\n", name, value));
     }
@@ -457,7 +459,8 @@ DynamicallyCorrectedTSTFreeEnergy::DynamicallyCorrectedTSTFreeEnergy(System temp
   }
   requirePositive(settings.windowSpacing, "WindowSpacing");
   requirePositive(settings.barrierFitRange, "BarrierFitRange");
-  if (!(settings.windowStiffness >= 0.0) || !(settings.windowStiffness < 1.0e300))
+  if (!isFiniteValue(settings.windowStiffness) || !(settings.windowStiffness >= 0.0) ||
+      !(settings.windowStiffness < 1.0e300))
   {
     throw std::runtime_error("dcTST: 'WindowStiffness' must be non-negative and finite\n");
   }
@@ -494,7 +497,7 @@ DynamicallyCorrectedTSTFreeEnergy::DynamicallyCorrectedTSTFreeEnergy(System temp
     const bool bounded = mirror || occupancyMode;
     auto requireOnGrid = [&](double x, std::string_view name)
     {
-      if (!(x > -1.0e300) || !(x < 1.0e300))
+      if (!isFiniteValue(x) || !(x > -1.0e300) || !(x < 1.0e300))
       {
         throw std::runtime_error(std::format("dcTST: '{}' must be finite\n", name));
       }

@@ -16,18 +16,7 @@ module hermitian_eigensolver;
 
 import std;
 
-namespace
-{
-// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under which
-// 'std::isfinite' is true of everything. (Taken by reference and read as bytes, so that the test is not folded
-// away with it.)
-bool isFiniteNumber(const double& value)
-{
-  std::uint64_t bits{};
-  std::memcpy(&bits, &value, sizeof(bits));
-  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
-}
-}  // namespace
+import finite_value;
 
 HermitianEigenSystem diagonalizeHermitian(std::span<const std::complex<double>> matrix, std::size_t size,
                                           bool computeEigenvectors)
@@ -67,7 +56,7 @@ HermitianEigenSystem diagonalizeHermitian(std::span<const std::complex<double>> 
     for (std::size_t row = 0; row <= column; ++row)
     {
       const std::complex<double> value = 0.5 * (matrix[row * size + column] + std::conj(matrix[column * size + row]));
-      if (!isFiniteNumber(value.real()) || !isFiniteNumber(value.imag()))
+      if (!isFiniteValue(value.real()) || !isFiniteValue(value.imag()))
       {
         throw std::runtime_error("diagonalizeHermitian: matrix contains a non-finite value");
       }

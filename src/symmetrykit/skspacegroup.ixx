@@ -87,11 +87,20 @@ export class SKSpaceGroup
       bool allowPartialOccupancies, double symmetryPrecision);
   static std::optional<std::pair<double3, SKRotationalChangeOfBasis>> matchSpaceGroup(
       std::size_t HallNumber, double3x3 lattice, Centring centering, const std::vector<SKSeitzMatrix>& seitzMatrices,
-      double symmetryPrecision);
+      double symmetryPrecision, bool fractionalPrecision = false);
   static std::optional<double3> getOriginShift(std::size_t HallNumber, Centring centering,
                                                SKRotationalChangeOfBasis changeOfBasis,
                                                const std::vector<SKSeitzMatrix>& seitzMatrices,
-                                               double symmetryPrecision);
+                                               const double3x3& metric, double symmetryPrecision);
+  /// With the precision as a tolerance on the fractional translations (operations as listed in a file).
+  static std::optional<double3> getOriginShift(std::size_t HallNumber, Centring centering,
+                                               SKRotationalChangeOfBasis changeOfBasis,
+                                               const std::vector<SKSeitzMatrix>& seitzMatrices,
+                                               double symmetryPrecision)
+  {
+    return getOriginShift(HallNumber, centering, changeOfBasis, seitzMatrices, double3x3::identity(),
+                          symmetryPrecision);
+  }
 
  private:
   SKSpaceGroupSetting _spaceGroupSetting = SKSpaceGroupDataBase::spaceGroupData[1];

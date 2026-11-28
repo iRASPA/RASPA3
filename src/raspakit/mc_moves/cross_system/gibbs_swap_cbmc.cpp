@@ -200,9 +200,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   // Rosenbluth weights through their exact logarithms: the raw weights of long chains underflow to
   // zero, which would turn this cross-box ratio into 0/0 (NaN) or x/0 (inf).
+  // The energy a finite-cutoff charge method gives the isolated molecule (its self term and excluded pairs) is in
+  // the Fourier differences of both boxes and belongs to the ideal-gas reference: it cancels between boxes of one
+  // Coulomb cut-off, and with different cut-offs (an automatic cut-off follows each box) it was left in as a shift
+  // of the chemical potential between the boxes ('System::logIsolatedChargeWeightOfRigidComponent').
+  const double logIsolatedChargeWeight = systemB.logIsolatedChargeWeightOfRigidComponent(selectedComponent) -
+                                         systemA.logIsolatedChargeWeightOfRigidComponent(selectedComponent);
   const double physicalAcceptance = MC_Moves::boundedExp(
       logCorrectionFactorEwaldA - logCorrectionFactorEwaldB + growData->logRosenbluthWeight -
-      retraceData.logRosenbluthWeight +
+      retraceData.logRosenbluthWeight + logIsolatedChargeWeight +
       std::log((static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) *
                 systemA.simulationBox.volume) /
                ((1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent])) *

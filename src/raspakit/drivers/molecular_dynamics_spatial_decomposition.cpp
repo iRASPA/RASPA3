@@ -713,6 +713,11 @@ void MolecularDynamicsSpatialDecomposition::setup()
       throw std::runtime_error(
           std::format("MolecularDynamicsSpatialDecomposition: system {} uses {}\n", system_id, reason.value()));
     }
+    if (const std::optional<std::string> reason = system.masslessFlexibleSiteReason())
+    {
+      throw std::runtime_error(std::format("MolecularDynamicsSpatialDecomposition: system {} can not integrate {}\n",
+                                           system_id, reason.value()));
+    }
 
     system.forceField.initializeAutomaticCutOff(system.simulationBox);
     system.forceField.initializeEwaldParameters(system.simulationBox);

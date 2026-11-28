@@ -73,14 +73,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveMultiTri
             [&] { return longRangeDifference(system, newMolecule, {}, true); });
 
   const double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
-  const double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
+  const double logIdealGasRosenbluthWeight = component.logIdealGasRosenbluthWeight();
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
   // (a reservoir of no fugacity gives no insertion: see 'logSwapPrefactor')
   const double logPreFactor =
       MC_Moves::logSwapPrefactor(system.beta * fugacity * system.simulationBox.volume, static_cast<double>(oldN + 1));
   // 'logProposalCorrection' is zero for the CPU grower; a device grower that proposes with its own (single
   // precision) potential adds the ratio of the target and proposal Boltzmann factors of the selected trial here.
-  const double Pacc = MC_Moves::boundedExp(logPreFactor + growData->logMeanWeight - std::log(idealGasRosenbluthWeight) +
+  const double Pacc = MC_Moves::boundedExp(logPreFactor + growData->logMeanWeight - logIdealGasRosenbluthWeight +
                                growData->logProposalCorrection);
 
   if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
@@ -151,12 +151,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveMultiTria
       timed(system, component, move, Move::Timing::Ewald, [&] { return longRangeDifference(system, {}, oldMolecule, true); });
 
   const double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
-  const double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
+  const double logIdealGasRosenbluthWeight = component.logIdealGasRosenbluthWeight();
   const std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
   // (a reservoir of no fugacity takes every deletion: see 'logSwapPrefactor')
   const double logPreFactor =
       MC_Moves::logSwapPrefactor(static_cast<double>(oldN), system.beta * fugacity * system.simulationBox.volume);
-  const double Pacc = MC_Moves::boundedExp(logPreFactor + std::log(idealGasRosenbluthWeight) - retraceData.logMeanWeight +
+  const double Pacc = MC_Moves::boundedExp(logPreFactor + logIdealGasRosenbluthWeight - retraceData.logMeanWeight +
                                retraceData.logProposalCorrection);
 
   if (system.tmmcTracks(selectedComponent) && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)

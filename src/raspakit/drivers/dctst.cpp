@@ -4,6 +4,8 @@ module dctst;
 
 import std;
 
+import finite_value;
+
 import mc_moves_acceptance;
 
 import stringutils;
@@ -527,7 +529,8 @@ DynamicallyCorrectedTST::DynamicallyCorrectedTST(InputReader& reader)
   }
 
   // the settings a programmatic construction can get wrong (the input reader checks the keywords it reads)
-  if (!(settings.trajectoryTime > 0.0) || !(settings.trajectoryTime < 1.0e300))
+  if (!isFiniteValue(settings.trajectoryTime) || !(settings.trajectoryTime > 0.0) ||
+      !(settings.trajectoryTime < 1.0e300))
   {
     throw std::runtime_error("dcTST: 'TrajectoryTime' must be positive and finite [ps]\n");
   }

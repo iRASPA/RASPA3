@@ -4,6 +4,8 @@ module minimization_mass_metric;
 
 import std;
 
+import finite_value;
+
 import double3;
 import double3x3;
 import atom;
@@ -16,22 +18,9 @@ import symmetric_eigensolver;
 
 namespace
 {
-// Whether a number is finite, read off its bits: the library is compiled with finite mathematics only, under which
-// 'std::isfinite' is true of everything. (Taken by reference and read as bytes, so that the test is not folded
-// away with it.)
-[[maybe_unused]] bool isFiniteNumber(const double& value)
-{
-  std::uint64_t bits{};
-  std::memcpy(&bits, &value, sizeof(bits));
-  return (bits & 0x7ff0000000000000ull) != 0x7ff0000000000000ull;
-}
-}  // namespace
-
-namespace
-{
 double checkedInverseSqrtMass(double mass, std::string_view what)
 {
-  if (!(mass > 0.0) || !isFiniteNumber(mass))
+  if (!(mass > 0.0) || !isFiniteValue(mass))
   {
     throw std::runtime_error(
         std::format("Mass-weighting requires positive masses, but {} has mass {}", what, mass));

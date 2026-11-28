@@ -4,6 +4,8 @@ module isotherm_bet;
 
 import std;
 
+import finite_value;
+
 import archive;
 import energy_shared_bet_surface_area;
 import json;
@@ -782,8 +784,8 @@ double sipsCoverage(double pressure, double affinity, double exponent)
     return 0.0;
   }
   const double x = std::pow(affinity * pressure, exponent);
-  // a bound that a NaN fails too: std::isfinite is compiled away under -ffast-math
-  if (!(x < 1.0e300))
+  // (the finite test reads the bits: under -ffast-math a NaN is not known to fail the bound)
+  if (!isFiniteValue(x) || !(x < 1.0e300))
   {
     return 1.0;
   }
@@ -980,7 +982,8 @@ LinearSipsFit fitLinearSips(std::span<const SimulatedIsothermPoint> probes, doub
   }
   // bounds rather than std::isfinite, which the fast-math build compiles away (an overflow to infinity compares
   // greater than any bound at run time)
-  if (!(std::abs(fit.exponent) < 1.0e300 && std::abs(fit.intercept) < 1.0e300))
+  if (!isFiniteValue(fit.exponent) || !isFiniteValue(fit.intercept) ||
+      !(std::abs(fit.exponent) < 1.0e300 && std::abs(fit.intercept) < 1.0e300))
   {
     fit.numberOfPoints = 0;
     return fit;
@@ -1295,7 +1298,7 @@ std::vector<double> placePressuresByPreIsothermFisher(double lowestPressure, dou
     // the inverse overflows to infinity close to saturation (and the Toth inverse returns 0 when 1 - theta^t
     // rounds to zero); a bound, as std::isfinite is compiled away. A failure near theta = 1 lies at the top of
     // the interval, one near theta = 0 at the bottom.
-    if (!(pressure > 0.0 && pressure < 1.0e300))
+    if (!isFiniteValue(pressure) || !(pressure > 0.0 && pressure < 1.0e300))
     {
       pressure = (theta > 0.5) ? highestPressure : lowestPressure;
     }

@@ -257,16 +257,21 @@ DEVICE_FUNCTION float torsionTerm(uint type, PRIVATE const float* P, float3 posA
   const float3 Dab = posA - posB;
   const float3 Dcb = posC - posB;
   const float rbc = length(Dcb);
-  const float3 Dcb_unit = Dcb / rbc;
+  // Collinear arms or a central bond of no length: the angle is undefined. The energy is that of cos(phi) = 0 and
+  // the gradients are zero, as on the host (TorsionPotential::potentialEnergyGradientStrain); the divisions by r, s
+  // and the bond length gave NaN forces. (The limit is that of single precision.)
+  const float collinearLimit = 1.0e-6f;
+  const bool degenerate = !(rbc > collinearLimit);
+  const float3 Dcb_unit = degenerate ? Dcb * 0.0f : Dcb / rbc;
   const float3 Ddc = posD - posC;
   const float dot_ab = dot(Dab, Dcb_unit);
   const float dot_cd = dot(Ddc, Dcb_unit);
   float3 dr = Dab - dot_ab * Dcb_unit;
   const float r = length(dr);
-  dr /= r;
+  dr = r > collinearLimit ? dr / r : dr * 0.0f;
   float3 ds = Ddc - dot_cd * Dcb_unit;
   const float s = length(ds);
-  ds /= s;
+  ds = s > collinearLimit ? ds / s : ds * 0.0f;
   const float cos_phi = clamp(dot(dr, ds), -1.0f, 1.0f);
   const float cos_phi2 = cos_phi * cos_phi;
   // IUPAC sign: positive when, looking from B to C, A turns clockwise onto D (sign of b1 . (b2 x b3), with
@@ -379,6 +384,14 @@ DEVICE_FUNCTION float torsionTerm(uint type, PRIVATE const float* P, float3 posA
       break;
     default:  // Fixed, CVFFBlocked
       break;
+  }
+  if (degenerate || !(r > collinearLimit) || !(s > collinearLimit))
+  {
+    *gA = Dab * 0.0f;
+    *gB = Dab * 0.0f;
+    *gC = Dab * 0.0f;
+    *gD = Dab * 0.0f;
+    return U;
   }
   const float d = dot_ab / rbc;
   const float e = dot_cd / rbc;

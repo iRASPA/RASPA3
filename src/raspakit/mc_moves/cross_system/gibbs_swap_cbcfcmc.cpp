@@ -633,9 +633,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero). The grow in B
     // and the retrace in A are both of the fractional molecule at the same lambda, so the ideal-gas reference weight
-    // cancels; their energies are in the weights and must not be counted again here.
+    // cancels; their energies are in the weights and must not be counted again here. What does not cancel between
+    // boxes of different Coulomb cut-offs is the ideal-gas weight a finite-cutoff charge method gives the molecule
+    // ('System::logIsolatedChargeWeightOfRigidComponent'), taken at full coupling as the conventional variant does.
+    const double logIsolatedChargeWeight = systemA.logIsolatedChargeWeightOfRigidComponent(selectedComponent) -
+                                           systemB.logIsolatedChargeWeightOfRigidComponent(selectedComponent);
     if (random.uniform() <
-        MC_Moves::boundedExp(std::log(preFactor) + growData->logRosenbluthWeight - retraceDataA.logRosenbluthWeight -
+        MC_Moves::boundedExp(std::log(preFactor) + growData->logRosenbluthWeight - retraceDataA.logRosenbluthWeight +
+                 logIsolatedChargeWeight -
                  systemA.beta * (unbiasedDifferenceA.potentialEnergy() + unbiasedDifferenceB.potentialEnergy()) +
                  biasTerm))
     {

@@ -153,6 +153,45 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
       averageSimulationBox(numberOfBlocks),
       interpolationGrids(forceField.pseudoAtoms.size() + 1, std::nullopt)
 {
+  // What a system built in code (the Python interface, the tests) can get wrong and the input reader checks for
+  // a file. A temperature of zero made beta infinite; the molecule counts were indexed per component whatever
+  // their number (none given, the default of the Python interface, read past the end of an empty vector); and an
+  // atom of a pseudo-atom the force field does not have indexed past its tables.
+  if (!isFiniteValue(T) || !(T > 0.0))
+  {
+    throw std::runtime_error(std::format("[System]: the temperature ({} K) must be positive and finite\n", T));
+  }
+  if (this->initialNumberOfMolecules.empty()) this->initialNumberOfMolecules.assign(components.size(), 0uz);
+  // (more counts than components are left as they are: only the first of them are read)
+  if (this->initialNumberOfMolecules.size() < components.size())
+  {
+    throw std::runtime_error(std::format(
+        "[System]: {} initial numbers of molecules for {} components (one per component, or none)\n",
+        this->initialNumberOfMolecules.size(), components.size()));
+  }
+  auto checkTypes = [&](std::span<const Atom> atoms, std::string_view owner)
+  {
+    for (const Atom& atom : atoms)
+    {
+      if (static_cast<std::size_t>(atom.type) >= forceField.pseudoAtoms.size())
+      {
+        throw std::runtime_error(std::format(
+            "[System]: an atom of {} has pseudo-atom type {}, but the force field has {} pseudo-atoms\n", owner,
+            static_cast<std::size_t>(atom.type), forceField.pseudoAtoms.size()));
+      }
+    }
+  };
+  for (const Component& component : components)
+  {
+    checkTypes(component.atoms, std::format("component '{}'", component.name));
+  }
+  if (framework.has_value())
+  {
+    checkTypes(framework->definedAtoms, "the framework");
+    checkTypes(framework->unitCellAtoms, "the framework");
+    checkTypes(framework->atoms, "the framework");
+  }
+
   input_pressureTensorDiagonal = double3(input_pressure, input_pressure, input_pressure);
   setContainsTheFractionalMolecules(true);
   pressureTensorDiagonal = double3(pressure, pressure, pressure);

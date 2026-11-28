@@ -546,13 +546,14 @@ std::optional<std::size_t> SKSpaceGroup::HallNumberFromSymmetryOperations(
   std::optional<std::size_t> firstMatch;
   for (std::size_t hallNumber : hallNumbers)
   {
-    if (!matchSpaceGroup(hallNumber, lattice, centering, operations, symmetryPrecision))
+    // (listed operations: the precision is a tolerance on their fractional translations, the rounding of "0.3333")
+    if (!matchSpaceGroup(hallNumber, lattice, centering, operations, symmetryPrecision, true))
     {
       continue;
     }
 
-    const std::optional<double3> shift =
-        getOriginShift(hallNumber, centering, SKRotationalChangeOfBasis::identity, operations, symmetryPrecision);
+    const std::optional<double3> shift = getOriginShift(hallNumber, centering, SKRotationalChangeOfBasis::identity,
+                                                        operations, double3x3::identity(), symmetryPrecision);
     if (shift && std::fabs(shift->x - std::rint(shift->x)) < symmetryPrecision &&
         std::fabs(shift->y - std::rint(shift->y)) < symmetryPrecision &&
         std::fabs(shift->z - std::rint(shift->z)) < symmetryPrecision)
@@ -921,7 +922,7 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroupAtP
           std::optional<double3> originShift =
               getOriginShift(HallNumber, centering,
                              SKRotationalChangeOfBasis(SKRotationMatrix(int3(0, 0, 1), int3(0, -1, 0), int3(1, 0, 0))),
-                             symmetryInConventionalCell.operations, symmetryPrecision);
+                             symmetryInConventionalCell.operations, primitiveLattice, symmetryPrecision);
           if (originShift)
           {
             double3 origin = *originShift;
@@ -1128,8 +1129,10 @@ std::optional<SKPointGroup> SKSpaceGroup::findPointGroupAtPrecision(
 
 std::optional<std::pair<double3, SKRotationalChangeOfBasis>> SKSpaceGroup::matchSpaceGroup(
     std::size_t HallNumber, double3x3 lattice, Centring centering, const std::vector<SKSeitzMatrix>& seitzMatrices,
-    double symmetryPrecision = 1e-2)
+    double symmetryPrecision = 1e-2, bool fractionalPrecision)
 {
+  // the operations are in the basis of 'lattice': a precision in Angstrom is a distance in that lattice
+  const double3x3 metric = fractionalPrecision ? double3x3::identity() : lattice;
   std::size_t pointGroupNumber = SKSpaceGroupDataBase::spaceGroupData[HallNumber].pointGroupNumber();
   switch (SKPointGroup::pointGroupData[pointGroupNumber].holohedry())
   {
@@ -1139,7 +1142,7 @@ std::optional<std::pair<double3, SKRotationalChangeOfBasis>> SKSpaceGroup::match
     {
       std::optional<double3> originShift =
           getOriginShift(HallNumber, centering, SKRotationalChangeOfBasis(SKRotationMatrix::identity), seitzMatrices,
-                         symmetryPrecision);
+                         metric, symmetryPrecision);
       if (originShift)
       {
         return std::make_pair(*originShift, SKRotationalChangeOfBasis(SKRotationMatrix::identity));
@@ -1157,7 +1160,7 @@ std::optional<std::pair<double3, SKRotationalChangeOfBasis>> SKSpaceGroup::match
       for (const SKRotationalChangeOfBasis& changeOfBasis : changesOfHexagonalSetting)
       {
         std::optional<double3> originShift =
-            getOriginShift(HallNumber, centering, changeOfBasis, seitzMatrices, symmetryPrecision);
+            getOriginShift(HallNumber, centering, changeOfBasis, seitzMatrices, metric, symmetryPrecision);
         if (originShift) return std::make_pair(*originShift, changeOfBasis);
       }
       return std::nullopt;
@@ -1170,7 +1173,7 @@ std::optional<std::pair<double3, SKRotationalChangeOfBasis>> SKSpaceGroup::match
       for (const SKRotationalChangeOfBasis& changeOfBasis : SKRotationalChangeOfBasis::changeOfOrthorhombicCentering)
       {
         std::optional<double3> originShift =
-            getOriginShift(HallNumber, centering, changeOfBasis, seitzMatrices, symmetryPrecision);
+            getOriginShift(HallNumber, centering, changeOfBasis, seitzMatrices, metric, symmetryPrecision);
         if (originShift) return std::make_pair(*originShift, changeOfBasis);
       }
       return std::nullopt;
@@ -1182,7 +1185,7 @@ std::optional<std::pair<double3, SKRotationalChangeOfBasis>> SKSpaceGroup::match
            SKRotationalChangeOfBasis::changeOfMonoclinicCentering)
       {
         std::optional<double3> originShift =
-            getOriginShift(HallNumber, centering, changeOfMonoclinicCentering, seitzMatrices, symmetryPrecision);
+            getOriginShift(HallNumber, centering, changeOfMonoclinicCentering, seitzMatrices, metric, symmetryPrecision);
         if (originShift)
         {
           solutions.push_back(std::make_pair(*originShift, changeOfMonoclinicCentering));
@@ -1209,7 +1212,7 @@ std::optional<std::pair<double3, SKRotationalChangeOfBasis>> SKSpaceGroup::match
            SKRotationalChangeOfBasis::changeOfOrthorhombicCentering)
       {
         std::optional<double3> originShift =
-            getOriginShift(HallNumber, centering, changeOfOrthorhombicCentering, seitzMatrices, symmetryPrecision);
+            getOriginShift(HallNumber, centering, changeOfOrthorhombicCentering, seitzMatrices, metric, symmetryPrecision);
         if (originShift)
         {
           solutions.push_back(std::make_pair(*originShift, changeOfOrthorhombicCentering));
@@ -1241,8 +1244,13 @@ std::optional<std::pair<double3, SKRotationalChangeOfBasis>> SKSpaceGroup::match
 std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Centring centering,
                                                     SKRotationalChangeOfBasis changeOfBasis,
                                                     const std::vector<SKSeitzMatrix>& seitzMatrices,
-                                                    double symmetryPrecision = 1e-2)
+                                                    const double3x3& metric, double symmetryPrecision)
 {
+  // 'metric' is the lattice the residual translations are measured with, as a distance against the precision: the
+  // lattice of the given operations for a precision in Angstrom (operations found from the coordinates), the
+  // identity for a tolerance on the fractional translations themselves (operations listed in a file). The
+  // fractional residuals used to be compared with the precision in Angstrom directly: at a precision of 0.2 the
+  // screw translation 1/6 of P 6_1 passed for none, whatever the length of the axis.
   double3x3 translationsnew = double3x3();
 
   if (HallNumber >= SKSpaceGroupDataBase::spaceGroupData.size()) return std::nullopt;
@@ -1270,8 +1278,7 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
     for (const SKSeitzMatrix& given : seitzMatrices)
     {
       const double3 translation = given.translation - double3::rint(given.translation);
-      if (!(given.rotation == SKRotationMatrix::identity) || std::fabs(translation.x) > symmetryPrecision ||
-          std::fabs(translation.y) > symmetryPrecision || std::fabs(translation.z) > symmetryPrecision)
+      if (!(given.rotation == SKRotationMatrix::identity) || (metric * translation).length() > symmetryPrecision)
       {
         return std::nullopt;
       }
@@ -1492,14 +1499,12 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
     const SKSeitzIntegerMatrix transformed = changeOfBasis * operation;
     candidateOperations.emplace_back(transformed.rotation, transformed * (probe + shift) - shift);
   }
-  const auto sameOperation =
-      [&probe, symmetryPrecision](const std::pair<SKRotationMatrix, double3>& candidate, const SKSeitzMatrix& given)
+  const auto sameOperation = [&probe, &metric, symmetryPrecision](
+                                const std::pair<SKRotationMatrix, double3>& candidate, const SKSeitzMatrix& given)
   {
     if (!(candidate.first == given.rotation)) return false;
     const double3 difference = candidate.second - (given.rotation * probe + given.translation);
-    return std::fabs(difference.x - std::rint(difference.x)) < symmetryPrecision &&
-           std::fabs(difference.y - std::rint(difference.y)) < symmetryPrecision &&
-           std::fabs(difference.z - std::rint(difference.z)) < symmetryPrecision;
+    return (metric * (difference - double3::rint(difference))).length() < symmetryPrecision;
   };
   if (seitzMatrices.size() == order)
   {

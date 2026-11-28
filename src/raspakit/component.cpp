@@ -553,6 +553,20 @@ void Component::scaleSoluteHamiltonian(double lambda)
   netCharge *= sqrtLambda;
   intraMolecularPotentials.scaleEnergy(lambda);
 
+  // The conformations of the isolated molecule that are kept carry atoms of their own: the warm chain of
+  // 'System::equilibratedIdealGasConformation' is advanced in place and hands its atoms (with their charges) to
+  // the insertions that draw a conformation. Left at the charges of the previous lambda, molecules entered the
+  // box with unscaled charges.
+  for (Atom &atom : grownIdealGasAtoms) atom.charge *= sqrtLambda;
+  for (std::vector<Atom> &conformation : conformationReservoir)
+  {
+    for (Atom &atom : conformation) atom.charge *= sqrtLambda;
+  }
+  for (std::vector<Atom> &conformation : recoilReferenceConformations)
+  {
+    for (Atom &atom : conformation) atom.charge *= sqrtLambda;
+  }
+
   // Growth plans copy the intramolecular potentials, and the recoil cache stores energies evaluated
   // from those copies. Both were built at the previous lambda.
   growthPlanCache.clear();
@@ -2245,6 +2259,7 @@ std::string Component::printStatus(std::size_t componentId, const ForceField &fo
   if (idealGasRosenbluthWeight.has_value())
   {
     std::print(stream, "    Ideal gas Rosenbluth weight:  {:10.8f}\n", idealGasRosenbluthWeight.value());
+    std::print(stream, "    ln ideal gas Rosenbluth weight: {:10.8f}\n", logIdealGasRosenbluthWeight());
     if (idealGasRosenbluthWeightEstimate.has_value())
     {
       const IdealGasRosenbluthWeightEstimate& estimate = idealGasRosenbluthWeightEstimate.value();
@@ -2802,6 +2817,16 @@ ConnectivityTable Component::readConnectivityTable(std::size_t size,
       {
         std::vector<std::size_t> identifiers = item.get<std::vector<std::size_t>>();
 
+        // (an index past the atoms, a table that counts from one, wrote past the end of the table)
+        if (identifiers[0] >= size || identifiers[1] >= size)
+        {
+          throw std::runtime_error(
+              std::format("atom index out of range: the molecule has {} atoms, counted from 0", size));
+        }
+        if (identifiers[0] == identifiers[1])
+        {
+          throw std::runtime_error("an atom can not be bonded to itself");
+        }
         table[identifiers[0], identifiers[1]] = true;
         table[identifiers[1], identifiers[0]] = true;
       }
@@ -4442,6 +4467,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   if (c.idealGasRosenbluthWeightEstimate.has_value())
   {
     archive << c.idealGasRosenbluthWeightEstimate->temperature;
+    archive << c.idealGasRosenbluthWeightEstimate->logRosenbluthWeight;
     archive << c.idealGasRosenbluthWeightEstimate->relativeError;
     archive << c.idealGasRosenbluthWeightEstimate->numberOfGrows;
     archive << c.idealGasRosenbluthWeightEstimate->converged;
@@ -4586,6 +4612,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   {
     Component::IdealGasRosenbluthWeightEstimate estimate{};
     archive >> estimate.temperature;
+    archive >> estimate.logRosenbluthWeight;
     archive >> estimate.relativeError;
     archive >> estimate.numberOfGrows;
     archive >> estimate.converged;

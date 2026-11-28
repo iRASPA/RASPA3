@@ -745,6 +745,9 @@ void ParallelTMMC::setup()
   const bool temperatureDependentPotential =
       std::ranges::any_of(systems.front().forceField.data, [](const VDWParameters& parameter)
                           { return parameter.type == VDWParameters::Type::FeynmannHibbs; });
+  // (with gradients when a gradient-based move is on: the default polynomial scheme has none, and the hybrid
+  // and smart Monte Carlo moves ran without the forces of the framework)
+  for (System& system : systems) system.upgradeInterpolationSchemeForGradientMoves();
   systems.front().createExternalFieldInterpolationGrid(stream, 0);
   systems.front().createFrameworkInterpolationGrids(stream);
   for (std::size_t temperatureIndex = 0; temperatureIndex < numberOfTemperatures; ++temperatureIndex)

@@ -664,6 +664,15 @@ export struct System
   /// Rosenbluth weight. Zero with the Ewald summation and without charges.
   [[nodiscard]] double isolatedChargeCorrectionEnergy(std::span<const Atom> atoms) const;
 
+  /// The logarithm of the ideal-gas weight a finite-cutoff charge method gives a molecule of one conformation (a
+  /// rigid or single-site component) in this box, -beta 'isolatedChargeCorrectionEnergy': what an insertion into
+  /// the box divides by and a deletion multiplies by. Within one box it is the computed ideal-gas Rosenbluth
+  /// weight of such a component; the Gibbs transfers leave the ideal-gas weights out because they cancel between
+  /// the boxes, and this part does not cancel when the boxes have different Coulomb cut-offs (the default, an
+  /// automatic cut-off, follows each box). Zero for a flexible molecule, with the Ewald summation and without
+  /// charges.
+  [[nodiscard]] double logIsolatedChargeWeightOfRigidComponent(std::size_t componentId) const;
+
   /// The intramolecular Coulomb kernel energy of a conformation of component 'componentId' at full coupling minus
   /// its ideal-gas (bare) intramolecular Coulomb energy: the Ewald compensation -C q_A q_B erf(alpha r)/r summed over
   /// the non-excluded pairs inside the cutoff. Zero unless the Fourier part of the Ewald sum is used.
@@ -1135,6 +1144,54 @@ export struct System
   std::span<double3> spanElectricFieldOld(std::size_t selectedComponent, std::size_t selectedMolecule);
   const std::span<const double3> spanElectricFieldOld(std::size_t selectedComponent,
                                                       std::size_t selectedMolecule) const;
+
+  /// Makes the framework and external-field interpolation grids carry gradients (tricubic instead of the default
+  /// polynomial scheme, whose gradient is zero) when a move that integrates or drifts along the forces is on: the
+  /// hybrid MC/MD move and the smart Monte Carlo moves. Called by every Monte Carlo driver before it builds the
+  /// grids: the drivers that did not left those moves without the forces of the framework.
+  void upgradeInterpolationSchemeForGradientMoves()
+  {
+    bool usesGradientMove = mc_moves_probabilities.getProbability(Move::Types::HybridMC) > 0.0 ||
+                            mc_moves_probabilities.getProbability(Move::Types::TranslationSmartMCAll) > 0.0 ||
+                            mc_moves_probabilities.getProbability(Move::Types::RotationSmartMCAll) > 0.0;
+    for (const Component& component : components)
+    {
+      usesGradientMove |= component.mc_moves_probabilities.getProbability(Move::Types::TranslationSmartMC) > 0.0 ||
+                          component.mc_moves_probabilities.getProbability(Move::Types::RotationSmartMC) > 0.0 ||
+                          component.mc_moves_probabilities.getProbability(Move::Types::TranslationRotationSmartMC) > 0.0;
+    }
+    if (usesGradientMove &&
+        forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Polynomial)
+    {
+      forceField.settings.interpolationScheme = ForceFieldSettings::InterpolationScheme::Tricubic;
+    }
+  }
+
+  /// Why the molecular dynamics of this system can not integrate its molecules (nullopt when it can): an atom
+  /// without mass outside a rigid group. Inside a rigid group the force on such a site (the charge site of a
+  /// four-site water) goes to the centre of mass and the torque of the group. On its own it takes no kick, and
+  /// with an inverse mass of zero the distance constraints leave it where it is: it stays fixed in space while the
+  /// atoms bound to it are held at their distance from that point, its force is dropped, and its three degrees of
+  /// freedom still count for the temperature.
+  std::optional<std::string> masslessFlexibleSiteReason() const
+  {
+    for (const Component& component : components)
+    {
+      if (component.rigid) continue;
+      for (std::size_t i = 0; i < component.atoms.size(); ++i)
+      {
+        if (component.rigidFragmentContaining(i).has_value()) continue;
+        if (!(component.atomMass(i, component.atoms[i]) > 0.0))
+        {
+          return std::format(
+              "atom {} of component '{}', which has no mass and is not part of a rigid group (put it in a rigid "
+              "group with the atoms that carry it, 'RigidBodies', or make the molecule rigid)",
+              i, component.name);
+        }
+      }
+    }
+    return std::nullopt;
+  }
 
   /// Why a thermobarostat cannot deform the cell of this system (nullopt when it can): a lab-frozen framework keeps
   /// its atoms in place while its periodic images move with the cell, and the framework interpolation grids tabulate

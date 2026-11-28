@@ -4,6 +4,8 @@ module transition_matrix;
 
 import std;
 
+import finite_value;
+
 import archive;
 import double3;
 
@@ -57,10 +59,18 @@ void TransitionMatrix::updateMatrix(double3 Pacc, std::size_t oldN, std::size_t 
   // std::clamp passes a NaN through, and std::isnan is compiled away under -ffast-math. A finite entry is clamped
   // (an acceptance above one leaves a negative stay); an overflowed acceptance is an accepted proposal; anything
   // else (a NaN, which fails every comparison) drops the record.
-  auto finite = [](double value) { return value > -1.0e300 && value < 1.0e300; };
+  // (and a NaN is not known to fail a comparison under -ffast-math either: the finite test reads the bits)
+  auto finite = [](double value) { return isFiniteValue(value) && value > -1.0e300 && value < 1.0e300; };
   if (!finite(Pacc.x) || !finite(Pacc.y) || !finite(Pacc.z))
   {
-    auto overflowed = [](double value) { return value >= 1.0e300; };
+    // (plus infinity read off the bits, so that a NaN is not taken for one)
+    auto overflowed = [](double value)
+    {
+      if (isFiniteValue(value)) return value >= 1.0e300;
+      volatile std::uint64_t stored = std::bit_cast<std::uint64_t>(value);
+      const std::uint64_t bits = stored;
+      return bits == 0x7ff0000000000000ull;
+    };
     if (!overflowed(Pacc.x) && !overflowed(Pacc.z)) return;
     Pacc = double3(overflowed(Pacc.x) ? 1.0 : 0.0, 0.0, overflowed(Pacc.z) ? 1.0 : 0.0);
   }

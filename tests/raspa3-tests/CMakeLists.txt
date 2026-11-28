@@ -86,6 +86,7 @@ add_executable(unit_tests_raspa3
   foundationkit_fixes.cpp
   mathkit_fixes.cpp
   symmetry_structure_fixes.cpp
+  bug_report_fixes.cpp
   forcefield_mixing.cpp
   component_reader_fixes.cpp
   system_property_setters.cpp

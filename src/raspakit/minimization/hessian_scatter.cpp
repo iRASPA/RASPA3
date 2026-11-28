@@ -270,9 +270,12 @@ void Minimization::scatterAtomicPositionPosition(GeneralizedHessian& hessian, co
 void Minimization::scatterAtomicPositionPositionByDof(GeneralizedHessian& hessian, std::size_t baseA, std::size_t baseB,
                                                       double f1, double f2, const double3& dr)
 {
+  // An atom and its own periodic image (the image lists of a cell narrower than twice the cutoff): both ends move
+  // together, the separation is the lattice vector whatever the displacement, and the four blocks +B +B -B -B on the
+  // one diagonal cancel. Adding one +B here gave the uniform translation of the crystal a curvature. The pair still
+  // depends on the cell: its strain terms are added by the callers.
   if (baseA == baseB)
   {
-    scatterSameEntityBlock(hessian, baseA, f1, f2, dr);
     return;
   }
 
@@ -295,9 +298,10 @@ void Minimization::scatterInteractionHessian(GeneralizedHessian& hessian, const 
     return;
   }
 
+  // a site and its own periodic image: the same position and the same lever arm, so the separation does not
+  // depend on the position or the orientation (see scatterAtomicPositionPositionByDof)
   if (moleculeA == moleculeB && localAtomA == localAtomB && rigidA == rigidB)
   {
-    scatterSameEntityBlock(hessian, *positionBaseA, f1, f2, dr);
     return;
   }
 

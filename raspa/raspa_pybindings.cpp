@@ -156,6 +156,24 @@ std::pair<T, T> operator*(const double2& a, const std::pair<T, T>& b)
 namespace nanobind {
 namespace detail {
 
+// The conversion of one Python number inside a caster. 'from_python' is noexcept, and nanobind::cast throws for a
+// number that does not fit (10**20 for an int, 10**400 for a float): the exception left the caster and ended the
+// interpreter in std::terminate. Here it is a failed conversion, a TypeError for the caller.
+template <typename Source, typename Number>
+bool castNumberNoThrow(const Source &source, Number &number) noexcept
+{
+  try
+  {
+    number = nanobind::cast<Number>(source);
+    return true;
+  }
+  catch (...)
+  {
+    PyErr_Clear();
+    return false;
+  }
+}
+
 template <>
 struct type_caster<int3> 
 {
@@ -199,9 +217,9 @@ struct type_caster<int3>
         return false;
       }
     }
-    value.x = nanobind::cast<std::int32_t>(seq[0]);
-    value.y = nanobind::cast<std::int32_t>(seq[1]);
-    value.z = nanobind::cast<std::int32_t>(seq[2]);
+    if (!castNumberNoThrow(seq[0], value.x)) return false;
+    if (!castNumberNoThrow(seq[1], value.y)) return false;
+    if (!castNumberNoThrow(seq[2], value.z)) return false;
     return true;
   }
 };
@@ -226,7 +244,8 @@ public:
     if (nanobind::isinstance<nanobind::float_>(src) || nanobind::isinstance<nanobind::int_>(src))
     {
       // Fixed: Functional-style nanobind::cast
-      double scalar = nanobind::cast<double>(src);
+      double scalar{};
+      if (!castNumberNoThrow(src, scalar)) return false;
       value.x = scalar;
       value.y = scalar;
       value.z = scalar;
@@ -247,7 +266,9 @@ public:
           return false;
         }
 
-        double scalar = nanobind::cast<double>(item);
+        double scalar{};
+
+        if (!castNumberNoThrow(item, scalar)) return false;
         value.x = scalar;
         value.y = scalar;
         value.z = scalar;
@@ -266,9 +287,9 @@ public:
         }
 
         // Fixed: Functional-style nanobind::cast on indexed sequence elements
-        value.x = nanobind::cast<double>(seq[0]);
-        value.y = nanobind::cast<double>(seq[1]);
-        value.z = nanobind::cast<double>(seq[2]);
+        if (!castNumberNoThrow(seq[0], value.x)) return false;
+        if (!castNumberNoThrow(seq[1], value.y)) return false;
+        if (!castNumberNoThrow(seq[2], value.z)) return false;
         return true;
       }
     }
@@ -311,7 +332,7 @@ struct type_caster<double3x3>
       {
         auto item = items[component];
         if (!nanobind::isinstance<nanobind::float_>(item) && !nanobind::isinstance<nanobind::int_>(item)) return false;
-        entries[vector][component] = nanobind::cast<double>(item);
+        if (!castNumberNoThrow(item, entries[vector][component])) return false;
       }
     }
     value = double3x3(double3(entries[0][0], entries[0][1], entries[0][2]),
@@ -340,7 +361,8 @@ public:
     if (nanobind::isinstance<nanobind::float_>(src) || nanobind::isinstance<nanobind::int_>(src))
     {
       // Fixed: Functional-style nanobind::cast
-      double scalar = nanobind::cast<double>(src);
+      double scalar{};
+      if (!castNumberNoThrow(src, scalar)) return false;
       value.x = scalar;
       value.y = scalar;
       value.z = scalar;
@@ -362,7 +384,9 @@ public:
           return false;
         }
 
-        double scalar = nanobind::cast<double>(item);
+        double scalar{};
+
+        if (!castNumberNoThrow(item, scalar)) return false;
         value.x = scalar;
         value.y = scalar;
         value.z = scalar;
@@ -382,10 +406,10 @@ public:
         }
 
         // Fixed: Functional-style nanobind::cast on indexed sequence elements
-        value.x = nanobind::cast<double>(seq[0]);
-        value.y = nanobind::cast<double>(seq[1]);
-        value.z = nanobind::cast<double>(seq[2]);
-        value.w = nanobind::cast<double>(seq[3]);
+        if (!castNumberNoThrow(seq[0], value.x)) return false;
+        if (!castNumberNoThrow(seq[1], value.y)) return false;
+        if (!castNumberNoThrow(seq[2], value.z)) return false;
+        if (!castNumberNoThrow(seq[3], value.w)) return false;
         return true;
       }
     }
@@ -1595,12 +1619,31 @@ EXPAND_MODULE(MODULE_NAME)
                               "pseudo-atom, None where the 1-4 pairs have the regular parameters)",
                               pseudo_atoms.size(), parameters_14.size()));
             }
-            new (forceField) ForceField(pseudo_atoms, parameters, mixing_rule, cutoff_framework_vdw,
-                                        cutoff_molecule_vdw, cutoff_coulomb, shifted, tail_corrections, use_charge);
+            // built aside and moved into the Python object at the end: an invalid binary interaction throws out of
+            // here, and a force field already constructed in place would never be destroyed
+            ForceField built(pseudo_atoms, parameters, mixing_rule, cutoff_framework_vdw, cutoff_molecule_vdw,
+                             cutoff_coulomb, shifted, tail_corrections, use_charge);
+            ForceField* const self = forceField;
+            {
+              ForceField* const forceField = &built;
 
             const bool hasParameters14 =
                 std::ranges::any_of(parameters_14, [](const auto& given) { return given.has_value(); });
-            if (binary_interactions.empty() && !hasParameters14 && binary_interactions_14.empty()) return;
+            if (binary_interactions.empty() && !hasParameters14 && binary_interactions_14.empty())
+            {
+              new (self) ForceField(std::move(built));
+              return;
+            }
+            // a pair of a zero epsilon or sigma has no interaction, as in the 'BinaryInteractions' of a file (a
+            // Lennard-Jones pair of a zero sigma is 1 / sigma^2 in the kernels)
+            auto normalized = [](VDWParameters pair)
+            {
+              if (VDWParameters::isLennardJonesForm(pair.type) && (pair.parameters.x == 0.0 || pair.parameters.y == 0.0))
+              {
+                pair.type = VDWParameters::Type::None;
+              }
+              return pair;
+            };
 
             const std::size_t numberOfPseudoAtoms = forceField->numberOfPseudoAtoms;
             auto pairOf = [&](const std::string& nameA, const std::string& nameB)
@@ -1629,8 +1672,9 @@ EXPAND_MODULE(MODULE_NAME)
             // A pair that is given replaces what the mixing rule made of it, as 'BinaryInteractions' of a force-field
             // file does. It is the 1-4 pair as well, unless that pair is given or one of its pseudo-atoms has 1-4
             // parameters of its own (then the mixed 1-4 pair was meant).
-            for (const auto& [nameA, nameB, pair] : binary_interactions)
+            for (const auto& [nameA, nameB, givenPair] : binary_interactions)
             {
+              const VDWParameters pair = normalized(givenPair);
               const auto [indexA, indexB] = pairOf(nameA, nameB);
               forceField->data[indexA * numberOfPseudoAtoms + indexB] = pair;
               forceField->data[indexB * numberOfPseudoAtoms + indexA] = pair;
@@ -1646,8 +1690,9 @@ EXPAND_MODULE(MODULE_NAME)
                 forceField->data14[indexB * numberOfPseudoAtoms + indexA] = pair;
               }
             }
-            for (const auto& [nameA, nameB, pair] : binary_interactions_14)
+            for (const auto& [nameA, nameB, givenPair] : binary_interactions_14)
             {
+              const VDWParameters pair = normalized(givenPair);
               const auto [indexA, indexB] = pairOf(nameA, nameB);
               forceField->ensurePair14Table();
               forceField->data14[indexA * numberOfPseudoAtoms + indexB] = pair;
@@ -1658,6 +1703,8 @@ EXPAND_MODULE(MODULE_NAME)
             forceField->preComputeDerivedParameters();
             forceField->preComputePotentialShift();
             forceField->preComputeTailCorrection();
+            }
+            new (self) ForceField(std::move(built));
           },
           nanobind::arg("pseudo_atoms"), nanobind::arg("parameters"),
           nanobind::arg("mixing_rule") = ForceField::MixingRule::Lorentz_Berthelot,
@@ -1969,7 +2016,9 @@ EXPAND_MODULE(MODULE_NAME)
           "__init__",
           [](MCMoveProbabilities* probabilities, nanobind::kwargs keywords)
           {
-            new (probabilities) MCMoveProbabilities();
+            // built aside: an unknown keyword or a value that is not a number throws out of here, and an object
+            // already constructed in place would never be destroyed
+            MCMoveProbabilities built{};
             for (auto [key, value] : keywords)
             {
               const Move::Types move = moveTypeOfProbabilityKeyword(nanobind::cast<std::string>(key));
@@ -1977,8 +2026,9 @@ EXPAND_MODULE(MODULE_NAME)
               {
                 throw nanobind::type_error("MCMoveProbabilities: a probability is a number");
               }
-              setMoveProbability(*probabilities, move, nanobind::cast<double>(value));
+              setMoveProbability(built, move, nanobind::cast<double>(value));
             }
+            new (probabilities) MCMoveProbabilities(std::move(built));
           },
           nanobind::sig(moveProbabilitiesSignatureText.c_str()),
           "The relative probabilities of the Monte Carlo moves, one keyword for every move of Move.Types.")
@@ -2444,6 +2494,9 @@ EXPAND_MODULE(MODULE_NAME)
                std::size_t number_of_blocks, std::size_t number_of_lambda_bins)
             {
               if (number_of_blocks == 0) throw std::invalid_argument("Component: number_of_blocks must be positive");
+              // (a lambda grid of no points has no first bin, and one of a single point no spacing)
+              if (number_of_lambda_bins < 2)
+                throw std::invalid_argument("Component: number_of_lambda_bins must be at least 2");
               const std::string name = component_name.value_or(std::filesystem::path(file_name).stem().string());
               try
               {
@@ -2494,6 +2547,10 @@ EXPAND_MODULE(MODULE_NAME)
                                                            force_field.pseudoAtoms.size()));
                  }
                }
+               if (number_of_blocks == 0) throw std::invalid_argument("Component: number_of_blocks must be positive");
+               // (a lambda grid of no points has no first bin, and one of a single point no spacing)
+               if (number_of_lambda_bins < 2)
+                 throw std::invalid_argument("Component: number_of_lambda_bins must be at least 2");
                const ConnectivityTable connectivity = connectivityOfComponent(
                    defined_atoms.size(), connectivity_table, intra_molecular_potentials, rigid_bodies);
                try
