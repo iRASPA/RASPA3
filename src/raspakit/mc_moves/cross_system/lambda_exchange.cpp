@@ -288,6 +288,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::LambdaExchange(
   const double lambdaValueA = static_cast<double>(binA) * lambdaA.delta;
   const double lambdaValueB = static_cast<double>(binB) * lambdaB.delta;
 
+  // (counted as a move that was called: the statistics list only the moves with a count)
+  systemA.mc_moves_statistics.addAllCounts(move);
   systemA.mc_moves_statistics.addTrial(move);
   systemB.mc_moves_statistics.addTrial(move);
 

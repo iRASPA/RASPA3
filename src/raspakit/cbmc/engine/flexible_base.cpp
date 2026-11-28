@@ -128,7 +128,10 @@ CBMC::FlexibleBase CBMC::sampleExactFlexibleBase(RandomNumber &random, double be
     if (has_coupling)
     {
       const double coupling_energy = baseCouplingEnergy(step, chainAtoms);
-      const double boltzmann_excess = std::exp(-beta * (coupling_energy - coupling_constants.referenceEnergy));
+      // (the exponent bounded: an energy far below the reference overflowed the factor, and the logarithm of the
+      // infinite clamp weight made the Rosenbluth weight infinity minus infinity further on)
+      const double boltzmann_excess =
+          std::exp(std::min(700.0, -beta * (coupling_energy - coupling_constants.referenceEnergy)));
       if (random.uniform() > boltzmann_excess) continue;
       clamp_weight = std::max(1.0, boltzmann_excess);
     }
@@ -157,7 +160,7 @@ double CBMC::flexibleBaseClampWeight(double beta, const Component &component, co
 
   const BaseCouplingConstants constants = baseCouplingConstantsOf(beta, component, step);
   const double couplingEnergy = baseCouplingEnergy(step, atoms);
-  return std::max(1.0, std::exp(-beta * (couplingEnergy - constants.referenceEnergy)));
+  return std::max(1.0, std::exp(std::min(700.0, -beta * (couplingEnergy - constants.referenceEnergy))));
 }
 
 // ---------------------------------------------------------------------------------------------------

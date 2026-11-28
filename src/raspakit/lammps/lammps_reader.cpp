@@ -847,8 +847,9 @@ ReadResult readDataFile(const std::filesystem::path &dataFile, const std::option
     double c = std::sqrt(lz * lz + data.xz * data.xz + data.yz * data.yz);
     result.boxLengths = {lx, b, c};
     const double toDeg = 180.0 / std::numbers::pi;
-    result.boxAngles = {std::acos((data.xy * data.xz + ly * data.yz) / (b * c)) * toDeg,
-                        std::acos(data.xz / c) * toDeg, std::acos(data.xy / b) * toDeg};
+    result.boxAngles = {std::acos(std::clamp((data.xy * data.xz + ly * data.yz) / (b * c), -1.0, 1.0)) * toDeg,
+                        std::acos(std::clamp(data.xz / c, -1.0, 1.0)) * toDeg,
+                        std::acos(std::clamp(data.xy / b, -1.0, 1.0)) * toDeg};
   }
 
   // default styles

@@ -27,6 +27,13 @@ SKSeitzIntegerMatrix::SKSeitzIntegerMatrix(char xvalue, char yvalue, char zvalue
   std::size_t y = std::size_t(yvalue - referenceValue);
   std::size_t z = std::size_t(zvalue - referenceValue);
 
+  // (the encoded characters index the table of rows: one outside it read past the table)
+  if (x >= SKSeitzIntegerMatrix::SeitzData.size() || y >= SKSeitzIntegerMatrix::SeitzData.size() ||
+      z >= SKSeitzIntegerMatrix::SeitzData.size())
+  {
+    throw std::invalid_argument("SKSeitzIntegerMatrix: an encoded symmetry operation outside the table");
+  }
+
   // qDebug() << "xyz: " << x <<", " << y <<"," << z;
 
   // assert(x < SKSeitzIntegerMatrix::SeitzData.size());

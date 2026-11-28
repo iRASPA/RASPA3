@@ -114,7 +114,10 @@ void DeviceMesh::planAxis(AxisPlan& plan, std::uint32_t N, std::uint32_t localLe
   plan.stages = static_cast<std::uint32_t>(radices.size());
 
   // tile of adjacent lines per work-group: two local buffers of tile * localLength complex values
-  const std::size_t budget = std::min<std::size_t>(localMemory, 65536) - 1024;
+  // (a device that reports less than the reserve has no budget: the unsigned difference wrapped to a huge one,
+  // and every axis was taken to fit)
+  const std::size_t availableLocalMemory = std::min<std::size_t>(localMemory, 65536);
+  const std::size_t budget = availableLocalMemory > 1024 ? availableLocalMemory - 1024 : 0;
   const std::size_t perLine = 2 * static_cast<std::size_t>(localLength) * sizeof(float) * 2;
   if (perLine > budget)
   {

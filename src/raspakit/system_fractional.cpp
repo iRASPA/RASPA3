@@ -1571,8 +1571,17 @@ void System::createParallelReactionFractionalMolecules()
       for (std::size_t k = 0; k < reaction.reactantStoichiometry[componentId]; ++k)
       {
         std::optional<CBMC::GrowResult> growData = std::nullopt;
+        // (bounded, as the creation of the initial molecules: a reactant that fits nowhere looped forever)
+        std::size_t placementAttempts = 0;
         do
         {
+          if (++placementAttempts > 100000uz)
+          {
+            throw std::runtime_error(std::format(
+                "[System]: no place was found for the fractional molecule of component '{}' in 100000 "
+                "attempts (the box is too full or too small)\n",
+                components[componentId].name));
+          }
           if (useCBMC)
           {
             growData = CBMC::growNewMolecule(random, makeGrowContext(CBMC::CutOffMode::Full).forPlacement(),
@@ -1613,8 +1622,17 @@ void System::createParallelReactionFractionalMolecules()
       for (std::size_t k = 0; k < reaction.productStoichiometry[componentId]; ++k)
       {
         std::optional<CBMC::GrowResult> growData = std::nullopt;
+        // (bounded, as the creation of the initial molecules: a reactant that fits nowhere looped forever)
+        std::size_t placementAttempts = 0;
         do
         {
+          if (++placementAttempts > 100000uz)
+          {
+            throw std::runtime_error(std::format(
+                "[System]: no place was found for the fractional molecule of component '{}' in 100000 "
+                "attempts (the box is too full or too small)\n",
+                components[componentId].name));
+          }
           if (useCBMC)
           {
             growData = CBMC::growNewMolecule(random, makeGrowContext(CBMC::CutOffMode::Full).forPlacement(),
@@ -1691,8 +1709,17 @@ void System::createSerialReactionFractionalMolecules()
       for (std::size_t k = 0; k < reaction.reactantStoichiometry[componentId]; ++k)
       {
         std::optional<CBMC::GrowResult> growData = std::nullopt;
+        // (bounded, as the creation of the initial molecules: a reactant that fits nowhere looped forever)
+        std::size_t placementAttempts = 0;
         do
         {
+          if (++placementAttempts > 100000uz)
+          {
+            throw std::runtime_error(std::format(
+                "[System]: no place was found for the fractional molecule of component '{}' in 100000 "
+                "attempts (the box is too full or too small)\n",
+                components[componentId].name));
+          }
           // grow at full coupling so that the overlap check below is meaningful: at the actual initial
           // coupling (lambda = 0) the molecule is invisible and could be placed on top of another
           // molecule, which produces an astronomically high energy as soon as lambda is raised

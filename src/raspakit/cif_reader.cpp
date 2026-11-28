@@ -538,7 +538,17 @@ std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]]
         std::map<std::string, std::string>::iterator atom_site_x = dictionary.find(std::string("_atom_site_fract_x"));
         std::map<std::string, std::string>::iterator atom_site_y = dictionary.find(std::string("_atom_site_fract_y"));
         std::map<std::string, std::string>::iterator atom_site_z = dictionary.find(std::string("_atom_site_fract_z"));
-        if ((atom_site_x != dictionary.end()) && (atom_site_y != dictionary.end()) && (atom_site_z != dictionary.end()))
+        // An atom row has fractional coordinates. A loop that names the sites without them (Cartesian coordinates
+        // only, or another table keyed by the site label) added an atom at the origin for every row.
+        if ((atom_site_x == dictionary.end()) || (atom_site_y == dictionary.end()) || (atom_site_z == dictionary.end()))
+        {
+          if (dictionary.contains("_atom_site_cartn_x") || dictionary.contains("_atom_site_Cartn_x"))
+          {
+            // Cartesian coordinates are not read: an input that can not be used, rather than no atoms
+            return std::unexpected(CIFReader::ParseError::invalidInput);
+          }
+          continue;
+        }
         {
           double3 position;
           // bool succes = false;
@@ -603,6 +613,13 @@ std::optional<std::string> CIFReader::parseValue()
   {
     skipComment();
   };
+
+  // (the end of the file after trailing whitespace or a comment: no value, where an empty one was returned and
+  // taken for a column of the row)
+  if (tempString.empty() || tempString.starts_with(std::string("#")))
+  {
+    return std::nullopt;
+  }
 
   // std::string keyword = tempString.toLower();
   std::string keyword = tempString;

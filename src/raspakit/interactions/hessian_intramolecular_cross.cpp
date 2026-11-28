@@ -739,6 +739,16 @@ RunningEnergy Interactions::computeIntraMolecularInversionBendHessian(
         }
       }
 
+      // At chi = 90 degrees (A on the normal of the plane) chi and its cosine have a cusp: the root and the
+      // arcsine above have an infinite derivative there, times a zero, and every derivative came out as NaN,
+      // for the forms in cos(chi) as well. No derivative, as the gradient routine takes it
+      // ('InversionBendPotential::potentialEnergyGradientStrain').
+      if (!(rab2.v - e.v * e.v / c.v > 0.0))
+      {
+        analyticGradient = {};
+        analyticHessian = {};
+      }
+
       if (semiFlexible)
       {
         const std::array<std::size_t, 4> ids{A, B, C, D};

@@ -750,6 +750,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     return std::nullopt;
   }
 
+  // (counted as a move that was called: the statistics list only the moves with a count)
+  systemA.mc_moves_statistics.addAllCounts(move);
   systemA.mc_moves_statistics.addTrial(move);
 
   const std::optional<double> logAcceptance =

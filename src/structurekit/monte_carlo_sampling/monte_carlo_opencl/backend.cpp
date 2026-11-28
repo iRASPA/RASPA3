@@ -480,18 +480,34 @@ struct SamplingDevice
     err = clBuildProgram(program, 0, nullptr, nullptr, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
+      // the size first: a log longer than a buffer of a fixed size is not written at all
       std::size_t length = 0;
-      std::string log(16384, '\0');
-      clGetProgramBuildInfo(program, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, log.size(), log.data(),
-                            &length);
-      log.resize(length);
+      clGetProgramBuildInfo(program, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, 0, nullptr, &length);
+      std::string log(length, '\0');
+      if (length > 0)
+      {
+        clGetProgramBuildInfo(program, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, log.size(), log.data(),
+                              nullptr);
+      }
+      // (the size counts the terminating zero, which is not part of the message)
+      while (!log.empty() && log.back() == '\0') log.pop_back();
+      release();
       throw std::runtime_error(std::format("mc_opencl_backend: failed to build the sampling kernels: {}\n", log));
     }
 
-    clearances = create("ComputeClearances");
-    straightWays = create("ComputeStraightWays");
-    walksUphill = create("WalkUphill");
-    widestWays = create("ComputeWidestWays");
+    // (no destructor runs for an object whose constructor throws: what was made is released here)
+    try
+    {
+      clearances = create("ComputeClearances");
+      straightWays = create("ComputeStraightWays");
+      walksUphill = create("WalkUphill");
+      widestWays = create("ComputeWidestWays");
+    }
+    catch (...)
+    {
+      release();
+      throw;
+    }
 
     // The bent way carries a stack in private memory and so wants the smallest of the four work groups; one
     // size for all of them keeps the staging simple and costs the other three nothing measurable.
@@ -500,13 +516,17 @@ struct SamplingDevice
     workGroupSize = std::max<std::size_t>(workGroupSize, 1);
   }
 
-  ~SamplingDevice()
+  ~SamplingDevice() { release(); }
+
+  void release()
   {
     if (clearances != nullptr) clReleaseKernel(clearances);
     if (straightWays != nullptr) clReleaseKernel(straightWays);
     if (walksUphill != nullptr) clReleaseKernel(walksUphill);
     if (widestWays != nullptr) clReleaseKernel(widestWays);
     if (program != nullptr) clReleaseProgram(program);
+    clearances = straightWays = walksUphill = widestWays = nullptr;
+    program = nullptr;
   }
 
   std::mutex busy;
@@ -537,7 +557,17 @@ struct SamplingDevice
 
 std::shared_ptr<SamplingDevice> device()
 {
-  static std::shared_ptr<SamplingDevice> shared = std::make_shared<SamplingDevice>();
+  // the kernels belong to the context they were built in: after OpenCL is initialized again on another device
+  // the cached ones failed with CL_INVALID_CONTEXT
+  static std::mutex guard;
+  static std::shared_ptr<SamplingDevice> shared;
+  static cl_context builtFor = nullptr;
+  const std::lock_guard<std::mutex> lock(guard);
+  if (!shared || builtFor != OpenCL::clContext.value())
+  {
+    shared = std::make_shared<SamplingDevice>();
+    builtFor = OpenCL::clContext.value();
+  }
   return shared;
 }
 

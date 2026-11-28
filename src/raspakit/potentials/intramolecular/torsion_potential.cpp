@@ -369,7 +369,7 @@ std::string TorsionPotential::print() const
       // p_0/k_B [K]
       // p_1/k_B [K]
       // p_2/k_B [K]
-      return std::format("{} - {} - {} - {} : CFF p_0/k_B={:g} [K], p_1={:g} [-], p_2/k_B={:g} [K]\n", identifiers[0],
+      return std::format("{} - {} - {} - {} : CFF p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K]\n", identifiers[0],
                          identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
                          parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin);
     case TorsionType::CFF2:
@@ -378,7 +378,7 @@ std::string TorsionPotential::print() const
       // p_0/k_B [K]
       // p_1/k_B [K]
       // p_2/k_B [K]
-      return std::format("{} - {} - {} - {} : CFF2 p_0/k_B={:g} [K], p_1={:g} [-], p_2/k_B={:g} [K]\n", identifiers[0],
+      return std::format("{} - {} - {} - {} : CFF2 p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K]\n", identifiers[0],
                          identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
                          parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin);
     case TorsionType::OPLS:

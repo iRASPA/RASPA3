@@ -1218,6 +1218,10 @@ export struct System
     return std::nullopt;
   }
 
+  /// The linear momentum, the velocity of the centre of mass and the centre of mass of everything that moves: the
+  /// molecules, and the flexible atoms and rigid groups of a mobile framework (the status output).
+  std::tuple<double3, double3, double3> totalMomentumAndCenterOfMass() const;
+
   /// The points the ideal-gas pressure counts: the integer molecules and the mobile framework points (each flexible
   /// framework atom, and each rigid framework group as one), whose virial the excess pressure tensor holds as well.
   std::size_t numberOfIdealGasPressurePoints() const

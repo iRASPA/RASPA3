@@ -292,6 +292,12 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
                                                                static_cast<double>(shift.z));
   };
   const auto dofBase = [&](std::size_t atom) { return *layout.frameworkAtomDof(atom, MinimizationDofAxis::X); };
+  // a lab-fixed atom carries no gradient, as in the gradient routine (computeFrameworkIntraMolecularGradient): the
+  // gradients written here on fixed atoms disagreed with it
+  const auto addMobileGradient = [&](std::size_t atom, const double3& gradient)
+  {
+    if (!framework.isFixedAtom(atom)) dynamics[atom].gradient += gradient;
+  };
   // The single isotropic strain: every flexible framework atom and every periodic image scales with exp(epsilon),
   // so a radial term couples as a flexible pair (bends and torsions are scale invariant).
   const auto addRadialIsotropicStrain = [&](std::size_t A, std::size_t B, double f1, double f2, const double3& dr)
@@ -314,8 +320,8 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     const double3 dr = positionA - positionB;
     const double3 gradientA = f1 * dr;
     energyAccumulator += energy;
-    dynamics[A].gradient += gradientA;
-    dynamics[B].gradient -= gradientA;
+    addMobileGradient(A, gradientA);
+    addMobileGradient(B, -gradientA);
     hessian.strainGradient().ax += dr.x * gradientA.x;
     hessian.strainGradient().bx += dr.y * gradientA.x;
     hessian.strainGradient().cx += dr.z * gradientA.x;
@@ -377,8 +383,8 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     const double3 positionB = shiftedPosition(B, images.bonds[index][1]);
     auto [energy, gradient, strain, f1, f2] = bond.potentialEnergyGradientHessianStrain(positionA, positionB);
     energies.bond += energy;
-    dynamics[A].gradient += gradient[0];
-    dynamics[B].gradient += gradient[1];
+    addMobileGradient(A, gradient[0]);
+    addMobileGradient(B, gradient[1]);
     hessian.strainGradient() += strain;
     if (mixed)
     {
@@ -410,7 +416,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
     auto [energy, gradient, strain, geometry] = Potentials::Internal::bendPotentialEnergyGradientHessianStrain(
         bend.type, bend.parameters, shifted[0], shifted[1], shifted[2]);
     energies.bend += energy;
-    for (std::size_t i = 0; i < 3; ++i) dynamics[ids[i]].gradient += gradient[i];
+    for (std::size_t i = 0; i < 3; ++i) addMobileGradient(ids[i], gradient[i]);
     hessian.strainGradient() += strain;
     if (mixed)
     {
@@ -446,7 +452,7 @@ RunningEnergy Interactions::computeFrameworkIntraMolecularHessian(
       auto [energy, gradient, strain, geometry] = Potentials::Internal::torsionPotentialEnergyGradientHessianStrain(
           torsion.type, torsion.parameters, shifted[0], shifted[1], shifted[2], shifted[3]);
       energies.*energyMember += energy;
-      for (std::size_t i = 0; i < 4; ++i) dynamics[ids[i]].gradient += gradient[i];
+      for (std::size_t i = 0; i < 4; ++i) addMobileGradient(ids[i], gradient[i]);
       hessian.strainGradient() += strain;
       if (mixed)
       {

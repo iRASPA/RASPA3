@@ -78,6 +78,12 @@ ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParam
   //VDWParameters unitVDWParameters(double4(1.0, 1.0, 0.0, 0.0), 0.0, 0.0, 0.0, VDWParameters::Type::LennardJones);
   //selfInteractions.push_back(unitVDWParameters);
 
+  // (one self interaction per pseudo-atom at most: more of them were written past the end of the table)
+  if (selfInteractions.size() > numberOfPseudoAtoms)
+  {
+    throw std::invalid_argument(std::format("[ForceField]: {} self interactions for {} pseudo-atoms\n",
+                                            selfInteractions.size(), numberOfPseudoAtoms));
+  }
   for (std::size_t i = 0; i < selfInteractions.size(); ++i)
   {
     data[i + i * numberOfPseudoAtoms] = selfInteractions[i];
@@ -1537,12 +1543,35 @@ void ForceField::initializeEwaldParameters(const SimulationBox& simulationBox)
     // compute the alpha-parameter and max k-vectors from the relative precision
     double eps = std::min(std::fabs(EwaldPrecision), 0.5);
 
-    double tol = std::sqrt(std::abs(std::log(eps * cutOffCoulomb)));
+    // The estimate holds for a precision well below 1 / r_c. At eps r_c = 1 the first logarithm is zero, alpha
+    // infinite and the wave-vector count the conversion of a NaN to an integer; a little below it the argument of
+    // the last logarithm passes one and its root is that of a negative number.
+    const double tolArgument = eps * cutOffCoulomb;
+    double tol = std::sqrt(std::abs(std::log(tolArgument)));
+    const double alphaArgument = tolArgument * tol;
+    const double alphaTimesCutOff = std::sqrt(std::abs(std::log(alphaArgument)));
+    const double tol1Argument = tolArgument * (2.0 * tol * alphaTimesCutOff / cutOffCoulomb) *
+                                (2.0 * tol * alphaTimesCutOff / cutOffCoulomb);
+    if (!(cutOffCoulomb > 0.0) || !(tolArgument > 0.0) || !(tolArgument < 1.0) || !(alphaArgument > 0.0) ||
+        !(alphaArgument < 1.0) || !(tol1Argument > 0.0) || !(tol1Argument < 1.0))
+    {
+      // (a force field that does not use the Ewald summation keeps the parameters it has)
+      if (useCharge && chargeMethod == ChargeMethod::Ewald)
+      {
+        throw std::runtime_error(std::format(
+            "[ForceField]: an 'EwaldPrecision' of {} is too loose for a Coulomb cut-off of {} Angstrom to derive "
+            "the Ewald parameters from; use a smaller precision (the default is 1e-6) or give 'EwaldParameters'\n",
+            EwaldPrecision, cutOffCoulomb));
+      }
+    }
+    else
+    {
+      EwaldAlpha = alphaTimesCutOff / cutOffCoulomb;
 
-    EwaldAlpha = std::sqrt(std::abs(std::log(eps * cutOffCoulomb * tol))) / cutOffCoulomb;
-    double tol1 = std::sqrt(-std::log(eps * cutOffCoulomb * (2.0 * tol * EwaldAlpha) * (2.0 * tol * EwaldAlpha)));
+      const double tol1 = std::sqrt(-std::log(tol1Argument));
 
-    setAutomaticEwaldWaveVectors(simulationBox, tol1);
+      setAutomaticEwaldWaveVectors(simulationBox, tol1);
+    }
   }
 
   updateEwaldRealSpaceTable();
@@ -1595,13 +1624,35 @@ void ForceField::initializeAutomaticCutOff(const SimulationBox& simulationBox)
     // compute the alpha-parameter and max k-vectors from the relative precision
     double eps = std::min(std::fabs(EwaldPrecision), 0.5);
 
-    double tol = std::sqrt(std::abs(std::log(eps * cutOffCoulomb)));
+    // The estimate holds for a precision well below 1 / r_c. At eps r_c = 1 the first logarithm is zero, alpha
+    // infinite and the wave-vector count the conversion of a NaN to an integer; a little below it the argument of
+    // the last logarithm passes one and its root is that of a negative number.
+    const double tolArgument = eps * cutOffCoulomb;
+    double tol = std::sqrt(std::abs(std::log(tolArgument)));
+    const double alphaArgument = tolArgument * tol;
+    const double alphaTimesCutOff = std::sqrt(std::abs(std::log(alphaArgument)));
+    const double tol1Argument = tolArgument * (2.0 * tol * alphaTimesCutOff / cutOffCoulomb) *
+                                (2.0 * tol * alphaTimesCutOff / cutOffCoulomb);
+    if (!(cutOffCoulomb > 0.0) || !(tolArgument > 0.0) || !(tolArgument < 1.0) || !(alphaArgument > 0.0) ||
+        !(alphaArgument < 1.0) || !(tol1Argument > 0.0) || !(tol1Argument < 1.0))
+    {
+      // (a force field that does not use the Ewald summation keeps the parameters it has)
+      if (useCharge && chargeMethod == ChargeMethod::Ewald)
+      {
+        throw std::runtime_error(std::format(
+            "[ForceField]: an 'EwaldPrecision' of {} is too loose for a Coulomb cut-off of {} Angstrom to derive "
+            "the Ewald parameters from; use a smaller precision (the default is 1e-6) or give 'EwaldParameters'\n",
+            EwaldPrecision, cutOffCoulomb));
+      }
+    }
+    else
+    {
+      EwaldAlpha = alphaTimesCutOff / cutOffCoulomb;
 
-    EwaldAlpha = std::sqrt(std::abs(std::log(eps * cutOffCoulomb * tol))) / cutOffCoulomb;
+      const double tol1 = std::sqrt(-std::log(tol1Argument));
 
-    double tol1 = std::sqrt(-std::log(eps * cutOffCoulomb * (2.0 * tol * EwaldAlpha) * (2.0 * tol * EwaldAlpha)));
-
-    setAutomaticEwaldWaveVectors(simulationBox, tol1);
+      setAutomaticEwaldWaveVectors(simulationBox, tol1);
+    }
   }
 
   updateEwaldRealSpaceTable();

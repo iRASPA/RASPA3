@@ -671,8 +671,13 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
                   system.currentExcessPressureTensor = freshPressure->second / system.simulationBox.volume;
                   freshPressureTime = std::chrono::steady_clock::now() - start;
                 }
-                // (the pressure is sampled in the cycles its tensor was computed for)
-                system.sampleProperties(replicaId, estimation.currentBin, cycle, false, freshPressure.has_value());
+                system.mc_moves_cputime.energyPressureComputation += freshPressureTime;
+                // The pressure is sampled on the schedule, whose cycles the tensor is computed for. The tensor
+                // recomputed after an accepted swap is not a sample: taken as one, the pressure average held an
+                // extra sample for every accepted swap and none for a rejected one, a selection of the
+                // configurations by the outcome of the swap.
+                const bool scheduledPressureSample = cycle % 10uz == 0uz || cycle % printEvery == 0uz;
+                system.sampleProperties(replicaId, estimation.currentBin, cycle, false, scheduledPressureSample);
                 // the force-based RDF needs the full gradients, which the moves leave out: sampled as in MonteCarlo
                 if (system.forceBasedRDFSampleDue(cycle)) system.sampleForceBasedRDFWithFullGradients(cycle, estimation.currentBin);
 
@@ -684,8 +689,6 @@ void HyperParallelTempering::runStage(SimulationStage stage, std::size_t numberO
                 if (cycle % 10uz == 0uz || cycle % printEvery == 0uz)
                 {
                   const std::pair<EnergyStatus, double3x3> molecularPressure = *freshPressure;
-
-                  system.mc_moves_cputime.energyPressureComputation += freshPressureTime;
                   system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
                 }
               }

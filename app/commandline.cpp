@@ -354,14 +354,30 @@ void CommandLine::run(int argc, char *argv[])
       .reg({"--grid-size"}, argparser::required_argument, "Set size of grid: 'X Y Z'",
            [&gridSize](std::string const &arg)
            {
+             // three positive integers and nothing else: read as unsigned through a stream, "-64" wrapped to
+             // 2^64 - 64, and a zero went on to a division by the grid size
              std::istringstream iss(arg);
-             std::size_t x, y, z;
-             if (!(iss >> x >> y >> z))
+             std::array<std::uint32_t, 3> size{};
+             std::string word;
+             std::size_t count = 0;
+             while (iss >> word)
              {
-               throw std::runtime_error(
-                   "Invalid --grid-size: expected three integers separated by spaces wrapped in quotation marks");
+               std::uint32_t value{};
+               const auto [end, error] = std::from_chars(word.data(), word.data() + word.size(), value);
+               if (count >= 3 || error != std::errc{} || end != word.data() + word.size() || value == 0 ||
+                   value > 8192)
+               {
+                 count = 4;
+                 break;
+               }
+               size[count++] = value;
              }
-             gridSize = uint3(x, y, z);
+             if (count != 3)
+             {
+               throw std::runtime_error("Invalid --grid-size: expected three positive integers (at most 8192) "
+                                        "separated by spaces wrapped in quotation marks");
+             }
+             gridSize = uint3(size[0], size[1], size[2]);
            })
       .reg({"--minimum-range"},
            argparser::required_argument,
@@ -615,6 +631,16 @@ void CommandLine::run(int argc, char *argv[])
   if (use_geometric_methods && !use_monte_carlo_methods && !use_integration_methods && !use_voronoi)
   {
     use_apollonius = true;
+  }
+
+  // The grid-based methods run on the device grid: --grids alone, without --gpu and without another route, printed
+  // the headers of what was asked for, ran none of it and exited as if it had succeeded.
+  if (use_gridbased_methods && !use_gpu && !use_apollonius && !use_voronoi && !use_geometric_methods &&
+      !use_monte_carlo_methods && !use_integration_methods && !use_energy_methods)
+  {
+    std::cerr << "\u001b[31;1mERROR: --grids runs on the device grid: add --gpu (or choose another route)"
+                 "\u001b[0m\n";
+    std::exit(-1);
   }
 
   // A pore-size distribution asked for without a route takes the exact one (it ran nothing at all otherwise).

@@ -442,6 +442,13 @@ void System::rebuildForFramework(const Framework& newFramework, const Simulation
   forceField.initializeAutomaticCutOff(simulationBox);
   forceField.initializeEwaldParameters(simulationBox);
   assignFrameworkPseudoAtoms();
+  // as the constructor: in a cell narrower than twice the cutoff a flexible framework interacts with the periodic
+  // images of its own atoms, which the minimum-image pair list of its construction leaves out
+  if (framework.has_value() && !framework->rigid)
+  {
+    framework->regenerateVanDerWaalsImageList(forceField, simulationBox, forceField.cutOffFrameworkVDW,
+                                              spanOfFrameworkAtoms());
+  }
   CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
       eik_x, eik_y, eik_z, eik_xy, forceField, simulationBox, double3(0.0, 0.0, 0.0), 1.0);
 

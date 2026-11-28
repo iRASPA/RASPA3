@@ -235,7 +235,9 @@ std::optional<double> SampledStructure::freeRadius(const double3 &position) cons
 // is the exact clearance.
 static double clearanceWalk(const SampledStructure &structure, const double3 &position, double floor)
 {
-  if (structure.positions.empty()) return std::numeric_limits<double>::max();
+  // (no atoms: no surface at any distance. A quarter of the largest number rather than the largest itself, which
+  // the callers double into a diameter: an infinity the fast-math build makes no promise about)
+  if (structure.positions.empty()) return 0.25 * std::numeric_limits<double>::max();
 
   const double maximumRadius = ensureNeighborGrid(structure);
   const SampledNeighborGrid &grid = structure.neighborGrid;

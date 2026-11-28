@@ -280,7 +280,9 @@ double hypergeometric2F1(double a, double b, double c, double z)
     // the connection formula below takes log(1 - z); at z = 1 Gauss's theorem gives Gamma(c) Gamma(c-a-b) / (Gamma(c-a)
     // Gamma(c-b)) for c - a - b > 0 and the function is unbounded for c - a - b <= 0, with the sign of its prefactor
     // Gamma(c) Gamma(a+b-c) / (Gamma(a) Gamma(b)) (of -Gamma(c) log(1-z) / (Gamma(a) Gamma(b)) for c - a - b = 0)
-    if (mu > 0.0) return std::tgamma(c) * std::tgamma(mu) / (std::tgamma(c - a) * std::tgamma(c - b));
+    // (with the reciprocals of the gamma functions below, which are zero at their poles: for c - a or c - b a
+    // non-positive integer the value is zero, where the division by the gamma function at its pole gave a NaN)
+    if (mu > 0.0) return std::tgamma(c) * std::tgamma(mu) * reciprocalGamma(c - a) * reciprocalGamma(c - b);
     const double prefactor = std::tgamma(c) * (mu < 0.0 ? std::tgamma(-mu) : 1.0) / (std::tgamma(a) * std::tgamma(b));
     return std::copysign(std::numeric_limits<double>::infinity(), prefactor);
   }

@@ -112,8 +112,22 @@ void centersOfMass(const System& system, const MoleculeRange& range, bool withPo
         }
       }
       table.mass[m] = mass;
-      table.position[m] = withPositions ? weightedPosition / mass : double3{};
-      table.velocity[m] = momentum / mass;
+      if (mass > 0.0)
+      {
+        table.position[m] = withPositions ? weightedPosition / mass : double3{};
+        table.velocity[m] = momentum / mass;
+      }
+      else
+      {
+        // a massless (dummy or probe) molecule has no centre of mass: the geometric centre, as the molecule record
+        // has it, and no velocity (the 0 / 0 here was a NaN)
+        double3 centre{};
+        for (std::size_t i = 0; i < molecule.numberOfAtoms; ++i) centre += atoms[atomIndex + i].position;
+        table.position[m] = (withPositions && molecule.numberOfAtoms > 0)
+                                ? centre / static_cast<double>(molecule.numberOfAtoms)
+                                : double3{};
+        table.velocity[m] = double3{};
+      }
     }
     atomIndex += molecule.numberOfAtoms;
     groupIndex += rigidGroupsOf(component);

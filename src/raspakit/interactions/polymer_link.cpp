@@ -168,7 +168,17 @@ RunningEnergy evaluate(const ForceField &forceField, const SimulationBox &simula
       com += mass * atoms[i].position;
       totalMass += mass;
     }
-    com = com / totalMass;
+    if (totalMass > 0.0)
+    {
+      com = com / totalMass;
+    }
+    else if (count > 0)
+    {
+      // a massless molecule has no centre of mass: the geometric centre (0 / 0 was a NaN)
+      com = double3(0.0, 0.0, 0.0);
+      for (std::size_t i = start; i < start + count; ++i) com += atoms[i].position;
+      com = com / static_cast<double>(count);
+    }
     centerOfMass.emplace(molecule, com);
     return com;
   };

@@ -677,6 +677,11 @@ void ParallelTemperingMolecularDynamics::runStage(SimulationStage stage, std::si
               {
                 system.propertyVolumeEvolution->writeOutput(replicaId, absoluteCycle);
               }
+              // (the conserved energy is sampled with them, and was never written)
+              if (system.propertyConservedEnergyEvolution.has_value())
+              {
+                system.propertyConservedEnergyEvolution->writeOutput(replicaId, absoluteCycle);
+              }
 
               if (stage == SimulationStage::Production)
               {
@@ -1002,6 +1007,10 @@ void ParallelTemperingMolecularDynamics::writeReplicaFinalReports(std::vector<Ru
       const std::size_t writeEvery = system.propertyVolumeEvolution->writeEvery.value();
       system.propertyVolumeEvolution->writeOutput(
           replicaId, ((absoluteCycleOffset + writeEvery - 1uz) / writeEvery) * writeEvery);
+    }
+    if (system.propertyConservedEnergyEvolution.has_value())
+    {
+      system.propertyConservedEnergyEvolution->writeOutput(replicaId, absoluteCycleOffset, true);
     }
 
     // per-replica json statistics

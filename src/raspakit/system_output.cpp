@@ -342,6 +342,46 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
   return stream.str();
 }
 
+std::tuple<double3, double3, double3> System::totalMomentumAndCenterOfMass() const
+{
+  double totalMass{};
+  double3 momentum{};
+  double3 weightedPosition{};
+  for (const Molecule& molecule : moleculeData)
+  {
+    totalMass += molecule.mass;
+    momentum += molecule.mass * molecule.velocity;
+    weightedPosition += molecule.mass * molecule.centerOfMassPosition;
+  }
+  if (framework.has_value() && framework->hasMobileAtoms())
+  {
+    std::size_t rigidRank{};
+    for (const FrameworkGroup& group : framework->groups)
+    {
+      if (!group.isRigidBody()) continue;
+      if (rigidRank < frameworkGroupData.size())
+      {
+        totalMass += group.mass;
+        momentum += group.mass * frameworkGroupData[rigidRank].velocity;
+        weightedPosition += group.mass * frameworkGroupData[rigidRank].centerOfMassPosition;
+      }
+      ++rigidRank;
+    }
+    const std::span<const Atom> frameworkAtoms = spanOfFrameworkAtoms();
+    const std::span<const AtomDynamics> frameworkDynamics = spanOfFrameworkDynamics();
+    for (std::size_t i = 0; i < frameworkAtoms.size() && i < frameworkDynamics.size(); ++i)
+    {
+      if (!framework->isFlexibleAtom(i)) continue;
+      const double mass = forceField.pseudoAtoms[static_cast<std::size_t>(frameworkAtoms[i].type)].mass;
+      totalMass += mass;
+      momentum += mass * frameworkDynamics[i].velocity;
+      weightedPosition += mass * frameworkAtoms[i].position;
+    }
+  }
+  if (!(totalMass > 0.0)) return {momentum, double3{}, double3{}};
+  return {momentum, momentum / totalMass, weightedPosition / totalMass};
+}
+
 std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, std::size_t numberOfProductionCycles) const
 {
   std::ostringstream stream;
@@ -356,13 +396,14 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   }
 
   std::print(stream, "{}\n", simulationBox.printStatus());
-  double3 linear_momentum = Integrators::computeLinearMomentum(moleculeData);
+  // (of everything that moves: the molecules, and the flexible atoms and rigid groups of a mobile framework, as
+  // the removal of the drift counts them; over the molecules alone a momentum-conserving run with a flexible
+  // framework reported a drift it does not have)
+  const auto [linear_momentum, com_velocity, com] = totalMomentumAndCenterOfMass();
   std::print(stream, "Linear momentum: {:12.8f} {:12.8f} {:12.8f}\n", linear_momentum.x, linear_momentum.y,
              linear_momentum.z);
-  double3 com_velocity = Integrators::computeCenterOfMassVelocity(moleculeData);
   std::print(stream, "Center of mass velocity: {:12.8f} {:12.8f} {:12.8f}\n", com_velocity.x, com_velocity.y,
              com_velocity.z);
-  double3 com = Integrators::computeCenterOfMass(moleculeData);
   std::print(stream, "Center of mass: {:12.8f} {:12.8f} {:12.8f}\n", com.x, com.y, com.z);
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
   std::print(stream, "\n");
@@ -404,7 +445,8 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
              conv * (runningEnergies.translationalKineticEnergy + runningEnergies.rotationalKineticEnergy));
   std::print(stream, "Nose-Hoover energy: {: .6e}\n", conv * runningEnergies.NoseHooverEnergy);
   std::print(stream, "Conserved energy:   {: .6e}\n", conv * runningEnergies.conservedEnergy());
-  double drift = std::abs((conservedEnergy - referenceEnergy) / referenceEnergy);
+  // (no relative drift against a reference of zero, an ideal gas at rest: 0 / 0 was printed as NaN)
+  double drift = referenceEnergy != 0.0 ? std::abs((conservedEnergy - referenceEnergy) / referenceEnergy) : 0.0;
   std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n", drift,
              accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
   if (polymerLinks.activated)
@@ -982,13 +1024,14 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
   std::print(stream, "\n");
 
-  double3 linear_momentum = Integrators::computeLinearMomentum(moleculeData);
+  // (of everything that moves: the molecules, and the flexible atoms and rigid groups of a mobile framework, as
+  // the removal of the drift counts them; over the molecules alone a momentum-conserving run with a flexible
+  // framework reported a drift it does not have)
+  const auto [linear_momentum, com_velocity, com] = totalMomentumAndCenterOfMass();
   std::print(stream, "Linear momentum: {:12.8f} {:12.8f} {:12.8f}\n", linear_momentum.x, linear_momentum.y,
              linear_momentum.z);
-  double3 com_velocity = Integrators::computeCenterOfMassVelocity(moleculeData);
   std::print(stream, "Center of mass velocity: {:12.8f} {:12.8f} {:12.8f}\n", com_velocity.x, com_velocity.y,
              com_velocity.z);
-  double3 com = Integrators::computeCenterOfMass(moleculeData);
   std::print(stream, "Center of mass: {:12.8f} {:12.8f} {:12.8f}\n", com.x, com.y, com.z);
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
   std::print(stream, "Time run: {:g} [ps]  {:g} [ns]\n\n", static_cast<double>(currentCycle) * timeStep,
@@ -1038,7 +1081,8 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
              conv * (runningEnergies.translationalKineticEnergy + runningEnergies.rotationalKineticEnergy));
   std::print(stream, "Nose-Hoover energy: {: .6e}\n", conv * runningEnergies.NoseHooverEnergy);
   std::print(stream, "Conserved energy:   {: .6e}\n", conv * runningEnergies.conservedEnergy());
-  double drift = std::abs((conservedEnergy - referenceEnergy) / referenceEnergy);
+  // (no relative drift against a reference of zero, an ideal gas at rest: 0 / 0 was printed as NaN)
+  double drift = referenceEnergy != 0.0 ? std::abs((conservedEnergy - referenceEnergy) / referenceEnergy) : 0.0;
   std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n", drift,
              accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
   if (polymerLinks.activated)
@@ -1303,6 +1347,7 @@ void System::writeCPUTimeStatistics(std::ostream& stream) const
   for (std::size_t componentId = 0; const Component& component : components)
   {
     std::print(stream, "{}", component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
+    ++componentId;  // (every component was printed as component 0)
   }
 }
 std::string System::writeMCMoveStatistics() const

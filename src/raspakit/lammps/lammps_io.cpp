@@ -376,6 +376,12 @@ std::string writeInputScript(const Topology &topology)
     std::print(out, "read_data {}\n", topology.options.dataFile);
   }
 
+  // the zero style has no coefficients, but LAMMPS wants every pair set ("All pair coeffs are not set")
+  if (pairStyle.starts_with("zero "))
+  {
+    std::print(out, "\npair_coeff * *\n");
+  }
+
   // ---- pair coefficients (when not in the data file) -----------------------------------------------
   if (!pairCoefficientsInDataFile(topology))
   {

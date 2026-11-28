@@ -439,7 +439,7 @@ std::string RunningEnergy::printMD(const std::string &label, double referenceEne
   std::print(stream, "Conserved energy{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * conservedEnergy(), Units::displayedUnitOfEnergyString);
   std::print(stream, "Drift                          {: .6e} [-]\n\n",
-             std::abs((conservedEnergy() - referenceEnergy) / referenceEnergy));
+             referenceEnergy != 0.0 ? std::abs((conservedEnergy() - referenceEnergy) / referenceEnergy) : 0.0);
   std::print(stream, "Total potential energy{}     {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * potentialEnergy(), Units::displayedUnitOfEnergyString);
   std::print(stream, "    external field VDW{}     {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,

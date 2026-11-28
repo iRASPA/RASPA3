@@ -159,9 +159,10 @@ double3 SimulationBox::angles() const
   double length2 = column2.length();
   double length3 = column3.length();
 
-  return double3(std::acos(double3::dot(column2, column3) / (length2 * length3)),
-                 std::acos(double3::dot(column1, column3) / (length1 * length3)),
-                 std::acos(double3::dot(column1, column2) / (length1 * length2)));
+  // (clamped as in the constructors: a rounding above one is the arccosine of nothing)
+  return double3(std::acos(std::clamp(double3::dot(column2, column3) / (length2 * length3), -1.0, 1.0)),
+                 std::acos(std::clamp(double3::dot(column1, column3) / (length1 * length3), -1.0, 1.0)),
+                 std::acos(std::clamp(double3::dot(column1, column2) / (length1 * length2), -1.0, 1.0)));
 }
 
 std::string SimulationBox::printStatus() const

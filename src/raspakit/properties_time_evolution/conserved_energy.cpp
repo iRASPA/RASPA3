@@ -39,10 +39,13 @@ void PropertyConservedEnergyEvolution::writeOutput(std::size_t systemId, std::si
       lastWrite ? (absoluteCurrentCycle + sampleEvery - 1uz) / sampleEvery : absoluteCurrentCycle / sampleEvery + 1uz;
   for(std::size_t index = 0; index < std::min(currentIndex, data.size()); ++index)
   {
-    stream_output << std::format("{} {} {} {} {}\n", index, data[index].conservedEnergy() * Units::EnergyToKelvin,
+    // (the energy of the thermobarostat as a last column: it is part of the conserved energy, and without it the
+    // columns of an NPT run did not add up to the second)
+    stream_output << std::format("{} {} {} {} {} {}\n", index, data[index].conservedEnergy() * Units::EnergyToKelvin,
                                  data[index].potentialEnergy() * Units::EnergyToKelvin,
                                  data[index].kineticEnergy() * Units::EnergyToKelvin,
-                                 data[index].NoseHooverEnergy * Units::EnergyToKelvin);
+                                 data[index].NoseHooverEnergy * Units::EnergyToKelvin,
+                                 data[index].thermobarostatEnergy * Units::EnergyToKelvin);
   }
 }
 

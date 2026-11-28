@@ -1012,6 +1012,12 @@ SKApolloniusDiagram SKApolloniusDiagram::create(const double3x3& unitCell,
   // be four images of it, so what has to be non-empty is the cell and not the count of sites in it.
   if (siteCount == 0 || radii.size() != siteCount) return diagram;
 
+  // A cell without volume has no inverse: its 0 / 0 went on into the bin counts, the conversion of a NaN to an
+  // integer, before anything refused the cell.
+  if (!(std::abs(unitCell.determinant()) > 1.0e-12))
+  {
+    throw std::invalid_argument("SKApolloniusDiagram: the unit cell has no volume");
+  }
   double3x3 inverseCell = unitCell.inverse();
   double volume = std::abs(unitCell.determinant());
 

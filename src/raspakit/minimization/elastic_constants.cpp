@@ -314,7 +314,17 @@ double3x3 computeBarostatVirial(const System& system, const double3x3& molecular
       com += masses[i] * atoms[i].position;
       totalMass += masses[i];
     }
-    com = com / totalMass;
+    if (totalMass > 0.0)
+    {
+      com = com / totalMass;
+    }
+    else if (!atoms.empty())
+    {
+      // a massless (dummy or probe) molecule has no centre of mass: the geometric centre (0 / 0 was a NaN)
+      com = double3(0.0, 0.0, 0.0);
+      for (std::size_t i = 0; i < atoms.size(); ++i) com += atoms[i].position;
+      com = com / static_cast<double>(atoms.size());
+    }
 
     if (component.isSemiFlexible() && !groupData.empty())
     {

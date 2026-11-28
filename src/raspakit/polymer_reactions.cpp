@@ -147,6 +147,11 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ReactionRule
     archive >> capture[1];
     r.capture = capture;
   }
+  else
+  {
+    // (read into a rule that had one: it kept the capture of the rule it was before)
+    r.capture.reset();
+  }
   archive >> r.captureRadius;
   archive >> count;
   r.formBonds.resize(count);

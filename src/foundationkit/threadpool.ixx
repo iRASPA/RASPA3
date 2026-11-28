@@ -150,12 +150,16 @@ class ThreadPool
              std::is_same_v<void, std::invoke_result_t<InitializationFunction, std::size_t>>
   void init(const std::size_t nthreads, ThreadingType threading_type)
   {
-    threadingType = threading_type;
     if (threading_type != ThreadingType::ThreadPool)
     {
+      // the workers of an earlier pool are stopped (after their tasks in flight) before the type they read
+      // changes: left running, they idled for the rest of the program next to work done serially
+      if (!threads_.empty()) stop_workers();
+      threadingType = threading_type;
       number_of_threads = 0;
       return;
     }
+    threadingType = threading_type;
 
     // the calling thread works too: the pool has one thread fewer than requested. Without any worker (one thread
     // requested, or a single core) the work is done serially instead; this comes before the running-pool check,
@@ -163,6 +167,7 @@ class ThreadPool
     const std::size_t requested = nthreads > 0 ? nthreads : std::max(1u, std::thread::hardware_concurrency());
     if (requested <= 1)
     {
+      if (!threads_.empty()) stop_workers();
       threadingType = ThreadingType::Serial;
       number_of_threads = 0;
       return;

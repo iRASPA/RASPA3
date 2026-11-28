@@ -123,6 +123,15 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
 
   std::print(stream, "    Lambda statistics:\n");
   std::print(stream, "    --------------------------------------------------------------------------------------------------------------------\n");
+  // Without whole molecules (a single fractional molecule in an otherwise empty box) there is no density and no
+  // ideal-gas term: the total chemical potential and the measured fugacity below are then the excess part alone,
+  // which was printed as if it were the whole.
+  if (!(averagedDensity() > 0.0))
+  {
+    std::print(stream, "    WARNING: the average density is zero (no whole molecules): the ideal-gas chemical potential is\n"
+                       "             not defined, and the total chemical potential and the measured fugacity below hold the\n"
+                       "             excess part only\n");
+  }
 
   // the profile is reported relative to its minimum; the minimum is kept in internal energy units and
   // converted with the profile (converting it alone, as was done, mixed units in the reduced-units branch)

@@ -4,6 +4,8 @@ module scanner;
 
 import std;
 
+import finite_value;
+
 import characterset;
 
 Scanner::Scanner(const std::string& content, const CharacterSet& charactersToBeSkipped)
@@ -137,6 +139,13 @@ bool Scanner::scanDouble(double& value)
   if (const std::from_chars_result result = std::from_chars(first, last, parsed);
       result.ec == std::errc{} && result.ptr == last)
   {
+    // a number, not "nan" or "inf", which the parsers take: as a coordinate, a cell length or an occupancy of a
+    // malformed file they went on into the arithmetic
+    if (!isFiniteValue(parsed))
+    {
+      _scanLocation = std::next(_string.cbegin(), first - std::to_address(_string.cbegin()));
+      return false;
+    }
     value = parsed;
     return true;
   }
@@ -153,6 +162,8 @@ bool Scanner::scanDouble(double& value)
     std::size_t used = 0;
     const double converted = std::stod(into, &used);
     if (into.find_first_not_of(" \t\n\r\f\v", used) != std::string::npos) return refuse();
+    // (nor a hexadecimal float, "0x1p10", which this parser takes as well)
+    if (!isFiniteValue(converted) || into.find_first_of("xX") != std::string::npos) return refuse();
     value = converted;
   }
   catch ([[maybe_unused]] std::invalid_argument const& e)
