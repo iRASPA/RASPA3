@@ -120,7 +120,7 @@ CBMC::ClosureGuideTable buildTwoBondTable(RandomNumber &random, double beta, con
         const double3 posC{r2 * cosTheta, r2 * std::sin(theta), 0.0};
         energy = bend->calculateEnergy(posA, posB, posC, std::nullopt);
       }
-      sum += std::exp(-beta * energy) / (r1 * r2 * D);
+      sum += std::exp(std::min(600.0, -beta * energy)) / (r1 * r2 * D);  // (bounded: see the lookahead guide)
     }
     guide[k] = sum / static_cast<double>(pairs.size());
   }
@@ -167,7 +167,7 @@ CBMC::ClosureGuideTable buildSampledTable(RandomNumber &random, double beta, con
         candidate = positions[i] + length * direction;
         if (!torsion.has_value()) break;
         const double energy = torsion->calculateEnergy(positions[i - 2], positions[i - 1], positions[i], candidate);
-        if (random.uniform() < std::exp(-beta * (energy - torsionMinima[i - 2]))) break;
+        if (random.uniform() < std::exp(std::min(0.0, -beta * (energy - torsionMinima[i - 2])))) break;
       }
       positions[i + 1] = candidate;
     }

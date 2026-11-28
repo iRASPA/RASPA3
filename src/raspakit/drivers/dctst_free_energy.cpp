@@ -676,6 +676,8 @@ void DynamicallyCorrectedTSTFreeEnergy::setup()
     std::flush(replicaStream);
   }
 
+  // (with gradients when a gradient-based move is on: the default polynomial scheme has none)
+  for (System& system : systems) system.upgradeInterpolationSchemeForGradientMoves();
   systems.front().createExternalFieldInterpolationGrid(stream, 0);
   systems.front().createFrameworkInterpolationGrids(stream);
   for (std::size_t replicaId = 1; replicaId < systems.size(); ++replicaId)

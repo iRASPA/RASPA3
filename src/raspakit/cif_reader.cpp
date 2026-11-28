@@ -81,14 +81,13 @@ auto CIFReader::readCIFString(const std::string& content, const ForceField& forc
     return std::unexpected(CIFReader::ParseError::invalidInput);
   }
 
-  SimulationBox::Type type =
-      (std::abs(cif_reader.alpha - 90.0) > 1.0e-3) || (std::abs(cif_reader.beta - 90.0) > 1.0e-3) || (std::abs(cif_reader.gamma - 90.0) > 1.0e-3)
-          ? SimulationBox::Type::Triclinic
-          : SimulationBox::Type::Rectangular;
-  SimulationBox simulation_box(cif_reader.a, cif_reader.b, cif_reader.c, 
-                               cif_reader.alpha * std::numbers::pi / 180.0, 
+  // The box decides whether it is rectangular, by its own test on the angles: decided here within 1e-3 degrees, a
+  // cell of 90.0005 degrees had a tilted cell matrix and the minimum image of a rectangular box, which reads the
+  // diagonal alone.
+  SimulationBox simulation_box(cif_reader.a, cif_reader.b, cif_reader.c,
+                               cif_reader.alpha * std::numbers::pi / 180.0,
                                cif_reader.beta * std::numbers::pi / 180.0,
-                               cif_reader.gamma * std::numbers::pi / 180.0, type);
+                               cif_reader.gamma * std::numbers::pi / 180.0);
 
   cif_reader.resolveSpaceGroupHallNumber(simulation_box);
 

@@ -131,7 +131,10 @@ void growEnergies(GLOBAL const float4* RESTRICT background,          // per back
         // that single precision does not hold below sigma/1600 was not a number, which is no overlap and
         // spoiled the sum of the whole work group)
         const float u = (lj.x != 0.0f) ? lj.x * (rri6 - rri3) - lj.z : -lj.z;
-        if (u > overlapCriteria)
+        // (closer than a hundredth of sigma a pair is an overlap whatever its strength, decided before the twelfth
+        // power, which single precision holds only to sigma/1600 and the relaxed math of the kernel does not
+        // carry as an infinity)
+        if ((lj.x != 0.0f && sigmaOverRR > 1.0e4f) || u > overlapCriteria)
         {
           overlaps += 1.0f;
         }

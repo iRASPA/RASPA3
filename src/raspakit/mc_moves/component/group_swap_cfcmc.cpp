@@ -541,15 +541,18 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
     // added explicitly), e excludes the selected central molecule when the slot's component equals
     // the central component, and t counts earlier satellite slots of the same component (the reverse
     // deletion selects uniformly, sequentially without replacement).
-    double preFactor = 1.0;
+    // (as a sum of logarithms: the factors beta f V of dissociated ions are of the order of 1e-150, their product
+    // underflowed to zero and refused every insertion, while the deletion, in logarithms, went on taking them)
+    double logPreFactor = 0.0;
     {
       std::vector<std::size_t> totalMembersOfComponent(system.components.size(), 0);
       for (const GroupMember& member : members) ++totalMembersOfComponent[member.componentId];
 
       const double fugacityCentral =
           central.molFraction * central.fugacityCoefficient.value_or(1.0) * system.pressure;
-      preFactor *= system.beta * fugacityCentral * system.simulationBox.volume /
-                   static_cast<double>(oldN + totalMembersOfComponent[selectedComponent]);
+      logPreFactor += MC_Moves::logSwapPrefactor(
+          system.beta * fugacityCentral * system.simulationBox.volume,
+          static_cast<double>(oldN + totalMembersOfComponent[selectedComponent]));
 
       std::vector<std::size_t> earlierSlotsOfComponent(system.components.size(), 0);
       for (std::size_t i = 1; i < groupSize; ++i)
@@ -564,16 +567,15 @@ std::pair<std::optional<RunningEnergy>, double3> groupSwapMoveCFCMCImplementatio
 
         const double fugacity =
             memberComponent.molFraction * memberComponent.fugacityCoefficient.value_or(1.0) * system.pressure;
-        preFactor *= system.beta * fugacity * sphereVolume * distanceBiasFactors[i] /
-                     static_cast<double>(reverseCandidates);
+        logPreFactor += MC_Moves::logSwapPrefactor(system.beta * fugacity * sphereVolume * distanceBiasFactors[i],
+                                                   static_cast<double>(reverseCandidates));
       }
     }
 
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
     const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
-        preFactor,
-        logRosenbluthRatio -
+        logPreFactor + logRosenbluthRatio -
             system.beta * (energyDifference.potentialEnergy() + trialExtraDifference.potentialEnergy() +
                            polarizationDifference.potentialEnergy() + intraCoulombScaling),
         biasTerm);

@@ -232,8 +232,11 @@ export struct Component
   double logIdealGasRosenbluthWeight() const
   {
     if (!idealGasRosenbluthWeight.has_value()) return 0.0;
+    // (compared as bits: for a chain whose weight overflows both sides are infinite, and a comparison of
+    // infinities is not defined under the fast-math flags)
     if (idealGasRosenbluthWeightEstimate.has_value() &&
-        idealGasRosenbluthWeight.value() == std::exp(idealGasRosenbluthWeightEstimate->logRosenbluthWeight))
+        std::bit_cast<std::uint64_t>(idealGasRosenbluthWeight.value()) ==
+            std::bit_cast<std::uint64_t>(std::exp(idealGasRosenbluthWeightEstimate->logRosenbluthWeight)))
     {
       return idealGasRosenbluthWeightEstimate->logRosenbluthWeight;
     }

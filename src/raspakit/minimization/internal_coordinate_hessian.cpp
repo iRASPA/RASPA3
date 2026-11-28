@@ -171,6 +171,18 @@ Minimization::InternalCoordinate Minimization::dihedralInternalCoordinate(const 
   const double3 Dab = posA - posB;
   const double3 DcbRaw = posC - posB;
   const double rbc = std::sqrt(double3::dot(DcbRaw, DcbRaw));
+  // Collinear arms or a central bond of no length: no dihedral. The coordinate of cos(phi) = 0 (phi = 90 degrees)
+  // without derivatives, as the torsion potentials take it; the divisions by r, s and the bond length filled the
+  // gradient and the Hessian of the cross terms with NaN.
+  constexpr double collinearLimit = 1.0e-10;
+  const auto degenerate = [&]()
+  {
+    coordinate.value = 0.0;
+    coordinate.phi = 0.5 * std::numbers::pi;
+    coordinate.sinPhi = 1.0;
+    return coordinate;
+  };
+  if (!(rbc > collinearLimit)) return degenerate();
   const double3 Dcb = DcbRaw / rbc;
   const double3 Ddc = posD - posC;
 
@@ -179,10 +191,10 @@ Minimization::InternalCoordinate Minimization::dihedralInternalCoordinate(const 
 
   double3 dr = Dab - dotAB * Dcb;
   const double r = std::sqrt(double3::dot(dr, dr));
-  dr /= r;
-
   double3 ds = Ddc - dotCD * Dcb;
   const double s = std::sqrt(double3::dot(ds, ds));
+  if (!(r > collinearLimit) || !(s > collinearLimit)) return degenerate();
+  dr /= r;
   ds /= s;
 
   const double cosPhi = std::clamp(double3::dot(dr, ds), -1.0, 1.0);

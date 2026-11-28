@@ -544,6 +544,16 @@ void Minimization::preInitialize()
   if (simulationStage == SimulationStage::PreInitialization) goto continuePreInitializationStage;
   simulationStage = SimulationStage::PreInitialization;
 
+  // As MonteCarlo does at the start of this stage: the running energies, the stored structure factor and the
+  // electric field of the starting configuration. Left as constructed (zero, empty) until the equilibration, the
+  // Monte Carlo stages before it took their Ewald differences against an empty structure factor and their volume
+  // and polarization differences against zero.
+  for (System& system : systems)
+  {
+    system.precomputeTotalRigidEnergy();
+    system.runningEnergies = system.computeTotalEnergies();
+  }
+
   for (currentCycle = 0uz; currentCycle != numberOfPreInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     performCycle();
@@ -861,15 +871,18 @@ void Minimization::runPhase()
       {
         // The phonon post-processing is the final step: the elastic constants and normal modes above are
         // already computed and stored, so the minimized conventional cell is no longer needed and can be
-        // consumed here. Optionally reduce it in place to the primitive cell so both the dispersion and the
+        // consumed here. Optionally reduce a copy of it to the primitive cell so both the dispersion and the
         // density of states describe the true unfolded spectrum over the primitive Brillouin zone (no zone
         // folding). The reduction is a no-op (system left unchanged) when it is unavailable (rigid/no
         // framework, no retained definition, or symmetry detection fails). An explicit dispersion path is
         // given in the simulation-cell reciprocal basis, so it is only meaningful on the simulation cell;
         // primitive reduction is used only together with the default symmetry-derived path.
+        // (on a copy: reduced in place, the minimized conventional cell was gone from 'systems' for whoever reads
+        // it after the run, the Python interface, and the binary restart written next)
+        System phononSystem = system;
         if (options.phononUsePrimitiveCell && options.phononDispersionPath.empty())
         {
-          reduceSystemToPrimitiveFramework(system, options.phononPrimitiveCellSymmetryPrecision);
+          reduceSystemToPrimitiveFramework(phononSystem, options.phononPrimitiveCellSymmetryPrecision);
         }
 
         if (options.computePhononDispersion)
@@ -878,7 +891,7 @@ void Minimization::runPhase()
           if (nodes.empty())
           {
             // Prefer a symmetry-aware HPKOT path derived from the framework's space group.
-            nodes = symmetryDefaultPhononPath(system);
+            nodes = symmetryDefaultPhononPath(phononSystem);
           }
           if (nodes.empty())
           {
@@ -887,13 +900,13 @@ void Minimization::runPhase()
                      {double3(0.0, 0.5, 0.0), "Y"}, {double3(0.0, 0.0, 0.0), "G"}, {double3(0.0, 0.0, 0.5), "Z"}};
           }
           systemResult.phononDispersion =
-              computePhononDispersionAlongPath(system, nodes, options.phononDispersionPointsPerSegment);
+              computePhononDispersionAlongPath(phononSystem, nodes, options.phononDispersionPointsPerSegment);
         }
 
         if (options.computePhononDensityOfStates)
         {
           systemResult.phononDensityOfStates = computePhononDensityOfStates(
-              system, options.phononDOSMesh, options.phononDOSNumberOfBins, options.phononDOSBroadening);
+              phononSystem, options.phononDOSMesh, options.phononDOSNumberOfBins, options.phononDOSBroadening);
         }
       }
     }

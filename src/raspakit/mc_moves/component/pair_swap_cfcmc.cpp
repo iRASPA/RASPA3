@@ -507,15 +507,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC(Ra
     // Calculate acceptance probability. One factor beta*f*V per molecule of the pair: the box volume
     // V for A and the pair-sphere volume V_s for B. The reverse deletion selects the pair to
     // fractionalize uniformly: A among the N_A+1 and B among the N_B+1 integer molecules.
-    const double preFactor = (system.beta * fugacityA * system.simulationBox.volume / static_cast<double>(1 + oldN_A)) *
-                             (system.beta * fugacityB * sphereVolume / static_cast<double>(1 + oldN_B));
+    // (as a sum of logarithms: the factors beta f V of dissociated ions are of the order of 1e-150, their product
+    // underflowed to zero and refused every insertion, while the deletion, in logarithms, went on taking them)
+    const double logPreFactor =
+        MC_Moves::logSwapPrefactor(system.beta * fugacityA * system.simulationBox.volume,
+                                   static_cast<double>(1 + oldN_A)) +
+        MC_Moves::logSwapPrefactor(system.beta * fugacityB * sphereVolume, static_cast<double>(1 + oldN_B));
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // the conformations were drawn at full coupling and are placed at the new lambda (see
     // 'System::intraCoulombScalingEnergy')
     // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
     const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
-        preFactor,
-        -system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy() +
+        logPreFactor -
+            system.beta * (energyDifference.potentialEnergy() + polarizationDifference.potentialEnergy() +
                         system.intraCoulombScalingEnergy(trialMoleculeA.second) +
                         system.intraCoulombScalingEnergy(trialMoleculeB.second)),
         biasTerm);

@@ -212,7 +212,7 @@ class RigidTiltSampler
       chain_[nextBeads_[k]].position = anchorPosition_ + axis.rotateAroundAxis(saved_[k] - anchorPosition_, angle);
     }
     const double trialEnergy = bendEnergy();
-    if (parityPreserved() && random_.uniform() < std::exp(-beta_ * (trialEnergy - currentEnergy_)))
+    if (parityPreserved() && random_.uniform() < std::exp(std::min(0.0, -beta_ * (trialEnergy - currentEnergy_))))
     {
       currentEnergy_ = trialEnergy;
       rotationStats_.accepted += 1.0;

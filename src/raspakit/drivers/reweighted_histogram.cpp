@@ -1772,7 +1772,11 @@ void ReweightedHistogram::performReweightingAnalysis()
   // for a flexible one a number the component has to carry ('idealGasEnergy'). Without it the heat is too low by
   // <U_IG>, as the enthalpy of adsorption of a Monte Carlo run is; that was written out without a word.
   const Component& heatComponent = systems.front().components[systems.front().tmmcComponent()];
-  const double idealGasEnergyOfAdsorbate = heatComponent.idealGasEnergy.value_or(0.0);
+  // (and the energy a finite-cutoff charge method gives the molecule in isolation, which the sampled energy U holds
+  // for every molecule: of the ideal gas too, and no part of the heat. Exact for a molecule of one conformation.)
+  const double idealGasEnergyOfAdsorbate =
+      heatComponent.idealGasEnergy.value_or(0.0) -
+      systems.front().logIsolatedChargeWeightOfRigidComponent(systems.front().tmmcComponent()) / systems.front().beta;
   const bool isostericHeatLacksIdealGasEnergy =
       !heatComponent.rigid && heatComponent.atoms.size() > 1uz && !heatComponent.idealGasEnergy.has_value();
   auto reweightIsostericHeat = [&](const std::vector<double>& logDensityOfStates, double beta,

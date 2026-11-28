@@ -721,7 +721,9 @@ template <Images Mode>
         const double qq = charges[j] * chargeB;
         if (!(rr < tableRRMin) || !(rr < cutOffChargeSquared) || qq == 0.0) continue;
         double exactPhi, exactDerivative;
-        table.exact(std::max(rr, minimumRR), exactPhi, exactDerivative);
+        // (the floor of the exact routine: the lane clamp above is for the masked lanes, and held at it a close
+        // pair of charged sites without van der Waals had another energy than in computeTotalEnergies)
+        table.exact(std::max(rr, 1.0e-20), exactPhi, exactDerivative);
         energyCharge += coulombFactor * qq * (exactPhi - tableCoefficients[3]);
       }
     }
@@ -1024,7 +1026,9 @@ std::optional<RunningEnergy> evaluateKeptRecords(const ForceField& forceField, c
         const double qq = qs[i] * chargeB;
         if (!(rr < tableRRMin) || !(rr < cutOffChargeSquared) || qq == 0.0) continue;
         double exactPhi, exactDerivative;
-        table.exact(std::max(rr, minimumRR), exactPhi, exactDerivative);
+        // (the floor of the exact routine: the lane clamp above is for the masked lanes, and held at it a close
+        // pair of charged sites without van der Waals had another energy than in computeTotalEnergies)
+        table.exact(std::max(rr, 1.0e-20), exactPhi, exactDerivative);
         energyCharge += coulombFactor * qq * (exactPhi - tableCoefficients[3]);
       }
     }

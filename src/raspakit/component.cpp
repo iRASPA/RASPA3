@@ -542,6 +542,13 @@ void Component::readComponent(std::size_t componentId, const ForceField &forceFi
 void Component::scaleSoluteHamiltonian(double lambda)
 {
   const double sqrtLambda = std::sqrt(lambda);
+  // a computed ideal-gas Rosenbluth weight is that of the Hamiltonian it was computed for: computed again for the
+  // scaled one (a weight that was given is kept)
+  if (idealGasRosenbluthWeightEstimate.has_value())
+  {
+    idealGasRosenbluthWeight.reset();
+    idealGasRosenbluthWeightEstimate.reset();
+  }
   for (Atom &atom : atoms)
   {
     atom.charge *= sqrtLambda;

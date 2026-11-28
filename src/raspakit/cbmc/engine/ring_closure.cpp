@@ -366,7 +366,7 @@ class RingSampler
     stats.constructed += 1.0;
     stats.totalConstructed += 1.0;
     const double trialEnergy = baseEnergy();
-    if (parityPreserved() && random_.uniform() < std::exp(-beta_ * (trialEnergy - currentEnergy_)))
+    if (parityPreserved() && random_.uniform() < std::exp(std::min(0.0, -beta_ * (trialEnergy - currentEnergy_))))
     {
       currentEnergy_ = trialEnergy;
       stats.accepted += 1.0;

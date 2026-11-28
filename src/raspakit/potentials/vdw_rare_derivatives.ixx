@@ -127,6 +127,9 @@ export [[clang::noinline]] [[clang::preserve_most]] inline RareVDWDerivatives ev
 {
   using namespace Internal;
 
+  // Held off zero as in the Lennard-Jones form (potentialVDW): at r = 0 the powers of the radius and the
+  // soft-core quotients were 0 / 0 at full coupling, a NaN in the energy that no overlap test sees.
+  rr = std::max(rr, 1.0e-20);
   double scaling = scalingA * scalingB;
   double inverseScaling = 1.0 - scaling;
   RadialJet radius = RadialJet::variable(std::sqrt(rr));

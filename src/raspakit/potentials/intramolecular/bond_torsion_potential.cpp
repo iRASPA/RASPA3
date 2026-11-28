@@ -132,11 +132,14 @@ std::tuple<double, std::array<double3, 4>, double3x3> BondTorsionPotential::pote
 
   double3 dr = Dab - dot_ab * Dcb_unit;
   double r = std::sqrt(double3::dot(dr, dr));
-  dr /= r;
+  // (collinear arms: no dihedral, the arm normalized to zero as in 'calculateEnergy', and no angular derivative;
+  // the divisions by r and s were NaN)
+  constexpr double collinearLimit = 1.0e-10;
+  dr = r > collinearLimit ? dr / r : double3(0.0, 0.0, 0.0);
 
   double3 ds = Ddc - dot_cd * Dcb_unit;
   double s = std::sqrt(double3::dot(ds, ds));
-  ds /= s;
+  ds = s > collinearLimit ? ds / s : double3(0.0, 0.0, 0.0);
 
   double cos_phi = std::clamp(double3::dot(dr, ds), -1.0, 1.0);
   double cos_phi2 = cos_phi * cos_phi;
@@ -163,8 +166,9 @@ std::tuple<double, std::array<double3, 4>, double3x3> BondTorsionPotential::pote
   const double d = dot_ab / rbc;
   const double e = dot_cd / rbc;
 
-  double3 dtA = (ds - cos_phi * dr) / r;
-  double3 dtD = (dr - cos_phi * ds) / s;
+  const bool collinear = !(r > collinearLimit) || !(s > collinearLimit);
+  double3 dtA = collinear ? double3(0.0, 0.0, 0.0) : (ds - cos_phi * dr) / r;
+  double3 dtD = collinear ? double3(0.0, 0.0, 0.0) : (dr - cos_phi * ds) / s;
   double3 dtB = dtA * (d - 1.0) + e * dtD;
   double3 dtC = -dtD * (e + 1.0) - d * dtA;
 

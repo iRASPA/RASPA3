@@ -403,8 +403,12 @@ std::tuple<double, std::array<double3, 4>, double3x3> BendTorsionPotential::pote
   const double d = dot_ab / rbc;
   const double e = dot_cd / rbc;
 
-  double3 dtA = (ds - cos_phi * dr) / r;
-  double3 dtD = (dr - cos_phi * ds) / s;
+  // (collinear arms: no dihedral and no angular derivative, the arms normalized to zero; the divisions by r and s
+  // were NaN, also times a zero factor)
+  constexpr double collinearLimit = 1.0e-10;
+  const bool collinear = !(r > collinearLimit) || !(s > collinearLimit);
+  double3 dtA = collinear ? double3(0.0, 0.0, 0.0) : (ds - cos_phi * dr) / r;
+  double3 dtD = collinear ? double3(0.0, 0.0, 0.0) : (dr - cos_phi * ds) / s;
   double3 dtB = dtA * (d - 1.0) + e * dtD;
   double3 dtC = -dtD * (e + 1.0) - d * dtA;
 

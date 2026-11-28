@@ -978,10 +978,14 @@ void ForceField::mixTable(std::vector<VDWParameters>& table) const
   {
     const VDWParameters& self = table[i * numberOfPseudoAtoms + i];
     if (!isEpsilonSigmaForm(self.type) || (self.parameters.x != 0.0 && self.parameters.y != 0.0)) continue;
+    // (the whole entry of no interaction, as the pairs of a pseudo-atom of type None: with the mixed parameters
+    // left in place, the interpolation grids, which read the parameters and not the type, tabulated a
+    // Lennard-Jones energy for a pair that has none)
+    const VDWParameters none(double4(0.0, 1.0, 0.0, 0.0), 0.0, 0.0, 0.0, VDWParameters::Type::None);
     for (std::size_t j = 0; j < numberOfPseudoAtoms; ++j)
     {
-      table[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::None;
-      table[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::None;
+      table[i * numberOfPseudoAtoms + j] = none;
+      table[j * numberOfPseudoAtoms + i] = none;
     }
   }
 }

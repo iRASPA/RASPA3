@@ -792,7 +792,20 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
   const bool isobaric = thermobarostat.has_value() ||
                         mc_moves_probabilities.getProbability(Move::Types::VolumeChange) > 0.0 ||
                         mc_moves_probabilities.getProbability(Move::Types::AnisotropicVolumeChange) > 0.0;
-  const double enthalpy = runningEnergies.potentialEnergy() + (isobaric ? pressure * simulationBox.volume : 0.0);
+  double enthalpy = runningEnergies.potentialEnergy() + (isobaric ? pressure * simulationBox.volume : 0.0);
+  // A finite-cutoff charge method gives every molecule an energy of its own in the box (its self term and excluded
+  // pairs), which the ideal-gas molecule of the reservoir has as well: it is no energy of adsorption, and left in it
+  // shifted the enthalpy of adsorption by that energy, an ideal gas included. Taken off for the molecules of one
+  // conformation, where it is the same for every molecule ('logIsolatedChargeWeightOfRigidComponent').
+  if (forceField.usesRealSpaceChargeCorrections())
+  {
+    for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+    {
+      if (numberOfIntegerMoleculesPerComponent[componentId] == 0) continue;
+      enthalpy += static_cast<double>(numberOfIntegerMoleculesPerComponent[componentId]) *
+                  logIsolatedChargeWeightOfRigidComponent(componentId) / beta;
+    }
+  }
   EnthalpyOfAdsorptionTerms enthalpyTerms =
       EnthalpyOfAdsorptionTerms(swappableComponents, numberOfIntegerMoleculesPerComponent, enthalpy, temperature);
   averageEnthalpiesOfAdsorption.addSample(currentBlock, enthalpyTerms, w);

@@ -103,7 +103,7 @@ void placeBead(RandomNumber &random, double beta, const CBMC::LookaheadBead &bea
       const auto &ids = bend.identifiers;
       energy += bend.calculateEnergy(positions[ids[0]], positions[ids[1]], positions[ids[2]], std::nullopt);
     }
-    if (random.uniform() < std::exp(-beta * (energy - envelope))) return;
+    if (random.uniform() < std::exp(std::min(0.0, -beta * (energy - envelope)))) return;
   }
 }
 
@@ -326,7 +326,10 @@ CBMC::LookaheadGuideTable CBMC::buildLookaheadGuideTable(double beta, const Look
     {
       const double target = -std::numbers::pi + static_cast<double>(k) * spacing;
       spinTo(sense * wrapAngle(target - drawnDihedral));
-      guide[k] += std::exp(-beta * (invariantEnergy + crossEnergy(model.spinTerms, spun)));
+      // (the exponent bounded: a close contact of opposite charges overflowed the term, and the infinite guide
+      // took the Rosenbluth weights to inf - inf; the table is taken relative to its maximum, so the bound only
+      // flattens what was infinite. 600, so that the sum over the samples stays a double)
+      guide[k] += std::exp(std::min(600.0, -beta * (invariantEnergy + crossEnergy(model.spinTerms, spun))));
     }
   }
   for (double &g : guide) g /= static_cast<double>(Constants::lookaheadGuideSamples);

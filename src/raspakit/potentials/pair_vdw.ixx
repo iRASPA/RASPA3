@@ -81,9 +81,12 @@ template <std::size_t Order>
  * the square root is avoided; the switching region [r_s, rc] needs r.
  */
 template <std::size_t Order>
-[[clang::always_inline]] inline PairDerivatives<Order> switchedLennardJones(const VDWParameters& p, const double rr,
+[[clang::always_inline]] inline PairDerivatives<Order> switchedLennardJones(const VDWParameters& p, double rr,
                                                                             bool forceSwitch)
 {
+  // held off zero as in the plain form (potentialVDW): two atoms on one point gave inf - inf, a NaN no overlap
+  // test sees
+  rr = std::max(rr, 1.0e-20);
   double eps4 = 4.0 * p.parameters.x;
   double sigma2 = p.parameters.y * p.parameters.y;
   double temp = rr / sigma2;

@@ -1160,6 +1160,9 @@ export struct System
                           component.mc_moves_probabilities.getProbability(Move::Types::RotationSmartMC) > 0.0 ||
                           component.mc_moves_probabilities.getProbability(Move::Types::TranslationRotationSmartMC) > 0.0;
     }
+    // the force-based RDF takes the framework forces from the grids as well (precomputeTotalGradients): with the
+    // polynomial scheme they were zero for every gridded pseudo-atom
+    usesGradientMove |= propertyRadialDistributionFunction.has_value();
     if (usesGradientMove &&
         forceField.settings.interpolationScheme == ForceFieldSettings::InterpolationScheme::Polynomial)
     {

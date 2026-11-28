@@ -5891,6 +5891,36 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         throw std::runtime_error(std::format(
             "[Input reader]: systems {} and {} are paired by the Gibbs moves but have different temperatures\n", i, j));
       }
+      // A flexible charged molecule under a finite-cutoff charge method has an ideal-gas Rosenbluth weight that
+      // depends on the Coulomb cut-off of the box (the self term and the excluded pairs of the isolated molecule).
+      // The CBMC transfers leave the weights out as cancelling between the boxes; with two cut-offs they do not,
+      // and the transfers sampled a chemical potential shifted between the boxes. (Rigid and single-site molecules
+      // have the exact correction, 'System::logIsolatedChargeWeightOfRigidComponent'.)
+      if (systems[i].forceField.usesRealSpaceChargeCorrections() &&
+          std::abs(systems[i].forceField.cutOffCoulomb - systems[j].forceField.cutOffCoulomb) >
+              1.0e-10 * std::max(1.0, systems[i].forceField.cutOffCoulomb))
+      {
+        for (const Component& component : systems[i].components)
+        {
+          const bool cbmcTransfer = std::ranges::any_of(
+              std::array{Move::Types::GibbsSwapCBMC, Move::Types::GibbsSwapMultiTrialCBMC,
+                         Move::Types::GibbsSwapCBCFCMC, Move::Types::GibbsConventionalCBCFCMC,
+                         Move::Types::GibbsIdentityChangeCBMC},
+              [&](Move::Types move) { return component.mc_moves_probabilities.getProbability(move) > 0.0; });
+          const bool flexible = !component.rigid && component.atoms.size() > 1uz;
+          const bool charged =
+              std::ranges::any_of(component.atoms, [](const Atom& atom) { return atom.charge != 0.0; });
+          if (cbmcTransfer && flexible && charged)
+          {
+            throw std::runtime_error(std::format(
+                "[Input reader]: systems {} and {} have Coulomb cut-offs of {} and {} Angstrom under a finite-cutoff "
+                "charge method, and the flexible component '{}' is transferred between them by a CBMC Gibbs move: "
+                "its ideal-gas weight differs between the boxes and is not accounted for. Give both systems the "
+                "same 'CutOffCoulomb', or use 'GibbsSwapCFCMCProbability'\n",
+                i, j, systems[i].forceField.cutOffCoulomb, systems[j].forceField.cutOffCoulomb, component.name));
+          }
+        }
+      }
       if (volumeExchange && (systems[i].framework.has_value() || systems[j].framework.has_value()))
       {
         throw std::runtime_error(std::format(

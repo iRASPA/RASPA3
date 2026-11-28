@@ -490,15 +490,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
     // V for A and the pair-sphere volume V_s (with the radial bias) for B. The reverse deletion
     // selects the pair to fractionalize uniformly: A among the N_A+1 and B among the N_B+1 integer
     // molecules.
-    const double preFactor = (system.beta * fugacityA * system.simulationBox.volume / static_cast<double>(1 + oldN_A)) *
-                             (system.beta * fugacityB * sphereVolume * distanceBias /
-                              static_cast<double>(1 + oldN_B));
+    // (as a sum of logarithms: the factors beta f V of dissociated ions are of the order of 1e-150, their product
+    // underflowed to zero and refused every insertion, while the deletion, in logarithms, went on taking them)
+    const double logPreFactor =
+        MC_Moves::logSwapPrefactor(system.beta * fugacityA * system.simulationBox.volume,
+                                   static_cast<double>(1 + oldN_A)) +
+        MC_Moves::logSwapPrefactor(system.beta * fugacityB * sphereVolume * distanceBias,
+                                   static_cast<double>(1 + oldN_B));
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero).
     // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
     const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
-        preFactor,
-        logCorrectionFactorEwald + growDataA->logRosenbluthWeight - logIdealGasA +
+        logPreFactor + logCorrectionFactorEwald + growDataA->logRosenbluthWeight - logIdealGasA +
             growDataB->logRosenbluthWeight - logIdealGasB - system.beta * energyDifference.potentialEnergy(),
         biasTerm);
     const double physicalPacc = acceptance.physical;
@@ -857,16 +860,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::pairSwapMove_CFCMC_CB
 
     // Calculate acceptance probability: exact reciprocal of the insertion prefactor, with the
     // reverse distance bias evaluated at the removed pair's separation.
-    const double preFactor = (static_cast<double>(oldN_A) / (system.beta * fugacityA * system.simulationBox.volume)) *
-                             (static_cast<double>(oldN_B) * distanceBias /
-                              (system.beta * fugacityB * sphereVolume));
+    // (in logarithms, as the insertion; a reservoir of no fugacity takes every deletion, where the quotients
+    // divided by zero: see 'logSwapPrefactor')
+    const double logPreFactor =
+        MC_Moves::logSwapPrefactor(static_cast<double>(oldN_A), system.beta * fugacityA * system.simulationBox.volume) +
+        MC_Moves::logSwapPrefactor(static_cast<double>(oldN_B) * distanceBias,
+                                   system.beta * fugacityB * sphereVolume);
     const double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     // Rosenbluth weights through their exact logarithms (raw weights of long chains underflow to zero,
     // which would turn these quotients into +inf).
     // ln P and the bias are added before the exponential is taken (see 'biasedAcceptance')
     const MC_Moves::BiasedAcceptance acceptance = MC_Moves::biasedAcceptance(
-        preFactor,
-        logCorrectionFactorEwald + logIdealGasA - retraceDataA.logRosenbluthWeight + logIdealGasB -
+        logPreFactor + logCorrectionFactorEwald + logIdealGasA - retraceDataA.logRosenbluthWeight + logIdealGasB -
             retraceDataB.logRosenbluthWeight - system.beta * energyDifference.potentialEnergy(),
         biasTerm);
     const double physicalPacc = acceptance.physical;

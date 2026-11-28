@@ -138,7 +138,20 @@ constexpr std::size_t maxGrowAttempts = 5000uz;
 bool widomAnchorIsConsistent(const System& system)
 {
   const Component& component = system.components[system.tmmcComponent()];
-  if (component.rigid || component.atoms.size() <= 1uz) return true;
+  if (component.rigid || component.atoms.size() <= 1uz)
+  {
+    // Without conformations the Widom probe still divides by the weight it is given, and the conventional
+    // insertions (Swap, SwapCFCMC) by the Boltzmann factor of the isolated-charge energy instead
+    // ('System::intraCoulombScalingEnergy'): the anchor holds when the two are one, which a given weight other
+    // than that factor (1 under a finite-cutoff charge method, say) is not.
+    const bool conventional = std::ranges::any_of(
+        std::array{Move::Types::Swap, Move::Types::SwapCFCMC},
+        [&](Move::Types move) { return component.mc_moves_probabilities.getProbability(move) > 0.0; });
+    if (!conventional) return true;
+    const std::size_t componentId = system.tmmcComponent();
+    return std::abs(component.logIdealGasRosenbluthWeight() -
+                    system.logIsolatedChargeWeightOfRigidComponent(componentId)) <= 1.0e-10;
+  }
   if (system.forceField.settings.useRecoilGrowth) return false;
   for (const Move::Types move : {Move::Types::Swap, Move::Types::SwapCFCMC})
   {
